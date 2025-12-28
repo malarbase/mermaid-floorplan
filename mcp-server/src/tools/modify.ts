@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { parseFloorplan } from "../utils/parser.js";
-import { FloorplanAstEditor } from "../utils/ast-editor.js";
+import { FloorplanAstEditor, type RoomParams } from "../utils/ast-editor.js";
 import {
   extractAllRoomBounds,
   buildRelativeAssignments,
@@ -205,117 +205,70 @@ async function applyOperation(
   dsl: string,
   op: Operation
 ): Promise<{ dsl: string; change: ChangeResult }> {
+  // Parse the DSL for AST-based operations
+  const parseResult = await parseFloorplan(dsl);
+  if (!parseResult.document) {
+    throw new Error("Failed to parse floorplan");
+  }
+
+  const editor = new FloorplanAstEditor(parseResult.document, dsl);
+
   switch (op.action) {
     case "add_room":
-      return addRoom(dsl, op.params);
+      return addRoom(editor, op.params);
     case "remove_room":
-      return removeRoom(dsl, op.target);
+      return removeRoom(editor, op.target);
     case "resize_room":
-      return resizeRoom(dsl, op.target, op.params);
+      return resizeRoom(editor, op.target, op.params);
     case "move_room":
-      return moveRoom(dsl, op.target, op.params);
+      return moveRoom(editor, op.target, op.params);
     case "rename_room":
-      return renameRoom(dsl, op.target, op.params.newName);
+      return renameRoom(editor, op.target, op.params.newName);
     case "update_walls":
-      return updateWalls(dsl, op.target, op.params);
+      return updateWalls(editor, op.target, op.params);
     case "add_label":
-      return addLabel(dsl, op.target, op.params.label);
+      return addLabel(editor, op.target, op.params.label);
     case "convert_to_relative":
-      return convertToRelative(dsl, op.params);
+      return convertToRelative(editor, op.params);
   }
 }
 
 function addRoom(
-  dsl: string,
-  params: {
-    name: string;
-    position?: { x: number; y: number };
-    size: { width: number; height: number };
-    walls: { top: string; right: string; bottom: string; left: string };
-    label?: string;
-    relativePosition?: {
-      direction: string;
-      reference: string;
-      gap?: number;
-      alignment?: string;
-    };
-  }
+  editor: FloorplanAstEditor,
+  params: RoomParams
 ): { dsl: string; change: ChangeResult } {
-  const { name, position, size, walls, label, relativePosition } = params;
+  const success = editor.addRoom(params);
 
-  // Validate: need either position or relativePosition
-  if (!position && !relativePosition) {
-    throw new Error("Room must have either 'position' or 'relativePosition'");
+  if (!success) {
+    throw new Error("Could not find floor block to add room");
   }
-
-  // Find the closing brace of the floor block
-  const floorEndMatch = dsl.match(/(\n\s*)\}/);
-  if (!floorEndMatch) {
-    throw new Error("Could not find floor block closing brace");
-  }
-
-  const indent = "      "; // Match existing indentation
-  
-  // Build the room line
-  let roomLine = `${indent}room ${name}`;
-  
-  // Add explicit position if provided
-  if (position) {
-    roomLine += ` at (${position.x},${position.y})`;
-  }
-  
-  // Add size and walls
-  roomLine += ` size (${size.width} x ${size.height}) walls [top: ${walls.top}, right: ${walls.right}, bottom: ${walls.bottom}, left: ${walls.left}]`;
-
-  // Add relative positioning if provided
-  if (relativePosition) {
-    roomLine += ` ${relativePosition.direction} ${relativePosition.reference}`;
-    if (relativePosition.gap !== undefined) {
-      roomLine += ` gap ${relativePosition.gap}`;
-    }
-    if (relativePosition.alignment) {
-      roomLine += ` align ${relativePosition.alignment}`;
-    }
-  }
-
-  // Add label if provided
-  if (label) {
-    roomLine += ` label "${label}"`;
-  }
-
-  // Insert before the closing brace
-  const insertIndex = dsl.lastIndexOf("}");
-  const newDsl = dsl.slice(0, insertIndex) + roomLine + "\n" + dsl.slice(insertIndex);
 
   return {
-    dsl: newDsl,
+    dsl: editor.apply(),
     change: {
       action: "add_room",
-      target: name,
+      target: params.name,
       result: "applied",
     },
   };
 }
 
-function removeRoom(dsl: string, target: string): { dsl: string; change: ChangeResult } {
-  // Match room line with optional position, relative positioning, label and sub-rooms
-  // Position is now optional (can use relative positioning instead)
-  const roomPattern = new RegExp(
-    `^\\s*room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\]` +
-    `(?:\\s+(?:right-of|left-of|above|below|above-right-of|above-left-of|below-right-of|below-left-of)\\s+\\w+(?:\\s+gap\\s+[0-9.]+)?(?:\\s+align\\s+(?:top|bottom|left|right|center))?)?` +
-    `(?:\\s+label\\s+"[^"]*")?(?:\\s+composed\\s+of\\s+\\[[^\\]]*\\])?\\s*$`,
-    "m"
-  );
-
-  const match = dsl.match(roomPattern);
-  if (!match) {
+function removeRoom(
+  editor: FloorplanAstEditor,
+  target: string
+): { dsl: string; change: ChangeResult } {
+  const room = editor.findRoom(target);
+  if (!room) {
     throw new Error(`Room "${target}" not found`);
   }
 
-  const newDsl = dsl.replace(roomPattern, "").replace(/\n\n+/g, "\n");
+  const success = editor.removeRoom(room);
+  if (!success) {
+    throw new Error(`Could not remove room "${target}"`);
+  }
 
   return {
-    dsl: newDsl,
+    dsl: editor.apply(),
     change: {
       action: "remove_room",
       target,
@@ -325,25 +278,22 @@ function removeRoom(dsl: string, target: string): { dsl: string; change: ChangeR
 }
 
 function resizeRoom(
-  dsl: string,
+  editor: FloorplanAstEditor,
   target: string,
   params: { width: number; height: number }
 ): { dsl: string; change: ChangeResult } {
-  // Match room with optional position (may use relative positioning instead)
-  const sizePattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\()[0-9.]+\\s*x\\s*[0-9.]+(\\))`,
-    "g"
-  );
-
-  const match = dsl.match(sizePattern);
-  if (!match) {
+  const room = editor.findRoom(target);
+  if (!room) {
     throw new Error(`Room "${target}" not found`);
   }
 
-  const newDsl = dsl.replace(sizePattern, `$1${params.width} x ${params.height}$2`);
+  const success = editor.resizeRoom(room, params.width, params.height);
+  if (!success) {
+    throw new Error(`Could not resize room "${target}"`);
+  }
 
   return {
-    dsl: newDsl,
+    dsl: editor.apply(),
     change: {
       action: "resize_room",
       target,
@@ -354,70 +304,52 @@ function resizeRoom(
 }
 
 function moveRoom(
-  dsl: string,
+  editor: FloorplanAstEditor,
   target: string,
   params: { x: number; y: number }
 ): { dsl: string; change: ChangeResult } {
-  // First try to update existing position
-  const posPattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}\\s+at\\s+\\()[^)]+(\\))`,
-    "g"
-  );
-
-  const match = dsl.match(posPattern);
-  if (match) {
-    const newDsl = dsl.replace(posPattern, `$1${params.x},${params.y}$2`);
-    return {
-      dsl: newDsl,
-      change: {
-        action: "move_room",
-        target,
-        result: "applied",
-        message: `Moved to (${params.x}, ${params.y})`,
-      },
-    };
-  }
-
-  // If no explicit position, add one (room might be using relative positioning only)
-  const roomWithoutPosPattern = new RegExp(
-    `(room\\s+${escapeRegex(target)})(\\s+size)`,
-    "g"
-  );
-
-  const matchWithoutPos = dsl.match(roomWithoutPosPattern);
-  if (matchWithoutPos) {
-    const newDsl = dsl.replace(roomWithoutPosPattern, `$1 at (${params.x},${params.y})$2`);
-    return {
-      dsl: newDsl,
-      change: {
-        action: "move_room",
-        target,
-        result: "applied",
-        message: `Added position (${params.x}, ${params.y})`,
-      },
-    };
-  }
-
-  throw new Error(`Room "${target}" not found`);
-}
-
-function renameRoom(
-  dsl: string,
-  target: string,
-  newName: string
-): { dsl: string; change: ChangeResult } {
-  // Match room with either "at" or "size" following the name (position is optional now)
-  const namePattern = new RegExp(`(room\\s+)${escapeRegex(target)}(\\s+(?:at|size))`, "g");
-
-  const match = dsl.match(namePattern);
-  if (!match) {
+  const room = editor.findRoom(target);
+  if (!room) {
     throw new Error(`Room "${target}" not found`);
   }
 
-  const newDsl = dsl.replace(namePattern, `$1${newName}$2`);
+  const success = editor.moveRoom(room, params.x, params.y);
+  if (!success) {
+    throw new Error(`Could not move room "${target}"`);
+  }
+
+  const message = room.position
+    ? `Moved to (${params.x}, ${params.y})`
+    : `Added position (${params.x}, ${params.y})`;
 
   return {
-    dsl: newDsl,
+    dsl: editor.apply(),
+    change: {
+      action: "move_room",
+      target,
+      result: "applied",
+      message,
+    },
+  };
+}
+
+function renameRoom(
+  editor: FloorplanAstEditor,
+  target: string,
+  newName: string
+): { dsl: string; change: ChangeResult } {
+  const room = editor.findRoom(target);
+  if (!room) {
+    throw new Error(`Room "${target}" not found`);
+  }
+
+  const success = editor.renameRoom(room, newName);
+  if (!success) {
+    throw new Error(`Could not rename room "${target}"`);
+  }
+
+  return {
+    dsl: editor.apply(),
     change: {
       action: "rename_room",
       target,
@@ -428,40 +360,22 @@ function renameRoom(
 }
 
 function updateWalls(
-  dsl: string,
+  editor: FloorplanAstEditor,
   target: string,
   params: { top?: string; right?: string; bottom?: string; left?: string }
 ): { dsl: string; change: ChangeResult } {
-  // Find the room's walls specification (position is optional)
-  const wallsPattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[)([^\\]]+)(\\])`,
-    "g"
-  );
-
-  const match = dsl.match(wallsPattern);
-  if (!match) {
+  const room = editor.findRoom(target);
+  if (!room) {
     throw new Error(`Room "${target}" not found`);
   }
 
-  const newDsl = dsl.replace(wallsPattern, (_match, prefix, walls, suffix) => {
-    let newWalls = walls;
-    if (params.top) {
-      newWalls = newWalls.replace(/top:\s*\w+/, `top: ${params.top}`);
-    }
-    if (params.right) {
-      newWalls = newWalls.replace(/right:\s*\w+/, `right: ${params.right}`);
-    }
-    if (params.bottom) {
-      newWalls = newWalls.replace(/bottom:\s*\w+/, `bottom: ${params.bottom}`);
-    }
-    if (params.left) {
-      newWalls = newWalls.replace(/left:\s*\w+/, `left: ${params.left}`);
-    }
-    return prefix + newWalls + suffix;
-  });
+  const success = editor.updateWalls(room, params);
+  if (!success) {
+    throw new Error(`Could not update walls for room "${target}"`);
+  }
 
   return {
-    dsl: newDsl,
+    dsl: editor.apply(),
     change: {
       action: "update_walls",
       target,
@@ -471,74 +385,43 @@ function updateWalls(
 }
 
 function addLabel(
-  dsl: string,
+  editor: FloorplanAstEditor,
   target: string,
   label: string
 ): { dsl: string; change: ChangeResult } {
-  // Check if room already has a label (position is optional, may have relative positioning)
-  const existingLabelPattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\]` +
-    `(?:\\s+(?:right-of|left-of|above|below|above-right-of|above-left-of|below-right-of|below-left-of)\\s+\\w+(?:\\s+gap\\s+[0-9.]+)?(?:\\s+align\\s+(?:top|bottom|left|right|center))?)?` +
-    `\\s+label\\s+)"[^"]*"`,
-    "g"
-  );
-
-  if (existingLabelPattern.test(dsl)) {
-    // Update existing label
-    const newDsl = dsl.replace(existingLabelPattern, `$1"${label}"`);
-    return {
-      dsl: newDsl,
-      change: {
-        action: "add_label",
-        target,
-        result: "applied",
-        message: "Updated existing label",
-      },
-    };
-  }
-
-  // Add new label after walls specification (and optional relative positioning)
-  const noLabelPattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\]` +
-    `(?:\\s+(?:right-of|left-of|above|below|above-right-of|above-left-of|below-right-of|below-left-of)\\s+\\w+(?:\\s+gap\\s+[0-9.]+)?(?:\\s+align\\s+(?:top|bottom|left|right|center))?)?)`,
-    "g"
-  );
-
-  const match = dsl.match(noLabelPattern);
-  if (!match) {
+  const room = editor.findRoom(target);
+  if (!room) {
     throw new Error(`Room "${target}" not found`);
   }
 
-  const newDsl = dsl.replace(noLabelPattern, `$1 label "${label}"`);
+  const hadLabel = !!room.label;
+  const success = editor.updateLabel(room, label);
+  if (!success) {
+    throw new Error(`Could not add label to room "${target}"`);
+  }
 
   return {
-    dsl: newDsl,
+    dsl: editor.apply(),
     change: {
       action: "add_label",
       target,
       result: "applied",
+      message: hadLabel ? "Updated existing label" : undefined,
     },
   };
 }
 
-async function convertToRelative(
-  dsl: string,
+function convertToRelative(
+  editor: FloorplanAstEditor,
   params: {
     anchorRoom: string;
     alignmentTolerance?: number;
     targetRooms?: string[];
   }
-): Promise<{ dsl: string; change: ChangeResult }> {
+): { dsl: string; change: ChangeResult } {
   const { anchorRoom, alignmentTolerance = 1, targetRooms } = params;
 
-  // Parse the floorplan
-  const parseResult = await parseFloorplan(dsl);
-  if (!parseResult.document) {
-    throw new Error("Failed to parse floorplan");
-  }
-
   // Get all rooms
-  const editor = new FloorplanAstEditor(parseResult.document, dsl);
   const allRooms = editor.getAllRooms();
 
   // Validate the conversion is possible
@@ -588,10 +471,8 @@ async function convertToRelative(
     );
   }
 
-  const newDsl = editor.apply();
-
   return {
-    dsl: newDsl,
+    dsl: editor.apply(),
     change: {
       action: "convert_to_relative",
       target: anchorRoom,
@@ -600,8 +481,3 @@ async function convertToRelative(
     },
   };
 }
-
-function escapeRegex(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-

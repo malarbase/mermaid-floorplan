@@ -13,6 +13,20 @@ export interface TextEdit {
   newText: string;
 }
 
+export interface RoomParams {
+  name: string;
+  position?: { x: number; y: number };
+  size: { width: number; height: number };
+  walls: { top: string; right: string; bottom: string; left: string };
+  label?: string;
+  relativePosition?: {
+    direction: string;
+    reference: string;
+    gap?: number;
+    alignment?: string;
+  };
+}
+
 /**
  * Editor for making AST-aware edits to floorplan DSL
  */
@@ -23,6 +37,20 @@ export class FloorplanAstEditor {
     private document: LangiumDocument<Floorplan>,
     private originalText: string
   ) {}
+
+  /**
+   * Get the floorplan AST
+   */
+  get floorplan(): Floorplan {
+    return this.document.parseResult.value;
+  }
+
+  /**
+   * Get first floor (convenience method)
+   */
+  get firstFloor(): Floor | undefined {
+    return this.floorplan.floors[0];
+  }
 
   /**
    * Find a room by name across all floors
@@ -75,6 +103,413 @@ export class FloorplanAstEditor {
     }
   }
 
+  // ==================== ADD ROOM ====================
+
+  /**
+   * Add a new room to the first floor
+   */
+  addRoom(params: RoomParams): boolean {
+    const floor = this.firstFloor;
+    if (!floor?.$cstNode) return false;
+
+    // Validate: need either position or relativePosition
+    if (!params.position && !params.relativePosition) {
+      throw new Error("Room must have either 'position' or 'relativePosition'");
+    }
+
+    // Find the insertion point (before the closing brace of the floor)
+    const floorCst = floor.$cstNode;
+    const leafNodes = this.flattenCst(floorCst);
+    
+    // Find the closing brace
+    let closingBraceOffset: number | undefined;
+    for (let i = leafNodes.length - 1; i >= 0; i--) {
+      if (leafNodes[i].text === "}") {
+        closingBraceOffset = leafNodes[i].offset;
+        break;
+      }
+    }
+
+    if (closingBraceOffset === undefined) return false;
+
+    // Walk back from closing brace to find the newline (skip indentation before })
+    let insertOffset = closingBraceOffset;
+    while (insertOffset > 0 && this.originalText[insertOffset - 1] !== "\n") {
+      insertOffset--;
+    }
+
+    // Detect indentation from existing rooms or use default
+    const indent = this.detectRoomIndentation(floor) || "    ";
+
+    // Build the room line
+    const roomLine = this.buildRoomLine(params, indent);
+
+    this.edits.push({
+      offset: insertOffset,
+      length: 0,
+      newText: roomLine + "\n",
+    });
+
+    return true;
+  }
+
+  private detectRoomIndentation(floor: Floor): string | undefined {
+    if (floor.rooms.length > 0 && floor.rooms[0].$cstNode) {
+      const firstRoomOffset = floor.rooms[0].$cstNode.offset;
+      // Walk backwards to find the start of the line
+      let lineStart = firstRoomOffset;
+      while (lineStart > 0 && this.originalText[lineStart - 1] !== "\n") {
+        lineStart--;
+      }
+      // Extract just the whitespace (in case there's other content)
+      const linePrefix = this.originalText.slice(lineStart, firstRoomOffset);
+      // Only return whitespace
+      const match = linePrefix.match(/^(\s*)/);
+      return match ? match[1] : undefined;
+    }
+    return undefined;
+  }
+
+  private buildRoomLine(params: RoomParams, indent: string): string {
+    const { name, position, size, walls, label, relativePosition } = params;
+
+    let line = `${indent}room ${name}`;
+
+    // Add explicit position if provided
+    if (position) {
+      line += ` at (${position.x},${position.y})`;
+    }
+
+    // Add size and walls
+    line += ` size (${size.width} x ${size.height}) walls [top: ${walls.top}, right: ${walls.right}, bottom: ${walls.bottom}, left: ${walls.left}]`;
+
+    // Add relative positioning if provided
+    if (relativePosition) {
+      line += ` ${relativePosition.direction} ${relativePosition.reference}`;
+      if (relativePosition.gap !== undefined) {
+        line += ` gap ${relativePosition.gap}`;
+      }
+      if (relativePosition.alignment) {
+        line += ` align ${relativePosition.alignment}`;
+      }
+    }
+
+    // Add label if provided
+    if (label) {
+      line += ` label "${label}"`;
+    }
+
+    return line;
+  }
+
+  // ==================== REMOVE ROOM ====================
+
+  /**
+   * Remove a room entirely from the DSL
+   */
+  removeRoom(room: Room): boolean {
+    if (!room.$cstNode) return false;
+
+    const roomCst = room.$cstNode;
+    let startOffset = roomCst.offset;
+    const endOffset = roomCst.end;
+
+    // Include the preceding newline and indentation
+    while (startOffset > 0 && this.originalText[startOffset - 1] !== "\n") {
+      startOffset--;
+    }
+    // Include the newline itself if present
+    if (startOffset > 0 && this.originalText[startOffset - 1] === "\n") {
+      startOffset--;
+    }
+
+    this.edits.push({
+      offset: startOffset,
+      length: endOffset - startOffset,
+      newText: "",
+    });
+
+    return true;
+  }
+
+  // ==================== RESIZE ROOM ====================
+
+  /**
+   * Resize a room by updating its size dimensions
+   */
+  resizeRoom(room: Room, width: number, height: number): boolean {
+    if (!room.size.$cstNode) return false;
+
+    const sizeCst = room.size.$cstNode;
+
+    // The size CST contains "(WIDTH x HEIGHT)" - we need to replace just the numbers
+    // Find the leaf nodes within the size CST
+    const leafNodes = this.flattenCst(sizeCst);
+    
+    // Find the first number (width) and second number (height)
+    const numbers: LeafCstNode[] = [];
+    for (const leaf of leafNodes) {
+      if (/^[0-9.]+$/.test(leaf.text)) {
+        numbers.push(leaf);
+      }
+    }
+
+    if (numbers.length < 2) return false;
+
+    const widthNode = numbers[0];
+    const heightNode = numbers[1];
+
+    // Replace height first (later in text), then width
+    this.edits.push({
+      offset: heightNode.offset,
+      length: heightNode.end - heightNode.offset,
+      newText: String(height),
+    });
+
+    this.edits.push({
+      offset: widthNode.offset,
+      length: widthNode.end - widthNode.offset,
+      newText: String(width),
+    });
+
+    return true;
+  }
+
+  // ==================== MOVE ROOM ====================
+
+  /**
+   * Move a room to a new position (update or add position)
+   */
+  moveRoom(room: Room, x: number, y: number): boolean {
+    if (!room.$cstNode) return false;
+
+    if (room.position) {
+      // Update existing position
+      return this.updatePosition(room, x, y);
+    } else {
+      // Add new position (room uses relative positioning only)
+      return this.addPosition(room, x, y);
+    }
+  }
+
+  private updatePosition(room: Room, x: number, y: number): boolean {
+    if (!room.position?.$cstNode) return false;
+
+    const posCst = room.position.$cstNode;
+    const leafNodes = this.flattenCst(posCst);
+
+    // Find the two numbers (x and y coordinates)
+    const numbers: LeafCstNode[] = [];
+    for (const leaf of leafNodes) {
+      if (/^[0-9.]+$/.test(leaf.text)) {
+        numbers.push(leaf);
+      }
+    }
+
+    if (numbers.length < 2) return false;
+
+    const xNode = numbers[0];
+    const yNode = numbers[1];
+
+    // Replace y first (later in text), then x
+    this.edits.push({
+      offset: yNode.offset,
+      length: yNode.end - yNode.offset,
+      newText: String(y),
+    });
+
+    this.edits.push({
+      offset: xNode.offset,
+      length: xNode.end - xNode.offset,
+      newText: String(x),
+    });
+
+    return true;
+  }
+
+  private addPosition(room: Room, x: number, y: number): boolean {
+    if (!room.$cstNode) return false;
+
+    // Find the room name to insert after
+    const roomCst = room.$cstNode;
+    const leafNodes = this.flattenCst(roomCst);
+
+    // Find the room name (ID after "room" keyword)
+    let nameEndOffset: number | undefined;
+    for (let i = 0; i < leafNodes.length; i++) {
+      if (leafNodes[i].text === "room" && i + 1 < leafNodes.length) {
+        // Next non-hidden token should be the name
+        for (let j = i + 1; j < leafNodes.length; j++) {
+          if (!leafNodes[j].hidden) {
+            nameEndOffset = leafNodes[j].end;
+            break;
+          }
+        }
+        break;
+      }
+    }
+
+    if (nameEndOffset === undefined) return false;
+
+    this.edits.push({
+      offset: nameEndOffset,
+      length: 0,
+      newText: ` at (${x},${y})`,
+    });
+
+    return true;
+  }
+
+  // ==================== RENAME ROOM ====================
+
+  /**
+   * Rename a room
+   */
+  renameRoom(room: Room, newName: string): boolean {
+    if (!room.$cstNode) return false;
+
+    const roomCst = room.$cstNode;
+    const leafNodes = this.flattenCst(roomCst);
+
+    // Find the room name (ID after "room" keyword)
+    for (let i = 0; i < leafNodes.length; i++) {
+      if (leafNodes[i].text === "room") {
+        // Next non-hidden token should be the name
+        for (let j = i + 1; j < leafNodes.length; j++) {
+          if (!leafNodes[j].hidden) {
+            const nameNode = leafNodes[j];
+            this.edits.push({
+              offset: nameNode.offset,
+              length: nameNode.end - nameNode.offset,
+              newText: newName,
+            });
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  // ==================== UPDATE WALLS ====================
+
+  /**
+   * Update wall types for a room
+   */
+  updateWalls(
+    room: Room,
+    walls: { top?: string; right?: string; bottom?: string; left?: string }
+  ): boolean {
+    if (!room.walls.$cstNode) return false;
+
+    // Update each wall that's specified
+    for (const spec of room.walls.specifications) {
+      const newType =
+        spec.direction === "top"
+          ? walls.top
+          : spec.direction === "right"
+            ? walls.right
+            : spec.direction === "bottom"
+              ? walls.bottom
+              : spec.direction === "left"
+                ? walls.left
+                : undefined;
+
+      if (newType && spec.$cstNode) {
+        // Find the type token in this spec
+        const specLeaves = this.flattenCst(spec.$cstNode);
+        for (const leaf of specLeaves) {
+          if (["solid", "door", "window", "open"].includes(leaf.text)) {
+            this.edits.push({
+              offset: leaf.offset,
+              length: leaf.end - leaf.offset,
+              newText: newType,
+            });
+            break;
+          }
+        }
+      }
+    }
+
+    return true;
+  }
+
+  // ==================== ADD/UPDATE LABEL ====================
+
+  /**
+   * Add or update a room's label
+   */
+  updateLabel(room: Room, label: string): boolean {
+    if (!room.$cstNode) return false;
+
+    if (room.label) {
+      // Update existing label
+      return this.replaceLabel(room, label);
+    } else {
+      // Add new label
+      return this.insertLabel(room, label);
+    }
+  }
+
+  private replaceLabel(room: Room, label: string): boolean {
+    if (!room.$cstNode) return false;
+
+    const roomCst = room.$cstNode;
+    const leafNodes = this.flattenCst(roomCst);
+
+    // Find the "label" keyword and the following string
+    for (let i = 0; i < leafNodes.length; i++) {
+      if (leafNodes[i].text === "label") {
+        // Find the string token after "label"
+        for (let j = i + 1; j < leafNodes.length; j++) {
+          const leaf = leafNodes[j];
+          if (leaf.text.startsWith('"') || leaf.text.startsWith("'")) {
+            this.edits.push({
+              offset: leaf.offset,
+              length: leaf.end - leaf.offset,
+              newText: `"${label}"`,
+            });
+            return true;
+          }
+        }
+      }
+    }
+
+    return false;
+  }
+
+  private insertLabel(room: Room, label: string): boolean {
+    // Find the end of the room definition (after walls and relative positioning)
+    const insertPoint = this.findLabelInsertPoint(room);
+    if (insertPoint === undefined) return false;
+
+    this.edits.push({
+      offset: insertPoint,
+      length: 0,
+      newText: ` label "${label}"`,
+    });
+
+    return true;
+  }
+
+  private findLabelInsertPoint(room: Room): number | undefined {
+    if (!room.$cstNode) return undefined;
+
+    // Insert after relative position if present, otherwise after walls
+    if (room.relativePosition?.$cstNode) {
+      return room.relativePosition.$cstNode.end;
+    }
+
+    if (room.walls.$cstNode) {
+      return room.walls.$cstNode.end;
+    }
+
+    return undefined;
+  }
+
+  // ==================== POSITION MANIPULATION ====================
+
   /**
    * Find the CST span for "at (x,y)" in a room definition
    * Returns the offset and length including the "at" keyword and the coordinate
@@ -87,14 +522,14 @@ export class FloorplanAstEditor {
 
     // Find the "at" keyword in the room's CST children
     const leafNodes = this.flattenCst(roomCst);
-    
+
     for (let i = 0; i < leafNodes.length; i++) {
       const leaf = leafNodes[i];
       if (isLeafCstNode(leaf) && leaf.text === "at") {
         // Found "at" keyword - now find the closing ")" of the coordinate
         // The coordinate structure is: "at" "(" NUMBER "," NUMBER ")"
         let closeParenEnd = leaf.end;
-        
+
         // Search forward for the closing paren
         for (let j = i + 1; j < leafNodes.length; j++) {
           const nextLeaf = leafNodes[j];
@@ -110,7 +545,7 @@ export class FloorplanAstEditor {
 
         // Include any trailing whitespace
         const trailingWhitespace = this.countTrailingWhitespace(
-          this.originalText, 
+          this.originalText,
           closeParenEnd
         );
 
@@ -184,7 +619,8 @@ export class FloorplanAstEditor {
       clause += ` gap ${gap}`;
     }
     // Only add alignment if it's not the default
-    const isHorizontal = direction.includes("right") || direction.includes("left");
+    const isHorizontal =
+      direction.includes("right") || direction.includes("left");
     const defaultAlignment = isHorizontal ? "top" : "left";
     if (alignment && alignment !== defaultAlignment) {
       clause += ` align ${alignment}`;
@@ -197,6 +633,8 @@ export class FloorplanAstEditor {
     });
     return true;
   }
+
+  // ==================== APPLY EDITS ====================
 
   /**
    * Apply all edits and return the new DSL string
@@ -229,6 +667,8 @@ export class FloorplanAstEditor {
   get pendingEditCount(): number {
     return this.edits.length;
   }
+
+  // ==================== UTILITIES ====================
 
   /**
    * Flatten a CST node to get all leaf nodes
@@ -265,4 +705,3 @@ export class FloorplanAstEditor {
     return count;
   }
 }
-
