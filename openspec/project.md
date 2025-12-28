@@ -83,6 +83,83 @@ floorplan
 - OpenAI API key is stored in localStorage (user-provided, not bundled)
 - SVG viewBox is calculated dynamically based on room bounds
 
+## Development Setup
+
+### Prerequisites
+- **Node.js 20+** required (use nvm or Volta to manage versions)
+- npm 10.x recommended
+
+### Quick Start
+```bash
+# 1. Switch to Node 20+ (if using nvm)
+nvm use 20
+
+# 2. Install dependencies
+npm install
+
+# 3. Generate parser from grammar (required before first run)
+npm run langium:generate
+
+# 4. Build the language workspace
+npm run build --workspaces
+
+# 5. Start dev server
+npm run dev
+# Opens at http://localhost:5173/mermaid-floorplan/
+```
+
+### Common Issues
+- **"Invalid URL" error during langium:generate:** Node.js version is below 20. Switch using `nvm use 20`.
+- **"Failed to resolve entry for package 'floorplans-language'":** Run `npm run build --workspaces` before `npm run dev`.
+- **Port in use:** Vite auto-selects next available port (5174, 5175, etc.)
+
+### Key Commands
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start Vite dev server |
+| `npm run build` | Full build (langium + workspaces + vite) |
+| `npm run langium:generate` | Regenerate parser from grammar |
+| `npm run test` | Run parser tests |
+
+## DSL Reference
+
+### Complete Syntax Example
+```
+floorplan
+  floor f1 {
+    room Office at (0,0) size (10 x 12) walls [top: solid, right: window, bottom: door, left: solid] label "main workspace"
+    room Kitchen at (0,14) size (10 x 8) walls [top: solid, right: door, bottom: solid, left: window] label "break area"
+    room FlexArea at (12,0) size (20 x 22) walls [top: open, right: solid, bottom: open, left: solid] composed of [
+      sub-room PhoneBooth1 at (3,5) size (3 x 3) walls [top: window, right: solid, bottom: door, left: solid]
+      sub-room PhoneBooth2 at (9,5) size (3 x 3) walls [top: window, right: solid, bottom: door, left: solid]
+    ]
+  }
+```
+
+### Room Properties
+| Property | Syntax | Example |
+|----------|--------|---------|
+| Position | `at (x,y)` | `at (0,0)` |
+| Size | `size (w x h)` | `size (10 x 12)` |
+| Walls | `walls [top: T, right: T, bottom: T, left: T]` | `walls [top: solid, right: door, bottom: window, left: open]` |
+| Label | `label "text"` | `label "cozy room"` |
+| Sub-rooms | `composed of [...]` | See FlexArea example above |
+
+### Wall Type Rendering
+| Type | Visual | Description |
+|------|--------|-------------|
+| `solid` | Thick black line | Standard wall |
+| `door` | Gap with arc indicator | Door opening with swing direction |
+| `window` | Dashed line | Glass/window wall |
+| `open` | No line | Open space (no wall) |
+
+## Live Editing Behavior
+The app provides **real-time SVG rendering**:
+- Changes in the Monaco editor instantly update the SVG visualization
+- Parser validates syntax and highlights errors
+- SVG viewBox dynamically adjusts to fit all rooms
+- Room labels and dimensions are displayed inside each room
+
 ## External Dependencies
 - **OpenAI API:** Chat completions for AI-assisted floorplan editing
 - **GitHub Pages:** Hosts the demo application

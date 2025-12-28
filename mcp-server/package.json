@@ -1,0 +1,44 @@
+{
+  "name": "floorplans-mcp-server",
+  "description": "MCP server for floorplan DSL rendering and manipulation",
+  "version": "0.0.1",
+  "type": "module",
+  "engines": {
+    "node": ">=20.10.0",
+    "npm": ">=10.2.3"
+  },
+  "bin": {
+    "floorplans-mcp": "./out/index.js"
+  },
+  "files": [
+    "out"
+  ],
+  "main": "./out/index.js",
+  "exports": {
+    ".": {
+      "types": "./out/index.d.ts",
+      "default": "./out/index.js"
+    }
+  },
+  "scripts": {
+    "clean": "shx rm -fr *.tsbuildinfo out",
+    "build": "tsc --p ./tsconfig.json",
+    "build:clean": "npm run clean && npm run build",
+    "start": "node out/index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@resvg/resvg-js": "^2.6.2",
+    "floorplans-language": "*",
+    "langium": "~4.0.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "shx": "~0.4.0"
+  },
+  "volta": {
+    "node": "20.19.2",
+    "npm": "10.8.2"
+  }
+}
+

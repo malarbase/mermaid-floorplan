@@ -24,6 +24,7 @@
     "npm": "10.8.2"
   },
   "workspaces": [
-    "language"
+    "language",
+    "mcp-server"
   ]
 }

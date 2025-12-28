@@ -1,3 +1,8 @@
+/**
+ * Wall rendering utilities for floorplan SVG generation
+ * Following Mermaid diagram conventions
+ */
+
 import { generateDoor } from "./door.js";
 import { generateWindow } from "./window.js";
 
@@ -14,16 +19,15 @@ export function wallRectangle(
   }
 
   const wall = `<rect x="${x}" y="${y}" width="${width}" height="${height}" 
-      fill="black" stroke="black" stroke-width="0.05" />`;
+      class="wall" fill="black" stroke="black" stroke-width="0.05" />`;
 
   if (wallType === "door") {
-    const door = generateDoor(x, y, width, height, wallDirection);
-    return wall + door;
+    // Single door by default for wall-specified doors
+    return wall + generateDoor(x, y, width, height, wallDirection, "door");
   }
 
   if (wallType === "window") {
-    const window = generateWindow(x, y, width, height, wallDirection);
-    return wall + window;
+    return wall + generateWindow(x, y, width, height, wallDirection);
   }
 
   return wall;

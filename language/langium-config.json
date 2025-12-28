@@ -3,7 +3,7 @@
   "languages": [
     {
       "id": "floorplans",
-      "grammar": "src/floorplans.langium",
+      "grammar": "src/diagrams/floorplans/floorplans.langium",
       "fileExtensions": ["fp"],
       "textMate": {
         "out": "src/generated/syntaxes/floorplans.tmLanguage.json"
