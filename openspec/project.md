@@ -7,6 +7,7 @@ Mermaid Floorplan is a domain-specific language (DSL) for defining architectural
 - Real-time SVG rendering of floorplans
 - A web-based editor with syntax highlighting
 - AI-powered chat interface for natural language floorplan modifications
+- MCP server for AI assistant integration (Cursor, Claude Desktop)
 
 **Demo:** https://langalex.github.io/mermaid-floorplan
 
@@ -33,9 +34,10 @@ Mermaid Floorplan is a domain-specific language (DSL) for defining architectural
 - **Comments:** Use `#` for single-line and `/* */` for multi-line in the DSL; standard `//` and `/* */` in TypeScript
 
 ### Architecture Patterns
-- **Monorepo Structure:** npm workspaces with two packages:
+- **Monorepo Structure:** npm workspaces with three packages:
   - Root package: Web demo app (Vite-based)
   - `language/`: Langium grammar and parser (standalone package)
+  - `mcp-server/`: Model Context Protocol server for AI assistant integration
 - **Separation of Concerns:**
   - Grammar definition (`floorplans.langium`) → Parser generation
   - Renderer (`src/renderer.ts`) → SVG output
@@ -120,6 +122,8 @@ npm run dev
 | `npm run build` | Full build (langium + workspaces + vite) |
 | `npm run langium:generate` | Regenerate parser from grammar |
 | `npm run test` | Run parser tests |
+| `npm run mcp:build` | Build the MCP server |
+| `npm run mcp:start` | Start the MCP server (stdio transport) |
 
 ## DSL Reference
 
