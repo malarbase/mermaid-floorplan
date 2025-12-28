@@ -1,0 +1,8 @@
+{
+    "mcpServers": {
+        "floorplans": {
+            "command": "node",
+            "args": ["/Users/malar/Personal/Code/mermaid-floorplan/mcp-server/out/index.js"]
+          }
+    }
+}

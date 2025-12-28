@@ -1,21 +1,20 @@
-import type { Floor } from "floorplans-language";
+/**
+ * Floor rendering utilities for floorplan SVG generation
+ * Following Mermaid diagram conventions
+ */
 
-export function generateFloorRectangle(floor: Floor): string {
-  const floorBounds = calculateFloorBounds(floor);
+import type { Floor } from "../../generated/ast.js";
 
-  return `<rect x="${floorBounds.minX}" y="${floorBounds.minY}" 
-    width="${floorBounds.width}" height="${floorBounds.height}" 
-    fill="#eed" stroke="black" stroke-width="0.1" />`;
-}
-
-export function calculateFloorBounds(floor: Floor): {
+export interface FloorBounds {
   minX: number;
   minY: number;
   maxX: number;
   maxY: number;
   width: number;
   height: number;
-} {
+}
+
+export function calculateFloorBounds(floor: Floor): FloorBounds {
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -42,3 +41,11 @@ export function calculateFloorBounds(floor: Floor): {
     height: maxY - minY,
   };
 }
+
+export function generateFloorRectangle(floor: Floor): string {
+  const bounds = calculateFloorBounds(floor);
+  return `<rect x="${bounds.minX}" y="${bounds.minY}" 
+    width="${bounds.width}" height="${bounds.height}" 
+    class="floor-background" fill="#eed" stroke="black" stroke-width="0.1" />`;
+}
+
