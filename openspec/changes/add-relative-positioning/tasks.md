@@ -33,7 +33,7 @@
 ## 5. MCP Server Updates
 - [x] 5.1 Update `modify_floorplan` to handle relative positioning in `add_room` operation
 - [x] 5.2 Update room metadata output to include both relative and resolved positions
-- [ ] 5.3 Add new operation `convert_to_relative` (optional, nice-to-have - deferred)
+- [x] 5.3 Add new operation `convert_to_relative`
 
 ## 6. Documentation
 - [x] 6.1 Update README with relative positioning examples

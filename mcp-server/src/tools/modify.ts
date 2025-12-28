@@ -1,6 +1,12 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { parseFloorplan } from "../utils/parser.js";
+import { FloorplanAstEditor } from "../utils/ast-editor.js";
+import {
+  extractAllRoomBounds,
+  buildRelativeAssignments,
+  validateForConversion,
+} from "../utils/spatial.js";
 
 const WallsSchema = z.object({
   top: z.enum(["solid", "door", "window", "open"]).optional(),
@@ -75,6 +81,17 @@ const OperationSchema = z.discriminatedUnion("action", [
     target: z.string(),
     params: z.object({
       label: z.string(),
+    }),
+  }),
+  z.object({
+    action: z.literal("convert_to_relative"),
+    params: z.object({
+      // The anchor room keeps its absolute position
+      anchorRoom: z.string().describe("Room to keep absolute 'at (x,y)' position"),
+      // Tolerance for alignment detection (default: 1 unit)
+      alignmentTolerance: z.number().default(1).optional(),
+      // Which rooms to convert (if omitted, converts all except anchor)
+      targetRooms: z.array(z.string()).optional(),
     }),
   }),
 ]);
@@ -203,6 +220,8 @@ async function applyOperation(
       return updateWalls(dsl, op.target, op.params);
     case "add_label":
       return addLabel(dsl, op.target, op.params.label);
+    case "convert_to_relative":
+      return convertToRelative(dsl, op.params);
   }
 }
 
@@ -498,6 +517,86 @@ function addLabel(
       action: "add_label",
       target,
       result: "applied",
+    },
+  };
+}
+
+async function convertToRelative(
+  dsl: string,
+  params: {
+    anchorRoom: string;
+    alignmentTolerance?: number;
+    targetRooms?: string[];
+  }
+): Promise<{ dsl: string; change: ChangeResult }> {
+  const { anchorRoom, alignmentTolerance = 1, targetRooms } = params;
+
+  // Parse the floorplan
+  const parseResult = await parseFloorplan(dsl);
+  if (!parseResult.document) {
+    throw new Error("Failed to parse floorplan");
+  }
+
+  // Get all rooms
+  const editor = new FloorplanAstEditor(parseResult.document, dsl);
+  const allRooms = editor.getAllRooms();
+
+  // Validate the conversion is possible
+  const validation = validateForConversion(allRooms, anchorRoom);
+  if (!validation.valid) {
+    throw new Error(`Cannot convert to relative: ${validation.errors.join("; ")}`);
+  }
+
+  // Extract room bounds for spatial analysis
+  const roomBounds = extractAllRoomBounds(allRooms);
+
+  // Build relative assignments
+  const { assignments, unresolved } = buildRelativeAssignments(
+    roomBounds,
+    anchorRoom,
+    alignmentTolerance
+  );
+
+  if (unresolved.length > 0) {
+    throw new Error(
+      `Could not determine relative positions for rooms: ${unresolved.join(", ")}. ` +
+      `These rooms may be too far from other rooms.`
+    );
+  }
+
+  // Filter assignments if targetRooms is specified
+  const targetSet = targetRooms ? new Set(targetRooms) : null;
+  const filteredAssignments = targetSet
+    ? assignments.filter((a) => targetSet.has(a.room))
+    : assignments;
+
+  // Apply edits for each assignment
+  for (const assignment of filteredAssignments) {
+    const room = editor.findRoom(assignment.room);
+    if (!room) continue;
+
+    // Remove absolute position
+    editor.removePosition(room);
+
+    // Add relative position
+    editor.addRelativePosition(
+      room,
+      assignment.direction,
+      assignment.reference,
+      assignment.gap,
+      assignment.alignment
+    );
+  }
+
+  const newDsl = editor.apply();
+
+  return {
+    dsl: newDsl,
+    change: {
+      action: "convert_to_relative",
+      target: anchorRoom,
+      result: "applied",
+      message: `Converted ${filteredAssignments.length} room(s) to relative positioning`,
     },
   };
 }

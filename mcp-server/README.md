@@ -143,6 +143,7 @@ Apply modifications to floorplan DSL programmatically.
 | `rename_room` | Rename a room |
 | `update_walls` | Change wall types |
 | `add_label` | Add or update room label |
+| `convert_to_relative` | Convert rooms from absolute positions to relative positioning |
 
 **Example with absolute position:**
 ```json
@@ -192,6 +193,32 @@ Apply modifications to floorplan DSL programmatically.
 - `reference`: Name of the room to position relative to
 - `gap` (optional): Units of space between rooms
 - `alignment` (optional): `"top"`, `"bottom"`, `"left"`, `"right"`, `"center"`
+
+**Example: Convert absolute to relative positioning:**
+
+This operation analyzes room positions and converts them to relative positioning, making the DSL more maintainable. One room (the anchor) keeps its absolute position, and all other rooms are positioned relative to each other.
+
+```json
+{
+  "dsl": "floorplan\n  floor f1 {\n    room LivingRoom at (0,0) size (14 x 12) walls [top: window, right: solid, bottom: solid, left: solid]\n    room Kitchen at (14,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: open]\n    room Dining at (0,12) size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: window]\n  }",
+  "operations": [
+    {
+      "action": "convert_to_relative",
+      "params": {
+        "anchorRoom": "LivingRoom",
+        "alignmentTolerance": 1
+      }
+    }
+  ]
+}
+```
+
+**Result:** Kitchen becomes `right-of LivingRoom align top`, Dining becomes `below LivingRoom align left`.
+
+**convert_to_relative parameters:**
+- `anchorRoom`: The room to keep absolute `at (x,y)` position (required)
+- `alignmentTolerance`: Units of tolerance for alignment detection (default: 1)
+- `targetRooms`: Optional array of room names to convert (if omitted, converts all except anchor)
 
 ## Resources
 
