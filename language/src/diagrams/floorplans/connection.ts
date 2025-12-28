@@ -5,6 +5,7 @@
 
 import type { Connection, Floor, Room, WallDirection } from "../../generated/ast.js";
 import { generateDoor } from "./door.js";
+import type { ResolvedPosition } from "./position-resolver.js";
 
 export interface ConnectionPoint {
   x: number;
@@ -33,16 +34,42 @@ function findRoom(floor: Floor, roomName: string): Room | undefined {
 }
 
 /**
+ * Get position for a room (resolved or explicit)
+ */
+function getRoomPosition(
+  room: Room,
+  resolvedPositions?: Map<string, ResolvedPosition>
+): { x: number; y: number } | null {
+  // First try resolved positions map
+  if (resolvedPositions) {
+    const resolved = resolvedPositions.get(room.name);
+    if (resolved) {
+      return resolved;
+    }
+  }
+  // Fall back to explicit position
+  if (room.position) {
+    return { x: room.position.x, y: room.position.y };
+  }
+  return null;
+}
+
+/**
  * Get the wall bounds for a room in a specific direction
  */
 function getWallBounds(
   room: Room,
   direction: WallDirection,
   parentOffsetX = 0,
-  parentOffsetY = 0
-): { x: number; y: number; length: number; isHorizontal: boolean } {
-  const x = room.position.x + parentOffsetX;
-  const y = room.position.y + parentOffsetY;
+  parentOffsetY = 0,
+  resolvedPositions?: Map<string, ResolvedPosition>
+): { x: number; y: number; length: number; isHorizontal: boolean } | null {
+  const pos = getRoomPosition(room, resolvedPositions);
+  if (!pos) {
+    return null;
+  }
+  const x = pos.x + parentOffsetX;
+  const y = pos.y + parentOffsetY;
   const width = room.size.width;
   const height = room.size.height;
   const wallThickness = 0.2;
@@ -68,13 +95,18 @@ function calculateConnectionPoint(
   fromWall: WallDirection,
   toRoom: Room,
   toWall: WallDirection,
-  position: number = 50 // percentage along the wall
+  position: number = 50, // percentage along the wall
+  resolvedPositions?: Map<string, ResolvedPosition>
 ): ConnectionPoint | null {
   const wallThickness = 0.2;
   const doorWidth = 2; // Standard door width (approx 2-3 feet)
   
-  const fromBounds = getWallBounds(fromRoom, fromWall);
-  const toBounds = getWallBounds(toRoom, toWall);
+  const fromBounds = getWallBounds(fromRoom, fromWall, 0, 0, resolvedPositions);
+  const toBounds = getWallBounds(toRoom, toWall, 0, 0, resolvedPositions);
+  
+  if (!fromBounds || !toBounds) {
+    return null; // Positions not resolved
+  }
   
   // For horizontal walls connecting to vertical walls or same-orientation walls
   // We find the overlapping segment and place the door there
@@ -138,14 +170,25 @@ function calculateConnectionPoint(
  * Infer the wall direction based on room positions
  * Used when wall direction is not explicitly specified
  */
-function inferWallDirection(fromRoom: Room, toRoom: Room): { fromWall: WallDirection; toWall: WallDirection } | null {
-  const fromX = fromRoom.position.x;
-  const fromY = fromRoom.position.y;
+function inferWallDirection(
+  fromRoom: Room,
+  toRoom: Room,
+  resolvedPositions?: Map<string, ResolvedPosition>
+): { fromWall: WallDirection; toWall: WallDirection } | null {
+  const fromPos = getRoomPosition(fromRoom, resolvedPositions);
+  const toPos = getRoomPosition(toRoom, resolvedPositions);
+  
+  if (!fromPos || !toPos) {
+    return null;
+  }
+  
+  const fromX = fromPos.x;
+  const fromY = fromPos.y;
   const fromWidth = fromRoom.size.width;
   const fromHeight = fromRoom.size.height;
   
-  const toX = toRoom.position.x;
-  const toY = toRoom.position.y;
+  const toX = toPos.x;
+  const toY = toPos.y;
   const toWidth = toRoom.size.width;
   const toHeight = toRoom.size.height;
   
@@ -173,7 +216,8 @@ function inferWallDirection(fromRoom: Room, toRoom: Room): { fromWall: WallDirec
  */
 export function generateConnection(
   connection: Connection,
-  floor: Floor
+  floor: Floor,
+  resolvedPositions?: Map<string, ResolvedPosition>
 ): string {
   const fromRoomName = connection.from.room.name;
   const toRoomName = connection.to.room.name;
@@ -196,7 +240,7 @@ export function generateConnection(
   let toWall = connection.to.wall;
   
   if (!fromWall || !toWall) {
-    const inferred = inferWallDirection(fromRoom, toRoom);
+    const inferred = inferWallDirection(fromRoom, toRoom, resolvedPositions);
     if (!inferred) {
       return ""; // Cannot determine connection point
     }
@@ -205,7 +249,7 @@ export function generateConnection(
   }
   
   const position = connection.position ?? 50;
-  const connectionPoint = calculateConnectionPoint(fromRoom, fromWall, toRoom, toWall, position);
+  const connectionPoint = calculateConnectionPoint(fromRoom, fromWall, toRoom, toWall, position, resolvedPositions);
   
   if (!connectionPoint) {
     return ""; // No valid connection point
@@ -232,10 +276,14 @@ export function generateConnection(
 /**
  * Generate SVG for all connections in a floor
  */
-export function generateConnections(floor: Floor, connections: Connection[]): string {
+export function generateConnections(
+  floor: Floor,
+  connections: Connection[],
+  resolvedPositions?: Map<string, ResolvedPosition>
+): string {
   let svg = "";
   for (const connection of connections) {
-    svg += generateConnection(connection, floor);
+    svg += generateConnection(connection, floor, resolvedPositions);
   }
   return svg;
 }

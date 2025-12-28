@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { EmptyFileSystem, type LangiumDocument } from "langium";
 import { parseHelper } from "langium/test";
 import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices } from "floorplans-language";
+import { createFloorplansServices, resolveFloorPositions } from "floorplans-language";
 
 let services: ReturnType<typeof createFloorplansServices>;
 let parse: ReturnType<typeof parseHelper<Floorplan>>;
@@ -298,5 +298,458 @@ describe("Floorplan Langium Parser Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.label).toBeUndefined();
+  });
+});
+
+describe("Relative Positioning Parser Tests", () => {
+  test("should parse basic right-of positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const roomB = model.floors[0]?.rooms[1];
+    expect(roomB?.name).toBe("RoomB");
+    expect(roomB?.position).toBeUndefined();
+    expect(roomB?.relativePosition?.direction).toBe("right-of");
+    expect(roomB?.relativePosition?.reference).toBe("RoomA");
+  });
+
+  test("should parse left-of positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (10,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] left-of RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.direction).toBe("left-of");
+    expect(roomB?.relativePosition?.reference).toBe("RoomA");
+  });
+
+  test("should parse below positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] below RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.direction).toBe("below");
+    expect(roomB?.relativePosition?.reference).toBe("RoomA");
+  });
+
+  test("should parse above positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,10) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] above RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.direction).toBe("above");
+    expect(roomB?.relativePosition?.reference).toBe("RoomA");
+  });
+
+  test("should parse diagonal positioning (below-right-of)", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] below-right-of RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.direction).toBe("below-right-of");
+  });
+
+  test("should parse relative positioning with gap", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA gap 2
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.direction).toBe("right-of");
+    expect(roomB?.relativePosition?.gap).toBe(2);
+  });
+
+  test("should parse relative positioning with alignment", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA align bottom
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.direction).toBe("right-of");
+    expect(roomB?.relativePosition?.alignment).toBe("bottom");
+  });
+
+  test("should parse relative positioning with gap and alignment", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA gap 3 align center
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.direction).toBe("right-of");
+    expect(roomB?.relativePosition?.gap).toBe(3);
+    expect(roomB?.relativePosition?.alignment).toBe("center");
+  });
+
+  test("should parse room with both explicit position and relative position", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB at (10,10) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    // Both explicit and relative positions should be parsed
+    expect(roomB?.position?.x).toBe(10);
+    expect(roomB?.position?.y).toBe(10);
+    expect(roomB?.relativePosition?.direction).toBe("right-of");
+  });
+
+  test("should parse relative positioning with label", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA label "Room B Label"
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.direction).toBe("right-of");
+    expect(roomB?.label).toBe("Room B Label");
+  });
+
+  test("should parse chain of relative positions", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA
+              room RoomC size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomB
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    expect(model.floors[0]?.rooms[1]?.relativePosition?.reference).toBe("RoomA");
+    expect(model.floors[0]?.rooms[2]?.relativePosition?.reference).toBe("RoomB");
+  });
+});
+
+describe("Position Resolution Tests", () => {
+  test("should resolve right-of positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.positions.get("RoomA")).toEqual({ x: 0, y: 0 });
+    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 0 });
+  });
+
+  test("should resolve left-of positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (10,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] left-of RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 0 });
+  });
+
+  test("should resolve below positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] below RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.positions.get("RoomB")).toEqual({ x: 0, y: 5 });
+  });
+
+  test("should resolve above positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,10) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] above RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.positions.get("RoomB")).toEqual({ x: 0, y: 5 });
+  });
+
+  test("should resolve positioning with gap", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA gap 2
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.positions.get("RoomB")).toEqual({ x: 7, y: 0 });
+  });
+
+  test("should resolve positioning with bottom alignment", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA align bottom
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    // RoomB should align its bottom with RoomA's bottom
+    // RoomA: height=10, starts at y=0, bottom at y=10
+    // RoomB: height=5, bottom should be at y=10, so top at y=5
+    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 5 });
+  });
+
+  test("should resolve positioning with center alignment", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 4) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA align center
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    // RoomA center y = 5, RoomB height = 4, so RoomB y = 5 - 2 = 3
+    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 3 });
+  });
+
+  test("should resolve chained positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA
+              room RoomC size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomB
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.positions.get("RoomA")).toEqual({ x: 0, y: 0 });
+    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 0 });
+    expect(result.positions.get("RoomC")).toEqual({ x: 10, y: 0 });
+  });
+
+  test("should detect circular dependency", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomB
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some(e => e.type === "circular_dependency")).toBe(true);
+  });
+
+  test("should detect missing reference", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] right-of NonExistent
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some(e => e.type === "missing_reference")).toBe(true);
+  });
+
+  test("should detect room with no position", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors.length).toBeGreaterThan(0);
+    expect(result.errors.some(e => e.type === "no_position")).toBe(true);
+  });
+
+  test("should detect overlapping rooms", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB at (5,5) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.warnings[0]?.room1).toBeDefined();
+    expect(result.warnings[0]?.room2).toBeDefined();
+  });
+
+  test("should resolve diagonal positioning", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid] below-right-of RoomA gap 1
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0]!;
+    const result = resolveFloorPositions(floor);
+    
+    expect(result.errors).toHaveLength(0);
+    // below-right-of with gap 1: x = 0 + 5 + 1 = 6, y = 0 + 5 + 1 = 6
+    expect(result.positions.get("RoomB")).toEqual({ x: 6, y: 6 });
   });
 });

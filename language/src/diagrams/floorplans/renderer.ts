@@ -12,6 +12,7 @@ import { calculateFloorBounds, generateFloorRectangle, type FloorBounds } from "
 import { generateRoomSvg } from "./room.js";
 import { generateConnections } from "./connection.js";
 import { getStyles, type FloorplanThemeOptions } from "./styles.js";
+import { resolveFloorPositions, type ResolvedPosition, type PositionResolutionResult } from "./position-resolver.js";
 
 export interface RenderOptions {
   /** Include XML declaration in output */
@@ -81,14 +82,22 @@ function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
   const floorGap = 5; // Gap between floors
   const labelHeight = 2; // Height reserved for floor labels
   
+  // Resolve positions for all floors first
+  const floorResolutions = new Map<string, PositionResolutionResult>();
+  for (const floor of floorplan.floors) {
+    floorResolutions.set(floor.id, resolveFloorPositions(floor));
+  }
+  
   // Calculate bounds for all floors
-  const floorData: Array<{ floor: Floor; bounds: FloorBounds; offsetX: number; offsetY: number }> = [];
+  const floorData: Array<{ floor: Floor; bounds: FloorBounds; offsetX: number; offsetY: number; resolvedPositions: Map<string, ResolvedPosition> }> = [];
   let totalWidth = 0;
   let totalHeight = 0;
   let currentOffset = 0;
   
   for (const floor of floorplan.floors) {
-    const bounds = calculateFloorBounds(floor);
+    const resolution = floorResolutions.get(floor.id)!;
+    const resolvedPositions = resolution.positions;
+    const bounds = calculateFloorBounds(floor, resolvedPositions);
     let offsetX = 0;
     let offsetY = 0;
     
@@ -107,7 +116,7 @@ function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
       totalHeight = currentOffset - floorGap;
     }
     
-    floorData.push({ floor, bounds, offsetX, offsetY });
+    floorData.push({ floor, bounds, offsetX, offsetY, resolvedPositions });
   }
   
   // For stacked layout, reverse so floor 1 is at bottom
@@ -145,7 +154,7 @@ function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
   svg += `<g class="floorplan">`;
 
   // Render each floor with its offset
-  for (const { floor, bounds, offsetX, offsetY } of floorData) {
+  for (const { floor, bounds, offsetX, offsetY, resolvedPositions } of floorData) {
     // Add floor label
     const labelX = offsetX + bounds.minX + bounds.width / 2;
     const labelY = offsetY + bounds.minY - 0.5;
@@ -153,14 +162,14 @@ function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
     
     // Add floor group
     svg += `<g class="floor" aria-label="Floor: ${floor.id}" transform="translate(${offsetX}, ${offsetY})">`;
-    svg += generateFloorRectangle(floor);
+    svg += generateFloorRectangle(floor, resolvedPositions);
     
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room);
+      svg += generateRoomSvg(room, 0, 0, resolvedPositions);
     }
     
     // Render connections for this floor
-    svg += generateConnections(floor, floorplan.connections);
+    svg += generateConnections(floor, floorplan.connections, resolvedPositions);
     
     svg += "</g>";
   }
@@ -178,7 +187,12 @@ export function renderFloor(
   connections: Connection[] = []
 ): string {
   const opts = { ...defaultRenderOptions, ...options };
-  const bounds = calculateFloorBounds(floor);
+  
+  // Resolve relative positions first
+  const resolution = resolveFloorPositions(floor);
+  const resolvedPositions = resolution.positions;
+  
+  const bounds = calculateFloorBounds(floor, resolvedPositions);
   const padding = opts.padding ?? 0;
 
   const viewBox = `${bounds.minX - padding} ${bounds.minY - padding} ${bounds.width + padding * 2} ${bounds.height + padding * 2}`;
@@ -208,13 +222,13 @@ export function renderFloor(
   svg += `<g class="floorplan" aria-label="Floor: ${floor.id}">`;
 
   if (floor.rooms.length > 0) {
-    svg += generateFloorRectangle(floor);
+    svg += generateFloorRectangle(floor, resolvedPositions);
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room);
+      svg += generateRoomSvg(room, 0, 0, resolvedPositions);
     }
     
     // Render connections for this floor
-    svg += generateConnections(floor, connections);
+    svg += generateConnections(floor, connections, resolvedPositions);
   }
 
   svg += "</g></svg>";
@@ -242,5 +256,7 @@ export { generateDoor } from "./door.js";
 export { generateWindow } from "./window.js";
 export { generateConnection, generateConnections } from "./connection.js";
 export { getStyles, defaultThemeOptions, darkTheme, blueprintTheme } from "./styles.js";
+export { resolveFloorPositions, resolveAllPositions, getResolvedPosition } from "./position-resolver.js";
 export type { FloorBounds } from "./floor.js";
 export type { FloorplanThemeOptions } from "./styles.js";
+export type { ResolvedPosition, PositionResolutionResult, PositionResolutionError, OverlapWarning } from "./position-resolver.js";

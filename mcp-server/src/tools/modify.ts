@@ -9,12 +9,23 @@ const WallsSchema = z.object({
   left: z.enum(["solid", "door", "window", "open"]).optional(),
 });
 
+const RelativePositionSchema = z.object({
+  direction: z.enum([
+    "right-of", "left-of", "above", "below",
+    "above-right-of", "above-left-of", "below-right-of", "below-left-of"
+  ]),
+  reference: z.string(),
+  gap: z.number().optional(),
+  alignment: z.enum(["top", "bottom", "left", "right", "center"]).optional(),
+});
+
 const OperationSchema = z.discriminatedUnion("action", [
   z.object({
     action: z.literal("add_room"),
     params: z.object({
       name: z.string(),
-      position: z.object({ x: z.number(), y: z.number() }),
+      // Position is now optional when using relative positioning
+      position: z.object({ x: z.number(), y: z.number() }).optional(),
       size: z.object({ width: z.number(), height: z.number() }),
       walls: z.object({
         top: z.enum(["solid", "door", "window", "open"]),
@@ -23,6 +34,8 @@ const OperationSchema = z.discriminatedUnion("action", [
         left: z.enum(["solid", "door", "window", "open"]),
       }),
       label: z.string().optional(),
+      // New: relative positioning support
+      relativePosition: RelativePositionSchema.optional(),
     }),
   }),
   z.object({
@@ -197,13 +210,24 @@ function addRoom(
   dsl: string,
   params: {
     name: string;
-    position: { x: number; y: number };
+    position?: { x: number; y: number };
     size: { width: number; height: number };
     walls: { top: string; right: string; bottom: string; left: string };
     label?: string;
+    relativePosition?: {
+      direction: string;
+      reference: string;
+      gap?: number;
+      alignment?: string;
+    };
   }
 ): { dsl: string; change: ChangeResult } {
-  const { name, position, size, walls, label } = params;
+  const { name, position, size, walls, label, relativePosition } = params;
+
+  // Validate: need either position or relativePosition
+  if (!position && !relativePosition) {
+    throw new Error("Room must have either 'position' or 'relativePosition'");
+  }
 
   // Find the closing brace of the floor block
   const floorEndMatch = dsl.match(/(\n\s*)\}/);
@@ -212,8 +236,30 @@ function addRoom(
   }
 
   const indent = "      "; // Match existing indentation
-  let roomLine = `${indent}room ${name} at (${position.x},${position.y}) size (${size.width} x ${size.height}) walls [top: ${walls.top}, right: ${walls.right}, bottom: ${walls.bottom}, left: ${walls.left}]`;
+  
+  // Build the room line
+  let roomLine = `${indent}room ${name}`;
+  
+  // Add explicit position if provided
+  if (position) {
+    roomLine += ` at (${position.x},${position.y})`;
+  }
+  
+  // Add size and walls
+  roomLine += ` size (${size.width} x ${size.height}) walls [top: ${walls.top}, right: ${walls.right}, bottom: ${walls.bottom}, left: ${walls.left}]`;
 
+  // Add relative positioning if provided
+  if (relativePosition) {
+    roomLine += ` ${relativePosition.direction} ${relativePosition.reference}`;
+    if (relativePosition.gap !== undefined) {
+      roomLine += ` gap ${relativePosition.gap}`;
+    }
+    if (relativePosition.alignment) {
+      roomLine += ` align ${relativePosition.alignment}`;
+    }
+  }
+
+  // Add label if provided
   if (label) {
     roomLine += ` label "${label}"`;
   }
@@ -233,9 +279,12 @@ function addRoom(
 }
 
 function removeRoom(dsl: string, target: string): { dsl: string; change: ChangeResult } {
-  // Match room line with optional label and sub-rooms
+  // Match room line with optional position, relative positioning, label and sub-rooms
+  // Position is now optional (can use relative positioning instead)
   const roomPattern = new RegExp(
-    `^\\s*room\\s+${escapeRegex(target)}\\s+at\\s+\\([^)]+\\)\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\](?:\\s+label\\s+"[^"]*")?(?:\\s+composed\\s+of\\s+\\[[^\\]]*\\])?\\s*$`,
+    `^\\s*room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\]` +
+    `(?:\\s+(?:right-of|left-of|above|below|above-right-of|above-left-of|below-right-of|below-left-of)\\s+\\w+(?:\\s+gap\\s+[0-9.]+)?(?:\\s+align\\s+(?:top|bottom|left|right|center))?)?` +
+    `(?:\\s+label\\s+"[^"]*")?(?:\\s+composed\\s+of\\s+\\[[^\\]]*\\])?\\s*$`,
     "m"
   );
 
@@ -261,8 +310,9 @@ function resizeRoom(
   target: string,
   params: { width: number; height: number }
 ): { dsl: string; change: ChangeResult } {
+  // Match room with optional position (may use relative positioning instead)
   const sizePattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}\\s+at\\s+\\([^)]+\\)\\s+size\\s+\\()\\d+\\s*x\\s*\\d+(\\))`,
+    `(room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\()[0-9.]+\\s*x\\s*[0-9.]+(\\))`,
     "g"
   );
 
@@ -289,27 +339,47 @@ function moveRoom(
   target: string,
   params: { x: number; y: number }
 ): { dsl: string; change: ChangeResult } {
+  // First try to update existing position
   const posPattern = new RegExp(
     `(room\\s+${escapeRegex(target)}\\s+at\\s+\\()[^)]+(\\))`,
     "g"
   );
 
   const match = dsl.match(posPattern);
-  if (!match) {
-    throw new Error(`Room "${target}" not found`);
+  if (match) {
+    const newDsl = dsl.replace(posPattern, `$1${params.x},${params.y}$2`);
+    return {
+      dsl: newDsl,
+      change: {
+        action: "move_room",
+        target,
+        result: "applied",
+        message: `Moved to (${params.x}, ${params.y})`,
+      },
+    };
   }
 
-  const newDsl = dsl.replace(posPattern, `$1${params.x},${params.y}$2`);
+  // If no explicit position, add one (room might be using relative positioning only)
+  const roomWithoutPosPattern = new RegExp(
+    `(room\\s+${escapeRegex(target)})(\\s+size)`,
+    "g"
+  );
 
-  return {
-    dsl: newDsl,
-    change: {
-      action: "move_room",
-      target,
-      result: "applied",
-      message: `Moved to (${params.x}, ${params.y})`,
-    },
-  };
+  const matchWithoutPos = dsl.match(roomWithoutPosPattern);
+  if (matchWithoutPos) {
+    const newDsl = dsl.replace(roomWithoutPosPattern, `$1 at (${params.x},${params.y})$2`);
+    return {
+      dsl: newDsl,
+      change: {
+        action: "move_room",
+        target,
+        result: "applied",
+        message: `Added position (${params.x}, ${params.y})`,
+      },
+    };
+  }
+
+  throw new Error(`Room "${target}" not found`);
 }
 
 function renameRoom(
@@ -317,7 +387,8 @@ function renameRoom(
   target: string,
   newName: string
 ): { dsl: string; change: ChangeResult } {
-  const namePattern = new RegExp(`(room\\s+)${escapeRegex(target)}(\\s+at)`, "g");
+  // Match room with either "at" or "size" following the name (position is optional now)
+  const namePattern = new RegExp(`(room\\s+)${escapeRegex(target)}(\\s+(?:at|size))`, "g");
 
   const match = dsl.match(namePattern);
   if (!match) {
@@ -342,9 +413,9 @@ function updateWalls(
   target: string,
   params: { top?: string; right?: string; bottom?: string; left?: string }
 ): { dsl: string; change: ChangeResult } {
-  // Find the room's walls specification
+  // Find the room's walls specification (position is optional)
   const wallsPattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}\\s+at\\s+\\([^)]+\\)\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[)([^\\]]+)(\\])`,
+    `(room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[)([^\\]]+)(\\])`,
     "g"
   );
 
@@ -385,9 +456,11 @@ function addLabel(
   target: string,
   label: string
 ): { dsl: string; change: ChangeResult } {
-  // Check if room already has a label
+  // Check if room already has a label (position is optional, may have relative positioning)
   const existingLabelPattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}\\s+at\\s+\\([^)]+\\)\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\]\\s+label\\s+)"[^"]*"`,
+    `(room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\]` +
+    `(?:\\s+(?:right-of|left-of|above|below|above-right-of|above-left-of|below-right-of|below-left-of)\\s+\\w+(?:\\s+gap\\s+[0-9.]+)?(?:\\s+align\\s+(?:top|bottom|left|right|center))?)?` +
+    `\\s+label\\s+)"[^"]*"`,
     "g"
   );
 
@@ -405,9 +478,10 @@ function addLabel(
     };
   }
 
-  // Add new label after walls specification
+  // Add new label after walls specification (and optional relative positioning)
   const noLabelPattern = new RegExp(
-    `(room\\s+${escapeRegex(target)}\\s+at\\s+\\([^)]+\\)\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\])`,
+    `(room\\s+${escapeRegex(target)}(?:\\s+at\\s+\\([^)]+\\))?\\s+size\\s+\\([^)]+\\)\\s+walls\\s+\\[[^\\]]+\\]` +
+    `(?:\\s+(?:right-of|left-of|above|below|above-right-of|above-left-of|below-right-of|below-left-of)\\s+\\w+(?:\\s+gap\\s+[0-9.]+)?(?:\\s+align\\s+(?:top|bottom|left|right|center))?)?)`,
     "g"
   );
 

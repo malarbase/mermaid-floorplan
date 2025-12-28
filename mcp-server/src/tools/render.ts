@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { parseFloorplan, extractAllRoomMetadata } from "../utils/parser.js";
+import { parseFloorplan, extractAllRoomMetadata, validateFloorplan, type ValidationWarning } from "../utils/parser.js";
 import { generateSvg, svgToPng } from "../utils/renderer.js";
 
 const RenderInputSchema = z.object({
@@ -50,6 +50,26 @@ export function registerRenderTool(server: McpServer): void {
       }
 
       try {
+        // Run validation to get warnings (errors would have been caught by parseFloorplan)
+        const validationResult = await validateFloorplan(dsl);
+        const warnings: ValidationWarning[] = validationResult.warnings;
+        
+        // Check for non-parse validation errors (circular deps, missing refs)
+        if (validationResult.errors.some(e => e.type !== 'parse')) {
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: JSON.stringify({
+                  success: false,
+                  errors: validationResult.errors,
+                  warnings: warnings.length > 0 ? warnings : undefined,
+                }),
+              },
+            ],
+          };
+        }
+        
         const svg = generateSvg(parseResult.document, {
           floorIndex,
           renderAllFloors,
@@ -74,6 +94,7 @@ export function registerRenderTool(server: McpServer): void {
                   floorCount,
                   renderedFloor: renderAllFloors ? "all" : (floorIndex ?? 0),
                   rooms,
+                  warnings: warnings.length > 0 ? warnings : undefined,
                 }),
               },
             ],
@@ -98,6 +119,7 @@ export function registerRenderTool(server: McpServer): void {
                 floorCount,
                 renderedFloor: renderAllFloors ? "all" : (floorIndex ?? 0),
                 rooms,
+                warnings: warnings.length > 0 ? warnings : undefined,
               }),
             },
           ],

@@ -4,6 +4,7 @@
  */
 
 import type { Room } from "../../generated/ast.js";
+import type { ResolvedPosition } from "./position-resolver.js";
 import { wallRectangle } from "./wall.js";
 
 export function generateRoomText(
@@ -30,10 +31,27 @@ export function generateRoomText(
 export function generateRoomSvg(
   room: Room,
   parentOffsetX: number = 0,
-  parentOffsetY: number = 0
+  parentOffsetY: number = 0,
+  resolvedPositions?: Map<string, ResolvedPosition>
 ): string {
-  const x = room.position.x + parentOffsetX;
-  const y = room.position.y + parentOffsetY;
+  // Get position from resolved map or explicit position
+  let baseX: number;
+  let baseY: number;
+  
+  const resolved = resolvedPositions?.get(room.name);
+  if (resolved) {
+    baseX = resolved.x;
+    baseY = resolved.y;
+  } else if (room.position) {
+    baseX = room.position.x;
+    baseY = room.position.y;
+  } else {
+    // Cannot render room without position
+    return `<!-- Room ${room.name} has no resolved position -->`;
+  }
+  
+  const x = baseX + parentOffsetX;
+  const y = baseY + parentOffsetY;
   const width = room.size.width;
   const height = room.size.height;
   const centerX = x + width / 2;
@@ -56,7 +74,7 @@ export function generateRoomSvg(
   let subRoomSvg = "";
   if (room.subRooms && room.subRooms.length > 0) {
     for (const subRoom of room.subRooms) {
-      subRoomSvg += generateRoomSvg(subRoom, x, y);
+      subRoomSvg += generateRoomSvg(subRoom, x, y, resolvedPositions);
     }
   }
 
