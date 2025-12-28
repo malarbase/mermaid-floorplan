@@ -1,0 +1,77 @@
+# rendering Specification
+
+## Purpose
+Defines how the floorplan DSL renders visual elements to SVG, including connections between rooms, door types (single/double), swing directions, and multi-floor layout options.
+## Requirements
+### Requirement: Connection Rendering
+
+The system SHALL render connection statements as door symbols positioned at the wall intersection between connected rooms.
+
+#### Scenario: Basic connection between adjacent rooms
+- **WHEN** a floorplan contains `connect Office.right to Kitchen.left door`
+- **THEN** a door symbol is rendered at the shared wall between Office and Kitchen
+
+#### Scenario: Connection with position percentage
+- **WHEN** a connection specifies `at 50%`
+- **THEN** the door symbol is centered at 50% along the wall length
+
+#### Scenario: Connection with custom position
+- **WHEN** a connection specifies `at 25%`
+- **THEN** the door symbol is positioned at 25% from the start of the wall
+
+### Requirement: Double-Door Rendering
+
+The system SHALL render `double-door` connections as two mirrored door arcs with a center gap.
+
+#### Scenario: Double-door on horizontal wall
+- **WHEN** a connection specifies `double-door` on a top or bottom wall
+- **THEN** two door arcs are rendered, opening in opposite directions
+
+#### Scenario: Double-door on vertical wall
+- **WHEN** a connection specifies `double-door` on a left or right wall
+- **THEN** two door arcs are rendered, opening in opposite directions
+
+### Requirement: Door Swing Direction
+
+The system SHALL render door swing arcs according to the specified swing direction.
+
+#### Scenario: Left swing door
+- **WHEN** a connection specifies `swing: left`
+- **THEN** the door arc curves to the left of the door opening
+
+#### Scenario: Right swing door
+- **WHEN** a connection specifies `swing: right`
+- **THEN** the door arc curves to the right of the door opening
+
+#### Scenario: Opens-into room direction
+- **WHEN** a connection specifies `opens into Kitchen`
+- **THEN** the door arc direction indicates opening toward the Kitchen room
+
+### Requirement: Multi-Floor Rendering
+
+The system SHALL support rendering multiple floors from a single floorplan document.
+
+#### Scenario: Default single floor rendering
+- **WHEN** a floorplan contains multiple floors and no floor index is specified
+- **THEN** only the first floor is rendered (backward compatible)
+
+#### Scenario: Specific floor selection
+- **WHEN** `RenderOptions.floorIndex` is set to 1
+- **THEN** the second floor (index 1) is rendered
+
+#### Scenario: All floors stacked view
+- **WHEN** `RenderOptions.renderAllFloors` is true with layout `stacked`
+- **THEN** all floors are rendered vertically with floor labels
+
+#### Scenario: All floors side-by-side view
+- **WHEN** `RenderOptions.renderAllFloors` is true with layout `sideBySide`
+- **THEN** all floors are rendered horizontally with floor labels
+
+### Requirement: Floor Labels
+
+The system SHALL display floor identifiers when rendering multiple floors.
+
+#### Scenario: Floor label positioning
+- **WHEN** multiple floors are rendered
+- **THEN** each floor displays its ID (e.g., "Floor: f1") above the floor diagram
+

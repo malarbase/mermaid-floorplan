@@ -1,7 +1,7 @@
 {
   "name": "floorplans-mcp-server",
   "description": "MCP server for floorplan DSL rendering and manipulation",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "type": "module",
   "engines": {
     "node": ">=20.10.0",
@@ -18,6 +18,10 @@
     ".": {
       "types": "./out/index.d.ts",
       "default": "./out/index.js"
+    },
+    "./utils/renderer": {
+      "types": "./out/utils/renderer.d.ts",
+      "default": "./out/utils/renderer.js"
     }
   },
   "scripts": {
