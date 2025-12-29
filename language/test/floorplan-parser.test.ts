@@ -753,3 +753,139 @@ describe("Position Resolution Tests", () => {
     expect(result.positions.get("RoomB")).toEqual({ x: 6, y: 6 });
   });
 });
+
+describe("Connection Overlap Validation Tests", () => {
+  test("should detect bidirectional connection overlap", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Office at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Kitchen at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Office.right to Kitchen.left door at 50%
+          connect Kitchen.left to Office.right door at 50%
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    // Verify both connections are parsed
+    expect(document.parseResult.value.connections).toHaveLength(2);
+    
+    // Run validation
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(diagnostics.some(d => d.message.includes("bidirectional") || d.message.includes("Overlapping"))).toBe(true);
+  });
+
+  test("should detect multiple connections at same position", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Lobby at (0,0) size (13 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room StairLift at (13,0) size (8 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Terrace at (13,10) size (8 x 20) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect StairLift.left to Lobby.right door at 50%
+          connect Lobby.right to Terrace.left double-door at 50%
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(diagnostics.some(d => d.message.includes("Overlapping"))).toBe(true);
+  });
+
+  test("should allow separate connections on same wall with different positions", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Office at (0,0) size (20 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Kitchen at (20,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Office.right to Kitchen.left door at 25%
+          connect Office.right to Kitchen.left door at 75%
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have no errors - positions are far apart (25% and 75%)
+    expect(diagnostics.filter(d => d.severity === 1).length).toBe(0);
+  });
+
+  test("should allow connections on different walls", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Office at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Kitchen at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Hallway at (0,10) size (10 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Office.right to Kitchen.left door at 50%
+          connect Office.bottom to Hallway.top door at 50%
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have no errors - different walls
+    expect(diagnostics.filter(d => d.severity === 1).length).toBe(0);
+  });
+
+  test("should warn when connection references non-solid wall", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Bedroom at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: window, left: solid]
+              room Bathroom at (0,10) size (10 x 6) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Bedroom.bottom to Bathroom.top door at 50%
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have warnings about non-solid wall
+    const warnings = diagnostics.filter(d => d.severity === 2); // severity 2 = warning
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some(d => d.message.includes("window") && d.message.includes("not 'solid'"))).toBe(true);
+  });
+
+  test("should warn about mismatched wall types", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (10 x 10) walls [top: solid, right: window, bottom: solid, left: solid]
+              room RoomB at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect RoomA.right to RoomB.left door at 50%
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have warnings about mismatched wall types
+    const warnings = diagnostics.filter(d => d.severity === 2);
+    expect(warnings.length).toBeGreaterThan(0);
+    expect(warnings.some(d => d.message.includes("mismatch") || d.message.includes("window"))).toBe(true);
+  });
+});

@@ -5,6 +5,7 @@ import { JsonExport, JsonFloor, JsonConnection, JsonRoom } from './types';
 import { DIMENSIONS, COLORS } from './constants';
 import { MaterialFactory } from './materials';
 import { WallGenerator } from './wall-generator';
+import { parseFloorplanDSL, isFloorplanFile, isJsonFile } from './dsl-parser';
 
 class Viewer {
     private scene: THREE.Scene;
@@ -90,13 +91,39 @@ class Viewer {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
-            try {
-                const json = JSON.parse(e.target?.result as string) as JsonExport;
-                this.loadFloorplan(json);
-            } catch (err) {
-                console.error("Failed to parse JSON", err);
-                alert("Invalid JSON file");
+        reader.onload = async (e) => {
+            const content = e.target?.result as string;
+            
+            if (isFloorplanFile(file.name)) {
+                // Parse DSL file directly
+                try {
+                    const result = await parseFloorplanDSL(content);
+                    if (result.errors.length > 0) {
+                        const errorMsg = result.errors.map(e => 
+                            e.line ? `Line ${e.line}: ${e.message}` : e.message
+                        ).join('\n');
+                        console.error("Parse errors:", result.errors);
+                        alert(`Failed to parse floorplan:\n${errorMsg}`);
+                        return;
+                    }
+                    if (result.data) {
+                        this.loadFloorplan(result.data);
+                    }
+                } catch (err) {
+                    console.error("Failed to parse floorplan DSL", err);
+                    alert("Failed to parse floorplan file");
+                }
+            } else if (isJsonFile(file.name)) {
+                // Parse JSON file
+                try {
+                    const json = JSON.parse(content) as JsonExport;
+                    this.loadFloorplan(json);
+                } catch (err) {
+                    console.error("Failed to parse JSON", err);
+                    alert("Invalid JSON file");
+                }
+            } else {
+                alert("Unsupported file type. Please use .floorplan or .json files.");
             }
         };
         reader.readAsText(file);

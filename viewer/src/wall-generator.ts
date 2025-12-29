@@ -83,7 +83,8 @@ export class WallGenerator {
         shouldRender,
         materials,
         group,
-        elevation
+        elevation,
+        allRooms
       );
     }
 
@@ -219,6 +220,8 @@ export class WallGenerator {
 
   /**
    * Add hole for connection (door between rooms)
+   * Uses source room (fromRoom) geometry to ensure consistent positioning
+   * when connected rooms have different sizes
    */
   private addConnectionHole(
     connection: JsonConnection,
@@ -230,7 +233,8 @@ export class WallGenerator {
     shouldRenderDoor: boolean,
     materials: MaterialSet,
     group: THREE.Group,
-    elevation: number
+    elevation: number,
+    allRooms: JsonRoom[]
   ): void {
     const doorWidth =
       connection.doorType === 'double-door'
@@ -239,21 +243,42 @@ export class WallGenerator {
     const doorHeight = DIMENSIONS.DOOR.HEIGHT;
     const holeY = elevation + doorHeight / 2;
 
-    // Calculate position along the wall
+    // FIX: Find the source room to ensure canonical positioning
+    // This fixes misalignment when connected rooms have different sizes
+    const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
+
     const percentage = connection.position ?? 50;
     const ratio = percentage / 100;
 
-    let holeX = geometry.posX;
-    let holeZ = geometry.posZ;
+    let holeX = 0;
+    let holeZ = 0;
 
-    if (geometry.isVertical) {
-      const wallStartZ = room.z;
-      const offsetZ = room.height * ratio;
+    // Calculate position based on SOURCE room geometry (not local room)
+    const sourceWallDir = connection.fromWall;
+    const sourceIsVertical = sourceWallDir === 'left' || sourceWallDir === 'right';
+
+    if (sourceIsVertical) {
+      const wallStartZ = sourceRoom.z;
+      const offsetZ = sourceRoom.height * ratio;
       holeZ = wallStartZ + offsetZ;
+
+      // For X, use source wall's X position
+      if (sourceWallDir === 'left') {
+        holeX = sourceRoom.x;
+      } else {
+        holeX = sourceRoom.x + sourceRoom.width;
+      }
     } else {
-      const wallStartX = room.x;
-      const offsetX = room.width * ratio;
+      const wallStartX = sourceRoom.x;
+      const offsetX = sourceRoom.width * ratio;
       holeX = wallStartX + offsetX;
+
+      // For Z, use source wall's Z position
+      if (sourceWallDir === 'top') {
+        holeZ = sourceRoom.z;
+      } else {
+        holeZ = sourceRoom.z + sourceRoom.height;
+      }
     }
 
     // Add hole brush (only if wall exists)

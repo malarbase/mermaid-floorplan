@@ -141,6 +141,7 @@ npm run dev
 - **"Invalid URL" error during langium:generate:** Node.js version is below 20. Switch using `nvm use 20`.
 - **"Failed to resolve entry for package 'floorplans-language'":** Run `npm run build --workspaces` before `npm run dev`.
 - **Port in use:** Vite auto-selects next available port (5174, 5175, etc.)
+- **"Maximum call stack size exceeded" when running tests in Cursor:** This is a Cursor sandbox restriction, NOT a code bug. The sandbox blocks certain file system operations required by vitest workers. Run tests outside the sandbox or use `required_permissions: ["all"]` in AI tool calls.
 
 ### Key Commands
 | Command | Description |

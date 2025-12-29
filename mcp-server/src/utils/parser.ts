@@ -23,7 +23,7 @@ export interface ParseResult {
 }
 
 export interface ValidationError {
-  type: 'parse' | 'circular_dependency' | 'missing_reference' | 'no_position';
+  type: 'parse' | 'circular_dependency' | 'missing_reference' | 'no_position' | 'connection';
   message: string;
   roomName?: string;
   line?: number;
@@ -31,9 +31,9 @@ export interface ValidationError {
 }
 
 export interface ValidationWarning {
-  type: 'overlap';
+  type: 'overlap' | 'wall_type';
   message: string;
-  rooms: string[];
+  rooms?: string[];
 }
 
 export interface ValidationResult {
@@ -70,8 +70,8 @@ export async function parseFloorplan(dsl: string): Promise<ParseResult> {
 }
 
 /**
- * Validate a floorplan including position resolution
- * Returns both parse errors and semantic errors from position resolution
+ * Validate a floorplan including position resolution and Langium validations
+ * Returns parse errors, semantic errors, and connection validation errors/warnings
  */
 export async function validateFloorplan(dsl: string): Promise<ValidationResult> {
   const parseResult = await parseFloorplan(dsl);
@@ -91,6 +91,31 @@ export async function validateFloorplan(dsl: string): Promise<ValidationResult> 
   // If parsing failed, return early
   if (!parseResult.document) {
     return { valid: false, errors, warnings };
+  }
+
+  // Run Langium validation framework (includes connection overlap and wall type checks)
+  await services.shared.workspace.DocumentBuilder.build([parseResult.document], { validation: true });
+  const diagnostics = parseResult.document.diagnostics ?? [];
+  
+  for (const diagnostic of diagnostics) {
+    const line = diagnostic.range?.start?.line ? diagnostic.range.start.line + 1 : undefined;
+    const column = diagnostic.range?.start?.character ? diagnostic.range.start.character + 1 : undefined;
+    
+    if (diagnostic.severity === 1) {
+      // Error
+      errors.push({
+        type: 'connection',
+        message: diagnostic.message,
+        line,
+        column,
+      });
+    } else if (diagnostic.severity === 2) {
+      // Warning
+      warnings.push({
+        type: 'wall_type',
+        message: diagnostic.message,
+      });
+    }
   }
 
   // Run position resolution for each floor to detect semantic errors
