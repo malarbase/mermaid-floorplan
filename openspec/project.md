@@ -105,6 +105,8 @@ floorplan
 - **Swing Direction:** `left` or `right` - controls which way the door arc swings
 - **Opens Into:** Specifies which room the door opens toward (determines swing direction automatically)
 - **Multi-Floor:** Multiple floors defined in a single floorplan, rendered individually or together
+- **Variables:** Named dimension values defined with `define` keyword for reuse across rooms
+- **Config Block:** Global configuration for rendering defaults (wall thickness, door width, etc.)
 
 ## Important Constraints
 - Parser must be regenerated when grammar changes (`npm run langium:generate`)
@@ -158,9 +160,16 @@ npm run dev
 ### Complete Syntax Example
 ```
 floorplan
+  # Variables for reusable dimensions
+  define standard_room (10 x 12)
+  define small_room (6 x 8)
+  
+  # Global configuration
+  config { wall_thickness: 0.3, door_width: 1.0 }
+  
   floor f1 {
-    # Absolute positioning
-    room Office at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] label "main workspace"
+    # Absolute positioning with variable size
+    room Office at (0,0) size standard_room walls [top: solid, right: solid, bottom: solid, left: solid] label "main workspace"
     
     # Relative positioning - Kitchen below Office with 2-unit gap
     room Kitchen size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: window] below Office gap 2 label "break area"
@@ -177,19 +186,29 @@ floorplan
   }
   
   floor f2 {
-    room Bedroom at (0,0) size (12 x 14) walls [top: solid, right: window, bottom: solid, left: solid]
-    room Bathroom size (6 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] right-of Bedroom
+    room Bedroom at (0,0) size standard_room walls [top: solid, right: window, bottom: solid, left: solid]
+    room Bathroom size small_room walls [top: solid, right: solid, bottom: solid, left: solid] right-of Bedroom
     
     connect Bedroom.right to Bathroom.left door at 30% opens into Bathroom
   }
 ```
+
+### Variables and Configuration
+| Feature | Syntax | Example |
+|---------|--------|---------|
+| Define variable | `define <name> (w x h)` | `define standard_bed (12 x 12)` |
+| Use variable | `size <name>` | `size standard_bed` |
+| Config block | `config { key: value, ... }` | `config { wall_thickness: 0.3 }` |
+
+**Supported config keys:** `wall_thickness`, `door_width`, `window_width`, `default_height`
 
 ### Room Properties
 | Property | Syntax | Example |
 |----------|--------|---------|
 | Position (absolute) | `at (x,y)` | `at (0,0)` |
 | Position (relative) | `<direction> <RoomRef> [gap N] [align <edge>]` | `right-of Kitchen gap 2 align top` |
-| Size | `size (w x h)` | `size (10 x 12)` |
+| Size (inline) | `size (w x h)` | `size (10 x 12)` |
+| Size (variable) | `size <varname>` | `size standard_room` |
 | Walls | `walls [top: T, right: T, bottom: T, left: T]` | `walls [top: solid, right: door, bottom: window, left: open]` |
 | Label | `label "text"` | `label "cozy room"` |
 | Sub-rooms | `composed of [...]` | See FlexArea example above |

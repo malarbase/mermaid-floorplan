@@ -8,7 +8,7 @@
 
 import { EmptyFileSystem, URI, type LangiumDocument } from "langium";
 import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, resolveFloorPositions } from "floorplans-language";
+import { createFloorplansServices, resolveFloorPositions, resolveVariables, getRoomSize } from "floorplans-language";
 import type { JsonExport, JsonFloor, JsonWall } from "./types";
 
 // Initialize Langium services with EmptyFileSystem (browser-compatible)
@@ -74,10 +74,14 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
             connections: []
         };
 
+        // Resolve variables from the floorplan
+        const variableResolution = resolveVariables(floorplan);
+        const variables = variableResolution.variables;
+
         // Process floors
         for (let i = 0; i < floorplan.floors.length; i++) {
             const floor = floorplan.floors[i];
-            const resolution = resolveFloorPositions(floor);
+            const resolution = resolveFloorPositions(floor, variables);
 
             if (resolution.errors.length > 0) {
                 for (const error of resolution.errors) {
@@ -97,6 +101,9 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
             for (const room of floor.rooms) {
                 const pos = resolution.positions.get(room.name);
                 if (!pos) continue;
+
+                // Get room size (inline or from variable)
+                const roomSize = getRoomSize(room, variables);
 
                 // Map walls
                 const walls: JsonWall[] = [];
@@ -119,8 +126,8 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
                     label: room.label,
                     x: pos.x,
                     z: pos.y, // Map 2D Y to 3D Z
-                    width: room.size.width,
-                    height: room.size.height,
+                    width: roomSize.width,
+                    height: roomSize.height,
                     walls: walls,
                     roomHeight: room.height,
                     elevation: room.elevation

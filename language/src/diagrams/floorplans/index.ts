@@ -39,6 +39,18 @@ export {
   type OverlapWarning,
 } from "./position-resolver.js";
 
+// Variable resolution
+export {
+  resolveVariables,
+  getResolvedSize,
+  validateSizeReferences,
+  getResolvedConfig,
+  getRoomSize,
+  type VariableResolutionResult,
+  type VariableResolutionError,
+  type ResolvedConfig,
+} from "./variable-resolver.js";
+
 // Theming
 export {
   getStyles,

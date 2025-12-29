@@ -5,6 +5,9 @@ import {
   type Floorplan,
   type Room,
   resolveFloorPositions,
+  resolveVariables,
+  validateSizeReferences,
+  getRoomSize,
   type ResolvedPosition,
 } from "floorplans-language";
 
@@ -23,9 +26,10 @@ export interface ParseResult {
 }
 
 export interface ValidationError {
-  type: 'parse' | 'circular_dependency' | 'missing_reference' | 'no_position' | 'connection';
+  type: 'parse' | 'circular_dependency' | 'missing_reference' | 'no_position' | 'connection' | 'undefined_variable' | 'duplicate_definition';
   message: string;
   roomName?: string;
+  variableName?: string;
   line?: number;
   column?: number;
 }
@@ -118,10 +122,34 @@ export async function validateFloorplan(dsl: string): Promise<ValidationResult> 
     }
   }
 
-  // Run position resolution for each floor to detect semantic errors
+  // Run variable resolution
   const floorplan = parseResult.document.parseResult.value;
+  const variableResolution = resolveVariables(floorplan);
+  
+  // Convert variable resolution errors
+  for (const err of variableResolution.errors) {
+    errors.push({
+      type: err.type,
+      message: err.message,
+      variableName: err.variableName,
+      roomName: err.roomName,
+    });
+  }
+  
+  // Validate size references
+  const sizeRefErrors = validateSizeReferences(floorplan, variableResolution.variables);
+  for (const err of sizeRefErrors) {
+    errors.push({
+      type: err.type,
+      message: err.message,
+      variableName: err.variableName,
+      roomName: err.roomName,
+    });
+  }
+
+  // Run position resolution for each floor to detect semantic errors
   for (const floor of floorplan.floors) {
-    const resolution = resolveFloorPositions(floor);
+    const resolution = resolveFloorPositions(floor, variableResolution.variables);
 
     // Convert position resolution errors
     for (const err of resolution.errors) {
@@ -156,6 +184,8 @@ export interface RoomMetadata {
   /** Resolved position (computed from relative positioning) */
   resolvedPosition?: { x: number; y: number };
   size: { width: number; height: number };
+  /** If size was defined via variable reference */
+  sizeRef?: string;
   label?: string;
   walls: {
     top: string;
@@ -175,7 +205,8 @@ export interface RoomMetadata {
 
 export function extractRoomMetadata(
   room: Room,
-  resolvedPositions?: Map<string, ResolvedPosition>
+  resolvedPositions?: Map<string, ResolvedPosition>,
+  variables?: Map<string, { width: number; height: number }>
 ): RoomMetadata {
   // Extract wall types from specifications array
   const getWallType = (direction: string): string => {
@@ -185,11 +216,14 @@ export function extractRoomMetadata(
     return spec?.type || "solid";
   };
 
+  // Get room size (either inline or from variable)
+  const size = getRoomSize(room, variables);
+
   const metadata: RoomMetadata = {
     name: room.name,
     size: {
-      width: room.size.width,
-      height: room.size.height,
+      width: size.width,
+      height: size.height,
     },
     walls: {
       top: getWallType("top"),
@@ -198,6 +232,11 @@ export function extractRoomMetadata(
       left: getWallType("left"),
     },
   };
+
+  // Add sizeRef if room uses a variable
+  if (room.sizeRef) {
+    metadata.sizeRef = room.sizeRef;
+  }
 
   // Add explicit position if present
   if (room.position) {
@@ -235,7 +274,7 @@ export function extractRoomMetadata(
   }
 
   if (room.subRooms && room.subRooms.length > 0) {
-    metadata.subRooms = room.subRooms.map(r => extractRoomMetadata(r, resolvedPositions));
+    metadata.subRooms = room.subRooms.map(r => extractRoomMetadata(r, resolvedPositions, variables));
   }
 
   return metadata;
@@ -247,13 +286,17 @@ export function extractAllRoomMetadata(
   const floorplan = document.parseResult.value;
   const rooms: RoomMetadata[] = [];
 
+  // Resolve variables first
+  const variableResolution = resolveVariables(floorplan);
+  const variables = variableResolution.variables;
+
   for (const floor of floorplan.floors) {
     // Resolve positions for this floor
-    const resolution = resolveFloorPositions(floor);
+    const resolution = resolveFloorPositions(floor, variables);
     const resolvedPositions = resolution.positions;
     
     for (const room of floor.rooms) {
-      rooms.push(extractRoomMetadata(room, resolvedPositions));
+      rooms.push(extractRoomMetadata(room, resolvedPositions, variables));
     }
   }
 

@@ -1,8 +1,29 @@
 grammar Floorplans
 
-// Entry rule
+// Entry rule - defines, config, floors, then connections
 entry Floorplan:
-    'floorplan' floors+=Floor* connections+=Connection*;
+    'floorplan' 
+    defines+=DefineStatement*
+    config=ConfigBlock?
+    floors+=Floor* 
+    connections+=Connection*;
+
+// Variable definitions for dimensions
+DefineStatement:
+    'define' name=ID value=Dimension;
+
+// Global configuration block
+ConfigBlock:
+    'config' '{' 
+        properties+=ConfigProperty (',' properties+=ConfigProperty)* 
+    '}';
+
+ConfigProperty:
+    name=CONFIG_KEY ':' value=NUMBER;
+
+// Config property keys
+CONFIG_KEY returns string:
+    'wall_thickness' | 'door_width' | 'window_width' | 'default_height';
 
 // Floor definition
 Floor:
@@ -13,10 +34,11 @@ Floor:
 // Room definition
 // Position can be explicit (at x,y) OR relative (right-of RoomA)
 // Both can optionally be present, but at least one is required for rendering
+// Size can be an inline dimension or a variable reference
 Room:
     type=('room' | 'sub-room') name=ID 
     ('at' position=Coordinate)?
-    'size' size=Dimension 
+    'size' (size=Dimension | sizeRef=ID)
     ('height' height=NUMBER)?
     ('elevation' elevation=SIGNED_NUMBER)?
     'walls' walls=WallSpec

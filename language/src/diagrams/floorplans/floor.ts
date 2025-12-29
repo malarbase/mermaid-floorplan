@@ -5,6 +5,7 @@
 
 import type { Floor } from "../../generated/ast.js";
 import type { ResolvedPosition } from "./position-resolver.js";
+import { getRoomSize } from "./variable-resolver.js";
 
 export interface FloorBounds {
   minX: number;
@@ -17,7 +18,8 @@ export interface FloorBounds {
 
 export function calculateFloorBounds(
   floor: Floor,
-  resolvedPositions?: Map<string, ResolvedPosition>
+  resolvedPositions?: Map<string, ResolvedPosition>,
+  variables?: Map<string, { width: number; height: number }>
 ): FloorBounds {
   let minX = Infinity;
   let minY = Infinity;
@@ -41,8 +43,9 @@ export function calculateFloorBounds(
       continue;
     }
     
-    const width = room.size.width;
-    const height = room.size.height;
+    const size = getRoomSize(room, variables);
+    const width = size.width;
+    const height = size.height;
 
     minX = Math.min(minX, x);
     minY = Math.min(minY, y);
@@ -67,9 +70,10 @@ export function calculateFloorBounds(
 
 export function generateFloorRectangle(
   floor: Floor,
-  resolvedPositions?: Map<string, ResolvedPosition>
+  resolvedPositions?: Map<string, ResolvedPosition>,
+  variables?: Map<string, { width: number; height: number }>
 ): string {
-  const bounds = calculateFloorBounds(floor, resolvedPositions);
+  const bounds = calculateFloorBounds(floor, resolvedPositions, variables);
   return `<rect x="${bounds.minX}" y="${bounds.minY}" 
     width="${bounds.width}" height="${bounds.height}" 
     class="floor-background" fill="#eed" stroke="black" stroke-width="0.1" />`;
