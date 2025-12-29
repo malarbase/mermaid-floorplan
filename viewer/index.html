@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Floorplan 3D Viewer</title>
+    <style>
+      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+      #info {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        pointer-events: none;
+      }
+      #controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 10px;
+        border-radius: 5px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 5px;
+      }
+      label { font-size: 12px; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="info">
+      <h3>Floorplan 3D Viewer</h3>
+      <p>Left Click: Rotate</p>
+      <p>Right Click: Pan</p>
+      <p>Scroll: Zoom</p>
+    </div>
+    <div id="controls">
+      <div class="control-group">
+        <label for="exploded-view">Exploded View</label>
+        <input type="range" id="exploded-view" min="0" max="100" value="0" step="1">
+      </div>
+      <div class="control-group">
+        <label>Load Floorplan</label>
+        <input type="file" id="file-input" accept=".floorplan,.json">
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
+

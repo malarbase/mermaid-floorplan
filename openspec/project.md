@@ -19,8 +19,28 @@ Mermaid Floorplan is a domain-specific language (DSL) for defining architectural
 - **Testing:** Vitest
 - **Rendering:** SVG (generated programmatically)
 - **AI Integration:** OpenAI Chat API (GPT-3.5/GPT-4)
-- **Runtime:** Node.js 20.x (managed via Volta)
+- **Runtime:** Node.js >= 20.10.0 (REQUIRED - Langium 4.x compatibility)
+- **Package Manager:** npm >= 10.2.3
 - **Module System:** ESM (ES Modules)
+
+## Prerequisites
+**⚠️ IMPORTANT:** This project requires Node.js >= 20.10.0 and npm >= 10.2.3 due to Langium 4.x dependencies.
+
+Check your versions:
+```bash
+node --version  # Must be >= v20.10.0
+npm --version   # Must be >= 10.2.3
+```
+
+If you need to switch Node versions, use nvm or volta:
+```bash
+# Using nvm
+nvm install 20
+nvm use 20
+
+# Using volta (recommended for this project)
+volta install node@20
+```
 
 ## Project Conventions
 
@@ -121,6 +141,7 @@ npm run dev
 - **"Invalid URL" error during langium:generate:** Node.js version is below 20. Switch using `nvm use 20`.
 - **"Failed to resolve entry for package 'floorplans-language'":** Run `npm run build --workspaces` before `npm run dev`.
 - **Port in use:** Vite auto-selects next available port (5174, 5175, etc.)
+- **"Maximum call stack size exceeded" when running tests in Cursor:** This is a Cursor sandbox restriction, NOT a code bug. The sandbox blocks certain file system operations required by vitest workers. Run tests outside the sandbox or use `required_permissions: ["all"]` in AI tool calls.
 
 ### Key Commands
 | Command | Description |
@@ -212,6 +233,11 @@ Example:
 connect Office.right to Kitchen.left door at 50% swing: left
 connect LivingRoom.bottom to Hallway.top double-door at 50%
 ```
+
+**Connection Overlap Validation:** The parser validates that connections do not overlap at the same physical position on a wall. This prevents:
+- Bidirectional connections (e.g., `RoomA.right → RoomB.left` AND `RoomB.left → RoomA.right`)
+- Multiple connections at the same position percentage on the same wall segment
+- Door widths overlapping (single-door = 1 unit, double-door = 1.5 units)
 
 ### Multi-Floor Rendering
 When a floorplan contains multiple floors:
