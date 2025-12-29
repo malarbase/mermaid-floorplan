@@ -7,6 +7,7 @@ Mermaid Floorplan is a domain-specific language (DSL) for defining architectural
 - Real-time SVG rendering of floorplans
 - A web-based editor with syntax highlighting
 - AI-powered chat interface for natural language floorplan modifications
+- MCP server for AI assistant integration (Cursor, Claude Desktop)
 
 **Demo:** https://langalex.github.io/mermaid-floorplan
 
@@ -33,9 +34,10 @@ Mermaid Floorplan is a domain-specific language (DSL) for defining architectural
 - **Comments:** Use `#` for single-line and `/* */` for multi-line in the DSL; standard `//` and `/* */` in TypeScript
 
 ### Architecture Patterns
-- **Monorepo Structure:** npm workspaces with two packages:
+- **Monorepo Structure:** npm workspaces with three packages:
   - Root package: Web demo app (Vite-based)
   - `language/`: Langium grammar and parser (standalone package)
+  - `mcp-server/`: Model Context Protocol server for AI assistant integration
 - **Separation of Concerns:**
   - Grammar definition (`floorplans.langium`) → Parser generation
   - Renderer (`src/renderer.ts`) → SVG output
@@ -75,7 +77,14 @@ floorplan
 ### Key Domain Terms
 - **Wall Direction:** `top`, `right`, `bottom`, `left`
 - **Wall Spec:** Defines the type of each wall for a room
-- **Connection:** Links two rooms/walls, optionally specifying door position, swing direction, and which room the door opens into
+- **Connection:** Links two rooms/walls, specifying door type, position, swing direction, and which room the door opens into
+- **Relative Positioning:** Position rooms relative to other rooms using directional keywords (`right-of`, `below`, etc.) instead of absolute coordinates
+- **Gap:** Spacing between relatively positioned rooms (default: 0)
+- **Alignment:** Edge alignment for relatively positioned rooms (`top`, `bottom`, `left`, `right`, `center`)
+- **Door Type:** `door` (single) or `double-door` (two mirrored swing arcs)
+- **Swing Direction:** `left` or `right` - controls which way the door arc swings
+- **Opens Into:** Specifies which room the door opens toward (determines swing direction automatically)
+- **Multi-Floor:** Multiple floors defined in a single floorplan, rendered individually or together
 
 ## Important Constraints
 - Parser must be regenerated when grammar changes (`npm run langium:generate`)
@@ -120,6 +129,8 @@ npm run dev
 | `npm run build` | Full build (langium + workspaces + vite) |
 | `npm run langium:generate` | Regenerate parser from grammar |
 | `npm run test` | Run parser tests |
+| `npm run mcp:build` | Build the MCP server |
+| `npm run mcp:start` | Start the MCP server (stdio transport) |
 
 ## DSL Reference
 
@@ -127,31 +138,87 @@ npm run dev
 ```
 floorplan
   floor f1 {
-    room Office at (0,0) size (10 x 12) walls [top: solid, right: window, bottom: door, left: solid] label "main workspace"
-    room Kitchen at (0,14) size (10 x 8) walls [top: solid, right: door, bottom: solid, left: window] label "break area"
-    room FlexArea at (12,0) size (20 x 22) walls [top: open, right: solid, bottom: open, left: solid] composed of [
+    # Absolute positioning
+    room Office at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] label "main workspace"
+    
+    # Relative positioning - Kitchen below Office with 2-unit gap
+    room Kitchen size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: window] below Office gap 2 label "break area"
+    
+    # Relative positioning - FlexArea to the right of Office, aligned at top
+    room FlexArea size (20 x 22) walls [top: open, right: solid, bottom: open, left: solid] right-of Office align top composed of [
       sub-room PhoneBooth1 at (3,5) size (3 x 3) walls [top: window, right: solid, bottom: door, left: solid]
       sub-room PhoneBooth2 at (9,5) size (3 x 3) walls [top: window, right: solid, bottom: door, left: solid]
     ]
+    
+    # Connections between rooms
+    connect Office.bottom to Kitchen.top door at 50% swing: left
+    connect Office.right to FlexArea.left double-door at 50%
+  }
+  
+  floor f2 {
+    room Bedroom at (0,0) size (12 x 14) walls [top: solid, right: window, bottom: solid, left: solid]
+    room Bathroom size (6 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] right-of Bedroom
+    
+    connect Bedroom.right to Bathroom.left door at 30% opens into Bathroom
   }
 ```
 
 ### Room Properties
 | Property | Syntax | Example |
 |----------|--------|---------|
-| Position | `at (x,y)` | `at (0,0)` |
+| Position (absolute) | `at (x,y)` | `at (0,0)` |
+| Position (relative) | `<direction> <RoomRef> [gap N] [align <edge>]` | `right-of Kitchen gap 2 align top` |
 | Size | `size (w x h)` | `size (10 x 12)` |
 | Walls | `walls [top: T, right: T, bottom: T, left: T]` | `walls [top: solid, right: door, bottom: window, left: open]` |
 | Label | `label "text"` | `label "cozy room"` |
 | Sub-rooms | `composed of [...]` | See FlexArea example above |
 
+### Relative Positioning Directions
+| Keyword | Placement |
+|---------|-----------|
+| `right-of` | Place room's left edge at reference's right edge |
+| `left-of` | Place room's right edge at reference's left edge |
+| `above` | Place room's bottom edge at reference's top edge |
+| `below` | Place room's top edge at reference's bottom edge |
+| `above-right-of` | Diagonal: above and to the right |
+| `above-left-of` | Diagonal: above and to the left |
+| `below-right-of` | Diagonal: below and to the right |
+| `below-left-of` | Diagonal: below and to the left |
+
 ### Wall Type Rendering
 | Type | Visual | Description |
 |------|--------|-------------|
 | `solid` | Thick black line | Standard wall |
-| `door` | Gap with arc indicator | Door opening with swing direction |
+| `door` | Gap with swing arc | Single door opening with swing direction |
+| `double-door` | Gap with two mirrored arcs | Double door with arcs opening in opposite directions |
 | `window` | Dashed line | Glass/window wall |
 | `open` | No line | Open space (no wall) |
+
+### Connection Syntax
+Connections link rooms with doors at wall intersections:
+```
+connect <Room1>.<wall> to <Room2>.<wall> <door-type> [at <position>%] [swing: <direction>] [opens into <Room>]
+```
+
+| Property | Values | Example |
+|----------|--------|---------|
+| Door Type | `door`, `double-door` | `door` |
+| Position | `at N%` (0-100) | `at 50%` |
+| Swing | `swing: left`, `swing: right` | `swing: left` |
+| Opens Into | `opens into <RoomName>` | `opens into Kitchen` |
+
+Example:
+```
+connect Office.right to Kitchen.left door at 50% swing: left
+connect LivingRoom.bottom to Hallway.top double-door at 50%
+```
+
+### Multi-Floor Rendering
+When a floorplan contains multiple floors:
+- **Default:** Only the first floor (index 0) is rendered
+- **Specific floor:** Use `floorIndex` option to render a specific floor
+- **All floors:** Use `renderAllFloors` with layout `stacked` (vertical) or `sideBySide` (horizontal)
+- **Floor labels:** Displayed above each floor when rendering multiple floors
 
 ## Live Editing Behavior
 The app provides **real-time SVG rendering**:

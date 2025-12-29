@@ -4,6 +4,8 @@ import {
   createFloorplansServices,
   type Floorplan,
   type Room,
+  resolveFloorPositions,
+  type ResolvedPosition,
 } from "floorplans-language";
 
 const services = createFloorplansServices(EmptyFileSystem);
@@ -18,6 +20,26 @@ export interface ParseError {
 export interface ParseResult {
   document: LangiumDocument<Floorplan> | null;
   errors: ParseError[];
+}
+
+export interface ValidationError {
+  type: 'parse' | 'circular_dependency' | 'missing_reference' | 'no_position';
+  message: string;
+  roomName?: string;
+  line?: number;
+  column?: number;
+}
+
+export interface ValidationWarning {
+  type: 'overlap';
+  message: string;
+  rooms: string[];
+}
+
+export interface ValidationResult {
+  valid: boolean;
+  errors: ValidationError[];
+  warnings: ValidationWarning[];
 }
 
 export async function parseFloorplan(dsl: string): Promise<ParseResult> {
@@ -47,9 +69,67 @@ export async function parseFloorplan(dsl: string): Promise<ParseResult> {
   return { document, errors: [] };
 }
 
+/**
+ * Validate a floorplan including position resolution
+ * Returns both parse errors and semantic errors from position resolution
+ */
+export async function validateFloorplan(dsl: string): Promise<ValidationResult> {
+  const parseResult = await parseFloorplan(dsl);
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  // Convert parse errors to validation errors
+  for (const parseError of parseResult.errors) {
+    errors.push({
+      type: 'parse',
+      message: parseError.message,
+      line: parseError.line,
+      column: parseError.column,
+    });
+  }
+
+  // If parsing failed, return early
+  if (!parseResult.document) {
+    return { valid: false, errors, warnings };
+  }
+
+  // Run position resolution for each floor to detect semantic errors
+  const floorplan = parseResult.document.parseResult.value;
+  for (const floor of floorplan.floors) {
+    const resolution = resolveFloorPositions(floor);
+
+    // Convert position resolution errors
+    for (const err of resolution.errors) {
+      errors.push({
+        type: err.type,
+        message: err.message,
+        roomName: err.roomName,
+      });
+    }
+
+    // Convert overlap warnings
+    for (const warn of resolution.warnings) {
+      warnings.push({
+        type: 'overlap',
+        message: `Rooms "${warn.room1}" and "${warn.room2}" overlap`,
+        rooms: [warn.room1, warn.room2],
+      });
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+    warnings,
+  };
+}
+
 export interface RoomMetadata {
   name: string;
-  position: { x: number; y: number };
+  /** Explicit position (if specified in DSL) */
+  position?: { x: number; y: number };
+  /** Resolved position (computed from relative positioning) */
+  resolvedPosition?: { x: number; y: number };
   size: { width: number; height: number };
   label?: string;
   walls: {
@@ -58,10 +138,20 @@ export interface RoomMetadata {
     bottom: string;
     left: string;
   };
+  /** Relative positioning info (if specified) */
+  relativePosition?: {
+    direction: string;
+    reference: string;
+    gap?: number;
+    alignment?: string;
+  };
   subRooms?: RoomMetadata[];
 }
 
-export function extractRoomMetadata(room: Room): RoomMetadata {
+export function extractRoomMetadata(
+  room: Room,
+  resolvedPositions?: Map<string, ResolvedPosition>
+): RoomMetadata {
   // Extract wall types from specifications array
   const getWallType = (direction: string): string => {
     const spec = room.walls.specifications.find(
@@ -72,10 +162,6 @@ export function extractRoomMetadata(room: Room): RoomMetadata {
 
   const metadata: RoomMetadata = {
     name: room.name,
-    position: {
-      x: room.position.x,
-      y: room.position.y,
-    },
     size: {
       width: room.size.width,
       height: room.size.height,
@@ -88,12 +174,43 @@ export function extractRoomMetadata(room: Room): RoomMetadata {
     },
   };
 
+  // Add explicit position if present
+  if (room.position) {
+    metadata.position = {
+      x: room.position.x,
+      y: room.position.y,
+    };
+  }
+
+  // Add resolved position if available
+  const resolved = resolvedPositions?.get(room.name);
+  if (resolved) {
+    metadata.resolvedPosition = {
+      x: resolved.x,
+      y: resolved.y,
+    };
+  }
+
+  // Add relative positioning info if present
+  if (room.relativePosition) {
+    metadata.relativePosition = {
+      direction: room.relativePosition.direction,
+      reference: room.relativePosition.reference,
+    };
+    if (room.relativePosition.gap !== undefined) {
+      metadata.relativePosition.gap = room.relativePosition.gap;
+    }
+    if (room.relativePosition.alignment) {
+      metadata.relativePosition.alignment = room.relativePosition.alignment;
+    }
+  }
+
   if (room.label) {
     metadata.label = room.label;
   }
 
   if (room.subRooms && room.subRooms.length > 0) {
-    metadata.subRooms = room.subRooms.map(extractRoomMetadata);
+    metadata.subRooms = room.subRooms.map(r => extractRoomMetadata(r, resolvedPositions));
   }
 
   return metadata;
@@ -106,8 +223,12 @@ export function extractAllRoomMetadata(
   const rooms: RoomMetadata[] = [];
 
   for (const floor of floorplan.floors) {
+    // Resolve positions for this floor
+    const resolution = resolveFloorPositions(floor);
+    const resolvedPositions = resolution.positions;
+    
     for (const room of floor.rooms) {
-      rooms.push(extractRoomMetadata(room));
+      rooms.push(extractRoomMetadata(room, resolvedPositions));
     }
   }
 

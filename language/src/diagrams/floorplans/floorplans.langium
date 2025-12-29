@@ -11,13 +11,31 @@ Floor:
     '}';
 
 // Room definition
+// Position can be explicit (at x,y) OR relative (right-of RoomA)
+// Both can optionally be present, but at least one is required for rendering
 Room:
     type=('room' | 'sub-room') name=ID 
-    'at' position=Coordinate 
+    ('at' position=Coordinate)?
     'size' size=Dimension 
     'walls' walls=WallSpec
+    relativePosition=RelativePosition?
     ('label' label=STRING)?
     ('composed' 'of' '[' subRooms+=Room* ']')?;
+
+// Relative positioning - places room relative to another room
+RelativePosition:
+    direction=RelativeDirection reference=ID
+    ('gap' gap=NUMBER)?
+    ('align' alignment=AlignmentDirection)?;
+
+// Relative direction keywords
+RelativeDirection returns string:
+    'right-of' | 'left-of' | 'above' | 'below' |
+    'above-right-of' | 'above-left-of' | 'below-right-of' | 'below-left-of';
+
+// Alignment options for relative positioning
+AlignmentDirection returns string:
+    'top' | 'bottom' | 'left' | 'right' | 'center';
 
 // Wall specification
 WallSpec:

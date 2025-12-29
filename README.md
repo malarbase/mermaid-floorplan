@@ -15,6 +15,60 @@ floorplan
     }
 ```
 
+### Relative Positioning
+
+Instead of specifying absolute coordinates, rooms can be positioned relative to other rooms:
+
+```
+room Foyer at (0,0) size (6 x 6) walls [top: solid, right: open, bottom: solid, left: solid]
+room LivingRoom size (14 x 16) walls [...] right-of Foyer
+room Kitchen size (10 x 8) walls [...] below LivingRoom gap 2
+room Office size (10 x 10) walls [...] right-of LivingRoom align top
+```
+
+#### Position Directions
+
+- `right-of` - Place to the right of reference room
+- `left-of` - Place to the left of reference room
+- `above` - Place above reference room
+- `below` - Place below reference room
+- `below-right-of` - Place diagonally below and right
+- `below-left-of` - Place diagonally below and left
+- `above-right-of` - Place diagonally above and right
+- `above-left-of` - Place diagonally above and left
+
+#### Gap Specification
+
+Add spacing between rooms with `gap N`:
+
+```
+room Kitchen size (10 x 8) walls [...] below LivingRoom gap 2
+```
+
+#### Alignment
+
+Control edge alignment with `align`:
+
+```
+room Office size (10 x 10) walls [...] right-of LivingRoom align bottom
+room Closet size (5 x 5) walls [...] right-of Bedroom align center
+```
+
+Alignment options:
+- For horizontal positioning (`right-of`, `left-of`): `top` (default), `bottom`, `center`
+- For vertical positioning (`above`, `below`): `left` (default), `right`, `center`
+
+#### Chained Positioning
+
+Rooms can reference other relatively-positioned rooms:
+
+```
+room A at (0,0) size (5 x 5) walls [...]
+room B size (5 x 5) walls [...] right-of A
+room C size (5 x 5) walls [...] right-of B
+room D size (5 x 5) walls [...] below C gap 1
+```
+
 ### Wall Types
 
 - `solid` - Standard wall
@@ -137,6 +191,9 @@ See [mcp-server/README.md](./mcp-server/README.md) for full documentation.
 - Multi-floor rendering (single floor, all floors stacked, all floors side-by-side)
 - Floor labels in multi-floor view
 - Theming (default, dark, blueprint)
+- **Relative positioning** (`right-of`, `below`, etc.) with automatic coordinate resolution
+- Gap spacing and alignment options for relative positioning
+- Overlap detection warnings
 
 ### Planned
 
