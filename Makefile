@@ -3,7 +3,8 @@
 # Run `make` or `make help` to see available targets
 
 .PHONY: all help install build clean dev test langium langium-watch \
-        images images-svg images-png render mcp-server mcp-build rebuild watch
+        images images-svg images-png render mcp-server mcp-build rebuild watch \
+        viewer-dev viewer-build export-json
 
 # Default target
 all: help
@@ -56,28 +57,43 @@ langium-watch: ## Watch and regenerate Langium artifacts
 	npm run langium:watch
 
 # ===============================
-# Image Generation
+# Image & Data Export
 # ===============================
 
 FLOORPLAN_FILE ?= trial/TriplexVilla.floorplan
 OUTPUT_DIR ?= trial
 SCALE ?= 15
 
-images: ## Generate SVG + PNG for all floors
+export-images: ## Generate SVG + PNG for all floors
 	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE)
 
-images-svg: ## Generate SVG only
+export-svg: ## Generate SVG only
 	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --svg-only --scale $(SCALE)
 
-images-png: ## Generate PNG only
+export-png: ## Generate PNG only
 	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --png-only --scale $(SCALE)
 
-render: ## Render custom file (FILE=path OUT=dir)
+export-json: ## Export floorplan to JSON (FILE=path OUT=path)
 ifdef FILE
-	npx tsx scripts/generate-images.ts $(FILE) $(or $(OUT),.) --all --scale $(SCALE)
+	npx tsx scripts/export-json.ts $(FILE) $(OUT)
 else
-	@echo "Usage: make render FILE=path/to/file.floorplan [OUT=output/dir] [SCALE=15]"
+	@echo "Usage: make export-json FILE=path/to/file.floorplan [OUT=output.json]"
 endif
+
+# Aliases for backward compatibility
+images: export-images
+images-svg: export-svg
+images-png: export-png
+
+# ===============================
+# 3D Viewer
+# ===============================
+
+viewer-dev: ## Start the 3D viewer dev server
+	npm run --workspace floorplans-viewer dev
+
+viewer-build: ## Build the 3D viewer
+	npm run --workspace floorplans-viewer build
 
 # ===============================
 # MCP Server

@@ -25,6 +25,7 @@
   },
   "workspaces": [
     "language",
-    "mcp-server"
+    "mcp-server",
+    "viewer"
   ]
 }

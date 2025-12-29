@@ -199,4 +199,26 @@ See [mcp-server/README.md](./mcp-server/README.md) for full documentation.
 
 - Staircase/elevator connections between floors
 - Interactive door manipulation
-- 3D rendering
+
+## 3D Viewer
+
+A standalone 3D viewer is available to visualize floorplans.
+
+### Usage
+
+1. **Export to JSON**:
+   ```bash
+   make export-json FILE=path/to/my.floorplan
+   ```
+   This generates `path/to/my.json`.
+
+2. **Run the Viewer**:
+   ```bash
+   make viewer-dev
+   ```
+   Open the displayed URL (usually `http://localhost:5173`) in your browser.
+
+3. **Load Data**:
+   - In the viewer interface, use the file picker to select the generated JSON file.
+   - Use **Left Click** to rotate, **Right Click** to pan, and **Scroll** to zoom.
+   - Use the **Exploded View** slider to separate floors vertically.

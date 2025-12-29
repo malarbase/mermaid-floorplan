@@ -4,8 +4,10 @@
 !.vscode/tasks.json
 node_modules/
 build/
+dist/
 out/
 **/src/generated
 *.tsbuildinfo
 *.vsix
 trial/
+.playwright-mcp/
