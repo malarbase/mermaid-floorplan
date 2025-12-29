@@ -234,6 +234,11 @@ connect Office.right to Kitchen.left door at 50% swing: left
 connect LivingRoom.bottom to Hallway.top double-door at 50%
 ```
 
+**Connection Overlap Validation:** The parser validates that connections do not overlap at the same physical position on a wall. This prevents:
+- Bidirectional connections (e.g., `RoomA.right → RoomB.left` AND `RoomB.left → RoomA.right`)
+- Multiple connections at the same position percentage on the same wall segment
+- Door widths overlapping (single-door = 1 unit, double-door = 1.5 units)
+
 ### Multi-Floor Rendering
 When a floorplan contains multiple floors:
 - **Default:** Only the first floor (index 0) is rendered
