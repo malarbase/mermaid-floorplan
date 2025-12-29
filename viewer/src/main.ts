@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { Evaluator } from 'three-bvh-csg';
-import { JsonExport, JsonFloor, JsonConnection } from './types';
+import { JsonExport, JsonFloor, JsonConnection, JsonRoom } from './types';
 import { DIMENSIONS, COLORS } from './constants';
 import { MaterialFactory } from './materials';
 import { WallGenerator } from './wall-generator';
@@ -155,13 +155,14 @@ class Viewer {
     /**
      * Create a floor mesh for a room
      */
-    private createFloorMesh(room: { x: number; z: number; width: number; height: number }, material: THREE.Material): THREE.Mesh {
+    private createFloorMesh(room: JsonRoom, material: THREE.Material): THREE.Mesh {
         const floorGeom = new THREE.BoxGeometry(room.width, DIMENSIONS.FLOOR.THICKNESS, room.height);
         const centerX = room.x + room.width / 2;
         const centerZ = room.z + room.height / 2;
+        const elevation = room.elevation || 0;
         
         const floorMesh = new THREE.Mesh(floorGeom, material);
-        floorMesh.position.set(centerX, 0, centerZ);
+        floorMesh.position.set(centerX, elevation, centerZ);
         floorMesh.receiveShadow = true;
         return floorMesh;
     }

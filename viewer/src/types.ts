@@ -17,11 +17,18 @@ export interface JsonRoom {
     width: number;
     height: number;
     walls: JsonWall[];
+    roomHeight?: number;
+    elevation?: number;
 }
 
 export interface JsonWall {
     direction: "top" | "bottom" | "left" | "right";
     type: "solid" | "open" | "door" | "window";
+    position?: number;
+    isPercentage?: boolean;
+    width?: number; // Window/Door width
+    height?: number; // Window/Door height
+    wallHeight?: number; // Wall height override
 }
 
 export interface JsonConnection {

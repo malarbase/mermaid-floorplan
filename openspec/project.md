@@ -19,8 +19,28 @@ Mermaid Floorplan is a domain-specific language (DSL) for defining architectural
 - **Testing:** Vitest
 - **Rendering:** SVG (generated programmatically)
 - **AI Integration:** OpenAI Chat API (GPT-3.5/GPT-4)
-- **Runtime:** Node.js 20.x (managed via Volta)
+- **Runtime:** Node.js >= 20.10.0 (REQUIRED - Langium 4.x compatibility)
+- **Package Manager:** npm >= 10.2.3
 - **Module System:** ESM (ES Modules)
+
+## Prerequisites
+**⚠️ IMPORTANT:** This project requires Node.js >= 20.10.0 and npm >= 10.2.3 due to Langium 4.x dependencies.
+
+Check your versions:
+```bash
+node --version  # Must be >= v20.10.0
+npm --version   # Must be >= 10.2.3
+```
+
+If you need to switch Node versions, use nvm or volta:
+```bash
+# Using nvm
+nvm install 20
+nvm use 20
+
+# Using volta (recommended for this project)
+volta install node@20
+```
 
 ## Project Conventions
 

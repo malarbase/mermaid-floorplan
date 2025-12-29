@@ -6,7 +6,7 @@
 export const DIMENSIONS = {
   WALL: {
     THICKNESS: 0.2,
-    HEIGHT: 3.0,
+    HEIGHT: 3.35, // 11 feet (scale: 1 unit ≈ 3.3 feet)
   },
   FLOOR: {
     THICKNESS: 0.2,

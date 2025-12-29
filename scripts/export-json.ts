@@ -30,11 +30,18 @@ export interface JsonRoom {
     width: number;
     height: number; // 2D height -> 3D depth
     walls: JsonWall[];
+    roomHeight?: number;
+    elevation?: number;
 }
 
 export interface JsonWall {
     direction: "top" | "bottom" | "left" | "right";
     type: "solid" | "open" | "door" | "window";
+    position?: number;
+    isPercentage?: boolean;
+    width?: number;
+    height?: number;
+    wallHeight?: number;
 }
 
 export interface JsonConnection {
@@ -113,7 +120,12 @@ async function main() {
                 for (const spec of room.walls.specifications) {
                     walls.push({
                         direction: spec.direction,
-                        type: spec.type
+                        type: spec.type,
+                        position: spec.position,
+                        isPercentage: spec.unit === '%',
+                        width: spec.size?.width,
+                        height: spec.size?.height,
+                        wallHeight: spec.height
                     });
                 }
             }
@@ -132,7 +144,9 @@ async function main() {
                 z: pos.y, // Map 2D Y to 3D Z
                 width: room.size.width,
                 height: room.size.height,
-                walls: walls
+                walls: walls,
+                roomHeight: room.height,
+                elevation: room.elevation
             });
         }
 

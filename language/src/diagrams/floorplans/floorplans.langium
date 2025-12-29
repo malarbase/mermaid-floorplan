@@ -17,6 +17,8 @@ Room:
     type=('room' | 'sub-room') name=ID 
     ('at' position=Coordinate)?
     'size' size=Dimension 
+    ('height' height=NUMBER)?
+    ('elevation' elevation=SIGNED_NUMBER)?
     'walls' walls=WallSpec
     relativePosition=RelativePosition?
     ('label' label=STRING)?
@@ -42,7 +44,10 @@ WallSpec:
     '[' specifications+=WallSpecification (',' specifications+=WallSpecification)* ']';
 
 WallSpecification:
-    direction=WallDirection ':' type=WallType;
+    direction=WallDirection ':' type=WallType 
+    ('at' position=NUMBER unit=('%')?)?
+    ('size' size=Dimension)?
+    ('height' height=NUMBER)?;
 
 // Connection statements  
 Connection:
@@ -87,6 +92,7 @@ SwingDirection returns string:
 // Terminal rules
 terminal ID: /[_a-zA-Z][\w]*/;
 terminal NUMBER returns number: /[0-9]+(\.[0-9]+)?/;
+terminal SIGNED_NUMBER returns number: /-?[0-9]+(\.[0-9]+)?/;
 terminal STRING: /"[^"]*"|'[^']*'/;
 
 // Comments

@@ -39,17 +39,19 @@ export class WallGenerator {
     group: THREE.Group
   ): void {
     const geometry = this.calculateWallGeometry(wall, room);
+    const elevation = room.elevation || 0;
+    const wallHeight = wall.wallHeight || room.roomHeight || DIMENSIONS.WALL.HEIGHT;
 
     // Create base wall brush (only if not open)
     let wallBrush: Brush | null = null;
     if (wall.type !== 'open') {
       const wallGeom = new THREE.BoxGeometry(
         geometry.width,
-        DIMENSIONS.WALL.HEIGHT,
+        wallHeight,
         geometry.depth
       );
       wallBrush = new Brush(wallGeom, materials.wall);
-      wallBrush.position.set(geometry.posX, DIMENSIONS.WALL.HEIGHT / 2, geometry.posZ);
+      wallBrush.position.set(geometry.posX, elevation + wallHeight / 2, geometry.posZ);
       wallBrush.updateMatrixWorld();
     }
 
@@ -57,7 +59,7 @@ export class WallGenerator {
 
     // Handle explicit wall type (window/door)
     if (wallBrush && (wall.type === 'door' || wall.type === 'window')) {
-      this.addExplicitHole(wall, geometry, holes, materials, group);
+      this.addExplicitHole(wall, room, geometry, holes, materials, group, elevation);
     }
 
     // Handle connections (doors between rooms)
@@ -80,7 +82,8 @@ export class WallGenerator {
         holes,
         shouldRender,
         materials,
-        group
+        group,
+        elevation
       );
     }
 
@@ -145,19 +148,51 @@ export class WallGenerator {
    */
   private addExplicitHole(
     wall: JsonWall,
+    room: JsonRoom,
     geometry: WallGeometry,
     holes: Brush[],
     materials: MaterialSet,
-    group: THREE.Group
+    group: THREE.Group,
+    elevation: number
   ): void {
-    const holeWidth =
+    const defaultWidth =
       wall.type === 'door' ? DIMENSIONS.DOOR.WIDTH : DIMENSIONS.WINDOW.WIDTH;
-    const holeHeight =
+    const defaultHeight =
       wall.type === 'door' ? DIMENSIONS.DOOR.HEIGHT : DIMENSIONS.WINDOW.HEIGHT;
+
+    const holeWidth = wall.width || defaultWidth;
+    const holeHeight = wall.height || defaultHeight;
+    
     const holeY =
-      wall.type === 'door'
+      elevation +
+      (wall.type === 'door'
         ? holeHeight / 2
-        : DIMENSIONS.WINDOW.SILL_HEIGHT + holeHeight / 2;
+        : DIMENSIONS.WINDOW.SILL_HEIGHT + holeHeight / 2);
+
+    let holeX = geometry.posX;
+    let holeZ = geometry.posZ;
+
+    // Calculate position along the wall if specified
+    if (wall.position !== undefined) {
+        let ratio = 0.5;
+        if (wall.isPercentage) {
+            ratio = wall.position / 100;
+        } else {
+             // Absolute units
+             const wallLength = geometry.isVertical ? room.height : room.width;
+             ratio = wall.position / wallLength;
+        }
+
+        if (geometry.isVertical) {
+            const wallStartZ = room.z;
+            const offsetZ = room.height * ratio;
+            holeZ = wallStartZ + offsetZ;
+        } else {
+            const wallStartX = room.x;
+            const offsetX = room.width * ratio;
+            holeX = wallStartX + offsetX;
+        }
+    }
 
     const holeGeom = new THREE.BoxGeometry(
       geometry.isVertical ? DIMENSIONS.WALL.THICKNESS * 2 : holeWidth,
@@ -165,7 +200,7 @@ export class WallGenerator {
       geometry.isVertical ? holeWidth : DIMENSIONS.WALL.THICKNESS * 2
     );
     const holeBrush = new Brush(holeGeom);
-    holeBrush.position.set(geometry.posX, holeY, geometry.posZ);
+    holeBrush.position.set(holeX, holeY, holeZ);
     holeBrush.updateMatrixWorld();
     holes.push(holeBrush);
 
@@ -177,7 +212,7 @@ export class WallGenerator {
         geometry.isVertical ? holeWidth : DIMENSIONS.WINDOW.GLASS_THICKNESS
       );
       const glassMesh = new THREE.Mesh(glassGeom, materials.window);
-      glassMesh.position.set(geometry.posX, holeY, geometry.posZ);
+      glassMesh.position.set(holeX, holeY, holeZ);
       group.add(glassMesh);
     }
   }
@@ -194,14 +229,15 @@ export class WallGenerator {
     holes: Brush[],
     shouldRenderDoor: boolean,
     materials: MaterialSet,
-    group: THREE.Group
+    group: THREE.Group,
+    elevation: number
   ): void {
     const doorWidth =
       connection.doorType === 'double-door'
         ? DIMENSIONS.DOUBLE_DOOR.WIDTH
         : DIMENSIONS.DOOR.WIDTH;
     const doorHeight = DIMENSIONS.DOOR.HEIGHT;
-    const holeY = doorHeight / 2;
+    const holeY = elevation + doorHeight / 2;
 
     // Calculate position along the wall
     const percentage = connection.position ?? 50;
