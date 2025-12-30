@@ -4,6 +4,7 @@
  */
 
 import type { Floor, Room } from "../../generated/ast.js";
+import { getRoomSize } from "./variable-resolver.js";
 
 export interface ResolvedPosition {
   x: number;
@@ -58,17 +59,20 @@ export function getResolvedPosition(
 function computePosition(
   room: Room,
   referenceRoom: Room,
-  referencePosition: ResolvedPosition
+  referencePosition: ResolvedPosition,
+  variables?: Map<string, { width: number; height: number }>
 ): ResolvedPosition {
   const rel = room.relativePosition!;
   const gap = rel.gap ?? 0;
   const direction = rel.direction;
   const alignment = rel.alignment;
   
-  const refWidth = referenceRoom.size.width;
-  const refHeight = referenceRoom.size.height;
-  const roomWidth = room.size.width;
-  const roomHeight = room.size.height;
+  const refSize = getRoomSize(referenceRoom, variables);
+  const roomSize = getRoomSize(room, variables);
+  const refWidth = refSize.width;
+  const refHeight = refSize.height;
+  const roomWidth = roomSize.width;
+  const roomHeight = roomSize.height;
   
   let x: number;
   let y: number;
@@ -207,7 +211,10 @@ function checkOverlap(
  * Resolve all relative positions in a floor to absolute coordinates
  * Uses topological sort to handle dependencies
  */
-export function resolveFloorPositions(floor: Floor): PositionResolutionResult {
+export function resolveFloorPositions(
+  floor: Floor,
+  variables?: Map<string, { width: number; height: number }>
+): PositionResolutionResult {
   const positions = new Map<string, ResolvedPosition>();
   const errors: PositionResolutionError[] = [];
   const warnings: OverlapWarning[] = [];
@@ -270,7 +277,7 @@ export function resolveFloorPositions(floor: Floor): PositionResolutionResult {
       const refPosition = positions.get(refName);
       if (refPosition) {
         // Compute this room's position
-        const computedPos = computePosition(room, refRoom, refPosition);
+        const computedPos = computePosition(room, refRoom, refPosition, variables);
         positions.set(roomName, computedPos);
         resolved.add(roomName);
         pending.delete(roomName);
@@ -303,13 +310,16 @@ export function resolveFloorPositions(floor: Floor): PositionResolutionResult {
       const pos1 = positions.get(room1Name)!;
       const pos2 = positions.get(room2Name)!;
       
+      const size1 = getRoomSize(room1, variables);
+      const size2 = getRoomSize(room2, variables);
+      
       const overlap = checkOverlap(
         room1Name,
         pos1,
-        { width: room1.size.width, height: room1.size.height },
+        { width: size1.width, height: size1.height },
         room2Name,
         pos2,
-        { width: room2.size.width, height: room2.size.height }
+        { width: size2.width, height: size2.height }
       );
       
       if (overlap) {
@@ -324,10 +334,13 @@ export function resolveFloorPositions(floor: Floor): PositionResolutionResult {
 /**
  * Resolve positions for all floors in a floorplan
  */
-export function resolveAllPositions(floors: Floor[]): Map<string, PositionResolutionResult> {
+export function resolveAllPositions(
+  floors: Floor[],
+  variables?: Map<string, { width: number; height: number }>
+): Map<string, PositionResolutionResult> {
   const results = new Map<string, PositionResolutionResult>();
   for (const floor of floors) {
-    results.set(floor.id, resolveFloorPositions(floor));
+    results.set(floor.id, resolveFloorPositions(floor, variables));
   }
   return results;
 }

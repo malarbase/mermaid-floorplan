@@ -1,5 +1,5 @@
 import type { ValidationAcceptor, ValidationChecks } from "langium";
-import type { FloorplansAstType, Floorplan, Connection, Room, Floor } from "./generated/ast.js";
+import type { FloorplansAstType, Floorplan, Connection, Room, Floor, StyleBlock, StyleProperty } from "./generated/ast.js";
 import type { FloorplansServices } from "./floorplans-module.js";
 
 /**
@@ -9,7 +9,13 @@ export function registerValidationChecks(services: FloorplansServices) {
   const registry = services.validation.ValidationRegistry;
   const validator = services.validation.FloorplansValidator;
   const checks: ValidationChecks<FloorplansAstType> = {
-    Floorplan: [validator.checkConnectionOverlaps, validator.checkConnectionWallTypes]
+    Floorplan: [
+      validator.checkConnectionOverlaps, 
+      validator.checkConnectionWallTypes,
+      validator.checkStyleReferences,
+      validator.checkDuplicateStyleNames
+    ],
+    StyleProperty: [validator.checkStylePropertyValue]
   };
   registry.register(checks, validator);
 }
@@ -251,6 +257,130 @@ export class FloorplansValidator {
     // Process sub-rooms
     for (const subRoom of room.subRooms) {
       this.addRoomWalls(subRoom, wallTypes);
+    }
+  }
+  
+  /**
+   * Check that all style references in rooms point to defined styles.
+   * Also validates default_style in config.
+   */
+  checkStyleReferences(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    // Build set of defined style names
+    const definedStyles = new Set<string>();
+    for (const style of floorplan.styles) {
+      definedStyles.add(style.name);
+    }
+    
+    // Check room style references
+    for (const floor of floorplan.floors) {
+      this.checkRoomStyleRefs(floor.rooms, definedStyles, accept);
+    }
+    
+    // Check default_style in config
+    if (floorplan.config) {
+      for (const prop of floorplan.config.properties) {
+        if (prop.name === 'default_style' && prop.styleRef) {
+          if (!definedStyles.has(prop.styleRef)) {
+            accept("error", 
+              `Config references undefined style '${prop.styleRef}'. Define it with 'style ${prop.styleRef} { ... }'.`,
+              { node: prop, property: "styleRef" }
+            );
+          }
+        }
+      }
+    }
+  }
+  
+  /**
+   * Recursively check room style references
+   */
+  private checkRoomStyleRefs(rooms: Room[], definedStyles: Set<string>, accept: ValidationAcceptor): void {
+    for (const room of rooms) {
+      if (room.styleRef && !definedStyles.has(room.styleRef)) {
+        accept("error", 
+          `Room '${room.name}' references undefined style '${room.styleRef}'. Define it with 'style ${room.styleRef} { ... }'.`,
+          { node: room, property: "styleRef" }
+        );
+      }
+      
+      // Check sub-rooms
+      if (room.subRooms.length > 0) {
+        this.checkRoomStyleRefs(room.subRooms, definedStyles, accept);
+      }
+    }
+  }
+  
+  /**
+   * Check for duplicate style names
+   */
+  checkDuplicateStyleNames(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    const seenNames = new Map<string, StyleBlock>();
+    
+    for (const style of floorplan.styles) {
+      const existing = seenNames.get(style.name);
+      if (existing) {
+        accept("error", 
+          `Duplicate style name '${style.name}'. Style names must be unique.`,
+          { node: style, property: "name" }
+        );
+      } else {
+        seenNames.set(style.name, style);
+      }
+    }
+  }
+  
+  /**
+   * Validate style property values (hex colors, numeric ranges)
+   */
+  checkStylePropertyValue(property: StyleProperty, accept: ValidationAcceptor): void {
+    const colorProps = ['floor_color', 'wall_color'];
+    const numericProps = ['roughness', 'metalness'];
+    
+    // Validate hex color format
+    if (colorProps.includes(property.name)) {
+      if (property.stringValue) {
+        const colorValue = property.stringValue.replace(/^["']|["']$/g, ''); // Remove quotes
+        const hexPattern = /^#[0-9A-Fa-f]{6}$/;
+        if (!hexPattern.test(colorValue)) {
+          accept("error", 
+            `Invalid color format '${colorValue}' for ${property.name}. Use hex format like "#RRGGBB".`,
+            { node: property, property: "stringValue" }
+          );
+        }
+      } else if (property.numberValue !== undefined) {
+        accept("error", 
+          `${property.name} must be a hex color string (e.g., "#RRGGBB"), not a number.`,
+          { node: property, property: "numberValue" }
+        );
+      }
+    }
+    
+    // Validate numeric range for PBR properties
+    if (numericProps.includes(property.name)) {
+      if (property.numberValue !== undefined) {
+        if (property.numberValue < 0 || property.numberValue > 1) {
+          accept("error", 
+            `${property.name} must be between 0 and 1, got ${property.numberValue}.`,
+            { node: property, property: "numberValue" }
+          );
+        }
+      } else if (property.stringValue) {
+        accept("error", 
+          `${property.name} must be a number between 0 and 1, not a string.`,
+          { node: property, property: "stringValue" }
+        );
+      }
+    }
+    
+    // Validate texture properties are strings
+    const textureProps = ['floor_texture', 'wall_texture'];
+    if (textureProps.includes(property.name)) {
+      if (property.numberValue !== undefined) {
+        accept("error", 
+          `${property.name} must be a texture path string (e.g., "textures/wood.jpg"), not a number.`,
+          { node: property, property: "numberValue" }
+        );
+      }
     }
   }
 }

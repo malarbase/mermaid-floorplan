@@ -1,28 +1,67 @@
 grammar Floorplans
 
-// Entry rule
+// Entry rule - defines, styles, config, floors, then connections
 entry Floorplan:
-    'floorplan' floors+=Floor* connections+=Connection*;
+    'floorplan' 
+    defines+=DefineStatement*
+    styles+=StyleBlock*
+    config=ConfigBlock?
+    floors+=Floor* 
+    connections+=Connection*;
+
+// Style block for material definitions
+StyleBlock:
+    'style' name=ID '{' 
+        properties+=StyleProperty (',' properties+=StyleProperty)* 
+    '}';
+
+StyleProperty:
+    name=STYLE_KEY ':' (stringValue=STRING | numberValue=NUMBER);
+
+// Style property keys
+STYLE_KEY returns string:
+    'floor_color' | 'wall_color' | 'floor_texture' | 'wall_texture' | 'roughness' | 'metalness';
+
+// Variable definitions for dimensions
+DefineStatement:
+    'define' name=ID value=Dimension;
+
+// Global configuration block
+ConfigBlock:
+    'config' '{' 
+        properties+=ConfigProperty (',' properties+=ConfigProperty)* 
+    '}';
+
+ConfigProperty:
+    name=CONFIG_KEY ':' (value=NUMBER | styleRef=ID);
+
+// Config property keys
+CONFIG_KEY returns string:
+    'wall_thickness' | 'floor_thickness' | 'default_height' |
+    'door_width' | 'door_height' |
+    'window_width' | 'window_height' | 'window_sill' | 'default_style';
 
 // Floor definition
 Floor:
-    'floor' id=ID '{' 
+    'floor' id=ID ('height' height=NUMBER)? '{' 
         rooms+=Room*
     '}';
 
 // Room definition
 // Position can be explicit (at x,y) OR relative (right-of RoomA)
 // Both can optionally be present, but at least one is required for rendering
+// Size can be an inline dimension or a variable reference
 Room:
     type=('room' | 'sub-room') name=ID 
     ('at' position=Coordinate)?
-    'size' size=Dimension 
+    'size' (size=Dimension | sizeRef=ID)
     ('height' height=NUMBER)?
     ('elevation' elevation=SIGNED_NUMBER)?
     'walls' walls=WallSpec
     relativePosition=RelativePosition?
     ('label' label=STRING)?
-    ('composed' 'of' '[' subRooms+=Room* ']')?;
+    ('composed' 'of' '[' subRooms+=Room* ']')?
+    ('style' styleRef=ID)?;
 
 // Relative positioning - places room relative to another room
 RelativePosition:

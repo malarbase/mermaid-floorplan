@@ -39,6 +39,18 @@ export {
   type OverlapWarning,
 } from "./position-resolver.js";
 
+// Variable resolution
+export {
+  resolveVariables,
+  getResolvedSize,
+  validateSizeReferences,
+  getResolvedConfig,
+  getRoomSize,
+  type VariableResolutionResult,
+  type VariableResolutionError,
+  type ResolvedConfig,
+} from "./variable-resolver.js";
+
 // Theming
 export {
   getStyles,
@@ -47,3 +59,27 @@ export {
   blueprintTheme,
   type FloorplanThemeOptions,
 } from "./styles.js";
+
+// Style resolution
+export {
+  buildStyleContext,
+  resolveRoomStyle,
+  getStyleByName,
+  DEFAULT_STYLE,
+  type StyleContext,
+  type ResolvedStyle,
+} from "./style-resolver.js";
+
+// JSON conversion (shared between CLI and browser)
+export {
+  convertFloorplanToJson,
+  type JsonExport,
+  type JsonFloor,
+  type JsonRoom,
+  type JsonWall,
+  type JsonConnection,
+  type JsonConfig,
+  type JsonStyle,
+  type ConversionResult,
+  type ConversionError,
+} from "./json-converter.js";

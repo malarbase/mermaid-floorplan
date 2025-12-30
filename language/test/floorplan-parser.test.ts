@@ -2,7 +2,7 @@ import { beforeAll, describe, expect, test } from "vitest";
 import { EmptyFileSystem, type LangiumDocument } from "langium";
 import { parseHelper } from "langium/test";
 import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, resolveFloorPositions } from "floorplans-language";
+import { createFloorplansServices, resolveFloorPositions, resolveVariables, validateSizeReferences, getRoomSize } from "floorplans-language";
 
 let services: ReturnType<typeof createFloorplansServices>;
 let parse: ReturnType<typeof parseHelper<Floorplan>>;
@@ -887,5 +887,210 @@ describe("Connection Overlap Validation Tests", () => {
     const warnings = diagnostics.filter(d => d.severity === 2);
     expect(warnings.length).toBeGreaterThan(0);
     expect(warnings.some(d => d.message.includes("mismatch") || d.message.includes("window"))).toBe(true);
+  });
+});
+
+describe("Variables and Defaults Tests", () => {
+  test("should parse define statement for dimension variable", async () => {
+    const input = `
+      floorplan
+          define standard_bed (12 x 12)
+          floor f1 {
+              room Bedroom at (0,0) size standard_bed walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    expect(model.defines).toHaveLength(1);
+    expect(model.defines[0]?.name).toBe("standard_bed");
+    expect(model.defines[0]?.value.width).toBe(12);
+    expect(model.defines[0]?.value.height).toBe(12);
+    
+    const room = model.floors[0]?.rooms[0];
+    expect(room?.size).toBeUndefined();
+    expect(room?.sizeRef).toBe("standard_bed");
+  });
+
+  test("should parse multiple define statements", async () => {
+    const input = `
+      floorplan
+          define small (5 x 5)
+          define medium (10 x 10)
+          define large (15 x 15)
+          floor f1 {
+              room SmallRoom at (0,0) size small walls [top: solid, right: solid, bottom: solid, left: solid]
+              room MediumRoom at (10,0) size medium walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    expect(model.defines).toHaveLength(3);
+    expect(model.defines.map(d => d.name)).toEqual(["small", "medium", "large"]);
+  });
+
+  test("should parse config block with wall_thickness", async () => {
+    const input = `
+      floorplan
+          config { wall_thickness: 0.5 }
+          floor f1 {
+              room TestRoom at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    expect(model.config).toBeDefined();
+    expect(model.config?.properties).toHaveLength(1);
+    expect(model.config?.properties[0]?.name).toBe("wall_thickness");
+    expect(model.config?.properties[0]?.value).toBe(0.5);
+  });
+
+  test("should parse config block with multiple properties", async () => {
+    const input = `
+      floorplan
+          config { wall_thickness: 0.3, door_width: 1.0, window_width: 1.5, default_height: 3.0 }
+          floor f1 {
+              room TestRoom at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    expect(model.config?.properties).toHaveLength(4);
+  });
+
+  test("should parse define and config together", async () => {
+    const input = `
+      floorplan
+          define master_bed (15 x 12)
+          config { wall_thickness: 0.25 }
+          floor f1 {
+              room MasterBedroom at (0,0) size master_bed walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    expect(model.defines).toHaveLength(1);
+    expect(model.config).toBeDefined();
+    expect(model.config?.properties).toHaveLength(1);
+  });
+
+  test("should resolve variables correctly", async () => {
+    const input = `
+      floorplan
+          define standard_room (10 x 8)
+          floor f1 {
+              room RoomA at (0,0) size standard_room walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const resolution = resolveVariables(model);
+    
+    expect(resolution.errors).toHaveLength(0);
+    expect(resolution.variables.has("standard_room")).toBe(true);
+    expect(resolution.variables.get("standard_room")).toEqual({ width: 10, height: 8 });
+  });
+
+  test("should detect undefined variable reference", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size undefined_var walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const resolution = resolveVariables(model);
+    const sizeRefErrors = validateSizeReferences(model, resolution.variables);
+    
+    expect(sizeRefErrors).toHaveLength(1);
+    expect(sizeRefErrors[0]?.type).toBe("undefined_variable");
+    expect(sizeRefErrors[0]?.variableName).toBe("undefined_var");
+  });
+
+  test("should get resolved room size from variable", async () => {
+    const input = `
+      floorplan
+          define compact (6 x 6)
+          floor f1 {
+              room SmallRoom at (0,0) size compact walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const resolution = resolveVariables(model);
+    const room = model.floors[0]?.rooms[0]!;
+    
+    const size = getRoomSize(room, resolution.variables);
+    expect(size).toEqual({ width: 6, height: 6 });
+  });
+
+  test("should resolve floor positions with variables", async () => {
+    const input = `
+      floorplan
+          define room_size (5 x 5)
+          floor f1 {
+              room RoomA at (0,0) size room_size walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size room_size walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const variables = resolveVariables(model).variables;
+    const floor = model.floors[0]!;
+    const result = resolveFloorPositions(floor, variables);
+    
+    expect(result.errors).toHaveLength(0);
+    expect(result.positions.get("RoomA")).toEqual({ x: 0, y: 0 });
+    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 0 });
+  });
+
+  test("should mix inline sizes and variable references", async () => {
+    const input = `
+      floorplan
+          define bathroom_size (4 x 4)
+          floor f1 {
+              room Bedroom at (0,0) size (12 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Bathroom at (12,0) size bathroom_size walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const bedroom = model.floors[0]?.rooms[0];
+    const bathroom = model.floors[0]?.rooms[1];
+    
+    expect(bedroom?.size).toBeDefined();
+    expect(bedroom?.sizeRef).toBeUndefined();
+    expect(bathroom?.size).toBeUndefined();
+    expect(bathroom?.sizeRef).toBe("bathroom_size");
   });
 });

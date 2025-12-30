@@ -2,7 +2,7 @@
  * Spatial analysis utilities for computing relative positions from absolute coordinates
  */
 
-import type { Room } from "floorplans-language";
+import { type Room, getRoomSize } from "floorplans-language";
 
 export type Direction =
   | "right-of"
@@ -47,11 +47,15 @@ export interface SpatialRelationship {
 /**
  * Extract bounds from a room with absolute position
  */
-export function extractRoomBounds(room: Room): RoomBounds | undefined {
+export function extractRoomBounds(
+  room: Room,
+  variables?: Map<string, { width: number; height: number }>
+): RoomBounds | undefined {
   if (!room.position) return undefined;
 
   const { x, y } = room.position;
-  const { width, height } = room.size;
+  const size = getRoomSize(room, variables);
+  const { width, height } = size;
 
   return {
     name: room.name,

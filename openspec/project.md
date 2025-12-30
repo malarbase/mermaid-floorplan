@@ -5,6 +5,7 @@ Mermaid Floorplan is a domain-specific language (DSL) for defining architectural
 
 - A grammar-based parser for the floorplan DSL
 - Real-time SVG rendering of floorplans
+- 3D visualization with Three.js (CSG-based wall rendering, exploded view)
 - A web-based editor with syntax highlighting
 - AI-powered chat interface for natural language floorplan modifications
 - MCP server for AI assistant integration (Cursor, Claude Desktop)
@@ -54,10 +55,11 @@ volta install node@20
 - **Comments:** Use `#` for single-line and `/* */` for multi-line in the DSL; standard `//` and `/* */` in TypeScript
 
 ### Architecture Patterns
-- **Monorepo Structure:** npm workspaces with three packages:
+- **Monorepo Structure:** npm workspaces with four packages:
   - Root package: Web demo app (Vite-based)
   - `language/`: Langium grammar and parser (standalone package)
   - `mcp-server/`: Model Context Protocol server for AI assistant integration
+  - `viewer/`: Three.js-based 3D floorplan viewer
 - **Separation of Concerns:**
   - Grammar definition (`floorplans.langium`) → Parser generation
   - Renderer (`src/renderer.ts`) → SVG output
@@ -105,6 +107,10 @@ floorplan
 - **Swing Direction:** `left` or `right` - controls which way the door arc swings
 - **Opens Into:** Specifies which room the door opens toward (determines swing direction automatically)
 - **Multi-Floor:** Multiple floors defined in a single floorplan, rendered individually or together
+- **Variables:** Named dimension values defined with `define` keyword for reuse across rooms
+- **Config Block:** Global configuration for rendering defaults (wall thickness, door width, etc.)
+- **3D Viewer:** Three.js-based visualization with CSG wall rendering and camera controls
+- **Exploded View:** 3D viewer mode that vertically separates floors to reveal layouts underneath
 
 ## Important Constraints
 - Parser must be regenerated when grammar changes (`npm run langium:generate`)
@@ -152,15 +158,23 @@ npm run dev
 | `npm run test` | Run parser tests |
 | `npm run mcp:build` | Build the MCP server |
 | `npm run mcp:start` | Start the MCP server (stdio transport) |
+| `npm run viewer` | Build and open the 3D viewer |
 
 ## DSL Reference
 
 ### Complete Syntax Example
 ```
 floorplan
+  # Variables for reusable dimensions
+  define standard_room (10 x 12)
+  define small_room (6 x 8)
+  
+  # Global configuration
+  config { wall_thickness: 0.3, door_width: 1.0 }
+  
   floor f1 {
-    # Absolute positioning
-    room Office at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] label "main workspace"
+    # Absolute positioning with variable size
+    room Office at (0,0) size standard_room walls [top: solid, right: solid, bottom: solid, left: solid] label "main workspace"
     
     # Relative positioning - Kitchen below Office with 2-unit gap
     room Kitchen size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: window] below Office gap 2 label "break area"
@@ -177,21 +191,91 @@ floorplan
   }
   
   floor f2 {
-    room Bedroom at (0,0) size (12 x 14) walls [top: solid, right: window, bottom: solid, left: solid]
-    room Bathroom size (6 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] right-of Bedroom
+    room Bedroom at (0,0) size standard_room walls [top: solid, right: window, bottom: solid, left: solid]
+    room Bathroom size small_room walls [top: solid, right: solid, bottom: solid, left: solid] right-of Bedroom
     
     connect Bedroom.right to Bathroom.left door at 30% opens into Bathroom
   }
 ```
+
+### Variables and Configuration
+| Feature | Syntax | Example |
+|---------|--------|---------|
+| Define variable | `define <name> (w x h)` | `define standard_bed (12 x 12)` |
+| Use variable | `size <name>` | `size standard_bed` |
+| Config block | `config { key: value, ... }` | `config { wall_thickness: 0.3 }` |
+| Floor height | `floor <id> height <n> { ... }` | `floor Ground height 4.0 { ... }` |
+
+**Supported config keys:**
+| Key | Description | Default |
+|-----|-------------|---------|
+| `wall_thickness` | Wall thickness in units | 0.2 |
+| `floor_thickness` | Floor slab thickness | 0.2 |
+| `default_height` | Default wall/ceiling height | 3.35 |
+| `door_width` | Standard door width | 1.0 |
+| `door_height` | Standard door height | 2.1 |
+| `window_width` | Standard window width | 1.5 |
+| `window_height` | Standard window height | 1.5 |
+| `window_sill` | Window sill height from floor | 0.9 |
+| `default_style` | Default style name for rooms | None |
+
+**Height resolution priority:** Room height > Floor height > Config `default_height` > Constant (3.35)
+
+### Styles and Materials
+Styles define reusable visual properties for rooms. Define styles once, apply to multiple rooms.
+
+```
+floorplan
+  style Modern {
+    floor_color: "#E0E0E0",
+    wall_color: "#909090",
+    roughness: 0.5
+  }
+  
+  style Rustic {
+    floor_color: "#8B4513",
+    floor_texture: "textures/oak.jpg",
+    wall_color: "#D2B48C"
+  }
+  
+  config { default_style: Modern }
+  
+  floor Ground {
+    room Kitchen at (0,0) size (10 x 10) walls [...] style Rustic
+    room Office at (10,0) size (8 x 10) walls [...]  # uses Modern (default)
+  }
+```
+
+**Style Properties:**
+| Property | Type | Description | Target |
+|----------|------|-------------|--------|
+| `floor_color` | Hex string | Floor fill color (e.g., `"#8B4513"`) | SVG + 3D |
+| `wall_color` | Hex string | Wall fill color | SVG + 3D |
+| `floor_texture` | URL string | Floor texture path (e.g., `"textures/oak.jpg"`) | 3D only |
+| `wall_texture` | URL string | Wall texture path | 3D only |
+| `roughness` | Number 0-1 | PBR roughness | 3D only |
+| `metalness` | Number 0-1 | PBR metalness | 3D only |
+
+**Style Resolution Order:**
+1. Room's explicit `style <name>` clause
+2. `default_style` from config block
+3. Built-in defaults (floor: #E0E0E0, wall: #000000)
+
+**Notes:**
+- SVG rendering: Uses colors only (textures are ignored)
+- 3D viewer: Supports colors, textures, and PBR properties
+- Styles are floorplan-scoped (available to all floors)
 
 ### Room Properties
 | Property | Syntax | Example |
 |----------|--------|---------|
 | Position (absolute) | `at (x,y)` | `at (0,0)` |
 | Position (relative) | `<direction> <RoomRef> [gap N] [align <edge>]` | `right-of Kitchen gap 2 align top` |
-| Size | `size (w x h)` | `size (10 x 12)` |
+| Size (inline) | `size (w x h)` | `size (10 x 12)` |
+| Size (variable) | `size <varname>` | `size standard_room` |
 | Walls | `walls [top: T, right: T, bottom: T, left: T]` | `walls [top: solid, right: door, bottom: window, left: open]` |
 | Label | `label "text"` | `label "cozy room"` |
+| Style | `style <name>` | `style Modern` |
 | Sub-rooms | `composed of [...]` | See FlexArea example above |
 
 ### Relative Positioning Directions
@@ -245,6 +329,15 @@ When a floorplan contains multiple floors:
 - **Specific floor:** Use `floorIndex` option to render a specific floor
 - **All floors:** Use `renderAllFloors` with layout `stacked` (vertical) or `sideBySide` (horizontal)
 - **Floor labels:** Displayed above each floor when rendering multiple floors
+
+### 3D Viewer
+The project includes a Three.js-based 3D viewer (`viewer/`) for visualizing floorplans:
+- **CSG Rendering:** Uses Constructive Solid Geometry for clean wall joints and door/window cutouts
+- **Camera Controls:** OrbitControls for rotating, panning, and zooming
+- **Exploded View:** Slider to vertically separate floors for multi-story inspection
+- **Configurable Dimensions:** Uses DSL `config` block values for wall thickness, heights, door/window sizes
+- **Per-Floor Heights:** Supports different ceiling heights per floor via `floor <id> height <n> { ... }`
+- **Run:** `npm run viewer` builds and opens the 3D visualization
 
 ## Live Editing Behavior
 The app provides **real-time SVG rendering**:

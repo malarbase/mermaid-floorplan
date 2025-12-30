@@ -12,14 +12,15 @@ export function wallRectangle(
   width: number,
   height: number,
   wallType: string,
-  wallDirection?: string
+  wallDirection?: string,
+  wallColor: string = "black"
 ): string {
   if (wallType === "open") {
     return "";
   }
 
   const wall = `<rect x="${x}" y="${y}" width="${width}" height="${height}" 
-      class="wall" fill="black" stroke="black" stroke-width="0.05" />`;
+      class="wall" fill="${wallColor}" stroke="${wallColor}" stroke-width="0.05" />`;
 
   if (wallType === "door") {
     // Single door by default for wall-specified doors

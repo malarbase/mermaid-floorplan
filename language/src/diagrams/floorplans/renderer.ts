@@ -13,6 +13,8 @@ import { generateRoomSvg } from "./room.js";
 import { generateConnections } from "./connection.js";
 import { getStyles, type FloorplanThemeOptions } from "./styles.js";
 import { resolveFloorPositions, type ResolvedPosition, type PositionResolutionResult } from "./position-resolver.js";
+import { resolveVariables } from "./variable-resolver.js";
+import { buildStyleContext, type StyleContext } from "./style-resolver.js";
 
 export interface RenderOptions {
   /** Include XML declaration in output */
@@ -57,9 +59,16 @@ export function render(
     return '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
   }
 
+  // Resolve variables from the floorplan
+  const variableResolution = resolveVariables(floorplan);
+  const variables = variableResolution.variables;
+  
+  // Build style context for the floorplan
+  const styleContext = buildStyleContext(floorplan);
+
   // Render all floors if requested
   if (opts.renderAllFloors && floorplan.floors.length > 1) {
-    return renderAllFloors(floorplan, opts);
+    return renderAllFloors(floorplan, opts, variables, styleContext);
   }
 
   // Render specific floor (default: first floor for backward compatibility)
@@ -70,13 +79,18 @@ export function render(
     return '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
   }
 
-  return renderFloor(floor, opts, floorplan.connections);
+  return renderFloor(floor, opts, floorplan.connections, variables, styleContext);
 }
 
 /**
  * Render all floors in a single SVG
  */
-function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
+function renderAllFloors(
+  floorplan: Floorplan,
+  options: RenderOptions,
+  variables?: Map<string, { width: number; height: number }>,
+  styleContext?: StyleContext
+): string {
   const opts = { ...defaultRenderOptions, ...options };
   const padding = opts.padding ?? 0;
   const floorGap = 5; // Gap between floors
@@ -85,7 +99,7 @@ function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
   // Resolve positions for all floors first
   const floorResolutions = new Map<string, PositionResolutionResult>();
   for (const floor of floorplan.floors) {
-    floorResolutions.set(floor.id, resolveFloorPositions(floor));
+    floorResolutions.set(floor.id, resolveFloorPositions(floor, variables));
   }
   
   // Calculate bounds for all floors
@@ -97,7 +111,7 @@ function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
   for (const floor of floorplan.floors) {
     const resolution = floorResolutions.get(floor.id)!;
     const resolvedPositions = resolution.positions;
-    const bounds = calculateFloorBounds(floor, resolvedPositions);
+    const bounds = calculateFloorBounds(floor, resolvedPositions, variables);
     let offsetX = 0;
     let offsetY = 0;
     
@@ -162,14 +176,14 @@ function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
     
     // Add floor group
     svg += `<g class="floor" aria-label="Floor: ${floor.id}" transform="translate(${offsetX}, ${offsetY})">`;
-    svg += generateFloorRectangle(floor, resolvedPositions);
+    svg += generateFloorRectangle(floor, resolvedPositions, variables);
     
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room, 0, 0, resolvedPositions);
+      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext);
     }
     
     // Render connections for this floor
-    svg += generateConnections(floor, floorplan.connections, resolvedPositions);
+    svg += generateConnections(floor, floorplan.connections, resolvedPositions, variables);
     
     svg += "</g>";
   }
@@ -184,15 +198,17 @@ function renderAllFloors(floorplan: Floorplan, options: RenderOptions): string {
 export function renderFloor(
   floor: Floor,
   options: RenderOptions = {},
-  connections: Connection[] = []
+  connections: Connection[] = [],
+  variables?: Map<string, { width: number; height: number }>,
+  styleContext?: StyleContext
 ): string {
   const opts = { ...defaultRenderOptions, ...options };
   
   // Resolve relative positions first
-  const resolution = resolveFloorPositions(floor);
+  const resolution = resolveFloorPositions(floor, variables);
   const resolvedPositions = resolution.positions;
   
-  const bounds = calculateFloorBounds(floor, resolvedPositions);
+  const bounds = calculateFloorBounds(floor, resolvedPositions, variables);
   const padding = opts.padding ?? 0;
 
   const viewBox = `${bounds.minX - padding} ${bounds.minY - padding} ${bounds.width + padding * 2} ${bounds.height + padding * 2}`;
@@ -222,13 +238,13 @@ export function renderFloor(
   svg += `<g class="floorplan" aria-label="Floor: ${floor.id}">`;
 
   if (floor.rooms.length > 0) {
-    svg += generateFloorRectangle(floor, resolvedPositions);
+    svg += generateFloorRectangle(floor, resolvedPositions, variables);
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room, 0, 0, resolvedPositions);
+      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext);
     }
     
     // Render connections for this floor
-    svg += generateConnections(floor, connections, resolvedPositions);
+    svg += generateConnections(floor, connections, resolvedPositions, variables);
   }
 
   svg += "</g></svg>";
@@ -260,3 +276,5 @@ export { resolveFloorPositions, resolveAllPositions, getResolvedPosition } from 
 export type { FloorBounds } from "./floor.js";
 export type { FloorplanThemeOptions } from "./styles.js";
 export type { ResolvedPosition, PositionResolutionResult, PositionResolutionError, OverlapWarning } from "./position-resolver.js";
+export { buildStyleContext, resolveRoomStyle, DEFAULT_STYLE } from "./style-resolver.js";
+export type { StyleContext, ResolvedStyle } from "./style-resolver.js";

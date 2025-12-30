@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { DIMENSIONS } from './constants';
-import { JsonWall, JsonRoom, JsonConnection } from './types';
+import { JsonWall, JsonRoom, JsonConnection, JsonConfig } from './types';
 import { MaterialSet } from './materials';
 import { ConnectionMatcher } from './connection-matcher';
 import { DoorRenderer } from './door-renderer';
@@ -36,11 +36,13 @@ export class WallGenerator {
     allRooms: JsonRoom[],
     connections: JsonConnection[],
     materials: MaterialSet,
-    group: THREE.Group
+    group: THREE.Group,
+    config: JsonConfig = {}
   ): void {
-    const geometry = this.calculateWallGeometry(wall, room);
+    const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
+    const geometry = this.calculateWallGeometry(wall, room, wallThickness);
     const elevation = room.elevation || 0;
-    const wallHeight = wall.wallHeight || room.roomHeight || DIMENSIONS.WALL.HEIGHT;
+    const wallHeight = wall.wallHeight || room.roomHeight || config.default_height || DIMENSIONS.WALL.HEIGHT;
 
     // Create base wall brush (only if not open)
     let wallBrush: Brush | null = null;
@@ -59,7 +61,7 @@ export class WallGenerator {
 
     // Handle explicit wall type (window/door)
     if (wallBrush && (wall.type === 'door' || wall.type === 'window')) {
-      this.addExplicitHole(wall, room, geometry, holes, materials, group, elevation);
+      this.addExplicitHole(wall, room, geometry, holes, materials, group, elevation, config);
     }
 
     // Handle connections (doors between rooms)
@@ -84,7 +86,8 @@ export class WallGenerator {
         materials,
         group,
         elevation,
-        allRooms
+        allRooms,
+        config
       );
     }
 
@@ -100,7 +103,7 @@ export class WallGenerator {
   /**
    * Calculate wall dimensions and position
    */
-  private calculateWallGeometry(wall: JsonWall, room: JsonRoom): WallGeometry {
+  private calculateWallGeometry(wall: JsonWall, room: JsonRoom, wallThickness: number): WallGeometry {
     const centerX = room.x + room.width / 2;
     const centerZ = room.z + room.height / 2;
 
@@ -112,29 +115,29 @@ export class WallGenerator {
 
     switch (wall.direction) {
       case 'top':
-        width = room.width + DIMENSIONS.WALL.THICKNESS;
-        depth = DIMENSIONS.WALL.THICKNESS;
+        width = room.width + wallThickness;
+        depth = wallThickness;
         posX = centerX;
         posZ = room.z;
         isVertical = false;
         break;
       case 'bottom':
-        width = room.width + DIMENSIONS.WALL.THICKNESS;
-        depth = DIMENSIONS.WALL.THICKNESS;
+        width = room.width + wallThickness;
+        depth = wallThickness;
         posX = centerX;
         posZ = room.z + room.height;
         isVertical = false;
         break;
       case 'left':
-        width = DIMENSIONS.WALL.THICKNESS;
-        depth = room.height + DIMENSIONS.WALL.THICKNESS;
+        width = wallThickness;
+        depth = room.height + wallThickness;
         posX = room.x;
         posZ = centerZ;
         isVertical = true;
         break;
       case 'right':
-        width = DIMENSIONS.WALL.THICKNESS;
-        depth = room.height + DIMENSIONS.WALL.THICKNESS;
+        width = wallThickness;
+        depth = room.height + wallThickness;
         posX = room.x + room.width;
         posZ = centerZ;
         isVertical = true;
@@ -154,12 +157,19 @@ export class WallGenerator {
     holes: Brush[],
     materials: MaterialSet,
     group: THREE.Group,
-    elevation: number
+    elevation: number,
+    config: JsonConfig = {}
   ): void {
-    const defaultWidth =
-      wall.type === 'door' ? DIMENSIONS.DOOR.WIDTH : DIMENSIONS.WINDOW.WIDTH;
-    const defaultHeight =
-      wall.type === 'door' ? DIMENSIONS.DOOR.HEIGHT : DIMENSIONS.WINDOW.HEIGHT;
+    // Use config values with fallback to constants
+    const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
+    const defaultDoorWidth = config.door_width ?? DIMENSIONS.DOOR.WIDTH;
+    const defaultDoorHeight = config.door_height ?? DIMENSIONS.DOOR.HEIGHT;
+    const defaultWindowWidth = config.window_width ?? DIMENSIONS.WINDOW.WIDTH;
+    const defaultWindowHeight = config.window_height ?? DIMENSIONS.WINDOW.HEIGHT;
+    const windowSillHeight = config.window_sill ?? DIMENSIONS.WINDOW.SILL_HEIGHT;
+
+    const defaultWidth = wall.type === 'door' ? defaultDoorWidth : defaultWindowWidth;
+    const defaultHeight = wall.type === 'door' ? defaultDoorHeight : defaultWindowHeight;
 
     const holeWidth = wall.width || defaultWidth;
     const holeHeight = wall.height || defaultHeight;
@@ -168,7 +178,7 @@ export class WallGenerator {
       elevation +
       (wall.type === 'door'
         ? holeHeight / 2
-        : DIMENSIONS.WINDOW.SILL_HEIGHT + holeHeight / 2);
+        : windowSillHeight + holeHeight / 2);
 
     let holeX = geometry.posX;
     let holeZ = geometry.posZ;
@@ -196,9 +206,9 @@ export class WallGenerator {
     }
 
     const holeGeom = new THREE.BoxGeometry(
-      geometry.isVertical ? DIMENSIONS.WALL.THICKNESS * 2 : holeWidth,
+      geometry.isVertical ? wallThickness * 2 : holeWidth,
       holeHeight,
-      geometry.isVertical ? holeWidth : DIMENSIONS.WALL.THICKNESS * 2
+      geometry.isVertical ? holeWidth : wallThickness * 2
     );
     const holeBrush = new Brush(holeGeom);
     holeBrush.position.set(holeX, holeY, holeZ);
@@ -234,13 +244,18 @@ export class WallGenerator {
     materials: MaterialSet,
     group: THREE.Group,
     elevation: number,
-    allRooms: JsonRoom[]
+    allRooms: JsonRoom[],
+    config: JsonConfig = {}
   ): void {
+    // Use config values with fallback to constants
+    const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
+    const singleDoorWidth = config.door_width ?? DIMENSIONS.DOOR.WIDTH;
+    const doorHeight = config.door_height ?? DIMENSIONS.DOOR.HEIGHT;
+    
     const doorWidth =
       connection.doorType === 'double-door'
-        ? DIMENSIONS.DOUBLE_DOOR.WIDTH
-        : DIMENSIONS.DOOR.WIDTH;
-    const doorHeight = DIMENSIONS.DOOR.HEIGHT;
+        ? singleDoorWidth * 2  // Double door is 2x single door width
+        : singleDoorWidth;
     const holeY = elevation + doorHeight / 2;
 
     // FIX: Find the source room to ensure canonical positioning
@@ -284,9 +299,9 @@ export class WallGenerator {
     // Add hole brush (only if wall exists)
     if (wallBrush) {
       const holeGeom = new THREE.BoxGeometry(
-        geometry.isVertical ? DIMENSIONS.WALL.THICKNESS * 2 : doorWidth,
+        geometry.isVertical ? wallThickness * 2 : doorWidth,
         doorHeight,
-        geometry.isVertical ? doorWidth : DIMENSIONS.WALL.THICKNESS * 2
+        geometry.isVertical ? doorWidth : wallThickness * 2
       );
       const holeBrush = new Brush(holeGeom);
       holeBrush.position.set(holeX, holeY, holeZ);

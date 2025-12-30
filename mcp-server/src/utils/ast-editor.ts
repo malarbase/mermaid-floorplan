@@ -236,9 +236,11 @@ export class FloorplanAstEditor {
 
   /**
    * Resize a room by updating its size dimensions
+   * Note: Only works for rooms with inline size, not variable references (sizeRef)
    */
   resizeRoom(room: Room, width: number, height: number): boolean {
-    if (!room.size.$cstNode) return false;
+    // Cannot resize rooms that use sizeRef
+    if (!room.size || !room.size.$cstNode) return false;
 
     const sizeCst = room.size.$cstNode;
 
