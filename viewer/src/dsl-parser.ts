@@ -8,8 +8,8 @@
 
 import { EmptyFileSystem, URI, type LangiumDocument } from "langium";
 import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, resolveFloorPositions, resolveVariables, getRoomSize } from "floorplans-language";
-import type { JsonExport, JsonFloor, JsonWall, JsonConfig } from "./types";
+import { createFloorplansServices, convertFloorplanToJson } from "floorplans-language";
+import type { JsonExport } from "./types";
 
 // Initialize Langium services with EmptyFileSystem (browser-compatible)
 const services = createFloorplansServices(EmptyFileSystem);
@@ -39,7 +39,8 @@ export interface ParseResult {
 }
 
 /**
- * Parse a floorplan DSL string and convert to JSON format
+ * Parse a floorplan DSL string and convert to JSON format.
+ * Uses the shared convertFloorplanToJson function from floorplans-language.
  */
 export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult> {
     const errors: ParseError[] = [];
@@ -68,115 +69,21 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
             return { data: null, errors };
         }
 
-        const floorplan = doc.parseResult.value;
-        
-        // Resolve variables from the floorplan
-        const variableResolution = resolveVariables(floorplan);
-        const variables = variableResolution.variables;
+        // Use shared conversion logic (single source of truth)
+        const result = convertFloorplanToJson(doc.parseResult.value);
 
-        // Extract config values
-        const config: JsonConfig = {};
-        if (floorplan.config) {
-            for (const prop of floorplan.config.properties) {
-                switch (prop.name) {
-                    case 'wall_thickness': config.wall_thickness = prop.value; break;
-                    case 'floor_thickness': config.floor_thickness = prop.value; break;
-                    case 'default_height': config.default_height = prop.value; break;
-                    case 'door_width': config.door_width = prop.value; break;
-                    case 'door_height': config.door_height = prop.value; break;
-                    case 'window_width': config.window_width = prop.value; break;
-                    case 'window_height': config.window_height = prop.value; break;
-                    case 'window_sill': config.window_sill = prop.value; break;
-                }
-            }
-        }
-
-        const jsonExport: JsonExport = {
-            floors: [],
-            connections: [],
-            config: Object.keys(config).length > 0 ? config : undefined
-        };
-
-        // Process floors
-        for (let i = 0; i < floorplan.floors.length; i++) {
-            const floor = floorplan.floors[i];
-            const resolution = resolveFloorPositions(floor, variables);
-
-            if (resolution.errors.length > 0) {
-                for (const error of resolution.errors) {
-                    errors.push({
-                        message: `Floor ${floor.id}: ${error.message}`,
-                    });
-                }
-                continue;
-            }
-
-            const jsonFloor: JsonFloor = {
-                id: floor.id,
-                index: i,
-                rooms: [],
-                height: floor.height  // Floor-level default height
-            };
-
-            for (const room of floor.rooms) {
-                const pos = resolution.positions.get(room.name);
-                if (!pos) continue;
-
-                // Get room size (inline or from variable)
-                const roomSize = getRoomSize(room, variables);
-
-                // Map walls
-                const walls: JsonWall[] = [];
-                if (room.walls && room.walls.specifications) {
-                    for (const spec of room.walls.specifications) {
-                        walls.push({
-                            direction: spec.direction as "top" | "bottom" | "left" | "right",
-                            type: spec.type as "solid" | "open" | "door" | "window",
-                            position: spec.position,
-                            isPercentage: spec.unit === '%',
-                            width: spec.size?.width,
-                            height: spec.size?.height,
-                            wallHeight: spec.height
-                        });
-                    }
-                }
-
-                jsonFloor.rooms.push({
-                    name: room.name,
-                    label: room.label,
-                    x: pos.x,
-                    z: pos.y, // Map 2D Y to 3D Z
-                    width: roomSize.width,
-                    height: roomSize.height,
-                    walls: walls,
-                    roomHeight: room.height,
-                    elevation: room.elevation
-                });
-            }
-
-            jsonExport.floors.push(jsonFloor);
-        }
-
-        // Process connections
-        for (const conn of floorplan.connections) {
-            const fromRoomName = conn.from.room.name;
-            const toRoomName = conn.to.room.name;
-
-            if (!fromRoomName || !toRoomName) continue;
-
-            jsonExport.connections.push({
-                fromRoom: fromRoomName,
-                fromWall: conn.from.wall || "unknown",
-                toRoom: toRoomName,
-                toWall: conn.to.wall || "unknown",
-                doorType: conn.doorType,
-                position: conn.position,
-                swing: conn.swing,
-                opensInto: conn.opensInto?.name
+        // Convert conversion errors to parse errors
+        for (const err of result.errors) {
+            errors.push({
+                message: err.floor ? `Floor ${err.floor}: ${err.message}` : err.message,
             });
         }
 
-        return { data: jsonExport, errors: [] };
+        if (errors.length > 0) {
+            return { data: null, errors };
+        }
+
+        return { data: result.data, errors: [] };
 
     } catch (err) {
         errors.push({

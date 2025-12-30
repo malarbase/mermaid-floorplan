@@ -69,3 +69,17 @@ export {
   type StyleContext,
   type ResolvedStyle,
 } from "./style-resolver.js";
+
+// JSON conversion (shared between CLI and browser)
+export {
+  convertFloorplanToJson,
+  type JsonExport,
+  type JsonFloor,
+  type JsonRoom,
+  type JsonWall,
+  type JsonConnection,
+  type JsonConfig,
+  type JsonStyle,
+  type ConversionResult,
+  type ConversionError,
+} from "./json-converter.js";
