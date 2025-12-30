@@ -59,3 +59,13 @@ export {
   blueprintTheme,
   type FloorplanThemeOptions,
 } from "./styles.js";
+
+// Style resolution
+export {
+  buildStyleContext,
+  resolveRoomStyle,
+  getStyleByName,
+  DEFAULT_STYLE,
+  type StyleContext,
+  type ResolvedStyle,
+} from "./style-resolver.js";

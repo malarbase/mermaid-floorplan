@@ -11,15 +11,40 @@ import * as fs from "fs";
 import * as path from "path";
 
 // Define JSON output types
+export interface JsonConfig {
+    wall_thickness?: number;
+    default_height?: number;
+    floor_thickness?: number;
+    door_width?: number;
+    door_height?: number;
+    window_width?: number;
+    window_height?: number;
+    window_sill?: number;
+    default_style?: string;
+}
+
+export interface JsonStyle {
+    name: string;
+    floor_color?: string;
+    wall_color?: string;
+    floor_texture?: string;
+    wall_texture?: string;
+    roughness?: number;
+    metalness?: number;
+}
+
 export interface JsonExport {
     floors: JsonFloor[];
     connections: JsonConnection[];
+    config?: JsonConfig;
+    styles?: JsonStyle[];
 }
 
 export interface JsonFloor {
     id: string;
     rooms: JsonRoom[];
     index: number;
+    height?: number;
 }
 
 export interface JsonRoom {
@@ -32,6 +57,7 @@ export interface JsonRoom {
     walls: JsonWall[];
     roomHeight?: number;
     elevation?: number;
+    style?: string;
 }
 
 export interface JsonWall {
@@ -88,8 +114,40 @@ async function main() {
     const floorplan = doc.parseResult.value;
     const jsonExport: JsonExport = {
         floors: [],
-        connections: []
+        connections: [],
+        config: undefined,
+        styles: []
     };
+
+    // Process config
+    if (floorplan.config) {
+        const config: JsonConfig = {};
+        for (const prop of floorplan.config.properties) {
+            if (prop.name === 'default_style' && prop.styleRef) {
+                config.default_style = prop.styleRef;
+            } else if (prop.value !== undefined) {
+                (config as Record<string, number>)[prop.name] = prop.value;
+            }
+        }
+        if (Object.keys(config).length > 0) {
+            jsonExport.config = config;
+        }
+    }
+
+    // Process styles
+    for (const style of floorplan.styles) {
+        const jsonStyle: JsonStyle = { name: style.name };
+        for (const prop of style.properties) {
+            const key = prop.name as keyof Omit<JsonStyle, 'name'>;
+            if (prop.stringValue) {
+                // Remove quotes from string values
+                (jsonStyle as Record<string, string | number>)[key] = prop.stringValue.replace(/^["']|["']$/g, '');
+            } else if (prop.numberValue !== undefined) {
+                (jsonStyle as Record<string, string | number>)[key] = prop.numberValue;
+            }
+        }
+        jsonExport.styles!.push(jsonStyle);
+    }
 
     // Process floors
     for (let i = 0; i < floorplan.floors.length; i++) {
@@ -107,7 +165,8 @@ async function main() {
         const jsonFloor: JsonFloor = {
             id: floor.id,
             index: i,
-            rooms: []
+            rooms: [],
+            height: floor.height
         };
 
         for (const room of floor.rooms) {
@@ -146,7 +205,8 @@ async function main() {
                 height: room.size.height,
                 walls: walls,
                 roomHeight: room.height,
-                elevation: room.elevation
+                elevation: room.elevation,
+                style: room.styleRef
             });
         }
 

@@ -48,10 +48,13 @@ export function resolveVariables(floorplan: Floorplan): VariableResolutionResult
     }
   }
 
-  // Process config block
+  // Process config block (only numeric properties)
   if (floorplan.config) {
     for (const prop of floorplan.config.properties) {
-      config.set(prop.name, prop.value);
+      if (prop.value !== undefined) {
+        config.set(prop.name, prop.value);
+      }
+      // Note: styleRef properties like 'default_style' are handled separately
     }
   }
 

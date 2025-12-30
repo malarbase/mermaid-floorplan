@@ -14,6 +14,7 @@ import { generateConnections } from "./connection.js";
 import { getStyles, type FloorplanThemeOptions } from "./styles.js";
 import { resolveFloorPositions, type ResolvedPosition, type PositionResolutionResult } from "./position-resolver.js";
 import { resolveVariables } from "./variable-resolver.js";
+import { buildStyleContext, type StyleContext } from "./style-resolver.js";
 
 export interface RenderOptions {
   /** Include XML declaration in output */
@@ -61,10 +62,13 @@ export function render(
   // Resolve variables from the floorplan
   const variableResolution = resolveVariables(floorplan);
   const variables = variableResolution.variables;
+  
+  // Build style context for the floorplan
+  const styleContext = buildStyleContext(floorplan);
 
   // Render all floors if requested
   if (opts.renderAllFloors && floorplan.floors.length > 1) {
-    return renderAllFloors(floorplan, opts, variables);
+    return renderAllFloors(floorplan, opts, variables, styleContext);
   }
 
   // Render specific floor (default: first floor for backward compatibility)
@@ -75,7 +79,7 @@ export function render(
     return '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
   }
 
-  return renderFloor(floor, opts, floorplan.connections, variables);
+  return renderFloor(floor, opts, floorplan.connections, variables, styleContext);
 }
 
 /**
@@ -84,7 +88,8 @@ export function render(
 function renderAllFloors(
   floorplan: Floorplan,
   options: RenderOptions,
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, { width: number; height: number }>,
+  styleContext?: StyleContext
 ): string {
   const opts = { ...defaultRenderOptions, ...options };
   const padding = opts.padding ?? 0;
@@ -174,7 +179,7 @@ function renderAllFloors(
     svg += generateFloorRectangle(floor, resolvedPositions, variables);
     
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables);
+      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext);
     }
     
     // Render connections for this floor
@@ -194,7 +199,8 @@ export function renderFloor(
   floor: Floor,
   options: RenderOptions = {},
   connections: Connection[] = [],
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, { width: number; height: number }>,
+  styleContext?: StyleContext
 ): string {
   const opts = { ...defaultRenderOptions, ...options };
   
@@ -234,7 +240,7 @@ export function renderFloor(
   if (floor.rooms.length > 0) {
     svg += generateFloorRectangle(floor, resolvedPositions, variables);
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables);
+      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext);
     }
     
     // Render connections for this floor
@@ -270,3 +276,5 @@ export { resolveFloorPositions, resolveAllPositions, getResolvedPosition } from 
 export type { FloorBounds } from "./floor.js";
 export type { FloorplanThemeOptions } from "./styles.js";
 export type { ResolvedPosition, PositionResolutionResult, PositionResolutionError, OverlapWarning } from "./position-resolver.js";
+export { buildStyleContext, resolveRoomStyle, DEFAULT_STYLE } from "./style-resolver.js";
+export type { StyleContext, ResolvedStyle } from "./style-resolver.js";

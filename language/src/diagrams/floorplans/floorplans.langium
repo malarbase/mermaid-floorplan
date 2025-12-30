@@ -1,12 +1,26 @@
 grammar Floorplans
 
-// Entry rule - defines, config, floors, then connections
+// Entry rule - defines, styles, config, floors, then connections
 entry Floorplan:
     'floorplan' 
     defines+=DefineStatement*
+    styles+=StyleBlock*
     config=ConfigBlock?
     floors+=Floor* 
     connections+=Connection*;
+
+// Style block for material definitions
+StyleBlock:
+    'style' name=ID '{' 
+        properties+=StyleProperty (',' properties+=StyleProperty)* 
+    '}';
+
+StyleProperty:
+    name=STYLE_KEY ':' (stringValue=STRING | numberValue=NUMBER);
+
+// Style property keys
+STYLE_KEY returns string:
+    'floor_color' | 'wall_color' | 'floor_texture' | 'wall_texture' | 'roughness' | 'metalness';
 
 // Variable definitions for dimensions
 DefineStatement:
@@ -19,13 +33,13 @@ ConfigBlock:
     '}';
 
 ConfigProperty:
-    name=CONFIG_KEY ':' value=NUMBER;
+    name=CONFIG_KEY ':' (value=NUMBER | styleRef=ID);
 
 // Config property keys
 CONFIG_KEY returns string:
     'wall_thickness' | 'floor_thickness' | 'default_height' |
     'door_width' | 'door_height' |
-    'window_width' | 'window_height' | 'window_sill';
+    'window_width' | 'window_height' | 'window_sill' | 'default_style';
 
 // Floor definition
 Floor:
@@ -46,7 +60,8 @@ Room:
     'walls' walls=WallSpec
     relativePosition=RelativePosition?
     ('label' label=STRING)?
-    ('composed' 'of' '[' subRooms+=Room* ']')?;
+    ('composed' 'of' '[' subRooms+=Room* ']')?
+    ('style' styleRef=ID)?;
 
 // Relative positioning - places room relative to another room
 RelativePosition:

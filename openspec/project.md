@@ -217,8 +217,54 @@ floorplan
 | `window_width` | Standard window width | 1.5 |
 | `window_height` | Standard window height | 1.5 |
 | `window_sill` | Window sill height from floor | 0.9 |
+| `default_style` | Default style name for rooms | None |
 
 **Height resolution priority:** Room height > Floor height > Config `default_height` > Constant (3.35)
+
+### Styles and Materials
+Styles define reusable visual properties for rooms. Define styles once, apply to multiple rooms.
+
+```
+floorplan
+  style Modern {
+    floor_color: "#E0E0E0",
+    wall_color: "#909090",
+    roughness: 0.5
+  }
+  
+  style Rustic {
+    floor_color: "#8B4513",
+    floor_texture: "textures/oak.jpg",
+    wall_color: "#D2B48C"
+  }
+  
+  config { default_style: Modern }
+  
+  floor Ground {
+    room Kitchen at (0,0) size (10 x 10) walls [...] style Rustic
+    room Office at (10,0) size (8 x 10) walls [...]  # uses Modern (default)
+  }
+```
+
+**Style Properties:**
+| Property | Type | Description | Target |
+|----------|------|-------------|--------|
+| `floor_color` | Hex string | Floor fill color (e.g., `"#8B4513"`) | SVG + 3D |
+| `wall_color` | Hex string | Wall fill color | SVG + 3D |
+| `floor_texture` | URL string | Floor texture path (e.g., `"textures/oak.jpg"`) | 3D only |
+| `wall_texture` | URL string | Wall texture path | 3D only |
+| `roughness` | Number 0-1 | PBR roughness | 3D only |
+| `metalness` | Number 0-1 | PBR metalness | 3D only |
+
+**Style Resolution Order:**
+1. Room's explicit `style <name>` clause
+2. `default_style` from config block
+3. Built-in defaults (floor: #E0E0E0, wall: #000000)
+
+**Notes:**
+- SVG rendering: Uses colors only (textures are ignored)
+- 3D viewer: Supports colors, textures, and PBR properties
+- Styles are floorplan-scoped (available to all floors)
 
 ### Room Properties
 | Property | Syntax | Example |
@@ -229,6 +275,7 @@ floorplan
 | Size (variable) | `size <varname>` | `size standard_room` |
 | Walls | `walls [top: T, right: T, bottom: T, left: T]` | `walls [top: solid, right: door, bottom: window, left: open]` |
 | Label | `label "text"` | `label "cozy room"` |
+| Style | `style <name>` | `style Modern` |
 | Sub-rooms | `composed of [...]` | See FlexArea example above |
 
 ### Relative Positioning Directions
