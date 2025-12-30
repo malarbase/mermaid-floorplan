@@ -15,6 +15,7 @@ import {
   analyzeWallOwnership, 
   WallSegment,
 } from './wall-ownership';
+import { reassignMaterialsByNormal } from './csg-utils';
 
 interface WallGeometry {
   width: number;
@@ -345,6 +346,10 @@ export class WallGenerator {
 
   /**
    * Perform CSG with material array preservation
+   * 
+   * After CSG operations, the geometry's material groups are destroyed.
+   * This method reassigns materials based on face normals to preserve
+   * per-face material assignments for shared walls.
    */
   private performCSGWithMaterialArray(
     wallBrush: Brush,
@@ -356,8 +361,9 @@ export class WallGenerator {
       for (const hole of holes) {
         currentBrush = this.csgEvaluator.evaluate(currentBrush, hole, SUBTRACTION);
       }
-      // CSG result needs materials reapplied
+      // CSG destroys material groups - reassign based on face normals
       currentBrush.material = materials;
+      reassignMaterialsByNormal(currentBrush.geometry, materials.length);
       currentBrush.castShadow = true;
       currentBrush.receiveShadow = true;
       return currentBrush;
