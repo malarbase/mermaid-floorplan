@@ -83,3 +83,18 @@ export {
   type ConversionResult,
   type ConversionError,
 } from "./json-converter.js";
+
+// Unified Generator API (following Langium generator pattern)
+export {
+  generate,
+  generateToSvg,
+  generateToJson,
+  type GeneratorFormat,
+  type GeneratorOptions,
+  type SvgGeneratorOptions,
+  type JsonGeneratorOptions,
+  type GeneratorResult,
+  type SvgGeneratorResult,
+  type JsonGeneratorResult,
+  type GeneratorError,
+} from "./generator.js";

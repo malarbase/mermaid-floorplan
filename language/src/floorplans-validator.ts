@@ -13,7 +13,8 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkConnectionOverlaps, 
       validator.checkConnectionWallTypes,
       validator.checkStyleReferences,
-      validator.checkDuplicateStyleNames
+      validator.checkDuplicateStyleNames,
+      validator.checkSharedWallConflicts
     ],
     StyleProperty: [validator.checkStylePropertyValue]
   };
@@ -329,6 +330,209 @@ export class FloorplansValidator {
     }
   }
   
+  /**
+   * Check for conflicts on shared walls between adjacent rooms.
+   * Detects wall type mismatches and height differences.
+   */
+  checkSharedWallConflicts(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    for (const floor of floorplan.floors) {
+      this.checkFloorSharedWalls(floor, floorplan, accept);
+    }
+  }
+
+  /**
+   * Check shared walls within a floor
+   */
+  private checkFloorSharedWalls(floor: Floor, floorplan: Floorplan, accept: ValidationAcceptor): void {
+    const rooms = this.collectAllRooms(floor);
+    const roomMap = new Map<string, Room>();
+    for (const room of rooms) {
+      roomMap.set(room.name, room);
+    }
+
+    // Get room bounds for adjacency detection
+    const roomBounds = this.computeRoomBounds(rooms, floorplan);
+
+    // Check each pair of rooms for shared walls
+    const checkedPairs = new Set<string>();
+    
+    for (const [roomAName, boundsA] of roomBounds) {
+      for (const [roomBName, boundsB] of roomBounds) {
+        if (roomAName === roomBName) continue;
+        
+        // Skip if already checked this pair
+        const pairKey = [roomAName, roomBName].sort().join('|');
+        if (checkedPairs.has(pairKey)) continue;
+        checkedPairs.add(pairKey);
+
+        const roomA = roomMap.get(roomAName);
+        const roomB = roomMap.get(roomBName);
+        if (!roomA || !roomB) continue;
+
+        // Check if rooms share a wall
+        const sharedWall = this.findSharedWall(boundsA, boundsB);
+        if (!sharedWall) continue;
+
+        // Check wall type conflicts
+        const wallTypeA = this.getRoomWallType(roomA, sharedWall.wallA);
+        const wallTypeB = this.getRoomWallType(roomB, sharedWall.wallB);
+
+        if (wallTypeA && wallTypeB && wallTypeA !== wallTypeB) {
+          accept("warning", 
+            `Shared wall conflict: ${roomAName}.${sharedWall.wallA} is '${wallTypeA}' but ${roomBName}.${sharedWall.wallB} is '${wallTypeB}'. ` +
+            `Adjacent walls should have matching types for consistent rendering.`,
+            { node: roomA }
+          );
+        }
+
+        // Check height conflicts
+        const heightA = this.getRoomHeight(roomA, floorplan);
+        const heightB = this.getRoomHeight(roomB, floorplan);
+        
+        if (heightA !== heightB) {
+          accept("warning",
+            `Height mismatch at shared wall: ${roomAName} (${heightA}m) and ${roomBName} (${heightB}m) have different heights. ` +
+            `This may cause visual inconsistencies in 3D rendering.`,
+            { node: roomA }
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Collect all rooms from a floor including sub-rooms
+   */
+  private collectAllRooms(floor: Floor): Room[] {
+    const result: Room[] = [];
+    
+    const collect = (rooms: Room[]) => {
+      for (const room of rooms) {
+        result.push(room);
+        if (room.subRooms.length > 0) {
+          collect(room.subRooms);
+        }
+      }
+    };
+    
+    collect(floor.rooms);
+    return result;
+  }
+
+  /**
+   * Compute room bounds for adjacency detection
+   */
+  private computeRoomBounds(rooms: Room[], floorplan: Floorplan): Map<string, { x: number; z: number; width: number; height: number }> {
+    const bounds = new Map<string, { x: number; z: number; width: number; height: number }>();
+    
+    // Build variable map for size resolution
+    const variables = new Map<string, { width: number; height: number }>();
+    for (const def of floorplan.defines) {
+      if (def.value) {
+        variables.set(def.name, { width: def.value.width, height: def.value.height });
+      }
+    }
+
+    // Simple resolution - only handles absolute positions for now
+    // A full implementation would integrate with position-resolver.ts
+    for (const room of rooms) {
+      let x = 0, z = 0, width = 10, height = 10;
+      
+      if (room.position) {
+        x = room.position.x;
+        z = room.position.y;
+      }
+      
+      if (room.size) {
+        width = room.size.width;
+        height = room.size.height;
+      } else if (room.sizeRef) {
+        const varSize = variables.get(room.sizeRef);
+        if (varSize) {
+          width = varSize.width;
+          height = varSize.height;
+        }
+      }
+
+      bounds.set(room.name, { x, z, width, height });
+    }
+
+    return bounds;
+  }
+
+  /**
+   * Find if two rooms share a wall and return the wall directions
+   */
+  private findSharedWall(
+    boundsA: { x: number; z: number; width: number; height: number },
+    boundsB: { x: number; z: number; width: number; height: number },
+    tolerance: number = 0.5
+  ): { wallA: string; wallB: string } | null {
+    // Check if A's right wall touches B's left wall
+    if (Math.abs((boundsA.x + boundsA.width) - boundsB.x) < tolerance) {
+      // Check vertical overlap
+      if (boundsA.z < boundsB.z + boundsB.height && boundsA.z + boundsA.height > boundsB.z) {
+        return { wallA: 'right', wallB: 'left' };
+      }
+    }
+
+    // Check if A's left wall touches B's right wall
+    if (Math.abs(boundsA.x - (boundsB.x + boundsB.width)) < tolerance) {
+      if (boundsA.z < boundsB.z + boundsB.height && boundsA.z + boundsA.height > boundsB.z) {
+        return { wallA: 'left', wallB: 'right' };
+      }
+    }
+
+    // Check if A's bottom wall touches B's top wall
+    if (Math.abs((boundsA.z + boundsA.height) - boundsB.z) < tolerance) {
+      // Check horizontal overlap
+      if (boundsA.x < boundsB.x + boundsB.width && boundsA.x + boundsA.width > boundsB.x) {
+        return { wallA: 'bottom', wallB: 'top' };
+      }
+    }
+
+    // Check if A's top wall touches B's bottom wall
+    if (Math.abs(boundsA.z - (boundsB.z + boundsB.height)) < tolerance) {
+      if (boundsA.x < boundsB.x + boundsB.width && boundsA.x + boundsA.width > boundsB.x) {
+        return { wallA: 'top', wallB: 'bottom' };
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Get the wall type for a specific direction
+   */
+  private getRoomWallType(room: Room, direction: string): string | undefined {
+    if (!room.walls?.specifications) return undefined;
+    
+    const spec = room.walls.specifications.find(s => s.direction === direction);
+    return spec?.type;
+  }
+
+  /**
+   * Get room height with fallback to config default
+   */
+  private getRoomHeight(room: Room, floorplan: Floorplan): number {
+    // Check room's explicit height
+    if (room.height !== undefined) {
+      return room.height;
+    }
+    
+    // Check config for default_height
+    if (floorplan.config) {
+      for (const prop of floorplan.config.properties) {
+        if (prop.name === 'default_height' && prop.value !== undefined) {
+          return prop.value;
+        }
+      }
+    }
+    
+    // Return default
+    return 3.35;
+  }
+
   /**
    * Validate style property values (hex colors, numeric ranges)
    */

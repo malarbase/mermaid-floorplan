@@ -198,5 +198,76 @@ export class MaterialFactory {
     }
     textureCache.clear();
   }
+
+  /**
+   * Create a 6-material array for per-face wall rendering.
+   * Used for shared walls where interior and exterior faces need different colors.
+   * 
+   * BoxGeometry face order:
+   *   0: +X (right side)
+   *   1: -X (left side)
+   *   2: +Y (top)
+   *   3: -Y (bottom)
+   *   4: +Z (front)
+   *   5: -Z (back)
+   * 
+   * @param ownerStyle Style of the wall owner (used for sides, top, bottom, exterior)
+   * @param adjacentStyle Style of the adjacent room (used for interior face)
+   * @param wallDirection Direction of the wall to determine which face is interior
+   * @returns Array of 6 materials for BoxGeometry
+   */
+  static createPerFaceWallMaterials(
+    ownerStyle: MaterialStyle | undefined,
+    adjacentStyle: MaterialStyle | undefined,
+    wallDirection: 'top' | 'bottom' | 'left' | 'right'
+  ): THREE.MeshStandardMaterial[] {
+    const ownerMat = this.createWallMaterial(ownerStyle);
+    const adjMat = adjacentStyle 
+      ? this.createWallMaterial(adjacentStyle)
+      : ownerMat;
+
+    // Default: all faces use owner material
+    const materials: THREE.MeshStandardMaterial[] = [
+      ownerMat,  // +X
+      ownerMat,  // -X
+      ownerMat,  // +Y (top)
+      ownerMat,  // -Y (bottom)
+      ownerMat,  // +Z
+      ownerMat,  // -Z
+    ];
+
+    // Set exterior face based on wall direction
+    // The exterior face is the one facing OUT toward the adjacent room
+    // 
+    // For a left wall of owner room:
+    //   - The wall is at the owner's left edge (lower X)
+    //   - +X face points INTO the owner room (should be owner color)
+    //   - -X face points OUT toward adjacent room (should be adjacent color)
+    //
+    // For a right wall of owner room:
+    //   - The wall is at the owner's right edge (higher X)
+    //   - +X face points OUT toward adjacent room (should be adjacent color)
+    //   - -X face points INTO the owner room (should be owner color)
+    switch (wallDirection) {
+      case 'top':
+        // Top wall: -Z face points toward adjacent room (above in world space)
+        materials[5] = adjMat;
+        break;
+      case 'bottom':
+        // Bottom wall: +Z face points toward adjacent room (below in world space)
+        materials[4] = adjMat;
+        break;
+      case 'left':
+        // Left wall: -X face points toward adjacent room (to the left)
+        materials[1] = adjMat;
+        break;
+      case 'right':
+        // Right wall: +X face points toward adjacent room (to the right)
+        materials[0] = adjMat;
+        break;
+    }
+
+    return materials;
+  }
 }
 

@@ -16,7 +16,7 @@
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
 import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, renderFloor, render } from "floorplans-language";
+import { createFloorplansServices, renderFloor, render, resolveVariables, buildStyleContext } from "floorplans-language";
 import { svgToPng } from "floorplans-mcp-server/utils/renderer";
 import * as fs from "fs";
 import * as path from "path";
@@ -114,6 +114,11 @@ async function main() {
   console.log(`Found ${floorplan.connections.length} connection(s)`);
   console.log(`Scale: ${options.scale}x\n`);
 
+  // Resolve variables and build style context
+  const variableResolution = resolveVariables(floorplan);
+  const variables = variableResolution.variables;
+  const styleContext = buildStyleContext(floorplan);
+
   // Render individual floors
   for (let i = 0; i < floorplan.floors.length; i++) {
     const floor = floorplan.floors[i];
@@ -122,7 +127,7 @@ async function main() {
       includeStyles: true,
       padding: 2,
       scale: options.scale,
-    }, floorplan.connections);
+    }, floorplan.connections, variables, styleContext);
 
     if (options.generateSvg) {
       const svgPath = path.join(outputDirPath, `${baseName}-${floor.id}.svg`);

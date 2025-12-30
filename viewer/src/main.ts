@@ -4,7 +4,7 @@ import { Evaluator } from 'three-bvh-csg';
 import { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from './types';
 import { DIMENSIONS, COLORS } from './constants';
 import { MaterialFactory, MaterialStyle } from './materials';
-import { WallGenerator } from './wall-generator';
+import { WallGenerator, StyleResolver } from './wall-generator';
 import { parseFloorplanDSL, isFloorplanFile, isJsonFile } from './dsl-parser';
 
 class Viewer {
@@ -197,6 +197,17 @@ class Viewer {
         // Height resolution priority: room > floor > config > constant
         const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
         const floorDefault = floorData.height ?? globalDefault;
+
+        // Prepare all rooms with defaults for wall ownership detection
+        const allRoomsWithDefaults = floorData.rooms.map(r => ({
+            ...r,
+            roomHeight: r.roomHeight ?? floorDefault
+        }));
+
+        // Set style resolver for wall ownership detection
+        // This allows the wall generator to get styles for adjacent rooms
+        const styleResolver: StyleResolver = (room: JsonRoom) => this.resolveRoomStyle(room);
+        this.wallGenerator.setStyleResolver(styleResolver);
         
         floorData.rooms.forEach(room => {
             // Apply default height to room if not specified
@@ -216,11 +227,12 @@ class Viewer {
             group.add(floorMesh);
 
             // 2. Walls with doors, windows, and connections
+            // Now uses wall ownership detection to prevent Z-fighting
             roomWithDefaults.walls.forEach(wall => {
                 this.wallGenerator.generateWall(
                     wall,
                     roomWithDefaults,
-                    floorData.rooms.map(r => ({ ...r, roomHeight: r.roomHeight ?? floorDefault })),
+                    allRoomsWithDefaults,
                     this.connections,
                     materials,
                     group,
