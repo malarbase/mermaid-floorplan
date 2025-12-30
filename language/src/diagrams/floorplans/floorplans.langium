@@ -23,11 +23,13 @@ ConfigProperty:
 
 // Config property keys
 CONFIG_KEY returns string:
-    'wall_thickness' | 'door_width' | 'window_width' | 'default_height';
+    'wall_thickness' | 'floor_thickness' | 'default_height' |
+    'door_width' | 'door_height' |
+    'window_width' | 'window_height' | 'window_sill';
 
 // Floor definition
 Floor:
-    'floor' id=ID '{' 
+    'floor' id=ID ('height' height=NUMBER)? '{' 
         rooms+=Room*
     '}';
 

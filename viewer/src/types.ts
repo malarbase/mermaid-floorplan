@@ -1,12 +1,28 @@
+export interface JsonConfig {
+    // Wall dimensions
+    wall_thickness?: number;
+    default_height?: number;
+    floor_thickness?: number;
+    // Door dimensions
+    door_width?: number;
+    door_height?: number;
+    // Window dimensions
+    window_width?: number;
+    window_height?: number;
+    window_sill?: number;
+}
+
 export interface JsonExport {
     floors: JsonFloor[];
     connections: JsonConnection[];
+    config?: JsonConfig;
 }
 
 export interface JsonFloor {
     id: string;
     index: number;
     rooms: JsonRoom[];
+    height?: number;  // Floor-level default height
 }
 
 export interface JsonRoom {

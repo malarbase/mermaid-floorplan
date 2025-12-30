@@ -5,6 +5,7 @@ Mermaid Floorplan is a domain-specific language (DSL) for defining architectural
 
 - A grammar-based parser for the floorplan DSL
 - Real-time SVG rendering of floorplans
+- 3D visualization with Three.js (CSG-based wall rendering, exploded view)
 - A web-based editor with syntax highlighting
 - AI-powered chat interface for natural language floorplan modifications
 - MCP server for AI assistant integration (Cursor, Claude Desktop)
@@ -54,10 +55,11 @@ volta install node@20
 - **Comments:** Use `#` for single-line and `/* */` for multi-line in the DSL; standard `//` and `/* */` in TypeScript
 
 ### Architecture Patterns
-- **Monorepo Structure:** npm workspaces with three packages:
+- **Monorepo Structure:** npm workspaces with four packages:
   - Root package: Web demo app (Vite-based)
   - `language/`: Langium grammar and parser (standalone package)
   - `mcp-server/`: Model Context Protocol server for AI assistant integration
+  - `viewer/`: Three.js-based 3D floorplan viewer
 - **Separation of Concerns:**
   - Grammar definition (`floorplans.langium`) → Parser generation
   - Renderer (`src/renderer.ts`) → SVG output
@@ -107,6 +109,8 @@ floorplan
 - **Multi-Floor:** Multiple floors defined in a single floorplan, rendered individually or together
 - **Variables:** Named dimension values defined with `define` keyword for reuse across rooms
 - **Config Block:** Global configuration for rendering defaults (wall thickness, door width, etc.)
+- **3D Viewer:** Three.js-based visualization with CSG wall rendering and camera controls
+- **Exploded View:** 3D viewer mode that vertically separates floors to reveal layouts underneath
 
 ## Important Constraints
 - Parser must be regenerated when grammar changes (`npm run langium:generate`)
@@ -154,6 +158,7 @@ npm run dev
 | `npm run test` | Run parser tests |
 | `npm run mcp:build` | Build the MCP server |
 | `npm run mcp:start` | Start the MCP server (stdio transport) |
+| `npm run viewer` | Build and open the 3D viewer |
 
 ## DSL Reference
 
@@ -199,8 +204,21 @@ floorplan
 | Define variable | `define <name> (w x h)` | `define standard_bed (12 x 12)` |
 | Use variable | `size <name>` | `size standard_bed` |
 | Config block | `config { key: value, ... }` | `config { wall_thickness: 0.3 }` |
+| Floor height | `floor <id> height <n> { ... }` | `floor Ground height 4.0 { ... }` |
 
-**Supported config keys:** `wall_thickness`, `door_width`, `window_width`, `default_height`
+**Supported config keys:**
+| Key | Description | Default |
+|-----|-------------|---------|
+| `wall_thickness` | Wall thickness in units | 0.2 |
+| `floor_thickness` | Floor slab thickness | 0.2 |
+| `default_height` | Default wall/ceiling height | 3.35 |
+| `door_width` | Standard door width | 1.0 |
+| `door_height` | Standard door height | 2.1 |
+| `window_width` | Standard window width | 1.5 |
+| `window_height` | Standard window height | 1.5 |
+| `window_sill` | Window sill height from floor | 0.9 |
+
+**Height resolution priority:** Room height > Floor height > Config `default_height` > Constant (3.35)
 
 ### Room Properties
 | Property | Syntax | Example |
@@ -264,6 +282,15 @@ When a floorplan contains multiple floors:
 - **Specific floor:** Use `floorIndex` option to render a specific floor
 - **All floors:** Use `renderAllFloors` with layout `stacked` (vertical) or `sideBySide` (horizontal)
 - **Floor labels:** Displayed above each floor when rendering multiple floors
+
+### 3D Viewer
+The project includes a Three.js-based 3D viewer (`viewer/`) for visualizing floorplans:
+- **CSG Rendering:** Uses Constructive Solid Geometry for clean wall joints and door/window cutouts
+- **Camera Controls:** OrbitControls for rotating, panning, and zooming
+- **Exploded View:** Slider to vertically separate floors for multi-story inspection
+- **Configurable Dimensions:** Uses DSL `config` block values for wall thickness, heights, door/window sizes
+- **Per-Floor Heights:** Supports different ceiling heights per floor via `floor <id> height <n> { ... }`
+- **Run:** `npm run viewer` builds and opens the 3D visualization
 
 ## Live Editing Behavior
 The app provides **real-time SVG rendering**:

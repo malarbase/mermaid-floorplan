@@ -51,7 +51,7 @@ test: ## Run tests
 # ===============================
 
 langium: ## Generate Langium grammar artifacts
-	npm run langium:generate
+	yes | npm run langium:generate
 
 langium-watch: ## Watch and regenerate Langium artifacts
 	npm run langium:watch

@@ -9,7 +9,7 @@
 import { EmptyFileSystem, URI, type LangiumDocument } from "langium";
 import type { Floorplan } from "floorplans-language";
 import { createFloorplansServices, resolveFloorPositions, resolveVariables, getRoomSize } from "floorplans-language";
-import type { JsonExport, JsonFloor, JsonWall } from "./types";
+import type { JsonExport, JsonFloor, JsonWall, JsonConfig } from "./types";
 
 // Initialize Langium services with EmptyFileSystem (browser-compatible)
 const services = createFloorplansServices(EmptyFileSystem);
@@ -69,14 +69,33 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
         }
 
         const floorplan = doc.parseResult.value;
-        const jsonExport: JsonExport = {
-            floors: [],
-            connections: []
-        };
-
+        
         // Resolve variables from the floorplan
         const variableResolution = resolveVariables(floorplan);
         const variables = variableResolution.variables;
+
+        // Extract config values
+        const config: JsonConfig = {};
+        if (floorplan.config) {
+            for (const prop of floorplan.config.properties) {
+                switch (prop.name) {
+                    case 'wall_thickness': config.wall_thickness = prop.value; break;
+                    case 'floor_thickness': config.floor_thickness = prop.value; break;
+                    case 'default_height': config.default_height = prop.value; break;
+                    case 'door_width': config.door_width = prop.value; break;
+                    case 'door_height': config.door_height = prop.value; break;
+                    case 'window_width': config.window_width = prop.value; break;
+                    case 'window_height': config.window_height = prop.value; break;
+                    case 'window_sill': config.window_sill = prop.value; break;
+                }
+            }
+        }
+
+        const jsonExport: JsonExport = {
+            floors: [],
+            connections: [],
+            config: Object.keys(config).length > 0 ? config : undefined
+        };
 
         // Process floors
         for (let i = 0; i < floorplan.floors.length; i++) {
@@ -95,7 +114,8 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
             const jsonFloor: JsonFloor = {
                 id: floor.id,
                 index: i,
-                rooms: []
+                rooms: [],
+                height: floor.height  // Floor-level default height
             };
 
             for (const room of floor.rooms) {
