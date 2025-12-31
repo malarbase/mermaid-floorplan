@@ -1,105 +1,141 @@
 ## Why
 
-The current floorplan DSL uses a custom `config { key: value }` syntax that differs from Mermaid.js's configuration conventions. Aligning with Mermaid's configuration patterns would:
-1. Improve consistency for users familiar with Mermaid diagrams
-2. Enable future upstream contribution to Mermaid.js
-3. Support YAML frontmatter for configuration (Mermaid v10.5.0+)
-4. Distinguish between site-level defaults and diagram-level overrides
+The floorplan DSL has a theme system in code (`styles.ts` with `darkTheme`, `blueprintTheme` presets) but no way for users to select themes from the DSL. This gap prevents diagram authors from customizing rendering without API access. Additionally, aligning with Mermaid.js configuration patterns would:
+1. Enable future upstream contribution to Mermaid.js
+2. Support YAML frontmatter for diagram metadata (Mermaid v10.5.0+)
+3. Allow theme selection directly in floorplan files
+4. Provide consistent configuration experience across 2D and 3D viewers
 
 ## What Changes
 
-### Syntax Changes
+### 1. Theme Selection in Config Block
 
-1. **YAML Frontmatter Support** - Add optional YAML frontmatter block at the start of diagrams:
-   ```
-   ---
-   title: Villa Layout
-   config:
-     theme: blueprint
-     wallThickness: 0.3
-     floorplan:
-       doorWidth: 1.0
-       windowHeight: 1.5
-   ---
-   floorplan
-     floor Ground { ... }
-   ```
+Add `theme` as a valid config property:
 
-2. **Directive Support (deprecated path, but compatible)** - Support `%%{init: {...}}%%` directives inline:
-   ```
-   %%{init: {"floorplan": {"wallThickness": 0.3}}}%%
-   floorplan
-     floor Ground { ... }
-   ```
+```
+floorplan
+  config { theme: dark, wall_thickness: 0.3 }
+  floor Ground { ... }
+```
 
-3. **Keep Current Config Block** - Maintain existing `config { ... }` syntax as a valid alternative (diagram-local config), but namespace it under `floorplan` in frontmatter context.
+Supported theme values: `default`, `dark`, `blueprint` (matching existing presets in `styles.ts`).
 
-### Configuration Hierarchy
+### 2. Dark Mode Toggle (Mermaid-aligned)
 
-Following Mermaid's pattern:
-1. **Default Config** - Built-in defaults (wall_thickness: 0.2, etc.)
-2. **Site Config** - Set via API `initialize()` call (not DSL)
-3. **Diagram Config** - Frontmatter or `config { }` block in the diagram
+Add `darkMode` boolean property matching [Mermaid's config schema](https://mermaid.js.org/config/schema-docs/config):
 
-### Property Naming Convention
+```
+config { darkMode: true }
+```
 
-| Current (snake_case) | Mermaid-aligned (camelCase) | 
-|---------------------|----------------------------|
-| `wall_thickness` | `wallThickness` |
-| `floor_thickness` | `floorThickness` |
-| `default_height` | `defaultHeight` |
-| `door_width` | `doorWidth` |
-| `door_height` | `doorHeight` |
-| `window_width` | `windowWidth` |
-| `window_height` | `windowHeight` |
-| `window_sill` | `windowSill` |
-| `default_style` | `defaultStyle` |
+When `darkMode: true`, the system uses the dark theme preset. This provides a quick toggle without specifying a full theme name.
 
-**Migration:** Accept both snake_case and camelCase during transition period (normalize internally).
+### 3. YAML Frontmatter Support
 
-### New Top-Level Config Properties
+Add support for YAML frontmatter at the start of diagrams for Mermaid compatibility:
 
-Align with Mermaid's global configuration options:
+```yaml
+---
+title: Villa Layout
+config:
+  theme: blueprint
+  fontFamily: "Roboto, sans-serif"
+  wallThickness: 0.3
+---
+floorplan
+  floor Ground { ... }
+```
+
+**Key alignment**: Frontmatter uses **camelCase** (Mermaid convention), while inline config keeps **snake_case** (existing DSL convention). Both are normalized internally.
+
+### 4. Naming Convention Support
+
+Support both naming conventions to align with Mermaid while maintaining backward compatibility:
+
+| Mermaid (camelCase) | Floorplan DSL (snake_case) | Normalized Key |
+|---------------------|----------------------------|----------------|
+| `fontFamily` | `font_family` | `fontFamily` |
+| `fontSize` | `font_size` | `fontSize` |
+| `wallThickness` | `wall_thickness` | `wallThickness` |
+| `showLabels` | `show_labels` | `showLabels` |
+| `showDimensions` | `show_dimensions` | `showDimensions` |
+| `darkMode` | `dark_mode` | `darkMode` |
+
+- **Frontmatter**: Prefer camelCase (Mermaid-native context)
+- **Inline config**: Accept both, normalize to camelCase internally
+- **Existing floorplans**: Continue to work unchanged
+
+### 5. Font Configuration
+
+Add font properties matching [Mermaid's FontConfig](https://mermaid.js.org/config/schema-docs/config):
+
+```
+config { fontFamily: "Roboto, sans-serif", fontSize: 14 }
+```
+
+Or snake_case:
+```
+config { font_family: "Roboto", font_size: 14 }
+```
+
+### 6. Display Toggle Properties
 
 | Property | Type | Description | Default |
 |----------|------|-------------|---------|
-| `theme` | string | Theme preset name | `"default"` |
-| `fontFamily` | string | Font for labels | `"Arial, sans-serif"` |
-| `fontSize` | number | Base font size (px) | `12` |
-| `logLevel` | number | 0-5, debugging verbosity | `2` |
-| `secure` | string[] | Properties that cannot be overridden | `[]` |
+| `showLabels` / `show_labels` | boolean | Display room name labels | `true` |
+| `showDimensions` / `show_dimensions` | boolean | Display dimension annotations | `false` |
 
-### Floorplan-Specific Config (nested under `floorplan:`)
+### 7. 3D Viewer Theme Controls
 
-| Property | Type | Description | Default |
-|----------|------|-------------|---------|
-| `wallThickness` | number | Wall thickness in units | `0.2` |
-| `floorThickness` | number | Floor slab thickness | `0.2` |
-| `defaultHeight` | number | Default wall height | `3.35` |
-| `doorWidth` | number | Standard door width | `1.0` |
-| `doorHeight` | number | Standard door height | `2.1` |
-| `windowWidth` | number | Standard window width | `1.5` |
-| `windowHeight` | number | Standard window height | `1.5` |
-| `windowSill` | number | Window sill height | `0.9` |
-| `defaultStyle` | string | Default style name | `null` |
-| `showLabels` | boolean | Display room labels | `true` |
-| `showDimensions` | boolean | Display dimension annotations | `false` |
-| `dimensionUnit` | string | Unit for dimensions display | `"m"` |
+Add UI controls to the 3D viewer for toggling visual themes:
+
+- **Background theme toggle** (light/dark) - Changes scene background color
+- **Sync with DSL** - When `darkMode` or `theme` is set in DSL, 3D viewer respects it
+- **Override control** - UI toggle allows temporary override without modifying DSL
+
+Current hardcoded background (`COLORS.BACKGROUND: 0xf5f5f7`) will become configurable.
 
 ## Impact
 
-- **Affected specs:** `dsl-grammar`
-- **Affected code:** 
-  - `language/src/diagrams/floorplans/floorplans.langium` - Grammar updates
-  - `language/src/diagrams/floorplans/renderer.ts` - Config resolution
-  - `language/src/floorplans-validator.ts` - Validation rules
-  - `viewer/src/dsl-parser.ts` - 3D viewer config handling
-- **Breaking changes:** None (existing syntax remains valid, new syntax is additive)
-- **Migration path:** Accept both naming conventions during transition
+- **Affected specs:** `dsl-grammar`, `3d-viewer`
+- **Affected code:**
+  - `language/src/diagrams/floorplans/floorplans.langium` - Add new CONFIG_KEY values
+  - `language/src/diagrams/floorplans/renderer.ts` - Config normalization and theme resolution
+  - `language/src/diagrams/floorplans/styles.ts` - Theme registry lookup
+  - `viewer/src/main.ts` - Theme toggle controls
+  - `viewer/src/constants.ts` - Dark theme colors
+  - Optional: Frontmatter parsing layer
+- **Breaking changes:** None (all changes are additive)
 
-## Non-Goals
+## Mermaid Schema Alignment
 
-- Full Mermaid.js API compatibility (e.g., `mermaid.initialize()`) - that's for upstream contribution
-- D3-based rendering - not needed for coordinate-based diagrams (per mermaid-alignment context)
-- Directive deprecation - keep both frontmatter and inline config supported
+Properties aligned with [Mermaid Config Schema](https://mermaid.js.org/config/schema-docs/config):
 
+| Mermaid Property | Floorplan Support | Notes |
+|------------------|-------------------|-------|
+| `theme` | ✅ Yes | `default`, `dark`, `blueprint` |
+| `darkMode` | ✅ Yes | Quick toggle for dark theme |
+| `fontFamily` | ✅ Yes | String, CSS font stack |
+| `fontSize` | ✅ Yes | Number (SVG units) |
+| `themeVariables` | ❌ Future | Custom color overrides |
+| `themeCSS` | ❌ Future | Custom CSS injection |
+
+## Current State Reference
+
+**Existing themes** (from `styles.ts`):
+- `defaultThemeOptions` - Light theme with beige floor
+- `darkTheme` - Dark background with light walls
+- `blueprintTheme` - Blue background with light blue lines
+
+**Existing config keys** (from grammar):
+```
+'wall_thickness' | 'floor_thickness' | 'default_height' |
+'door_width' | 'door_height' | 'door_size' |
+'window_width' | 'window_height' | 'window_sill' | 'window_size' |
+'default_style' | 'default_unit' | 'area_unit'
+```
+
+**3D Viewer background** (from `constants.ts`):
+```typescript
+BACKGROUND: 0xf5f5f7  // Light gray, hardcoded
+```
