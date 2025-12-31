@@ -7,6 +7,13 @@
 import type { Floorplan, LENGTH_UNIT } from "../../generated/ast.js";
 import { resolveFloorPositions } from "./position-resolver.js";
 import { resolveVariables, getRoomSize } from "./variable-resolver.js";
+import { 
+    computeRoomMetrics, 
+    computeFloorMetrics, 
+    computeFloorplanSummary,
+    type FloorMetrics,
+    type FloorplanSummary,
+} from "./metrics.js";
 
 // ============================================================================
 // JSON Export Types
@@ -56,6 +63,10 @@ export interface JsonRoom {
     roomHeight?: number;
     elevation?: number;
     style?: string;
+    /** Room area (width × height) */
+    area?: number;
+    /** Room volume (area × roomHeight), computed when roomHeight is specified */
+    volume?: number;
 }
 
 export interface JsonFloor {
@@ -63,6 +74,8 @@ export interface JsonFloor {
     rooms: JsonRoom[];
     index: number;
     height?: number;
+    /** Computed metrics for this floor */
+    metrics?: FloorMetrics;
 }
 
 export interface JsonConnection {
@@ -81,6 +94,8 @@ export interface JsonExport {
     connections: JsonConnection[];
     config?: JsonConfig;
     styles?: JsonStyle[];
+    /** Summary metrics for the entire floorplan */
+    summary?: FloorplanSummary;
 }
 
 // ============================================================================
@@ -192,7 +207,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                 }
             }
 
-            jsonFloor.rooms.push({
+            const jsonRoom: JsonRoom = {
                 name: room.name,
                 label: room.label,
                 x: pos.x,
@@ -203,8 +218,20 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                 roomHeight: room.height?.value,
                 elevation: room.elevation ? (room.elevation.negative ? -room.elevation.value : room.elevation.value) : undefined,
                 style: room.styleRef
-            });
+            };
+            
+            // Compute room metrics
+            const roomMetrics = computeRoomMetrics(jsonRoom);
+            jsonRoom.area = roomMetrics.area;
+            if (roomMetrics.volume !== undefined) {
+                jsonRoom.volume = roomMetrics.volume;
+            }
+            
+            jsonFloor.rooms.push(jsonRoom);
         }
+        
+        // Compute floor metrics
+        jsonFloor.metrics = computeFloorMetrics(jsonFloor);
 
         jsonExport.floors.push(jsonFloor);
     }
@@ -226,6 +253,9 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             opensInto: conn.opensInto?.name
         });
     }
+    
+    // Compute floorplan summary
+    jsonExport.summary = computeFloorplanSummary(jsonExport.floors);
 
     return { data: jsonExport, errors };
 }

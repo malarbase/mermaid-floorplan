@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { parseFloorplan, extractAllRoomMetadata, validateFloorplan, type ValidationWarning } from "../utils/parser.js";
 import { generateSvg, svgToPng } from "../utils/renderer.js";
+import { convertFloorplanToJson, type FloorplanSummary, type FloorMetrics } from "floorplans-language";
 
 const RenderInputSchema = z.object({
   dsl: z.string().describe("Floorplan DSL code to render"),
@@ -77,6 +78,11 @@ export function registerRenderTool(server: McpServer): void {
         });
         const rooms = extractAllRoomMetadata(parseResult.document);
         const floorCount = parseResult.document.parseResult.value.floors.length;
+        
+        // Compute metrics using JSON converter
+        const jsonResult = convertFloorplanToJson(parseResult.document.parseResult.value);
+        const summary: FloorplanSummary | undefined = jsonResult.data?.summary;
+        const floorMetrics: FloorMetrics[] | undefined = jsonResult.data?.floors.map(f => f.metrics!).filter(Boolean);
 
         // Return SVG format if requested
         if (format === "svg") {
@@ -94,6 +100,8 @@ export function registerRenderTool(server: McpServer): void {
                   floorCount,
                   renderedFloor: renderAllFloors ? "all" : (floorIndex ?? 0),
                   rooms,
+                  summary,
+                  floorMetrics,
                   warnings: warnings.length > 0 ? warnings : undefined,
                 }),
               },
@@ -119,6 +127,8 @@ export function registerRenderTool(server: McpServer): void {
                 floorCount,
                 renderedFloor: renderAllFloors ? "all" : (floorIndex ?? 0),
                 rooms,
+                summary,
+                floorMetrics,
                 warnings: warnings.length > 0 ? warnings : undefined,
               }),
             },

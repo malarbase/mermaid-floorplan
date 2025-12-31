@@ -9,25 +9,61 @@ import { getRoomSize } from "./variable-resolver.js";
 import { wallRectangle } from "./wall.js";
 import { type StyleContext, resolveRoomStyle, DEFAULT_STYLE } from "./style-resolver.js";
 
+/** Area unit for display */
+export type AreaUnit = 'sqft' | 'sqm';
+
+/** Options for room rendering */
+export interface RoomRenderOptions {
+  /** Show room area inside room */
+  showArea?: boolean;
+  /** Unit for displaying area */
+  areaUnit?: AreaUnit;
+}
+
+/**
+ * Format area value with unit suffix
+ */
+function formatAreaText(area: number, unit: AreaUnit = 'sqft'): string {
+  const rounded = Math.round(area * 100) / 100;
+  return `[${rounded} ${unit}]`;
+}
+
 export function generateRoomText(
   room: Room,
   centerX: number,
   centerY: number,
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, { width: number; height: number }>,
+  options?: RoomRenderOptions
 ): string {
   const size = getRoomSize(room, variables);
   const sizeText = `${size.width} x ${size.height}`;
+  const showArea = options?.showArea ?? false;
+  const areaUnit = options?.areaUnit ?? 'sqft';
 
-  let textElements = `<text x="${centerX}" y="${centerY - 1}" text-anchor="middle" dominant-baseline="middle" 
+  // Calculate vertical offsets based on what we're showing
+  const lineSpacing = 1;
+  let currentY = centerY - (showArea ? 1.5 : 1);
+  
+  let textElements = `<text x="${centerX}" y="${currentY}" text-anchor="middle" dominant-baseline="middle" 
     class="room-name" font-size="0.8" fill="black">${room.name}</text>`;
+  currentY += lineSpacing;
 
   if (room.label) {
-    textElements += `<text x="${centerX}" y="${centerY}" text-anchor="middle" dominant-baseline="middle" 
+    textElements += `<text x="${centerX}" y="${currentY}" text-anchor="middle" dominant-baseline="middle" 
       class="room-label" font-size="0.8">${room.label}</text>`;
+    currentY += lineSpacing;
   }
 
-  textElements += `<text x="${centerX}" y="${centerY + 1}" text-anchor="middle" dominant-baseline="middle" 
+  textElements += `<text x="${centerX}" y="${currentY}" text-anchor="middle" dominant-baseline="middle" 
     class="room-size" font-size="0.7" fill="gray">${sizeText}</text>`;
+  currentY += lineSpacing;
+
+  if (showArea) {
+    const area = size.width * size.height;
+    const areaText = formatAreaText(area, areaUnit);
+    textElements += `<text x="${centerX}" y="${currentY}" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">${areaText}</text>`;
+  }
 
   return textElements;
 }
@@ -38,7 +74,8 @@ export function generateRoomSvg(
   parentOffsetY: number = 0,
   resolvedPositions?: Map<string, ResolvedPosition>,
   variables?: Map<string, { width: number; height: number }>,
-  styleContext?: StyleContext
+  styleContext?: StyleContext,
+  renderOptions?: RoomRenderOptions
 ): string {
   // Get position from resolved map or explicit position
   let baseX: number;
@@ -92,10 +129,10 @@ export function generateRoomSvg(
   let subRoomSvg = "";
   if (room.subRooms && room.subRooms.length > 0) {
     for (const subRoom of room.subRooms) {
-      subRoomSvg += generateRoomSvg(subRoom, x, y, resolvedPositions, variables, styleContext);
+      subRoomSvg += generateRoomSvg(subRoom, x, y, resolvedPositions, variables, styleContext, renderOptions);
     }
   }
 
-  return `<g class="room" data-room="${room.name}">${roomBackground}${topWall}${rightWall}${bottomWall}${leftWall}${generateRoomText(room, centerX, centerY, variables)}${subRoomSvg}</g>`;
+  return `<g class="room" data-room="${room.name}">${roomBackground}${topWall}${rightWall}${bottomWall}${leftWall}${generateRoomText(room, centerX, centerY, variables, renderOptions)}${subRoomSvg}</g>`;
 }
 

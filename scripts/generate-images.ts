@@ -16,7 +16,7 @@
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
 import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, renderFloor, render, resolveVariables, buildStyleContext } from "floorplans-language";
+import { createFloorplansServices, renderFloor, render, resolveVariables, buildStyleContext, convertFloorplanToJson, formatSummaryTable } from "floorplans-language";
 import { svgToPng } from "floorplans-mcp-server/utils/renderer";
 import * as fs from "fs";
 import * as path from "path";
@@ -170,6 +170,15 @@ async function main() {
         console.log(`  ✓ PNG: ${allFloorsPngPath}`);
       }
     }
+  }
+
+  // Print summary metrics
+  const result = convertFloorplanToJson(floorplan);
+  if (result.data?.summary && result.data.floors.length > 0) {
+    const floorMetrics = result.data.floors
+      .map(f => f.metrics)
+      .filter((m): m is NonNullable<typeof m> => m !== undefined);
+    console.log("\n" + formatSummaryTable(result.data.summary, floorMetrics));
   }
 
   console.log("\nDone!");

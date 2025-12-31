@@ -18,11 +18,22 @@ export {
   renderFloor,
   renderToFile,
   type RenderOptions,
+  type AreaUnit,
 } from "./renderer.js";
+
+// Dimension rendering
+export {
+  generateDimensionLine,
+  generateRoomDimensions,
+  generateFloorDimensions,
+  generateBoundingBoxDimensions,
+  type DimensionType,
+  type DimensionRenderOptions,
+} from "./dimension.js";
 
 // Component renderers
 export { calculateFloorBounds, generateFloorRectangle, type FloorBounds } from "./floor.js";
-export { generateRoomSvg, generateRoomText } from "./room.js";
+export { generateRoomSvg, generateRoomText, type RoomRenderOptions } from "./room.js";
 export { wallRectangle } from "./wall.js";
 export { generateDoor } from "./door.js";
 export { generateWindow } from "./window.js";
@@ -110,6 +121,24 @@ export {
   type ConversionResult,
   type ConversionError,
 } from "./json-converter.js";
+
+// Metrics computation
+export {
+  computeRoomMetrics,
+  computeFloorMetrics,
+  computeFloorplanSummary,
+  computeFloorplanMetrics,
+  computeBoundingBox,
+  enhanceRoomWithMetrics,
+  enhanceFloorWithMetrics,
+  formatArea,
+  formatEfficiency,
+  formatSummaryTable,
+  type RoomMetrics,
+  type FloorMetrics,
+  type FloorplanSummary,
+  type BoundingBox,
+} from "./metrics.js";
 
 // Unified Generator API (following Langium generator pattern)
 export {

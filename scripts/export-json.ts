@@ -8,7 +8,7 @@
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
 import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, convertFloorplanToJson } from "floorplans-language";
+import { createFloorplansServices, convertFloorplanToJson, formatSummaryTable } from "floorplans-language";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -72,6 +72,14 @@ async function main() {
 
     fs.writeFileSync(outputPath, JSON.stringify(result.data, null, 2));
     console.log(`Exported JSON to ${outputPath}`);
+    
+    // Print summary table
+    if (result.data.summary && result.data.floors.length > 0) {
+        const floorMetrics = result.data.floors
+            .map(f => f.metrics)
+            .filter((m): m is NonNullable<typeof m> => m !== undefined);
+        console.log("\n" + formatSummaryTable(result.data.summary, floorMetrics));
+    }
 }
 
 main().catch(console.error);

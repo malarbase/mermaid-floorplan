@@ -9,12 +9,61 @@
 import type { Floorplan, Floor, Connection } from "../../generated/ast.js";
 import type { LangiumDocument } from "langium";
 import { calculateFloorBounds, generateFloorRectangle, type FloorBounds } from "./floor.js";
-import { generateRoomSvg } from "./room.js";
+import { generateRoomSvg, type RoomRenderOptions } from "./room.js";
 import { generateConnections } from "./connection.js";
 import { getStyles, type FloorplanThemeOptions } from "./styles.js";
 import { resolveFloorPositions, type ResolvedPosition, type PositionResolutionResult } from "./position-resolver.js";
-import { resolveVariables } from "./variable-resolver.js";
+import { resolveVariables, getRoomSize } from "./variable-resolver.js";
 import { buildStyleContext, type StyleContext } from "./style-resolver.js";
+import { computeFloorMetrics, type FloorMetrics, formatEfficiency } from "./metrics.js";
+import { convertFloorplanToJson, type JsonFloor } from "./json-converter.js";
+import { generateFloorDimensions, type DimensionType, type DimensionRenderOptions } from "./dimension.js";
+
+/**
+ * Generate floor summary panel SVG
+ */
+function generateFloorSummaryPanel(
+  metrics: FloorMetrics,
+  bounds: FloorBounds,
+  offsetX: number,
+  offsetY: number,
+  areaUnit: AreaUnit = 'sqft'
+): string {
+  const panelWidth = bounds.width;
+  const panelHeight = 3;
+  const panelX = offsetX + bounds.minX;
+  const panelY = offsetY + bounds.maxY + 1;
+  
+  const fontSize = 0.5;
+  const lineHeight = 0.8;
+  let currentY = panelY + 0.8;
+  
+  let svg = `<g class="floor-summary" transform="translate(0, 0)">`;
+  
+  // Panel background
+  svg += `<rect x="${panelX}" y="${panelY}" width="${panelWidth}" height="${panelHeight}" 
+    fill="#f5f5f5" stroke="#ccc" stroke-width="0.05" rx="0.2" />`;
+  
+  // Title
+  svg += `<text x="${panelX + panelWidth / 2}" y="${currentY}" text-anchor="middle" 
+    font-size="${fontSize * 1.2}" font-weight="bold" fill="#333">Floor Summary</text>`;
+  currentY += lineHeight;
+  
+  // Bounding box
+  const bbText = `Bounding: ${metrics.boundingBox.width.toFixed(1)} × ${metrics.boundingBox.height.toFixed(1)} (${metrics.boundingBox.area.toFixed(1)} ${areaUnit})`;
+  svg += `<text x="${panelX + 0.3}" y="${currentY}" font-size="${fontSize}" fill="#666">${bbText}</text>`;
+  currentY += lineHeight;
+  
+  // Net area and efficiency
+  const netText = `Net Area: ${metrics.netArea.toFixed(1)} ${areaUnit} | Rooms: ${metrics.roomCount} | Efficiency: ${formatEfficiency(metrics.efficiency)}`;
+  svg += `<text x="${panelX + 0.3}" y="${currentY}" font-size="${fontSize}" fill="#666">${netText}</text>`;
+  
+  svg += `</g>`;
+  return svg;
+}
+
+/** Area unit for display */
+export type AreaUnit = 'sqft' | 'sqm';
 
 export interface RenderOptions {
   /** Include XML declaration in output */
@@ -33,6 +82,16 @@ export interface RenderOptions {
   renderAllFloors?: boolean;
   /** Layout for multi-floor rendering: 'stacked' (vertical) or 'sideBySide' (horizontal) */
   multiFloorLayout?: 'stacked' | 'sideBySide';
+  /** Show room area inside rooms */
+  showArea?: boolean;
+  /** Unit for displaying area */
+  areaUnit?: AreaUnit;
+  /** Show floor summary panel below each floor */
+  showFloorSummary?: boolean;
+  /** Show dimension lines on room edges */
+  showDimensions?: boolean;
+  /** Types of dimensions to show */
+  dimensionTypes?: DimensionType[];
 }
 
 const defaultRenderOptions: RenderOptions = {
@@ -43,6 +102,11 @@ const defaultRenderOptions: RenderOptions = {
   floorIndex: 0,
   renderAllFloors: false,
   multiFloorLayout: 'sideBySide',
+  showArea: false,
+  areaUnit: 'sqft',
+  showFloorSummary: false,
+  showDimensions: false,
+  dimensionTypes: ['width', 'depth'],
 };
 
 /**
@@ -167,6 +231,12 @@ function renderAllFloors(
 
   svg += `<g class="floorplan">`;
 
+  // Build room render options
+  const roomRenderOpts: RoomRenderOptions = {
+    showArea: opts.showArea,
+    areaUnit: opts.areaUnit,
+  };
+
   // Render each floor with its offset
   for (const { floor, bounds, offsetX, offsetY, resolvedPositions } of floorData) {
     // Add floor label
@@ -179,13 +249,31 @@ function renderAllFloors(
     svg += generateFloorRectangle(floor, resolvedPositions, variables);
     
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext);
+      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext, roomRenderOpts);
     }
     
     // Render connections for this floor
     svg += generateConnections(floor, floorplan.connections, resolvedPositions, variables);
     
+    // Render dimension lines if enabled
+    if (opts.showDimensions) {
+      const dimensionOpts: DimensionRenderOptions = {
+        showDimensions: true,
+        dimensionTypes: opts.dimensionTypes,
+      };
+      svg += generateFloorDimensions(floor.rooms, resolvedPositions, variables, dimensionOpts);
+    }
+    
     svg += "</g>";
+    
+    // Add floor summary panel if enabled
+    if (opts.showFloorSummary) {
+      const jsonResult = convertFloorplanToJson(floorplan);
+      const jsonFloor = jsonResult.data?.floors.find(f => f.id === floor.id);
+      if (jsonFloor?.metrics) {
+        svg += generateFloorSummaryPanel(jsonFloor.metrics, bounds, offsetX, offsetY, opts.areaUnit);
+      }
+    }
   }
 
   svg += "</g></svg>";
@@ -210,8 +298,11 @@ export function renderFloor(
   
   const bounds = calculateFloorBounds(floor, resolvedPositions, variables);
   const padding = opts.padding ?? 0;
-
-  const viewBox = `${bounds.minX - padding} ${bounds.minY - padding} ${bounds.width + padding * 2} ${bounds.height + padding * 2}`;
+  
+  // Calculate extra height needed for summary panel
+  const summaryHeight = opts.showFloorSummary ? 4 : 0;
+  
+  const viewBox = `${bounds.minX - padding} ${bounds.minY - padding} ${bounds.width + padding * 2} ${bounds.height + padding * 2 + summaryHeight}`;
   
   let svg = "";
   
@@ -221,7 +312,7 @@ export function renderFloor(
 
   // Calculate dimensions with scale
   const width = opts.scale ? (bounds.width + padding * 2) * opts.scale : undefined;
-  const height = opts.scale ? (bounds.height + padding * 2) * opts.scale : undefined;
+  const height = opts.scale ? (bounds.height + padding * 2 + summaryHeight) * opts.scale : undefined;
   
   const dimensionAttrs = width && height 
     ? `width="${width}" height="${height}"` 
@@ -234,17 +325,56 @@ export function renderFloor(
     svg += `<style>${getStyles(opts.theme)}</style>`;
   }
 
+  // Build room render options
+  const roomRenderOpts: RoomRenderOptions = {
+    showArea: opts.showArea,
+    areaUnit: opts.areaUnit,
+  };
+
   // Add floor group with accessible label
   svg += `<g class="floorplan" aria-label="Floor: ${floor.id}">`;
 
   if (floor.rooms.length > 0) {
     svg += generateFloorRectangle(floor, resolvedPositions, variables);
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext);
+      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext, roomRenderOpts);
     }
     
     // Render connections for this floor
     svg += generateConnections(floor, connections, resolvedPositions, variables);
+    
+    // Render dimension lines if enabled
+    if (opts.showDimensions) {
+      const dimensionOpts: DimensionRenderOptions = {
+        showDimensions: true,
+        dimensionTypes: opts.dimensionTypes,
+      };
+      svg += generateFloorDimensions(floor.rooms, resolvedPositions, variables, dimensionOpts);
+    }
+    
+    // Add floor summary panel if enabled
+    if (opts.showFloorSummary) {
+      // Build a minimal JsonFloor for metrics computation
+      const jsonFloor: JsonFloor = {
+        id: floor.id,
+        index: 0,
+        rooms: floor.rooms.map(room => {
+          const resolved = resolvedPositions.get(room.name);
+          const size = getRoomSize(room, variables);
+          return {
+            name: room.name,
+            label: room.label,
+            x: resolved?.x ?? 0,
+            z: resolved?.y ?? 0,
+            width: size.width,
+            height: size.height,
+            walls: [],
+          };
+        }),
+      };
+      const metrics = computeFloorMetrics(jsonFloor);
+      svg += generateFloorSummaryPanel(metrics, bounds, 0, 0, opts.areaUnit);
+    }
   }
 
   svg += "</g></svg>";
