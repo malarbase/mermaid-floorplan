@@ -46,10 +46,37 @@ export {
   validateSizeReferences,
   getResolvedConfig,
   getRoomSize,
+  getRoomSizeWithUnits,
   type VariableResolutionResult,
   type VariableResolutionError,
   type ResolvedConfig,
+  type ResolvedDimension,
 } from "./variable-resolver.js";
+
+// Unit utilities
+export {
+  DEFAULT_UNIT,
+  UNIT_TO_METERS,
+  METERS_TO_UNIT,
+  UNIT_SYSTEM,
+  VALID_UNITS,
+  toMeters,
+  fromMeters,
+  convertUnit,
+  isLengthUnit,
+  getConfigDefaultUnit,
+  resolveUnit,
+  resolveValueToMeters,
+  resolveValue,
+  resolveDimension,
+  resolveDimensionToMeters,
+  resolveCoordinate,
+  resolveCoordinateToMeters,
+  collectUnits,
+  hasMixedUnitSystems,
+  getUnitSystems,
+  type LengthUnit,
+} from "./unit-utils.js";
 
 // Theming
 export {

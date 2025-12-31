@@ -49,8 +49,8 @@ export function generateRoomSvg(
     baseX = resolved.x;
     baseY = resolved.y;
   } else if (room.position) {
-    baseX = room.position.x;
-    baseY = room.position.y;
+    baseX = room.position.x.value;
+    baseY = room.position.y.value;
   } else {
     // Cannot render room without position
     return `<!-- Room ${room.name} has no resolved position -->`;

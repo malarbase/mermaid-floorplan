@@ -3,6 +3,92 @@
  * These dimensions can be adjusted to match real-world scales
  */
 
+/**
+ * Supported length units in the DSL
+ */
+export type LengthUnit = 'm' | 'ft' | 'cm' | 'in' | 'mm';
+
+/**
+ * Default unit when no unit is specified in the DSL
+ * Used as system fallback when config does not specify default_unit
+ */
+export const DEFAULT_UNIT: LengthUnit = 'm';
+
+/**
+ * Conversion factors to meters for each supported unit
+ */
+export const UNIT_TO_METERS: Record<LengthUnit, number> = {
+  m: 1.0,
+  ft: 0.3048,
+  cm: 0.01,
+  'in': 0.0254,
+  mm: 0.001,
+} as const;
+
+/**
+ * Conversion factors from meters to each supported unit
+ */
+export const METERS_TO_UNIT: Record<LengthUnit, number> = {
+  m: 1.0,
+  ft: 3.28084,
+  cm: 100.0,
+  'in': 39.3701,
+  mm: 1000.0,
+} as const;
+
+/**
+ * Unit system classification for mixed unit warning
+ */
+export const UNIT_SYSTEM: Record<LengthUnit, 'metric' | 'imperial'> = {
+  m: 'metric',
+  cm: 'metric',
+  mm: 'metric',
+  ft: 'imperial',
+  'in': 'imperial',
+} as const;
+
+/**
+ * Convert a value from one unit to meters
+ */
+export function toMeters(value: number, unit: LengthUnit): number {
+  return value * UNIT_TO_METERS[unit];
+}
+
+/**
+ * Convert a value from meters to a target unit
+ */
+export function fromMeters(valueInMeters: number, targetUnit: LengthUnit): number {
+  return valueInMeters * METERS_TO_UNIT[targetUnit];
+}
+
+/**
+ * Convert a value from one unit to another
+ */
+export function convertUnit(value: number, fromUnit: LengthUnit, toUnit: LengthUnit): number {
+  if (fromUnit === toUnit) return value;
+  return fromMeters(toMeters(value, fromUnit), toUnit);
+}
+
+/**
+ * Check if a string is a valid length unit
+ */
+export function isLengthUnit(unit: string | undefined): unit is LengthUnit {
+  return unit !== undefined && unit in UNIT_TO_METERS;
+}
+
+/**
+ * Get the effective unit from an explicit unit, config default, or system default
+ */
+export function resolveUnit(explicitUnit?: string, configDefault?: string): LengthUnit {
+  if (explicitUnit && isLengthUnit(explicitUnit)) {
+    return explicitUnit;
+  }
+  if (configDefault && isLengthUnit(configDefault)) {
+    return configDefault;
+  }
+  return DEFAULT_UNIT;
+}
+
 export const DIMENSIONS = {
   WALL: {
     THICKNESS: 0.2,

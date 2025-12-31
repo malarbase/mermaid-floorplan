@@ -241,8 +241,8 @@ export function extractRoomMetadata(
   // Add explicit position if present
   if (room.position) {
     metadata.position = {
-      x: room.position.x,
-      y: room.position.y,
+      x: room.position.x.value,
+      y: room.position.y.value,
     };
   }
 
@@ -262,7 +262,7 @@ export function extractRoomMetadata(
       reference: room.relativePosition.reference,
     };
     if (room.relativePosition.gap !== undefined) {
-      metadata.relativePosition.gap = room.relativePosition.gap;
+      metadata.relativePosition.gap = room.relativePosition.gap.value;
     }
     if (room.relativePosition.alignment) {
       metadata.relativePosition.alignment = room.relativePosition.alignment;

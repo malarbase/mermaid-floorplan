@@ -36,8 +36,8 @@ export function calculateFloorBounds(
       x = resolved.x;
       y = resolved.y;
     } else if (room.position) {
-      x = room.position.x;
-      y = room.position.y;
+      x = room.position.x.value;
+      y = room.position.y.value;
     } else {
       // Skip rooms without resolved positions
       continue;

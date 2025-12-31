@@ -4,7 +4,7 @@
  * Used by both the CLI export script and the browser-based viewer.
  */
 
-import type { Floorplan } from "../../generated/ast.js";
+import type { Floorplan, LENGTH_UNIT } from "../../generated/ast.js";
 import { resolveFloorPositions } from "./position-resolver.js";
 import { resolveVariables, getRoomSize } from "./variable-resolver.js";
 
@@ -22,6 +22,7 @@ export interface JsonConfig {
     window_height?: number;
     window_sill?: number;
     default_style?: string;
+    default_unit?: LENGTH_UNIT;
 }
 
 export interface JsonStyle {
@@ -122,6 +123,14 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             if (prop.value !== undefined) {
                 (config as Record<string, number>)[prop.name] = prop.value;
             }
+            // Handle default_unit
+            if (prop.name === 'default_unit' && prop.unitRef) {
+                config.default_unit = prop.unitRef;
+            }
+            // Handle default_style
+            if (prop.name === 'default_style' && prop.styleRef) {
+                config.default_style = prop.styleRef;
+            }
         }
         if (Object.keys(config).length > 0) {
             jsonExport.config = config;
@@ -159,7 +168,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             id: floor.id,
             index: i,
             rooms: [],
-            height: floor.height
+            height: floor.height?.value
         };
 
         for (const room of floor.rooms) {
@@ -176,8 +185,8 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                         type: spec.type,
                         position: spec.position,
                         isPercentage: spec.unit === '%',
-                        width: spec.size?.width,
-                        height: spec.size?.height,
+                        width: spec.size?.width?.value,
+                        height: spec.size?.height?.value,
                         wallHeight: spec.height
                     });
                 }
@@ -191,8 +200,8 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                 width: resolvedSize.width,
                 height: resolvedSize.height,
                 walls,
-                roomHeight: room.height,
-                elevation: room.elevation,
+                roomHeight: room.height?.value,
+                elevation: room.elevation ? (room.elevation.negative ? -room.elevation.value : room.elevation.value) : undefined,
                 style: room.styleRef
             });
         }

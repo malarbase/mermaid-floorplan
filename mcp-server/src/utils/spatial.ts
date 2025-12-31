@@ -53,7 +53,8 @@ export function extractRoomBounds(
 ): RoomBounds | undefined {
   if (!room.position) return undefined;
 
-  const { x, y } = room.position;
+  const x = room.position.x.value;
+  const y = room.position.y.value;
   const size = getRoomSize(room, variables);
   const { width, height } = size;
 
