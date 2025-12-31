@@ -20,7 +20,9 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkSharedWallConflicts,
       validator.checkMixedUnitSystems,
       validator.checkRoomHeightExceedsFloor,
-      validator.checkDoorPositionWithinSharedWall
+      validator.checkDoorPositionWithinSharedWall,
+      validator.checkConnectionSizeConstraints,
+      validator.checkConflictingDoorSizeConfig
     ],
     StyleProperty: [validator.checkStylePropertyValue],
     ConfigProperty: [validator.checkConfigPropertyValue]
@@ -836,6 +838,130 @@ export class FloorplansValidator {
         // as percentage of shared segment, so any 0-100% value is valid
       }
     }
+  }
+
+  /**
+   * Check that connection size constraints are satisfied:
+   * 1. Connection width should not exceed the wall length
+   * 2. Connection height should not exceed room height (unless fullHeight is used)
+   */
+  checkConnectionSizeConstraints = (floorplan: Floorplan, accept: ValidationAcceptor): void => {
+    for (const floor of floorplan.floors) {
+      const allRooms = this.collectAllRooms(floor);
+      const bounds = this.computeRoomBounds(allRooms, floorplan, floor);
+
+      for (const conn of floorplan.connections) {
+        // Skip connections without explicit size
+        if (!conn.size) continue;
+
+        const fromRoomName = conn.from.room?.name;
+        const toRoomName = conn.to.room?.name;
+        if (!fromRoomName || !toRoomName) continue;
+
+        const fromBounds = bounds.get(fromRoomName);
+        const toBounds = bounds.get(toRoomName);
+        if (!fromBounds || !toBounds) continue;
+
+        const fromWall = conn.from.wall || "unknown";
+        const toWall = conn.to.wall || "unknown";
+
+        // Calculate shared wall segment
+        const sharedSegment = this.calculateSharedWallSegment(
+          fromBounds, fromWall,
+          toBounds, toWall
+        );
+
+        if (!sharedSegment) continue; // Already reported by checkDoorPositionWithinSharedWall
+
+        // Get the length of the shared wall segment
+        let wallLength = 0;
+        if (fromWall === "top" || fromWall === "bottom") {
+          wallLength = fromBounds.width * (sharedSegment.end - sharedSegment.start);
+        } else {
+          wallLength = fromBounds.height * (sharedSegment.end - sharedSegment.start);
+        }
+
+        // Get connection width
+        const connWidth = conn.size.width.value;
+
+        // Validate width constraint
+        if (connWidth > wallLength) {
+          accept("warning",
+            `Connection width ${connWidth}${conn.size.width.unit || ''} exceeds shared wall length ${wallLength.toFixed(2)}. The connection may not fit properly.`,
+            { node: conn, property: "size" }
+          );
+        }
+
+        // Validate height constraint (if not fullHeight)
+        if (!conn.size.fullHeight && conn.size.height) {
+          const connHeight = conn.size.height.value;
+          
+          // Get room heights
+          const fromRoomHeight = this.getRoomHeight(this.findRoomByName(allRooms, fromRoomName)!, floorplan);
+          const toRoomHeight = this.getRoomHeight(this.findRoomByName(allRooms, toRoomName)!, floorplan);
+          const minRoomHeight = Math.min(fromRoomHeight, toRoomHeight);
+
+          if (connHeight > minRoomHeight) {
+            accept("warning",
+              `Connection height ${connHeight}${conn.size.height.unit || ''} exceeds room height ${minRoomHeight.toFixed(2)}m. The connection may not fit properly.`,
+              { node: conn, property: "size" }
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Warn if both door_size/window_size and door_width/door_height or window_width/window_height
+   * are specified in config, as this creates ambiguity about which should take precedence.
+   */
+  checkConflictingDoorSizeConfig = (floorplan: Floorplan, accept: ValidationAcceptor): void => {
+    if (!floorplan.config) return;
+
+    const configProps = new Map<string, ConfigProperty>();
+    for (const prop of floorplan.config.properties) {
+      configProps.set(prop.name, prop);
+    }
+
+    // Check door configuration
+    const doorSize = configProps.get("door_size");
+    const doorWidth = configProps.get("door_width");
+    const doorHeight = configProps.get("door_height");
+
+    if (doorSize && (doorWidth || doorHeight)) {
+      const conflictingProps = [];
+      if (doorWidth) conflictingProps.push("door_width");
+      if (doorHeight) conflictingProps.push("door_height");
+      
+      accept("warning",
+        `Config specifies both 'door_size' and ${conflictingProps.join(", ")}. The 'door_size' property takes precedence, making ${conflictingProps.join(", ")} redundant.`,
+        { node: doorSize }
+      );
+    }
+
+    // Check window configuration
+    const windowSize = configProps.get("window_size");
+    const windowWidth = configProps.get("window_width");
+    const windowHeight = configProps.get("window_height");
+
+    if (windowSize && (windowWidth || windowHeight)) {
+      const conflictingProps = [];
+      if (windowWidth) conflictingProps.push("window_width");
+      if (windowHeight) conflictingProps.push("window_height");
+      
+      accept("warning",
+        `Config specifies both 'window_size' and ${conflictingProps.join(", ")}. The 'window_size' property takes precedence, making ${conflictingProps.join(", ")} redundant.`,
+        { node: windowSize }
+      );
+    }
+  }
+
+  /**
+   * Helper to find a room by name
+   */
+  private findRoomByName(rooms: Room[], name: string): Room | undefined {
+    return rooms.find(r => r.name === name);
   }
 }
 

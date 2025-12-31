@@ -1567,3 +1567,246 @@ describe("Connection Size Tests", () => {
     expect(connection.swing).toBe("left");
   });
 });
+
+describe("Connection Size Validation Tests", () => {
+  test("should warn when connection width exceeds shared wall length", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left door at 50% size (15 x 7)
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have a warning about connection width exceeding wall length
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(diagnostics.some(d => 
+      d.message.includes("width") && 
+      d.message.includes("exceeds") &&
+      d.message.includes("15")
+    )).toBe(true);
+  });
+
+  test("should warn when connection height exceeds room height", async () => {
+    const input = `
+      floorplan
+          config { default_height: 8 }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left door at 50% size (3 x 10)
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have a warning about connection height exceeding room height
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(diagnostics.some(d => 
+      d.message.includes("height") && 
+      d.message.includes("exceeds") &&
+      d.message.includes("10")
+    )).toBe(true);
+  });
+
+  test("should not warn when connection uses fullHeight", async () => {
+    const input = `
+      floorplan
+          config { default_height: 8 }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left opening at 50% size (4 x full)
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should not warn about height when fullHeight is used
+    expect(diagnostics.filter(d => d.message.includes("height") && d.message.includes("exceeds")).length).toBe(0);
+  });
+
+  test("should not warn when connection dimensions are within limits", async () => {
+    const input = `
+      floorplan
+          config { default_height: 10 }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left door at 50% size (3 x 7)
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have no warnings about size constraints
+    expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
+  });
+
+  test("should warn when connection width exceeds partial shared wall", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,5) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left door at 50% size (8 x 7)
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Shared wall is only 5 units (overlap from z=5 to z=10), connection width of 8 exceeds it
+    expect(diagnostics.some(d => 
+      d.message.includes("width") && 
+      d.message.includes("exceeds")
+    )).toBe(true);
+  });
+});
+
+describe("Conflicting Door Size Config Validation Tests", () => {
+  test("should warn when both door_size and door_width/door_height are specified", async () => {
+    const input = `
+      floorplan
+          config { 
+            door_size: (3 x 7),
+            door_width: 2.5,
+            door_height: 6.5
+          }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have a warning about conflicting door size config
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(diagnostics.some(d => 
+      d.message.includes("door_size") && 
+      d.message.includes("door_width") &&
+      d.message.includes("door_height")
+    )).toBe(true);
+  });
+
+  test("should warn when both window_size and window_width/window_height are specified", async () => {
+    const input = `
+      floorplan
+          config { 
+            window_size: (4 x 3),
+            window_width: 5,
+            window_height: 4
+          }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have a warning about conflicting window size config
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(diagnostics.some(d => 
+      d.message.includes("window_size") && 
+      d.message.includes("window_width") &&
+      d.message.includes("window_height")
+    )).toBe(true);
+  });
+
+  test("should not warn when only door_size is specified", async () => {
+    const input = `
+      floorplan
+          config { door_size: (3 x 7) }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have no warnings about conflicting config
+    expect(diagnostics.filter(d => d.message.includes("door_size") && d.message.includes("redundant")).length).toBe(0);
+  });
+
+  test("should not warn when only door_width and door_height are specified", async () => {
+    const input = `
+      floorplan
+          config { 
+            door_width: 3,
+            door_height: 7
+          }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have no warnings about conflicting config
+    expect(diagnostics.filter(d => d.message.includes("door_size")).length).toBe(0);
+  });
+
+  test("should warn when door_size conflicts with only door_width", async () => {
+    const input = `
+      floorplan
+          config { 
+            door_size: (3 x 7),
+            door_width: 2.5
+          }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should warn about door_width being redundant
+    expect(diagnostics.some(d => 
+      d.message.includes("door_size") && 
+      d.message.includes("door_width") &&
+      d.message.includes("redundant")
+    )).toBe(true);
+  });
+});

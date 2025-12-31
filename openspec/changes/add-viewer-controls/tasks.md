@@ -62,11 +62,23 @@
 - [ ] 9.4 Update summary when floor visibility or exploded view changes
 - [ ] 9.5 Add/remove panel when showFloorSummary toggle changes
 
-## 10. UI Reorganization
-- [ ] 10.1 Redesign controls panel with collapsible sections
-- [ ] 10.2 Group controls: Camera, Lighting, View, Annotations, Export
-- [ ] 10.3 Add annotation toggles: Show Areas, Show Dimensions, Show Floor Summary
-- [ ] 10.4 Add unit dropdowns: Area Unit (sqft/sqm), Length Unit (ft/m)
-- [ ] 10.5 Add section headers with collapse/expand toggle
-- [ ] 10.6 Style improvements for better visual hierarchy
+## 10. Validation Warnings Overlay
+- [ ] 10.1 Store validation warnings in component state when floorplan loads
+- [ ] 10.2 Create HTML panel for warnings display (fixed position, collapsible)
+- [ ] 10.3 Add warning count badge (e.g., "⚠️ 5 warnings") always visible
+- [ ] 10.4 Implement collapsible warning list showing each warning message
+- [ ] 10.5 Include line numbers with each warning (e.g., "line 301: Door misalignment...")
+- [ ] 10.6 Add toggle button to show/hide warnings panel
+- [ ] 10.7 Style warnings panel: warning colors (#FFD700), scrollable list, max height
+- [ ] 10.8 Add "Clear" or "Dismiss" action (warnings reappear on file reload)
+- [ ] 10.9 Position panel to not obstruct 3D view (e.g., top-right, collapsible)
+
+## 11. UI Reorganization
+- [ ] 11.1 Redesign controls panel with collapsible sections
+- [ ] 11.2 Group controls: Camera, Lighting, View, Annotations, Validation, Export
+- [ ] 11.3 Add annotation toggles: Show Areas, Show Dimensions, Show Floor Summary
+- [ ] 11.4 Add unit dropdowns: Area Unit (sqft/sqm), Length Unit (ft/m)
+- [ ] 11.5 Add validation toggle: Show Warnings Panel
+- [ ] 11.6 Add section headers with collapse/expand toggle
+- [ ] 11.7 Style improvements for better visual hierarchy
 

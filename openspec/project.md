@@ -170,7 +170,7 @@ floorplan
   define small_room (6 x 8)
   
   # Global configuration
-  config { wall_thickness: 0.3, door_width: 1.0 }
+  config { wall_thickness: 0.3, door_size: (1.0 x 2.1), window_size: (1.5 x 1.5) }
   
   floor f1 {
     # Absolute positioning with variable size
@@ -212,10 +212,12 @@ floorplan
 | `wall_thickness` | Wall thickness in units | 0.2 |
 | `floor_thickness` | Floor slab thickness | 0.2 |
 | `default_height` | Default wall/ceiling height | 3.35 |
-| `door_width` | Standard door width | 1.0 |
-| `door_height` | Standard door height | 2.1 |
-| `window_width` | Standard window width | 1.5 |
-| `window_height` | Standard window height | 1.5 |
+| `door_width` | Standard door width (legacy) | 1.0 |
+| `door_height` | Standard door height (legacy) | 2.1 |
+| `door_size` | Door size as `(width x height)` | None |
+| `window_width` | Standard window width (legacy) | 1.5 |
+| `window_height` | Standard window height (legacy) | 1.5 |
+| `window_size` | Window size as `(width x height)` | None |
 | `window_sill` | Window sill height from floor | 0.9 |
 | `default_style` | Default style name for rooms | None |
 
@@ -302,20 +304,65 @@ floorplan
 ### Connection Syntax
 Connections link rooms with doors at wall intersections:
 ```
-connect <Room1>.<wall> to <Room2>.<wall> <door-type> [at <position>%] [swing: <direction>] [opens into <Room>]
+connect <Room1>.<wall> to <Room2>.<wall> <door-type> [at <position>%] [size (<width> x <height>)] [swing: <direction>] [opens into <Room>]
 ```
 
 | Property | Values | Example |
 |----------|--------|---------|
-| Door Type | `door`, `double-door` | `door` |
+| Door Type | `door`, `double-door`, `opening` | `door` |
+| Size | `(width x height)` or `(width x full)` | `size (3ft x 7ft)` |
 | Position | `at N%` (0-100) | `at 50%` |
 | Swing | `swing: left`, `swing: right` | `swing: left` |
 | Opens Into | `opens into <RoomName>` | `opens into Kitchen` |
+
+**Door Types:**
+- `door` - Single door with swing arc
+- `double-door` - Two mirrored swing arcs  
+- `opening` - Doorless passage/archway (cuts hole in wall without door mesh)
 
 Example:
 ```
 connect Office.right to Kitchen.left door at 50% swing: left
 connect LivingRoom.bottom to Hallway.top double-door at 50%
+connect LivingRoom.bottom to Passage.top opening at 30%  # Doorless archway
+
+# Custom door size
+connect Bedroom.left to Closet.right door at 50% size (2.5ft x 7ft)
+
+# Full-height opening (archway to ceiling)
+connect Living.bottom to Entry.top opening at 50% size (4ft x full)
+```
+
+**Connection Size:** The optional `size` attribute overrides global door dimensions for individual connections:
+- `size (width x height)` - Custom door/opening dimensions
+- `size (width x full)` - Full-height opening from floor to ceiling
+
+**Opening Connections:** The `opening` type creates a doorless passage between rooms. It:
+- Cuts a hole in the wall without rendering a door
+- Overrides wall type conflicts (no warning if one wall is `solid` and the other is `open`)
+- Useful for archways, pass-throughs, and open-plan layouts where rooms share partial boundaries
+
+**Door Position Calculation:** The `at N%` position is calculated as a percentage of the **shared wall segment** between the two connected rooms, not the full wall length. This means:
+
+- `at 50%` = door centered on the shared boundary between the two rooms
+- When a wall is shared by multiple rooms (e.g., a long wall with two adjacent rooms on the other side), each connection calculates its position relative to its own overlap segment
+- This allows intuitive positioning: `at 50%` always centers the door regardless of room size differences
+
+```
+Example: LivingRoom (12ft wide) connects to Kitchen (8ft) and Passage (4ft)
+
+┌─────────────────────────────────────┐
+│      LivingRoom (12ft bottom wall)  │
+└─────────────────────────────────────┘
+    ┌──────────────┬──────────────────┐
+    │  Passage 4ft │   Kitchen 8ft    │
+    └──────────────┴──────────────────┘
+
+connect LivingRoom.bottom to Kitchen.top door at 80%
+  → Door at 80% of Kitchen's 8ft overlap (not 80% of 12ft wall)
+
+connect LivingRoom.bottom to Passage.top door at 50%
+  → Door at 50% of Passage's 4ft overlap (centered in Passage)
 ```
 
 **Connection Overlap Validation:** The parser validates that connections do not overlap at the same physical position on a wall. This prevents:
