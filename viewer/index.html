@@ -6,55 +6,506 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Floorplan 3D Viewer</title>
     <style>
-      body { margin: 0; overflow: hidden; font-family: sans-serif; }
+      * {
+        box-sizing: border-box;
+      }
+      
+      body { 
+        margin: 0; 
+        overflow: hidden; 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      }
+      
       #info {
         position: absolute;
         top: 10px;
         left: 10px;
-        background: rgba(0, 0, 0, 0.7);
+        background: rgba(0, 0, 0, 0.75);
         color: white;
-        padding: 10px;
-        border-radius: 5px;
+        padding: 12px 16px;
+        border-radius: 8px;
         pointer-events: none;
+        font-size: 13px;
+        max-width: 200px;
       }
+      
+      #info h3 {
+        margin: 0 0 8px 0;
+        font-size: 15px;
+        font-weight: 600;
+      }
+      
+      #info p {
+        margin: 4px 0;
+        opacity: 0.8;
+      }
+      
       #controls {
         position: absolute;
         top: 10px;
         right: 10px;
-        background: rgba(255, 255, 255, 0.9);
-        padding: 10px;
-        border-radius: 5px;
+        background: rgba(255, 255, 255, 0.95);
+        padding: 0;
+        border-radius: 10px;
+        width: 260px;
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+      }
+      
+      .control-section {
+        border-bottom: 1px solid #e0e0e0;
+      }
+      
+      .control-section:last-child {
+        border-bottom: none;
+      }
+      
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        cursor: pointer;
+        user-select: none;
+        background: #f8f8f8;
+        font-weight: 600;
+        font-size: 13px;
+        color: #333;
+        transition: background 0.2s;
+      }
+      
+      .section-header:hover {
+        background: #f0f0f0;
+      }
+      
+      .section-header::after {
+        content: '▼';
+        font-size: 10px;
+        transition: transform 0.2s;
+      }
+      
+      .control-section.collapsed .section-header::after {
+        transform: rotate(-90deg);
+      }
+      
+      .section-content {
+        padding: 12px 16px;
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
       }
+      
+      .control-section.collapsed .section-content {
+        display: none;
+      }
+      
       .control-group {
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 6px;
       }
-      label { font-size: 12px; font-weight: bold; }
+      
+      .control-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      
+      label { 
+        font-size: 12px; 
+        font-weight: 500;
+        color: #555;
+      }
+      
+      .slider-value {
+        font-size: 11px;
+        color: #888;
+        min-width: 35px;
+        text-align: right;
+      }
+      
+      input[type="range"] {
+        flex: 1;
+        height: 4px;
+        border-radius: 2px;
+        -webkit-appearance: none;
+        background: #ddd;
+      }
+      
+      input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #4a90d9;
+        cursor: pointer;
+        border: 2px solid white;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+      
+      input[type="file"] {
+        font-size: 11px;
+        width: 100%;
+      }
+      
+      select {
+        padding: 6px 8px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 12px;
+        background: white;
+        cursor: pointer;
+      }
+      
+      button {
+        padding: 8px 12px;
+        background: #4a90d9;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      
+      button:hover {
+        background: #3a7fc8;
+      }
+      
+      .btn-secondary {
+        background: #666;
+      }
+      
+      .btn-secondary:hover {
+        background: #555;
+      }
+      
+      .btn-group {
+        display: flex;
+        gap: 8px;
+      }
+      
+      .btn-group button {
+        flex: 1;
+      }
+      
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .checkbox-row input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+      
+      .checkbox-row label {
+        cursor: pointer;
+        flex: 1;
+      }
+      
+      .unit-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .unit-row select {
+        width: 100px;
+      }
+      
+      /* Warnings Panel */
+      .warnings-panel {
+        position: absolute;
+        top: 10px;
+        left: 220px;
+        background: #fff8e1;
+        border: 1px solid #ffd54f;
+        border-radius: 8px;
+        max-width: 400px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        font-size: 13px;
+        z-index: 100;
+      }
+      
+      .warnings-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 14px;
+        cursor: pointer;
+        user-select: none;
+      }
+      
+      .warnings-badge {
+        font-weight: 600;
+        color: #f57c00;
+      }
+      
+      .toggle-btn {
+        background: none;
+        border: none;
+        color: #f57c00;
+        cursor: pointer;
+        padding: 2px 6px;
+        font-size: 10px;
+      }
+      
+      .toggle-btn:hover {
+        background: rgba(255, 152, 0, 0.1);
+      }
+      
+      .warnings-list {
+        padding: 0 14px 14px;
+        max-height: 300px;
+        overflow-y: auto;
+      }
+      
+      .warnings-panel.collapsed .warnings-list {
+        display: none;
+      }
+      
+      .warning-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #ffe082;
+        color: #5d4037;
+        line-height: 1.4;
+      }
+      
+      .warning-item:last-child {
+        border-bottom: none;
+      }
+      
+      .line-number {
+        font-weight: 600;
+        color: #f57c00;
+      }
+      
+      .no-warnings {
+        color: #888;
+        font-style: italic;
+      }
+      
+      /* Floor Summary Panel */
+      .floor-summary-panel {
+        position: absolute;
+        bottom: 10px;
+        left: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        font-size: 12px;
+        max-width: 300px;
+      }
+      
+      .floor-summary-title {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 10px;
+        color: #333;
+      }
+      
+      .floor-summary-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .floor-summary-item:last-child {
+        border-bottom: none;
+      }
+      
+      .floor-name {
+        font-weight: 500;
+        color: #4a90d9;
+        margin-bottom: 4px;
+      }
+      
+      .floor-stats {
+        display: flex;
+        gap: 12px;
+        color: #666;
+      }
+      
+      /* Annotation Labels (CSS2D) */
+      .area-label {
+        background: rgba(74, 144, 217, 0.9);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+      
+      .dimension-label {
+        background: rgba(102, 102, 102, 0.85);
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        white-space: nowrap;
+      }
+      
+      .height-label {
+        background: rgba(156, 39, 176, 0.85);
+      }
+      
+      /* Scrollbar styling */
+      #controls::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      #controls::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+      }
+      
+      #controls::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 3px;
+      }
+      
+      #controls::-webkit-scrollbar-thumb:hover {
+        background: #999;
+      }
     </style>
   </head>
   <body>
     <div id="app"></div>
+    
     <div id="info">
       <h3>Floorplan 3D Viewer</h3>
       <p>Left Click: Rotate</p>
       <p>Right Click: Pan</p>
       <p>Scroll: Zoom</p>
+      <p>Numpad 5: Toggle Camera</p>
     </div>
+    
     <div id="controls">
-      <div class="control-group">
-        <label for="exploded-view">Exploded View</label>
-        <input type="range" id="exploded-view" min="0" max="100" value="0" step="1">
+      <!-- File Section -->
+      <div class="control-section">
+        <div class="section-header">File</div>
+        <div class="section-content">
+          <div class="control-group">
+            <label>Load Floorplan</label>
+            <input type="file" id="file-input" accept=".floorplan,.json">
+          </div>
+        </div>
       </div>
-      <div class="control-group">
-        <label>Load Floorplan</label>
-        <input type="file" id="file-input" accept=".floorplan,.json">
+      
+      <!-- Camera Section -->
+      <div class="control-section">
+        <div class="section-header">Camera</div>
+        <div class="section-content">
+          <button id="camera-mode-btn">Switch to Orthographic</button>
+          <button id="isometric-btn" class="btn-secondary">Isometric View</button>
+          <div class="control-group" id="fov-group">
+            <div class="control-row">
+              <label>FOV</label>
+              <span class="slider-value" id="fov-value">75°</span>
+            </div>
+            <input type="range" id="fov-slider" min="30" max="120" value="75" step="1">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Lighting Section -->
+      <div class="control-section">
+        <div class="section-header">Lighting</div>
+        <div class="section-content">
+          <div class="control-group">
+            <div class="control-row">
+              <label>Azimuth</label>
+              <span class="slider-value" id="light-azimuth-value">45°</span>
+            </div>
+            <input type="range" id="light-azimuth" min="0" max="360" value="45" step="1">
+          </div>
+          <div class="control-group">
+            <div class="control-row">
+              <label>Elevation</label>
+              <span class="slider-value" id="light-elevation-value">60°</span>
+            </div>
+            <input type="range" id="light-elevation" min="0" max="90" value="60" step="1">
+          </div>
+          <div class="control-group">
+            <div class="control-row">
+              <label>Intensity</label>
+              <span class="slider-value" id="light-intensity-value">1.0</span>
+            </div>
+            <input type="range" id="light-intensity" min="0" max="2" value="1" step="0.1">
+          </div>
+        </div>
+      </div>
+      
+      <!-- View Section -->
+      <div class="control-section">
+        <div class="section-header">View</div>
+        <div class="section-content">
+          <div class="control-group">
+            <div class="control-row">
+              <label>Exploded View</label>
+              <span class="slider-value" id="exploded-value">0%</span>
+            </div>
+            <input type="range" id="exploded-view" min="0" max="100" value="0" step="1">
+          </div>
+        </div>
+      </div>
+      
+      <!-- Annotations Section -->
+      <div class="control-section">
+        <div class="section-header">Annotations</div>
+        <div class="section-content">
+          <div class="checkbox-row">
+            <input type="checkbox" id="show-area">
+            <label for="show-area">Show Room Areas</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="show-dimensions">
+            <label for="show-dimensions">Show Dimensions</label>
+          </div>
+          <div class="checkbox-row">
+            <input type="checkbox" id="show-floor-summary">
+            <label for="show-floor-summary">Show Floor Summary</label>
+          </div>
+          <div class="unit-row">
+            <label>Area Unit</label>
+            <select id="area-unit">
+              <option value="sqft">sq ft</option>
+              <option value="sqm">sq m</option>
+            </select>
+          </div>
+          <div class="unit-row">
+            <label>Length Unit</label>
+            <select id="length-unit">
+              <option value="ft">feet</option>
+              <option value="m">meters</option>
+              <option value="cm">centimeters</option>
+              <option value="in">inches</option>
+              <option value="mm">millimeters</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Export Section -->
+      <div class="control-section">
+        <div class="section-header">Export</div>
+        <div class="section-content">
+          <div class="btn-group">
+            <button id="export-glb-btn">Export GLB</button>
+            <button id="export-gltf-btn" class="btn-secondary">Export GLTF</button>
+          </div>
+        </div>
       </div>
     </div>
+    
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
-
