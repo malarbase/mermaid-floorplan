@@ -542,13 +542,7 @@ class Viewer {
         
         if (!this.annotationState.showArea || !this.currentFloorplanData) return;
         
-        const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-        let cumulativeY = 0;
-        
         this.currentFloorplanData.floors.forEach((floor, floorIndex) => {
-            const floorHeight = floor.height ?? globalDefault;
-            const separation = DIMENSIONS.EXPLODED_VIEW.MAX_SEPARATION * this.explodedViewFactor;
-            
             floor.rooms.forEach(room => {
                 const area = room.width * room.height;
                 const areaText = this.formatArea(area);
@@ -561,14 +555,13 @@ class Viewer {
                 const label = new CSS2DObject(labelDiv);
                 const centerX = room.x + room.width / 2;
                 const centerZ = room.z + room.height / 2;
-                const y = cumulativeY + (room.elevation || 0) + 0.5;
+                // Use local coordinates (relative to floor group)
+                const y = (room.elevation || 0) + 0.5;
                 
                 label.position.set(centerX, y, centerZ);
                 this.floors[floorIndex]?.add(label);
                 this.areaLabels.push(label);
             });
-            
-            cumulativeY += floorHeight + separation;
         });
     }
     
@@ -584,11 +577,9 @@ class Viewer {
         if (!this.annotationState.showDimensions || !this.currentFloorplanData) return;
         
         const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-        let cumulativeY = 0;
         
         this.currentFloorplanData.floors.forEach((floor, floorIndex) => {
             const floorHeight = floor.height ?? globalDefault;
-            const separation = DIMENSIONS.EXPLODED_VIEW.MAX_SEPARATION * this.explodedViewFactor;
             
             floor.rooms.forEach(room => {
                 // Width label (above room, along X axis)
@@ -598,7 +589,8 @@ class Viewer {
                 widthDiv.textContent = widthText;
                 
                 const widthLabel = new CSS2DObject(widthDiv);
-                const y = cumulativeY + (room.elevation || 0) + 0.3;
+                // Use local coordinates (relative to floor group)
+                const y = (room.elevation || 0) + 0.3;
                 widthLabel.position.set(room.x + room.width / 2, y, room.z - 0.5);
                 this.floors[floorIndex]?.add(widthLabel);
                 this.dimensionLabels.push(widthLabel);
@@ -628,8 +620,6 @@ class Viewer {
                     this.dimensionLabels.push(heightLabel);
                 }
             });
-            
-            cumulativeY += floorHeight + separation;
         });
     }
 
