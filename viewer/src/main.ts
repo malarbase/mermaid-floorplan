@@ -4,7 +4,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRe
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Evaluator } from 'three-bvh-csg';
 import { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from './types';
-import { DIMENSIONS, COLORS, LengthUnit, METERS_TO_UNIT } from './constants';
+import { DIMENSIONS, COLORS, LengthUnit, METERS_TO_UNIT, ViewerTheme, getThemeColors } from './constants';
 import { MaterialFactory, MaterialStyle } from './materials';
 import { WallGenerator, StyleResolver } from './wall-generator';
 import { parseFloorplanDSL, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
@@ -73,6 +73,9 @@ class Viewer {
     
     // Current floorplan data (for annotations)
     private currentFloorplanData: JsonExport | null = null;
+    
+    // Theme state
+    private currentTheme: ViewerTheme = 'light';
 
     constructor() {
         // Init scene
@@ -249,6 +252,12 @@ class Viewer {
             this.updateDimensionAnnotations();
         });
         
+        // Theme toggle
+        const themeToggleBtn = document.getElementById('theme-toggle-btn') as HTMLButtonElement;
+        themeToggleBtn?.addEventListener('click', () => {
+            this.toggleTheme();
+        });
+        
         // Collapsible sections
         document.querySelectorAll('.section-header').forEach(header => {
             header.addEventListener('click', () => {
@@ -275,6 +284,34 @@ class Viewer {
         const z = this.lightRadius * Math.cos(elevationRad) * Math.cos(azimuthRad);
         
         this.directionalLight.position.set(x, y, z);
+    }
+    
+    private toggleTheme() {
+        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
+        this.applyTheme();
+        this.updateThemeButton();
+    }
+    
+    public setTheme(theme: ViewerTheme) {
+        this.currentTheme = theme;
+        this.applyTheme();
+        this.updateThemeButton();
+    }
+    
+    private applyTheme() {
+        const colors = getThemeColors(this.currentTheme);
+        this.scene.background = new THREE.Color(colors.BACKGROUND);
+    }
+    
+    private updateThemeButton() {
+        const btn = document.getElementById('theme-toggle-btn');
+        if (btn) {
+            if (this.currentTheme === 'light') {
+                btn.textContent = '🌙 Dark';
+            } else {
+                btn.textContent = '☀️ Light';
+            }
+        }
     }
     
     private toggleCameraMode() {

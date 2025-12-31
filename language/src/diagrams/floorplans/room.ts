@@ -18,6 +18,8 @@ export interface RoomRenderOptions {
   showArea?: boolean;
   /** Unit for displaying area */
   areaUnit?: AreaUnit;
+  /** Show room name/label/size text (default: true) */
+  showLabels?: boolean;
 }
 
 /**
@@ -35,6 +37,11 @@ export function generateRoomText(
   variables?: Map<string, { width: number; height: number }>,
   options?: RoomRenderOptions
 ): string {
+  // If showLabels is explicitly false, don't render any text
+  if (options?.showLabels === false) {
+    return '';
+  }
+
   const size = getRoomSize(room, variables);
   const sizeText = `${size.width} x ${size.height}`;
   const showArea = options?.showArea ?? false;

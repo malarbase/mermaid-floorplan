@@ -4,6 +4,7 @@ import type { FloorplansServices } from "./floorplans-module.js";
 import { hasMixedUnitSystems, VALID_UNITS, toMeters, type LengthUnit } from "./diagrams/floorplans/unit-utils.js";
 import { resolveFloorPositions } from "./diagrams/floorplans/position-resolver.js";
 import { getRoomSize, resolveVariables } from "./diagrams/floorplans/variable-resolver.js";
+import { isValidTheme, getAvailableThemes, normalizeConfigKey } from "./diagrams/floorplans/styles.js";
 
 /**
  * Register custom validation checks.
@@ -22,7 +23,8 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkRoomHeightExceedsFloor,
       validator.checkDoorPositionWithinSharedWall,
       validator.checkConnectionSizeConstraints,
-      validator.checkConflictingDoorSizeConfig
+      validator.checkConflictingDoorSizeConfig,
+      validator.checkThemeAndDarkModeConflict
     ],
     StyleProperty: [validator.checkStylePropertyValue],
     ConfigProperty: [validator.checkConfigPropertyValue]
@@ -796,8 +798,10 @@ export class FloorplansValidator {
    * Validate config property values
    */
   checkConfigPropertyValue(property: ConfigProperty, accept: ValidationAcceptor): void {
+    const normalizedKey = normalizeConfigKey(property.name);
+    
     // Validate default_unit has a valid value
-    if (property.name === 'default_unit') {
+    if (normalizedKey === 'defaultUnit') {
       // The grammar restricts unitRef to LENGTH_UNIT, but we add a defensive check
       // In case someone tries to use a number or styleRef for default_unit
       if (property.value !== undefined) {
@@ -813,6 +817,56 @@ export class FloorplansValidator {
           { node: property, property: "styleRef" }
         );
       }
+    }
+    
+    // Validate theme name (Mermaid-aligned)
+    if (property.name === 'theme' && property.themeRef) {
+      if (!isValidTheme(property.themeRef)) {
+        const validThemes = getAvailableThemes();
+        accept("warning",
+          `Unknown theme '${property.themeRef}'. Available themes: ${validThemes.join(', ')}.`,
+          { node: property, property: "themeRef" }
+        );
+      }
+    }
+    
+    // Validate fontSize is a positive number
+    if (normalizedKey === 'fontSize' && property.value !== undefined) {
+      if (property.value <= 0) {
+        accept("error",
+          `fontSize must be a positive number, got ${property.value}.`,
+          { node: property, property: "value" }
+        );
+      }
+    }
+  }
+  
+  /**
+   * Warn when both theme and darkMode are specified, as theme takes precedence
+   */
+  checkThemeAndDarkModeConflict(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    if (!floorplan.config) return;
+    
+    let hasTheme = false;
+    let hasDarkMode = false;
+    let darkModeProperty: ConfigProperty | undefined;
+    
+    for (const prop of floorplan.config.properties) {
+      const normalizedKey = normalizeConfigKey(prop.name);
+      if (prop.name === 'theme') {
+        hasTheme = true;
+      }
+      if (normalizedKey === 'darkMode') {
+        hasDarkMode = true;
+        darkModeProperty = prop;
+      }
+    }
+    
+    if (hasTheme && hasDarkMode && darkModeProperty) {
+      accept("warning",
+        `Both 'theme' and 'darkMode' are specified. The 'theme' property takes precedence, making 'darkMode' redundant.`,
+        { node: darkModeProperty }
+      );
     }
   }
 

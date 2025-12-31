@@ -18,6 +18,7 @@ import { buildStyleContext, type StyleContext } from "./style-resolver.js";
 import { computeFloorMetrics, type FloorMetrics, formatEfficiency } from "./metrics.js";
 import { convertFloorplanToJson, type JsonFloor } from "./json-converter.js";
 import { generateFloorDimensions, type DimensionType, type DimensionRenderOptions, type LengthUnit } from "./dimension.js";
+import { resolveConfig, resolveThemeOptions } from "./config-resolver.js";
 
 /**
  * Generate floor summary panel SVG
@@ -119,12 +120,31 @@ export function render(
   document: LangiumDocument<Floorplan>,
   options: RenderOptions = {}
 ): string {
-  const opts = { ...defaultRenderOptions, ...options };
   const floorplan = document.parseResult.value;
   
   if (floorplan.floors.length === 0) {
     return '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
   }
+
+  // Resolve config from DSL (supports theme, darkMode, fontFamily, etc.)
+  const resolvedConfig = resolveConfig(floorplan);
+  
+  // Resolve theme options from config (handles theme + darkMode)
+  const configTheme = resolveThemeOptions(resolvedConfig);
+  
+  // Merge options: defaults < config < explicit options
+  const opts: RenderOptions = {
+    ...defaultRenderOptions,
+    // Apply config-derived values (can be overridden by explicit options)
+    showDimensions: resolvedConfig.showDimensions ?? defaultRenderOptions.showDimensions,
+    // Merge theme: config theme + explicit theme options
+    theme: { ...configTheme, ...options.theme },
+    ...options,
+  };
+  
+  // If showLabels is set in config, we need to pass it through
+  // (Currently handled by room renderer, but exposed via config)
+  const showLabels = resolvedConfig.showLabels ?? true;
 
   // Resolve variables from the floorplan
   const variableResolution = resolveVariables(floorplan);
@@ -135,7 +155,7 @@ export function render(
 
   // Render all floors if requested
   if (opts.renderAllFloors && floorplan.floors.length > 1) {
-    return renderAllFloors(floorplan, opts, variables, styleContext);
+    return renderAllFloors(floorplan, opts, variables, styleContext, showLabels);
   }
 
   // Render specific floor (default: first floor for backward compatibility)
@@ -146,7 +166,7 @@ export function render(
     return '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
   }
 
-  return renderFloor(floor, opts, floorplan.connections, variables, styleContext);
+  return renderFloor(floor, opts, floorplan.connections, variables, styleContext, showLabels);
 }
 
 /**
@@ -156,7 +176,8 @@ function renderAllFloors(
   floorplan: Floorplan,
   options: RenderOptions,
   variables?: Map<string, { width: number; height: number }>,
-  styleContext?: StyleContext
+  styleContext?: StyleContext,
+  showLabels: boolean = true
 ): string {
   const opts = { ...defaultRenderOptions, ...options };
   const padding = opts.padding ?? 0;
@@ -239,6 +260,7 @@ function renderAllFloors(
   const roomRenderOpts: RoomRenderOptions = {
     showArea: opts.showArea,
     areaUnit: opts.areaUnit,
+    showLabels: showLabels,
   };
 
   // Render each floor with its offset
@@ -293,7 +315,8 @@ export function renderFloor(
   options: RenderOptions = {},
   connections: Connection[] = [],
   variables?: Map<string, { width: number; height: number }>,
-  styleContext?: StyleContext
+  styleContext?: StyleContext,
+  showLabels: boolean = true
 ): string {
   const opts = { ...defaultRenderOptions, ...options };
   
@@ -334,6 +357,7 @@ export function renderFloor(
   const roomRenderOpts: RoomRenderOptions = {
     showArea: opts.showArea,
     areaUnit: opts.areaUnit,
+    showLabels: showLabels,
   };
 
   // Add floor group with accessible label

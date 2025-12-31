@@ -125,6 +125,29 @@ export const COLORS = {
   BACKGROUND: 0xf5f5f7,
 } as const;
 
+/**
+ * Dark theme colors for 3D viewer
+ */
+export const COLORS_DARK = {
+  FLOOR: 0x3d3d3d,
+  WALL: 0x6d6d6d,
+  WINDOW: 0x4488cc,
+  DOOR: 0x5c3317,
+  BACKGROUND: 0x1a1a2e,
+} as const;
+
+/**
+ * Theme type for the viewer
+ */
+export type ViewerTheme = 'light' | 'dark';
+
+/**
+ * Get color palette for a theme
+ */
+export function getThemeColors(theme: ViewerTheme) {
+  return theme === 'dark' ? COLORS_DARK : COLORS;
+}
+
 export const MATERIAL_PROPERTIES = {
   FLOOR: {
     roughness: 0.8,

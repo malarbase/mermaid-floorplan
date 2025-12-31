@@ -33,15 +33,52 @@ ConfigBlock:
     '}';
 
 ConfigProperty:
-    name=CONFIG_KEY ':' (value=NUMBER | dimension=Dimension | styleRef=ID | unitRef=LENGTH_UNIT | areaUnitRef=AREA_UNIT);
+    name=CONFIG_KEY ':' (
+        value=NUMBER | 
+        dimension=Dimension | 
+        styleRef=ID | 
+        unitRef=LENGTH_UNIT | 
+        areaUnitRef=AREA_UNIT |
+        boolValue=BOOLEAN |
+        stringValue=STRING |
+        themeRef=THEME_NAME
+    );
 
-// Config property keys - includes default_unit for specifying measurement unit
+// Boolean values for config properties
+BOOLEAN returns string:
+    'true' | 'false';
+
+// Theme name values
+THEME_NAME returns string:
+    'default' | 'dark' | 'blueprint';
+
+// Config property keys - includes both snake_case (legacy) and camelCase (Mermaid-aligned)
 // door_size and window_size use Dimension type (width x height)
 CONFIG_KEY returns string:
-    'wall_thickness' | 'floor_thickness' | 'default_height' |
-    'door_width' | 'door_height' | 'door_size' |
-    'window_width' | 'window_height' | 'window_sill' | 'window_size' |
-    'default_style' | 'default_unit' | 'area_unit';
+    // Dimension properties (snake_case + camelCase)
+    'wall_thickness' | 'wallThickness' |
+    'floor_thickness' | 'floorThickness' |
+    'default_height' | 'defaultHeight' |
+    'door_width' | 'doorWidth' |
+    'door_height' | 'doorHeight' |
+    'door_size' | 'doorSize' |
+    'window_width' | 'windowWidth' |
+    'window_height' | 'windowHeight' |
+    'window_sill' | 'windowSill' |
+    'window_size' | 'windowSize' |
+    // Style and unit properties
+    'default_style' | 'defaultStyle' |
+    'default_unit' | 'defaultUnit' |
+    'area_unit' | 'areaUnit' |
+    // Theme properties (Mermaid-aligned)
+    'theme' |
+    'darkMode' | 'dark_mode' |
+    // Font properties (Mermaid-aligned)
+    'fontFamily' | 'font_family' |
+    'fontSize' | 'font_size' |
+    // Display toggle properties
+    'showLabels' | 'show_labels' |
+    'showDimensions' | 'show_dimensions';
 
 // Length unit types for dimensions
 LENGTH_UNIT returns string:

@@ -95,8 +95,31 @@ export {
   defaultThemeOptions,
   darkTheme,
   blueprintTheme,
+  themeRegistry,
+  getThemeByName,
+  isValidTheme,
+  getAvailableThemes,
+  normalizeConfigKey,
+  normalizeConfigKeys,
   type FloorplanThemeOptions,
 } from "./styles.js";
+
+// Config resolution (Mermaid-aligned)
+export {
+  resolveConfig,
+  resolveThemeOptions,
+  getEffectiveThemeName,
+  DEFAULT_CONFIG,
+  type ParsedConfig,
+} from "./config-resolver.js";
+
+// Frontmatter parsing (Mermaid v10.5.0+ compatible)
+export {
+  parseFrontmatter,
+  hasFrontmatter,
+  stripFrontmatter,
+  type FrontmatterResult,
+} from "./frontmatter-parser.js";
 
 // Style resolution
 export {
