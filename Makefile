@@ -3,8 +3,8 @@
 # Run `make` or `make help` to see available targets
 
 .PHONY: all help install build clean dev test langium langium-watch \
-        images images-svg images-png render mcp-server mcp-build rebuild watch \
-        viewer-dev viewer-build export-json
+        images images-svg images-png images-annotated render mcp-server mcp-build rebuild watch \
+        viewer-dev viewer-build export-json export-images export-svg export-png export-annotated
 
 # Default target
 all: help
@@ -18,13 +18,20 @@ help: ## Show this help message
 	@echo ""
 	@echo "Variables:"
 	@echo "  FLOORPLAN_FILE  Input file (default: trial/TriplexVilla.floorplan)"
-	@echo "  OUTPUT_DIR      Output directory (default: trial)"
+	@echo "  OUTPUT_DIR      Output directory for images (default: trial)"
+	@echo "  OUTPUT_FILE     Output file for JSON export (optional)"
 	@echo "  SCALE           Rendering scale (default: 15)"
+	@echo "  SHOW_AREA       Show room areas (default: false)"
+	@echo "  SHOW_DIMS       Show dimension lines (default: false)"
+	@echo "  SHOW_SUMMARY    Show floor summary panel (default: false)"
+	@echo "  AREA_UNIT       Area unit: sqft or sqm (default: sqft)"
 	@echo ""
 	@echo "Examples:"
-	@echo "  make images                    # Generate all images"
-	@echo "  make images SCALE=20           # Higher resolution"
-	@echo "  make render FILE=my.floorplan  # Render custom file"
+	@echo "  make images                              # Generate all images"
+	@echo "  make images SCALE=20                     # Higher resolution"
+	@echo "  make images-annotated                    # With all annotations"
+	@echo "  make images SHOW_AREA=1 AREA_UNIT=sqm   # Show areas in sqm"
+	@echo "  make render FLOORPLAN_FILE=my.floorplan  # Render custom file"
 
 # ===============================
 # Core Targets
@@ -63,27 +70,41 @@ langium-watch: ## Watch and regenerate Langium artifacts
 FLOORPLAN_FILE ?= trial/TriplexVilla.floorplan
 OUTPUT_DIR ?= trial
 SCALE ?= 15
+SHOW_AREA ?=
+SHOW_DIMS ?=
+SHOW_SUMMARY ?=
+AREA_UNIT ?= sqft
+
+# Build annotation flags
+ANNOTATION_FLAGS := $(if $(SHOW_AREA),--show-area) $(if $(SHOW_DIMS),--show-dims) $(if $(SHOW_SUMMARY),--show-summary)
+ifneq ($(AREA_UNIT),sqft)
+ANNOTATION_FLAGS += --area-unit $(AREA_UNIT)
+endif
 
 export-images: ## Generate SVG + PNG for all floors
-	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE)
+	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE) $(ANNOTATION_FLAGS)
 
 export-svg: ## Generate SVG only
-	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --svg-only --scale $(SCALE)
+	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --svg-only --scale $(SCALE) $(ANNOTATION_FLAGS)
 
 export-png: ## Generate PNG only
-	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --png-only --scale $(SCALE)
+	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --png-only --scale $(SCALE) $(ANNOTATION_FLAGS)
 
-export-json: ## Export floorplan to JSON (FILE=path OUT=path)
-ifdef FILE
-	npx tsx scripts/export-json.ts $(FILE) $(OUT)
+export-annotated: ## Generate images with all annotations (area, dims, summary)
+	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE) --show-area --show-dims --show-summary --area-unit $(AREA_UNIT)
+
+export-json: ## Export floorplan to JSON (FLOORPLAN_FILE=path OUTPUT_FILE=path)
+ifdef FLOORPLAN_FILE
+	npx tsx scripts/export-json.ts $(FLOORPLAN_FILE) $(OUTPUT_FILE)
 else
-	@echo "Usage: make export-json FILE=path/to/file.floorplan [OUT=output.json]"
+	@echo "Usage: make export-json FLOORPLAN_FILE=path/to/file.floorplan [OUTPUT_FILE=output.json]"
 endif
 
 # Aliases for backward compatibility
 images: export-images
 images-svg: export-svg
 images-png: export-png
+images-annotated: export-annotated
 
 # ===============================
 # 3D Viewer
