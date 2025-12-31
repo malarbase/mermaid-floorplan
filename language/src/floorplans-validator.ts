@@ -1,7 +1,7 @@
 import type { ValidationAcceptor, ValidationChecks } from "langium";
 import type { FloorplansAstType, Floorplan, Connection, Room, Floor, StyleBlock, StyleProperty, ConfigProperty } from "./generated/ast.js";
 import type { FloorplansServices } from "./floorplans-module.js";
-import { hasMixedUnitSystems, VALID_UNITS } from "./diagrams/floorplans/unit-utils.js";
+import { hasMixedUnitSystems, VALID_UNITS, toMeters, type LengthUnit } from "./diagrams/floorplans/unit-utils.js";
 import { resolveFloorPositions } from "./diagrams/floorplans/position-resolver.js";
 import { getRoomSize, resolveVariables } from "./diagrams/floorplans/variable-resolver.js";
 
@@ -408,12 +408,12 @@ export class FloorplansValidator {
         }
 
         // Check height conflicts
-        const heightA = this.getRoomHeight(roomA, floorplan);
-        const heightB = this.getRoomHeight(roomB, floorplan);
+        const heightA = this.getRoomHeight(roomA, floorplan, floor);
+        const heightB = this.getRoomHeight(roomB, floorplan, floor);
         
         if (heightA !== heightB) {
           accept("warning",
-            `Height mismatch at shared wall: ${roomAName} (${heightA}m) and ${roomBName} (${heightB}m) have different heights. ` +
+            `Height mismatch at shared wall: ${roomAName} (${heightA.toFixed(2)}m) and ${roomBName} (${heightB.toFixed(2)}m) have different heights. ` +
             `This may cause visual inconsistencies in 3D rendering.`,
             { node: roomA }
           );
@@ -637,25 +637,49 @@ export class FloorplansValidator {
   }
 
   /**
-   * Get room height with fallback to config default
+   * Get room height with fallback to floor/config default, normalized to meters
    */
-  private getRoomHeight(room: Room, floorplan: Floorplan): number {
+  private getRoomHeight(room: Room, floorplan: Floorplan, floor: Floor): number {
+    const defaultUnit = this.getDefaultUnit(floorplan);
+    
     // Check room's explicit height
     if (room.height !== undefined) {
-      return room.height.value;
+      const unit = (room.height.unit || defaultUnit) as LengthUnit;
+      return toMeters(room.height.value, unit);
+    }
+    
+    // Check floor's height
+    if (floor.height !== undefined) {
+      const unit = (floor.height.unit || defaultUnit) as LengthUnit;
+      return toMeters(floor.height.value, unit);
     }
     
     // Check config for default_height
     if (floorplan.config) {
       for (const prop of floorplan.config.properties) {
         if (prop.name === 'default_height' && prop.value !== undefined) {
-          return prop.value;
+          // Config default_height uses default_unit
+          return toMeters(prop.value, defaultUnit);
         }
       }
     }
     
-    // Return default
+    // Return default (3.35m)
     return 3.35;
+  }
+  
+  /**
+   * Get the default unit from config, or 'm' if not specified
+   */
+  private getDefaultUnit(floorplan: Floorplan): LengthUnit {
+    if (floorplan.config) {
+      for (const prop of floorplan.config.properties) {
+        if (prop.name === 'default_unit' && prop.unitRef) {
+          return prop.unitRef as LengthUnit;
+        }
+      }
+    }
+    return 'm';
   }
 
   /**
@@ -894,16 +918,19 @@ export class FloorplansValidator {
 
         // Validate height constraint (if not fullHeight)
         if (!conn.size.fullHeight && conn.size.height) {
-          const connHeight = conn.size.height.value;
+          // Normalize connection height to meters
+          const defaultUnit = this.getDefaultUnit(floorplan);
+          const connHeightUnit = (conn.size.height.unit || defaultUnit) as LengthUnit;
+          const connHeightMeters = toMeters(conn.size.height.value, connHeightUnit);
           
-          // Get room heights
-          const fromRoomHeight = this.getRoomHeight(this.findRoomByName(allRooms, fromRoomName)!, floorplan);
-          const toRoomHeight = this.getRoomHeight(this.findRoomByName(allRooms, toRoomName)!, floorplan);
+          // Get room heights (already in meters from getRoomHeight)
+          const fromRoomHeight = this.getRoomHeight(this.findRoomByName(allRooms, fromRoomName)!, floorplan, floor);
+          const toRoomHeight = this.getRoomHeight(this.findRoomByName(allRooms, toRoomName)!, floorplan, floor);
           const minRoomHeight = Math.min(fromRoomHeight, toRoomHeight);
 
-          if (connHeight > minRoomHeight) {
+          if (connHeightMeters > minRoomHeight) {
             accept("warning",
-              `Connection height ${connHeight}${conn.size.height.unit || ''} exceeds room height ${minRoomHeight.toFixed(2)}m. The connection may not fit properly.`,
+              `Connection height ${conn.size.height.value}${conn.size.height.unit || defaultUnit} exceeds room height ${minRoomHeight.toFixed(2)}m. The connection may not fit properly.`,
               { node: conn, property: "size" }
             );
           }
