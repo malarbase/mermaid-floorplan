@@ -2,6 +2,8 @@ import type { ValidationAcceptor, ValidationChecks } from "langium";
 import type { FloorplansAstType, Floorplan, Connection, Room, Floor, StyleBlock, StyleProperty, ConfigProperty } from "./generated/ast.js";
 import type { FloorplansServices } from "./floorplans-module.js";
 import { hasMixedUnitSystems, VALID_UNITS } from "./diagrams/floorplans/unit-utils.js";
+import { resolveFloorPositions } from "./diagrams/floorplans/position-resolver.js";
+import { getRoomSize, resolveVariables } from "./diagrams/floorplans/variable-resolver.js";
 
 /**
  * Register custom validation checks.
@@ -180,6 +182,7 @@ export class FloorplansValidator {
   
   /**
    * Check that connection walls are compatible (both should be solid for doors to render correctly)
+   * Note: 'opening' connections don't require solid walls - they override wall types
    */
   checkConnectionWallTypes(floorplan: Floorplan, accept: ValidationAcceptor): void {
     // Build a map of room wall types
@@ -194,6 +197,10 @@ export class FloorplansValidator {
       // Skip incomplete or outside connections
       if (!fromRoom || !fromWall || !toRoom || !toWall) continue;
       if (fromRoom === "outside" || toRoom === "outside") continue;
+      
+      // Skip wall type checks for 'opening' connections - they override wall types
+      // Openings create a doorless passage regardless of wall specs
+      if (connection.doorType === "opening") continue;
       
       // Check wall types
       const fromWallType = wallTypes.get(`${fromRoom}.${fromWall}`);
@@ -355,8 +362,8 @@ export class FloorplansValidator {
       roomMap.set(room.name, room);
     }
 
-    // Get room bounds for adjacency detection
-    const roomBounds = this.computeRoomBounds(rooms, floorplan);
+    // Get room bounds for adjacency detection with proper position resolution
+    const roomBounds = this.computeRoomBounds(rooms, floorplan, floor);
 
     // Check each pair of rooms for shared walls
     const checkedPairs = new Set<string>();
@@ -383,11 +390,19 @@ export class FloorplansValidator {
         const wallTypeB = this.getRoomWallType(roomB, sharedWall.wallB);
 
         if (wallTypeA && wallTypeB && wallTypeA !== wallTypeB) {
-          accept("warning", 
-            `Shared wall conflict: ${roomAName}.${sharedWall.wallA} is '${wallTypeA}' but ${roomBName}.${sharedWall.wallB} is '${wallTypeB}'. ` +
-            `Adjacent walls should have matching types for consistent rendering.`,
-            { node: roomA }
+          // Check if there's an 'opening' connection between these walls
+          // Opening connections override wall type conflicts
+          const hasOpeningConnection = this.hasOpeningConnection(
+            floorplan, roomAName, sharedWall.wallA, roomBName, sharedWall.wallB
           );
+          
+          if (!hasOpeningConnection) {
+            accept("warning", 
+              `Shared wall conflict: ${roomAName}.${sharedWall.wallA} is '${wallTypeA}' but ${roomBName}.${sharedWall.wallB} is '${wallTypeB}'. ` +
+              `Adjacent walls should have matching types for consistent rendering.`,
+              { node: roomA }
+            );
+          }
         }
 
         // Check height conflicts
@@ -425,39 +440,40 @@ export class FloorplansValidator {
   }
 
   /**
-   * Compute room bounds for adjacency detection
+   * Compute room bounds for adjacency detection using proper position resolution
    */
-  private computeRoomBounds(rooms: Room[], floorplan: Floorplan): Map<string, { x: number; z: number; width: number; height: number }> {
+  private computeRoomBounds(rooms: Room[], floorplan: Floorplan, floor?: Floor): Map<string, { x: number; z: number; width: number; height: number }> {
     const bounds = new Map<string, { x: number; z: number; width: number; height: number }>();
     
-    // Build variable map for size resolution
-    const variables = new Map<string, { width: number; height: number }>();
-    for (const def of floorplan.defines) {
-      if (def.value) {
-        variables.set(def.name, { width: def.value.width.value, height: def.value.height.value });
-      }
+    // Resolve variables for size calculation
+    const variableResolution = resolveVariables(floorplan);
+    const variables = variableResolution.variables;
+    
+    // If floor is provided, use proper position resolution
+    let resolvedPositions = new Map<string, { x: number; y: number }>();
+    if (floor) {
+      const positionResult = resolveFloorPositions(floor, variables);
+      resolvedPositions = positionResult.positions;
     }
 
-    // Simple resolution - only handles absolute positions for now
-    // A full implementation would integrate with position-resolver.ts
+    // Calculate bounds for each room
     for (const room of rooms) {
-      let x = 0, z = 0, width = 10, height = 10;
+      let x = 0, z = 0;
       
-      if (room.position) {
+      // Get resolved position if available, otherwise use absolute position or default to 0,0
+      const resolved = resolvedPositions.get(room.name);
+      if (resolved) {
+        x = resolved.x;
+        z = resolved.y;
+      } else if (room.position) {
         x = room.position.x.value;
         z = room.position.y.value;
       }
       
-      if (room.size) {
-        width = room.size.width.value;
-        height = room.size.height.value;
-      } else if (room.sizeRef) {
-        const varSize = variables.get(room.sizeRef);
-        if (varSize) {
-          width = varSize.width;
-          height = varSize.height;
-        }
-      }
+      // Get room size
+      const size = getRoomSize(room, variables);
+      const width = size.width;
+      const height = size.height;
 
       bounds.set(room.name, { x, z, width, height });
     }
@@ -589,6 +605,33 @@ export class FloorplansValidator {
     
     const spec = room.walls.specifications.find(s => s.direction === direction);
     return spec?.type;
+  }
+
+  /**
+   * Check if there's an 'opening' connection between two rooms on specific walls
+   */
+  private hasOpeningConnection(
+    floorplan: Floorplan,
+    roomA: string,
+    wallA: string,
+    roomB: string,
+    wallB: string
+  ): boolean {
+    for (const conn of floorplan.connections) {
+      if (conn.doorType !== "opening") continue;
+      
+      const fromRoom = conn.from?.room?.name;
+      const fromWall = conn.from?.wall;
+      const toRoom = conn.to?.room?.name;
+      const toWall = conn.to?.wall;
+      
+      // Check both directions (A->B and B->A)
+      const matchesAB = fromRoom === roomA && fromWall === wallA && toRoom === roomB && toWall === wallB;
+      const matchesBA = fromRoom === roomB && fromWall === wallB && toRoom === roomA && toWall === wallA;
+      
+      if (matchesAB || matchesBA) return true;
+    }
+    return false;
   }
 
   /**
@@ -748,22 +791,20 @@ export class FloorplansValidator {
   }
 
   /**
-   * Check that door positions fall within the actual shared wall boundary between rooms.
-   * Warns when a door is positioned outside the overlapping segment of adjacent walls.
+   * Check that connections reference walls that actually share a boundary.
+   * 
+   * Note: Door position percentages (at N%) are NOT validated here because
+   * the renderer interprets them as percentages of the SHARED wall segment,
+   * not the full wall. This allows intuitive behavior where `at 50%` always
+   * centers the door on the shared boundary regardless of room size differences.
+   * 
+   * See project.md "Door Position Calculation" for detailed documentation.
    */
   checkDoorPositionWithinSharedWall = (floorplan: Floorplan, accept: ValidationAcceptor): void => {
-    // Build variable map
-    const variables = new Map<string, { width: number; height: number }>();
-    for (const def of floorplan.defines) {
-      if (def.value) {
-        variables.set(def.name, { width: def.value.width.value, height: def.value.height.value });
-      }
-    }
-
     // Process each floor
     for (const floor of floorplan.floors) {
       const allRooms = this.collectAllRooms(floor);
-      const bounds = this.computeRoomBounds(allRooms, floorplan);
+      const bounds = this.computeRoomBounds(allRooms, floorplan, floor);
 
       // Check each connection
       for (const conn of floorplan.connections) {
@@ -777,7 +818,6 @@ export class FloorplansValidator {
 
         const fromWall = conn.from.wall || "unknown";
         const toWall = conn.to.wall || "unknown";
-        const position = conn.position || 50;
 
         // Calculate shared wall segment
         const sharedSegment = this.calculateSharedWallSegment(
@@ -786,22 +826,14 @@ export class FloorplansValidator {
         );
 
         if (!sharedSegment) {
-          // Rooms don't share this wall boundary
+          // Rooms don't share this wall boundary - this is a real problem
           accept("warning",
             `Connection from ${fromRoomName}.${fromWall} to ${toRoomName}.${toWall} connects walls that don't share a boundary. The door may not align properly with the rooms.`,
             { node: conn }
           );
-          continue;
         }
-
-        // Check if door position falls within the shared segment
-        const doorPosition = position / 100; // Convert percentage to ratio
-        if (doorPosition < sharedSegment.start || doorPosition > sharedSegment.end) {
-          accept("warning",
-            `Door at ${position}% on ${fromRoomName}.${fromWall} falls outside the shared boundary with ${toRoomName} (shared segment: ${(sharedSegment.start * 100).toFixed(0)}%-${(sharedSegment.end * 100).toFixed(0)}%). The door will not align with ${toRoomName}.`,
-            { node: conn, property: "position" }
-          );
-        }
+        // Note: Door position validation removed - renderer interprets position
+        // as percentage of shared segment, so any 0-100% value is valid
       }
     }
   }

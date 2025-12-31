@@ -138,8 +138,9 @@ WallType returns string:
     'solid' | 'door' | 'window' | 'open';
 
 // Door types
+// 'opening' creates a doorless passage (archway) between rooms
 DoorType returns string:
-    'door' | 'double-door';
+    'door' | 'double-door' | 'opening';
 
 // Swing directions
 SwingDirection returns string:

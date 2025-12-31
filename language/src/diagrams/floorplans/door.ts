@@ -162,6 +162,15 @@ export function generateDoor(
   doorType: DoorType = "door",
   swingDirection?: SwingDirection
 ): string {
+  // Handle opening (doorless passage/archway)
+  // Creates a gap in the wall without a door arc
+  if (doorType === "opening") {
+    // Draw a white rectangle to "cut" through the wall, creating the opening
+    // No door arc is drawn - just the gap
+    return `<rect x="${x}" y="${y}" width="${width}" height="${height}" 
+      fill="white" stroke="none" class="opening" data-type="opening" data-direction="${wallDirection}" />`;
+  }
+  
   // Handle double-door
   if (doorType === "double-door") {
     return generateDoubleDoor(x, y, width, height, wallDirection ?? "top");

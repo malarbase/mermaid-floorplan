@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
+import { calculatePositionWithFallback, type RoomBounds } from 'floorplans-language';
 import { DIMENSIONS } from './constants';
 import { JsonWall, JsonRoom, JsonConnection, JsonConfig } from './types';
 import { MaterialSet, MaterialFactory, MaterialStyle } from './materials';
@@ -301,19 +302,37 @@ export class WallGenerator {
     const holeY = elevation + doorHeight / 2;
 
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
+    const targetRoom = allRooms.find((r) => r.name === connection.toRoom);
     const percentage = connection.position ?? 50;
-    const ratio = percentage / 100;
 
-    let holeX = 0;
-    let holeZ = 0;
     const sourceWallDir = connection.fromWall;
     const sourceIsVertical = sourceWallDir === 'left' || sourceWallDir === 'right';
 
+    // Convert 3D room coordinates to RoomBounds (z -> y for shared utility)
+    const sourceBounds: RoomBounds = {
+      x: sourceRoom.x,
+      y: sourceRoom.z,  // 3D uses z for depth
+      width: sourceRoom.width,
+      height: sourceRoom.height,
+    };
+    const targetBounds: RoomBounds | null = targetRoom ? {
+      x: targetRoom.x,
+      y: targetRoom.z,
+      width: targetRoom.width,
+      height: targetRoom.height,
+    } : null;
+
+    // Use shared utility for position calculation (single source of truth with SVG renderer)
+    let holeX: number;
+    let holeZ: number;
+
     if (sourceIsVertical) {
-      holeZ = sourceRoom.z + sourceRoom.height * ratio;
+      // Vertical walls: calculate Z position using shared utility
+      holeZ = calculatePositionWithFallback(sourceBounds, targetBounds, true, percentage);
       holeX = sourceWallDir === 'left' ? sourceRoom.x : sourceRoom.x + sourceRoom.width;
     } else {
-      holeX = sourceRoom.x + sourceRoom.width * ratio;
+      // Horizontal walls: calculate X position using shared utility
+      holeX = calculatePositionWithFallback(sourceBounds, targetBounds, false, percentage);
       holeZ = sourceWallDir === 'top' ? sourceRoom.z : sourceRoom.z + sourceRoom.height;
     }
 
@@ -329,7 +348,8 @@ export class WallGenerator {
     holes.push(holeBrush);
 
     // Add door mesh if this wall should render it
-    if (shouldRenderDoor) {
+    // Skip door mesh for 'opening' type - it's a doorless passage
+    if (shouldRenderDoor && connection.doorType !== 'opening') {
       const doorMesh = this.doorRenderer.renderDoor({
         connection,
         room,
