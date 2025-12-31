@@ -89,6 +89,46 @@ The viewer SHALL provide a one-click isometric view preset.
 - **WHEN** the user activates isometric view
 - **THEN** the camera zoom SHALL adjust to fit the entire model in view
 
+### Requirement: Validation Warnings Overlay
+The viewer SHALL display DSL validation warnings in a toggleable UI overlay.
+
+#### Scenario: Warnings collected at parse time
+- **GIVEN** a floorplan DSL file is loaded
+- **WHEN** the parser detects validation warnings (door misalignments, wall conflicts, height mismatches)
+- **THEN** the warnings SHALL be stored and made available to the UI
+- **AND** warnings SHALL include message text and line numbers
+
+#### Scenario: Warnings badge visibility
+- **GIVEN** validation warnings exist
+- **WHEN** the floorplan is loaded
+- **THEN** a warning count badge SHALL be displayed (e.g., "⚠️ 5 warnings")
+- **AND** the badge SHALL remain visible even when the warnings panel is collapsed
+
+#### Scenario: Toggle warnings panel
+- **WHEN** the user clicks the warning count badge or "Show Warnings" toggle
+- **THEN** the warnings panel SHALL expand/collapse
+- **AND** the panel SHALL not obstruct the 3D view by default
+
+#### Scenario: Warnings panel contents
+- **GIVEN** the warnings panel is expanded
+- **THEN** the panel SHALL display:
+  - Each warning message with line number (e.g., "line 301: Door misalignment...")
+  - Warning severity icons (⚠️)
+  - Scrollable list if warnings exceed available space
+- **AND** the panel SHALL use warning colors (#FFD700, #FFA500)
+
+#### Scenario: No warnings state
+- **GIVEN** the loaded floorplan has no validation warnings
+- **WHEN** viewing the UI
+- **THEN** the warning badge SHALL not be displayed
+- **OR** SHALL show "✓ No warnings"
+
+#### Scenario: Warnings cleared on reload
+- **GIVEN** warnings are displayed from a previous file
+- **WHEN** a new floorplan file is loaded
+- **THEN** old warnings SHALL be cleared
+- **AND** new warnings SHALL be displayed if present
+
 ### Requirement: Expanded Controls Panel
 The viewer SHALL organize all controls in an expandable/collapsible panel.
 
@@ -99,6 +139,7 @@ The viewer SHALL organize all controls in an expandable/collapsible panel.
   - Lighting (azimuth, elevation, intensity)
   - View (exploded view)
   - Annotations (area, dimensions, floor summary)
+  - Validation (warnings display toggle)
   - Export (GLTF, GLB buttons)
 
 #### Scenario: Panel remembers state

@@ -5,6 +5,7 @@
 
 import type { Connection, Floor, Room, WallDirection } from "../../generated/ast.js";
 import { generateDoor } from "./door.js";
+import { calculatePositionOnWallOverlap, type WallBounds } from "./geometry-utils.js";
 import type { ResolvedPosition } from "./position-resolver.js";
 import { getRoomSize } from "./variable-resolver.js";
 
@@ -65,7 +66,7 @@ function getWallBounds(
   parentOffsetY = 0,
   resolvedPositions?: Map<string, ResolvedPosition>,
   variables?: Map<string, { width: number; height: number }>
-): { x: number; y: number; length: number; isHorizontal: boolean } | null {
+): WallBounds | null {
   const pos = getRoomPosition(room, resolvedPositions);
   if (!pos) {
     return null;
@@ -100,10 +101,10 @@ function calculateConnectionPoint(
   toWall: WallDirection,
   position: number = 50, // percentage along the wall
   resolvedPositions?: Map<string, ResolvedPosition>,
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, { width: number; height: number }>,
+  doorWidth: number = 2 // Standard door width (approx 2-3 feet), can be overridden by connection size
 ): ConnectionPoint | null {
   const wallThickness = 0.2;
-  const doorWidth = 2; // Standard door width (approx 2-3 feet)
   
   const fromBounds = getWallBounds(fromRoom, fromWall, 0, 0, resolvedPositions, variables);
   const toBounds = getWallBounds(toRoom, toWall, 0, 0, resolvedPositions, variables);
@@ -119,36 +120,26 @@ function calculateConnectionPoint(
   let wallDirection: WallDirection;
   
   if (fromBounds.isHorizontal && toBounds.isHorizontal) {
-    // Both horizontal walls - find x overlap
-    const overlapStart = Math.max(fromBounds.x, toBounds.x);
-    const overlapEnd = Math.min(fromBounds.x + fromBounds.length, toBounds.x + toBounds.length);
-    
-    if (overlapStart >= overlapEnd) {
+    // Both horizontal walls - use shared utility for overlap calculation
+    const doorX = calculatePositionOnWallOverlap(fromBounds, toBounds, position);
+    if (doorX === null) {
       return null; // No overlap
     }
     
-    const overlapLength = overlapEnd - overlapStart;
-    const doorX = overlapStart + (overlapLength * position / 100) - doorWidth / 2;
-    
-    x = doorX;
+    x = doorX - doorWidth / 2;
     y = Math.min(fromBounds.y, toBounds.y);
     width = doorWidth;
     height = wallThickness;
     wallDirection = fromWall;
   } else if (!fromBounds.isHorizontal && !toBounds.isHorizontal) {
-    // Both vertical walls - find y overlap
-    const overlapStart = Math.max(fromBounds.y, toBounds.y);
-    const overlapEnd = Math.min(fromBounds.y + fromBounds.length, toBounds.y + toBounds.length);
-    
-    if (overlapStart >= overlapEnd) {
+    // Both vertical walls - use shared utility for overlap calculation
+    const doorY = calculatePositionOnWallOverlap(fromBounds, toBounds, position);
+    if (doorY === null) {
       return null; // No overlap
     }
     
-    const overlapLength = overlapEnd - overlapStart;
-    const doorY = overlapStart + (overlapLength * position / 100) - doorWidth / 2;
-    
     x = Math.min(fromBounds.x, toBounds.x);
-    y = doorY;
+    y = doorY - doorWidth / 2;
     width = wallThickness;
     height = doorWidth;
     wallDirection = fromWall;
@@ -258,7 +249,14 @@ export function generateConnection(
   }
   
   const position = connection.position ?? 50;
-  const connectionPoint = calculateConnectionPoint(fromRoom, fromWall, toRoom, toWall, position, resolvedPositions, variables);
+  
+  // Get door width from connection size if specified
+  const doorWidth = connection.size?.width?.value ?? 2; // Default to 2 (approx 2-3 feet)
+  
+  const connectionPoint = calculateConnectionPoint(
+    fromRoom, fromWall, toRoom, toWall, 
+    position, resolvedPositions, variables, doorWidth
+  );
   
   if (!connectionPoint) {
     return ""; // No valid connection point

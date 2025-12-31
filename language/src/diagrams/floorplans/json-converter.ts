@@ -23,10 +23,18 @@ export interface JsonConfig {
     wall_thickness?: number;
     default_height?: number;
     floor_thickness?: number;
+    /** Door width (legacy, use door_size instead) */
     door_width?: number;
+    /** Door height (legacy, use door_size instead) */
     door_height?: number;
+    /** Door size as [width, height] */
+    door_size?: [number, number];
+    /** Window width (legacy, use window_size instead) */
     window_width?: number;
+    /** Window height (legacy, use window_size instead) */
     window_height?: number;
+    /** Window size as [width, height] */
+    window_size?: [number, number];
     window_sill?: number;
     default_style?: string;
     default_unit?: LENGTH_UNIT;
@@ -88,6 +96,12 @@ export interface JsonConnection {
     position?: number;
     swing?: string;
     opensInto?: string;
+    /** Connection-specific width override */
+    width?: number;
+    /** Connection-specific height override (undefined if fullHeight is true) */
+    height?: number;
+    /** If true, the opening extends to the ceiling */
+    fullHeight?: boolean;
 }
 
 export interface JsonExport {
@@ -138,6 +152,14 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
         for (const prop of floorplan.config.properties) {
             if (prop.value !== undefined) {
                 (config as Record<string, number>)[prop.name] = prop.value;
+            }
+            // Handle dimension properties (door_size, window_size)
+            if (prop.dimension !== undefined) {
+                if (prop.name === 'door_size') {
+                    config.door_size = [prop.dimension.width.value, prop.dimension.height.value];
+                } else if (prop.name === 'window_size') {
+                    config.window_size = [prop.dimension.width.value, prop.dimension.height.value];
+                }
             }
             // Handle default_unit
             if (prop.name === 'default_unit' && prop.unitRef) {
@@ -247,7 +269,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
         const toRoomName = conn.to.room.name;
         if (!fromRoomName || !toRoomName) continue;
 
-        jsonExport.connections.push({
+        const jsonConn: JsonConnection = {
             fromRoom: fromRoomName,
             fromWall: conn.from.wall || "unknown",
             toRoom: toRoomName,
@@ -256,7 +278,19 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             position: conn.position,
             swing: conn.swing,
             opensInto: conn.opensInto?.name
-        });
+        };
+
+        // Add size if specified
+        if (conn.size) {
+            jsonConn.width = conn.size.width.value;
+            if (conn.size.fullHeight) {
+                jsonConn.fullHeight = true;
+            } else if (conn.size.height) {
+                jsonConn.height = conn.size.height.value;
+            }
+        }
+
+        jsonExport.connections.push(jsonConn);
     }
     
     // Compute floorplan summary

@@ -140,6 +140,17 @@ export {
   type BoundingBox,
 } from "./metrics.js";
 
+// Geometry utilities (shared between 2D/SVG and 3D rendering)
+export {
+  calculateWallOverlap,
+  calculatePositionOnOverlap,
+  calculatePositionWithFallback,
+  calculateWallBoundsOverlap,
+  calculatePositionOnWallOverlap,
+  type RoomBounds,
+  type WallBounds,
+} from "./geometry-utils.js";
+
 // Unified Generator API (following Langium generator pattern)
 export {
   generate,

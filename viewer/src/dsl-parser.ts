@@ -36,6 +36,7 @@ export interface ParseError {
 export interface ParseResult {
     data: JsonExport | null;
     errors: ParseError[];
+    warnings: ParseError[];
 }
 
 /**
@@ -44,6 +45,7 @@ export interface ParseResult {
  */
 export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult> {
     const errors: ParseError[] = [];
+    const warnings: ParseError[] = [];
 
     try {
         const doc = await parseDSL(dslContent);
@@ -66,7 +68,27 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
         }
 
         if (errors.length > 0) {
-            return { data: null, errors };
+            return { data: null, errors, warnings };
+        }
+
+        // Run validation checks
+        const validationDiagnostics = await services.Floorplans.validation.DocumentValidator.validateDocument(doc);
+        for (const diag of validationDiagnostics) {
+            const diagError: ParseError = {
+                message: diag.message,
+                line: diag.range ? diag.range.start.line + 1 : undefined,
+                column: diag.range ? diag.range.start.character + 1 : undefined,
+            };
+            
+            if (diag.severity === 1) { // Error
+                errors.push(diagError);
+            } else if (diag.severity === 2) { // Warning
+                warnings.push(diagError);
+            }
+        }
+
+        if (errors.length > 0) {
+            return { data: null, errors, warnings };
         }
 
         // Use shared conversion logic (single source of truth)
@@ -80,16 +102,16 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
         }
 
         if (errors.length > 0) {
-            return { data: null, errors };
+            return { data: null, errors, warnings };
         }
 
-        return { data: result.data, errors: [] };
+        return { data: result.data, errors: [], warnings };
 
     } catch (err) {
         errors.push({
             message: `Unexpected error: ${err instanceof Error ? err.message : String(err)}`
         });
-        return { data: null, errors };
+        return { data: null, errors, warnings };
     }
 }
 

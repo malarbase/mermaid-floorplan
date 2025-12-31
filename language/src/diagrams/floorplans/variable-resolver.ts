@@ -3,7 +3,7 @@
  * Resolves dimension variables and config defaults
  */
 
-import type { CONFIG_KEY, Floorplan, Room, LENGTH_UNIT } from "../../generated/ast.js";
+import type { CONFIG_KEY, Floorplan, Room, LENGTH_UNIT, Dimension } from "../../generated/ast.js";
 
 /**
  * Resolved dimension with optional unit information
@@ -16,13 +16,25 @@ export interface ResolvedDimension {
 }
 
 /**
+ * Resolved size dimension (width x height)
+ */
+export interface ResolvedSize {
+  width: number;
+  height: number;
+  widthUnit?: LENGTH_UNIT;
+  heightUnit?: LENGTH_UNIT;
+}
+
+/**
  * Result of variable resolution
  */
 export interface VariableResolutionResult {
   /** Map of variable name to resolved dimension */
   variables: Map<string, ResolvedDimension>;
-  /** Configuration values */
+  /** Configuration values (numeric) */
   config: Map<CONFIG_KEY, number>;
+  /** Configuration size values (door_size, window_size) */
+  configSizes: Map<string, ResolvedSize>;
   /** Default unit from config (if specified) */
   defaultUnit?: LENGTH_UNIT;
   /** Errors encountered during resolution */
@@ -42,6 +54,7 @@ export interface VariableResolutionError {
 export function resolveVariables(floorplan: Floorplan): VariableResolutionResult {
   const variables = new Map<string, ResolvedDimension>();
   const config = new Map<CONFIG_KEY, number>();
+  const configSizes = new Map<string, ResolvedSize>();
   const errors: VariableResolutionError[] = [];
   let defaultUnit: LENGTH_UNIT | undefined;
 
@@ -69,6 +82,10 @@ export function resolveVariables(floorplan: Floorplan): VariableResolutionResult
       if (prop.value !== undefined) {
         config.set(prop.name, prop.value);
       }
+      // Handle dimension properties (door_size, window_size)
+      if (prop.dimension !== undefined) {
+        configSizes.set(prop.name, dimensionToResolvedSize(prop.dimension));
+      }
       // Handle default_unit
       if (prop.name === 'default_unit' && prop.unitRef) {
         defaultUnit = prop.unitRef;
@@ -77,7 +94,19 @@ export function resolveVariables(floorplan: Floorplan): VariableResolutionResult
     }
   }
 
-  return { variables, config, defaultUnit, errors };
+  return { variables, config, configSizes, defaultUnit, errors };
+}
+
+/**
+ * Convert a Dimension AST node to a ResolvedSize
+ */
+function dimensionToResolvedSize(dimension: Dimension): ResolvedSize {
+  return {
+    width: dimension.width.value,
+    height: dimension.height.value,
+    widthUnit: dimension.width.unit,
+    heightUnit: dimension.height.unit,
+  };
 }
 
 /**
@@ -146,21 +175,70 @@ export function validateSizeReferences(
 export interface ResolvedConfig {
   wallThickness: number;
   doorWidth: number;
+  doorHeight: number;
   windowWidth: number;
+  windowHeight: number;
   defaultHeight: number;
 }
 
+// Default values for config
+const CONFIG_DEFAULTS = {
+  wallThickness: 0.2,
+  doorWidth: 1.0,
+  doorHeight: 2.1,
+  windowWidth: 1.5,
+  windowHeight: 1.5,
+  defaultHeight: 3.0,
+};
+
 /**
  * Get resolved config with default values
+ * Supports both door_size/window_size (preferred) and door_width/door_height (legacy)
+ * 
+ * Precedence:
+ * 1. door_size/window_size dimension property
+ * 2. door_width/door_height individual properties
+ * 3. Default values
  */
 export function getResolvedConfig(
-  config: Map<CONFIG_KEY, number>
+  config: Map<CONFIG_KEY, number>,
+  configSizes?: Map<string, ResolvedSize>
 ): ResolvedConfig {
+  // Resolve door dimensions (door_size takes precedence)
+  let doorWidth = CONFIG_DEFAULTS.doorWidth;
+  let doorHeight = CONFIG_DEFAULTS.doorHeight;
+  
+  const doorSize = configSizes?.get("door_size");
+  if (doorSize) {
+    doorWidth = doorSize.width;
+    doorHeight = doorSize.height;
+  } else {
+    // Fallback to individual properties
+    doorWidth = config.get("door_width") ?? CONFIG_DEFAULTS.doorWidth;
+    doorHeight = config.get("door_height") ?? CONFIG_DEFAULTS.doorHeight;
+  }
+
+  // Resolve window dimensions (window_size takes precedence)
+  let windowWidth = CONFIG_DEFAULTS.windowWidth;
+  let windowHeight = CONFIG_DEFAULTS.windowHeight;
+  
+  const windowSize = configSizes?.get("window_size");
+  if (windowSize) {
+    windowWidth = windowSize.width;
+    windowHeight = windowSize.height;
+  } else {
+    // Fallback to individual properties
+    windowWidth = config.get("window_width") ?? CONFIG_DEFAULTS.windowWidth;
+    windowHeight = config.get("window_height") ?? CONFIG_DEFAULTS.windowHeight;
+  }
+
   return {
-    wallThickness: config.get("wall_thickness") ?? 0.2,
-    doorWidth: config.get("door_width") ?? 1.0,
-    windowWidth: config.get("window_width") ?? 1.5,
-    defaultHeight: config.get("default_height") ?? 3.0,
+    wallThickness: config.get("wall_thickness") ?? CONFIG_DEFAULTS.wallThickness,
+    doorWidth,
+    doorHeight,
+    windowWidth,
+    windowHeight,
+    defaultHeight: config.get("default_height") ?? CONFIG_DEFAULTS.defaultHeight,
   };
 }
 

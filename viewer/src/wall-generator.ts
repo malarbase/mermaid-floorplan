@@ -6,6 +6,7 @@
 
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
+import { calculatePositionWithFallback, type RoomBounds } from 'floorplans-language';
 import { DIMENSIONS } from './constants';
 import { JsonWall, JsonRoom, JsonConnection, JsonConfig } from './types';
 import { MaterialSet, MaterialFactory, MaterialStyle } from './materials';
@@ -249,13 +250,29 @@ export class WallGenerator {
     const holeY = elevation + doorHeight / 2;
 
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
+    const targetRoom = allRooms.find((r) => r.name === connection.toRoom);
     const percentage = connection.position ?? 50;
     const ratio = percentage / 100;
 
-    let holeX = 0;
-    let holeZ = 0;
     const sourceWallDir = connection.fromWall;
     const sourceIsVertical = sourceWallDir === 'left' || sourceWallDir === 'right';
+
+    // Check if rooms are actually adjacent before rendering door
+    if (targetRoom) {
+      const sourceBounds = { x: sourceRoom.x, y: sourceRoom.z, width: sourceRoom.width, height: sourceRoom.height };
+      const targetBounds = { x: targetRoom.x, y: targetRoom.z, width: targetRoom.width, height: targetRoom.height };
+      const hasOverlap = sourceIsVertical ? 
+        (Math.max(sourceBounds.y, targetBounds.y) < Math.min(sourceBounds.y + sourceBounds.height, targetBounds.y + targetBounds.height)) :
+        (Math.max(sourceBounds.x, targetBounds.x) < Math.min(sourceBounds.x + sourceBounds.width, targetBounds.x + targetBounds.width));
+
+      if (!hasOverlap) {
+        console.warn(`[3D Renderer] Skipping door: ${connection.fromRoom}.${connection.fromWall} → ${connection.toRoom}.${connection.toWall} - rooms are not adjacent on this wall`);
+        return;
+      }
+    }
+
+    let holeX = 0;
+    let holeZ = 0;
 
     if (sourceIsVertical) {
       holeZ = sourceRoom.z + sourceRoom.height * ratio;
@@ -295,25 +312,93 @@ export class WallGenerator {
     config: JsonConfig
   ): void {
     const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
-    const singleDoorWidth = config.door_width ?? DIMENSIONS.DOOR.WIDTH;
-    const doorHeight = config.door_height ?? DIMENSIONS.DOOR.HEIGHT;
-    const doorWidth = connection.doorType === 'double-door' ? singleDoorWidth * 2 : singleDoorWidth;
-    const holeY = elevation + doorHeight / 2;
+    
+    // Resolve door dimensions with precedence:
+    // 1. Connection-specific size
+    // 2. Config door_size
+    // 3. Config door_width/door_height (legacy)
+    // 4. Default values
+    let doorWidth: number;
+    let doorHeight: number;
+    let isFullHeight = false;
+
+    if (connection.width !== undefined) {
+      // Connection-specific width
+      doorWidth = connection.width;
+    } else if (config.door_size) {
+      // Config door_size [width, height]
+      doorWidth = config.door_size[0];
+    } else {
+      // Legacy door_width or default
+      const singleDoorWidth = config.door_width ?? DIMENSIONS.DOOR.WIDTH;
+      doorWidth = connection.doorType === 'double-door' ? singleDoorWidth * 2 : singleDoorWidth;
+    }
+
+    if (connection.fullHeight) {
+      // Full height opening - use room height
+      isFullHeight = true;
+      const roomHeight = room.roomHeight ?? config.default_height ?? DIMENSIONS.WALL.HEIGHT;
+      doorHeight = roomHeight;
+    } else if (connection.height !== undefined) {
+      // Connection-specific height
+      doorHeight = connection.height;
+    } else if (config.door_size) {
+      // Config door_size [width, height]
+      doorHeight = config.door_size[1];
+    } else {
+      // Legacy door_height or default
+      doorHeight = config.door_height ?? DIMENSIONS.DOOR.HEIGHT;
+    }
+
+    // For full height, center vertically; otherwise, position from floor
+    const holeY = isFullHeight 
+      ? elevation + doorHeight / 2  // Full height: center at room mid-height
+      : elevation + doorHeight / 2; // Standard: center at door mid-height
 
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
+    const targetRoom = allRooms.find((r) => r.name === connection.toRoom);
     const percentage = connection.position ?? 50;
-    const ratio = percentage / 100;
 
-    let holeX = 0;
-    let holeZ = 0;
     const sourceWallDir = connection.fromWall;
     const sourceIsVertical = sourceWallDir === 'left' || sourceWallDir === 'right';
 
+    // Convert 3D room coordinates to RoomBounds (z -> y for shared utility)
+    const sourceBounds: RoomBounds = {
+      x: sourceRoom.x,
+      y: sourceRoom.z,  // 3D uses z for depth
+      width: sourceRoom.width,
+      height: sourceRoom.height,
+    };
+    const targetBounds: RoomBounds | null = targetRoom ? {
+      x: targetRoom.x,
+      y: targetRoom.z,
+      width: targetRoom.width,
+      height: targetRoom.height,
+    } : null;
+
+    // Check if rooms are actually adjacent before rendering door
+    // This prevents rendering doors in invalid positions when rooms don't share a wall
+    const hasOverlap = targetBounds ? (sourceIsVertical ? 
+      (Math.max(sourceBounds.y, targetBounds.y) < Math.min(sourceBounds.y + sourceBounds.height, targetBounds.y + targetBounds.height)) :
+      (Math.max(sourceBounds.x, targetBounds.x) < Math.min(sourceBounds.x + sourceBounds.width, targetBounds.x + targetBounds.width))) : false;
+
+    // Skip rendering door if rooms are not adjacent (no wall overlap)
+    if (targetBounds && !hasOverlap) {
+      console.warn(`[3D Renderer] Skipping door: ${connection.fromRoom}.${connection.fromWall} → ${connection.toRoom}.${connection.toWall} - rooms are not adjacent on this wall`);
+      return;
+    }
+
+    // Use shared utility for position calculation (single source of truth with SVG renderer)
+    let holeX: number;
+    let holeZ: number;
+
     if (sourceIsVertical) {
-      holeZ = sourceRoom.z + sourceRoom.height * ratio;
+      // Vertical walls: calculate Z position using shared utility
+      holeZ = calculatePositionWithFallback(sourceBounds, targetBounds, true, percentage);
       holeX = sourceWallDir === 'left' ? sourceRoom.x : sourceRoom.x + sourceRoom.width;
     } else {
-      holeX = sourceRoom.x + sourceRoom.width * ratio;
+      // Horizontal walls: calculate X position using shared utility
+      holeX = calculatePositionWithFallback(sourceBounds, targetBounds, false, percentage);
       holeZ = sourceWallDir === 'top' ? sourceRoom.z : sourceRoom.z + sourceRoom.height;
     }
 
@@ -329,7 +414,8 @@ export class WallGenerator {
     holes.push(holeBrush);
 
     // Add door mesh if this wall should render it
-    if (shouldRenderDoor) {
+    // Skip door mesh for 'opening' type - it's a doorless passage
+    if (shouldRenderDoor && connection.doorType !== 'opening') {
       const doorMesh = this.doorRenderer.renderDoor({
         connection,
         room,

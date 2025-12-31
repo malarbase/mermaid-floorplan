@@ -33,13 +33,15 @@ ConfigBlock:
     '}';
 
 ConfigProperty:
-    name=CONFIG_KEY ':' (value=NUMBER | styleRef=ID | unitRef=LENGTH_UNIT | areaUnitRef=AREA_UNIT);
+    name=CONFIG_KEY ':' (value=NUMBER | dimension=Dimension | styleRef=ID | unitRef=LENGTH_UNIT | areaUnitRef=AREA_UNIT);
 
 // Config property keys - includes default_unit for specifying measurement unit
+// door_size and window_size use Dimension type (width x height)
 CONFIG_KEY returns string:
     'wall_thickness' | 'floor_thickness' | 'default_height' |
-    'door_width' | 'door_height' |
-    'window_width' | 'window_height' | 'window_sill' | 'default_style' | 'default_unit' | 'area_unit';
+    'door_width' | 'door_height' | 'door_size' |
+    'window_width' | 'window_height' | 'window_sill' | 'window_size' |
+    'default_style' | 'default_unit' | 'area_unit';
 
 // Length unit types for dimensions
 LENGTH_UNIT returns string:
@@ -110,8 +112,13 @@ Connection:
     'connect' from=WallReference 'to' to=WallReference 
     doorType=DoorType
     ('at' position=NUMBER '%')?
+    ('size' size=ConnectionSize)?
     ('door' 'opens' 'into' opensInto=RoomReference | 'opens' 'into' opensInto=RoomReference)?
     ('swing' ':' swing=SwingDirection)?;
+
+// Connection size (supports 'full' keyword for height)
+ConnectionSize:
+    '(' width=ValueWithUnit 'x' (height=ValueWithUnit | fullHeight?='full') ')';
 
 // Wall reference (room.wall or just room)
 WallReference:
@@ -138,8 +145,9 @@ WallType returns string:
     'solid' | 'door' | 'window' | 'open';
 
 // Door types
+// 'opening' creates a doorless passage (archway) between rooms
 DoorType returns string:
-    'door' | 'double-door';
+    'door' | 'double-door' | 'opening';
 
 // Swing directions
 SwingDirection returns string:
