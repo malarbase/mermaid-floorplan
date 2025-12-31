@@ -585,8 +585,8 @@ class Viewer {
                 // Width label (above room, along X axis)
                 const widthText = this.formatLength(room.width);
                 const widthDiv = document.createElement('div');
-                widthDiv.className = 'dimension-label';
-                widthDiv.textContent = widthText;
+                widthDiv.className = 'dimension-label width-label';
+                widthDiv.textContent = `w: ${widthText}`;
                 
                 const widthLabel = new CSS2DObject(widthDiv);
                 // Use local coordinates (relative to floor group)
@@ -598,8 +598,8 @@ class Viewer {
                 // Depth label (beside room, along Z axis)
                 const depthText = this.formatLength(room.height);
                 const depthDiv = document.createElement('div');
-                depthDiv.className = 'dimension-label';
-                depthDiv.textContent = depthText;
+                depthDiv.className = 'dimension-label depth-label';
+                depthDiv.textContent = `d: ${depthText}`;
                 
                 const depthLabel = new CSS2DObject(depthDiv);
                 depthLabel.position.set(room.x - 0.5, y, room.z + room.height / 2);

@@ -95,7 +95,7 @@ function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
     window_sill: convertValue(config.window_sill, unit),
     // Keep non-dimensional values unchanged
     default_style: config.default_style,
-    default_unit: 'm', // After normalization, everything is in meters
+    default_unit: config.default_unit, // Preserve user's display preference
     area_unit: config.area_unit,
   };
 }
