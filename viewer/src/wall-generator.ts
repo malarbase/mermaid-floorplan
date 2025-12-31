@@ -250,13 +250,29 @@ export class WallGenerator {
     const holeY = elevation + doorHeight / 2;
 
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
+    const targetRoom = allRooms.find((r) => r.name === connection.toRoom);
     const percentage = connection.position ?? 50;
     const ratio = percentage / 100;
 
-    let holeX = 0;
-    let holeZ = 0;
     const sourceWallDir = connection.fromWall;
     const sourceIsVertical = sourceWallDir === 'left' || sourceWallDir === 'right';
+
+    // Check if rooms are actually adjacent before rendering door
+    if (targetRoom) {
+      const sourceBounds = { x: sourceRoom.x, y: sourceRoom.z, width: sourceRoom.width, height: sourceRoom.height };
+      const targetBounds = { x: targetRoom.x, y: targetRoom.z, width: targetRoom.width, height: targetRoom.height };
+      const hasOverlap = sourceIsVertical ? 
+        (Math.max(sourceBounds.y, targetBounds.y) < Math.min(sourceBounds.y + sourceBounds.height, targetBounds.y + targetBounds.height)) :
+        (Math.max(sourceBounds.x, targetBounds.x) < Math.min(sourceBounds.x + sourceBounds.width, targetBounds.x + targetBounds.width));
+
+      if (!hasOverlap) {
+        console.warn(`[3D Renderer] Skipping door: ${connection.fromRoom}.${connection.fromWall} → ${connection.toRoom}.${connection.toWall} - rooms are not adjacent on this wall`);
+        return;
+      }
+    }
+
+    let holeX = 0;
+    let holeZ = 0;
 
     if (sourceIsVertical) {
       holeZ = sourceRoom.z + sourceRoom.height * ratio;
@@ -359,6 +375,18 @@ export class WallGenerator {
       width: targetRoom.width,
       height: targetRoom.height,
     } : null;
+
+    // Check if rooms are actually adjacent before rendering door
+    // This prevents rendering doors in invalid positions when rooms don't share a wall
+    const hasOverlap = targetBounds ? (sourceIsVertical ? 
+      (Math.max(sourceBounds.y, targetBounds.y) < Math.min(sourceBounds.y + sourceBounds.height, targetBounds.y + targetBounds.height)) :
+      (Math.max(sourceBounds.x, targetBounds.x) < Math.min(sourceBounds.x + sourceBounds.width, targetBounds.x + targetBounds.width))) : false;
+
+    // Skip rendering door if rooms are not adjacent (no wall overlap)
+    if (targetBounds && !hasOverlap) {
+      console.warn(`[3D Renderer] Skipping door: ${connection.fromRoom}.${connection.fromWall} → ${connection.toRoom}.${connection.toWall} - rooms are not adjacent on this wall`);
+      return;
+    }
 
     // Use shared utility for position calculation (single source of truth with SVG renderer)
     let holeX: number;

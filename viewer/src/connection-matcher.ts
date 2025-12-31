@@ -89,19 +89,22 @@ export class ConnectionMatcher {
     const isCurrentOpen = currentWall.type === 'open';
     const isOtherOpen = otherWallType === 'open';
 
+    let result: boolean;
     if (isCurrentOpen && isOtherOpen) {
       // Both open: prefer fromRoom
-      return isFromRoom;
+      result = isFromRoom;
     } else if (isCurrentOpen) {
       // I am open, other is solid: Other renders
-      return false;
+      result = false;
     } else if (isOtherOpen) {
       // I am solid, other is open: I render
-      return true;
+      result = true;
     } else {
       // Both solid: prefer fromRoom
-      return isFromRoom;
+      result = isFromRoom;
     }
+
+    return result;
   }
 }
 

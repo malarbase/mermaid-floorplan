@@ -153,31 +153,40 @@ export function shouldRenderWall(
     return false;
   }
 
-  // Find adjacent rooms
+  // Calculate total wall length
+  const isVertical = wall.direction === 'left' || wall.direction === 'right';
+  const wallLength = isVertical ? room.height : room.width;
+
+  // Track total coverage by adjacent rooms that would own the wall
+  let coveredLength = 0;
+
+  // Find all adjacent rooms and calculate their coverage
   for (const candidate of allRooms) {
     const adjacency = checkAdjacency(room, wall, candidate, tolerance);
     if (adjacency) {
-      // Found an adjacent room - determine ownership
-      const isVertical = wall.direction === 'left' || wall.direction === 'right';
+      // Found an adjacent room - check if it would own this segment
+      let candidateOwnsSegment = false;
       
       if (isVertical) {
         // Vertical wall: room with smaller X owns
-        if (room.x < candidate.x - tolerance) return true;
-        if (room.x > candidate.x + tolerance) return false;
-        // Equal X: compare names
-        return room.name < candidate.name;
+        if (room.x > candidate.x + tolerance) candidateOwnsSegment = true;
+        else if (Math.abs(room.x - candidate.x) <= tolerance && room.name > candidate.name) candidateOwnsSegment = true;
       } else {
         // Horizontal wall: room with smaller Z owns
-        if (room.z < candidate.z - tolerance) return true;
-        if (room.z > candidate.z + tolerance) return false;
-        // Equal Z: compare names
-        return room.name < candidate.name;
+        if (room.z > candidate.z + tolerance) candidateOwnsSegment = true;
+        else if (Math.abs(room.z - candidate.z) <= tolerance && room.name > candidate.name) candidateOwnsSegment = true;
+      }
+
+      if (candidateOwnsSegment) {
+        // This segment is owned by the adjacent room
+        coveredLength += (adjacency.overlapEnd - adjacency.overlapStart);
       }
     }
   }
 
-  // No adjacent room - this is an exterior wall, always render
-  return true;
+  // Render if there's any uncovered portion of the wall
+  // (covered portions will be handled by adjacent rooms)
+  return coveredLength < wallLength - tolerance;
 }
 
 /**
