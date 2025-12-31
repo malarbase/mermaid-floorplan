@@ -33,17 +33,29 @@ ConfigBlock:
     '}';
 
 ConfigProperty:
-    name=CONFIG_KEY ':' (value=NUMBER | styleRef=ID);
+    name=CONFIG_KEY ':' (value=NUMBER | styleRef=ID | unitRef=LENGTH_UNIT | areaUnitRef=AREA_UNIT);
 
-// Config property keys
+// Config property keys - includes default_unit for specifying measurement unit
 CONFIG_KEY returns string:
     'wall_thickness' | 'floor_thickness' | 'default_height' |
     'door_width' | 'door_height' |
-    'window_width' | 'window_height' | 'window_sill' | 'default_style';
+    'window_width' | 'window_height' | 'window_sill' | 'default_style' | 'default_unit' | 'area_unit';
+
+// Length unit types for dimensions
+LENGTH_UNIT returns string:
+    'm' | 'ft' | 'cm' | 'in' | 'mm';
+
+// Area unit types for metrics display
+AREA_UNIT returns string:
+    'sqft' | 'sqm';
+
+// Value with optional unit (e.g., 10, 10m, 10ft)
+ValueWithUnit:
+    value=NUMBER unit=LENGTH_UNIT?;
 
 // Floor definition
 Floor:
-    'floor' id=ID ('height' height=NUMBER)? '{' 
+    'floor' id=ID ('height' height=ValueWithUnit)? '{' 
         rooms+=Room*
     '}';
 
@@ -55,18 +67,23 @@ Room:
     type=('room' | 'sub-room') name=ID 
     ('at' position=Coordinate)?
     'size' (size=Dimension | sizeRef=ID)
-    ('height' height=NUMBER)?
-    ('elevation' elevation=SIGNED_NUMBER)?
+    ('height' height=ValueWithUnit)?
+    ('elevation' elevation=SignedValueWithUnit)?
     'walls' walls=WallSpec
     relativePosition=RelativePosition?
     ('label' label=STRING)?
     ('composed' 'of' '[' subRooms+=Room* ']')?
     ('style' styleRef=ID)?;
 
+// Signed value with optional unit (for elevations which can be negative)
+// Uses NUMBER for the magnitude and a separate negative flag
+SignedValueWithUnit:
+    negative?='-'? value=NUMBER unit=LENGTH_UNIT?;
+
 // Relative positioning - places room relative to another room
 RelativePosition:
     direction=RelativeDirection reference=ID
-    ('gap' gap=NUMBER)?
+    ('gap' gap=ValueWithUnit)?
     ('align' alignment=AlignmentDirection)?;
 
 // Relative direction keywords
@@ -104,13 +121,13 @@ WallReference:
 RoomReference:
     name=ID | 'outside';
 
-// Coordinate (x,y)
+// Coordinate (x,y) with optional units
 Coordinate:
-    '(' x=NUMBER ',' y=NUMBER ')';
+    '(' x=ValueWithUnit ',' y=ValueWithUnit ')';
 
-// Dimension (width x height)  
+// Dimension (width x height) with optional units
 Dimension:
-    '(' width=NUMBER 'x' height=NUMBER ')';
+    '(' width=ValueWithUnit 'x' height=ValueWithUnit ')';
 
 // Wall directions
 WallDirection returns string:
@@ -131,7 +148,6 @@ SwingDirection returns string:
 // Terminal rules
 terminal ID: /[_a-zA-Z][\w]*/;
 terminal NUMBER returns number: /[0-9]+(\.[0-9]+)?/;
-terminal SIGNED_NUMBER returns number: /-?[0-9]+(\.[0-9]+)?/;
 terminal STRING: /"[^"]*"|'[^']*'/;
 
 // Comments

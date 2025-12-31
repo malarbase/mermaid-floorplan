@@ -41,10 +41,10 @@ describe("Floorplan Langium Parser Tests", () => {
 
     const room = model.floors[0]?.rooms[0];
     expect(room?.name).toBe("TestRoom");
-    expect(room?.position?.x).toBe(1);
-    expect(room?.position?.y).toBe(2);
-    expect(room?.size?.width).toBe(10);
-    expect(room?.size?.height).toBe(12);
+    expect(room?.position?.x?.value).toBe(1);
+    expect(room?.position?.y?.value).toBe(2);
+    expect(room?.size?.width?.value).toBe(10);
+    expect(room?.size?.height?.value).toBe(12);
     expect(room?.walls?.specifications).toHaveLength(4);
   });
 
@@ -116,15 +116,15 @@ describe("Floorplan Langium Parser Tests", () => {
     expect(mainRoom?.subRooms).toHaveLength(2);
 
     const closet = mainRoom?.subRooms?.find((r) => r.name === "Closet");
-    expect(closet?.size?.width).toBe(5);
-    expect(closet?.size?.height).toBe(5);
+    expect(closet?.size?.width?.value).toBe(5);
+    expect(closet?.size?.height?.value).toBe(5);
 
     const bathroom = mainRoom?.subRooms?.find((r) => r.name === "Bathroom");
     expect(bathroom?.subRooms).toHaveLength(1);
 
     const toilet = bathroom?.subRooms?.[0];
     expect(toilet?.name).toBe("Toilet");
-    expect(toilet?.size?.width).toBe(3);
+    expect(toilet?.size?.width?.value).toBe(3);
   });
 
   test("should parse sub-room type explicitly", async () => {
@@ -264,10 +264,10 @@ describe("Floorplan Langium Parser Tests", () => {
     expectNoErrors(document);
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
-    expect(room?.position?.x).toBe(1.5);
-    expect(room?.position?.y).toBe(2.75);
-    expect(room?.size?.width).toBe(10.5);
-    expect(room?.size?.height).toBe(12.25);
+    expect(room?.position?.x?.value).toBe(1.5);
+    expect(room?.position?.y?.value).toBe(2.75);
+    expect(room?.size?.width?.value).toBe(10.5);
+    expect(room?.size?.height?.value).toBe(12.25);
   });
 
   test("should parse room with label", async () => {
@@ -403,7 +403,7 @@ describe("Relative Positioning Parser Tests", () => {
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
     expect(roomB?.relativePosition?.direction).toBe("right-of");
-    expect(roomB?.relativePosition?.gap).toBe(2);
+    expect(roomB?.relativePosition?.gap?.value).toBe(2);
   });
 
   test("should parse relative positioning with alignment", async () => {
@@ -437,7 +437,7 @@ describe("Relative Positioning Parser Tests", () => {
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
     expect(roomB?.relativePosition?.direction).toBe("right-of");
-    expect(roomB?.relativePosition?.gap).toBe(3);
+    expect(roomB?.relativePosition?.gap?.value).toBe(3);
     expect(roomB?.relativePosition?.alignment).toBe("center");
   });
 
@@ -455,8 +455,8 @@ describe("Relative Positioning Parser Tests", () => {
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
     // Both explicit and relative positions should be parsed
-    expect(roomB?.position?.x).toBe(10);
-    expect(roomB?.position?.y).toBe(10);
+    expect(roomB?.position?.x?.value).toBe(10);
+    expect(roomB?.position?.y?.value).toBe(10);
     expect(roomB?.relativePosition?.direction).toBe("right-of");
   });
 
@@ -906,8 +906,8 @@ describe("Variables and Defaults Tests", () => {
     const model = document.parseResult.value;
     expect(model.defines).toHaveLength(1);
     expect(model.defines[0]?.name).toBe("standard_bed");
-    expect(model.defines[0]?.value.width).toBe(12);
-    expect(model.defines[0]?.value.height).toBe(12);
+    expect(model.defines[0]?.value.width?.value).toBe(12);
+    expect(model.defines[0]?.value.height?.value).toBe(12);
     
     const room = model.floors[0]?.rooms[0];
     expect(room?.size).toBeUndefined();
@@ -1092,5 +1092,277 @@ describe("Variables and Defaults Tests", () => {
     expect(bedroom?.sizeRef).toBeUndefined();
     expect(bathroom?.size).toBeUndefined();
     expect(bathroom?.sizeRef).toBe("bathroom_size");
+  });
+});
+
+describe("Dimension Units Tests", () => {
+  test("should parse dimension with meters unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Bedroom at (0,0) size (4m x 3m) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.size?.width?.value).toBe(4);
+    expect(room?.size?.width?.unit).toBe("m");
+    expect(room?.size?.height?.value).toBe(3);
+    expect(room?.size?.height?.unit).toBe("m");
+  });
+
+  test("should parse dimension with feet unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Bedroom at (0,0) size (12ft x 10ft) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.size?.width?.value).toBe(12);
+    expect(room?.size?.width?.unit).toBe("ft");
+    expect(room?.size?.height?.value).toBe(10);
+    expect(room?.size?.height?.unit).toBe("ft");
+  });
+
+  test("should parse dimension with centimeters unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Closet at (0,0) size (150cm x 200cm) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.size?.width?.value).toBe(150);
+    expect(room?.size?.width?.unit).toBe("cm");
+    expect(room?.size?.height?.value).toBe(200);
+    expect(room?.size?.height?.unit).toBe("cm");
+  });
+
+  test("should parse dimension with inches unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Cabinet at (0,0) size (36in x 24in) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.size?.width?.value).toBe(36);
+    expect(room?.size?.width?.unit).toBe("in");
+    expect(room?.size?.height?.value).toBe(24);
+    expect(room?.size?.height?.unit).toBe("in");
+  });
+
+  test("should parse dimension with millimeters unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room TinySpace at (0,0) size (500mm x 300mm) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.size?.width?.value).toBe(500);
+    expect(room?.size?.width?.unit).toBe("mm");
+    expect(room?.size?.height?.value).toBe(300);
+    expect(room?.size?.height?.unit).toBe("mm");
+  });
+
+  test("should parse coordinate with units", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (5m, 10m) size (4m x 3m) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.position?.x?.value).toBe(5);
+    expect(room?.position?.x?.unit).toBe("m");
+    expect(room?.position?.y?.value).toBe(10);
+    expect(room?.position?.y?.unit).toBe("m");
+  });
+
+  test("should parse gap with unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (5m x 5m) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB size (5m x 5m) walls [top: solid, right: solid, bottom: solid, left: solid] right-of RoomA gap 0.5m
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const roomB = document.parseResult.value.floors[0]?.rooms[1];
+    expect(roomB?.relativePosition?.gap?.value).toBe(0.5);
+    expect(roomB?.relativePosition?.gap?.unit).toBe("m");
+  });
+
+  test("should parse room height with unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (4m x 3m) height 2.8m walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.height?.value).toBe(2.8);
+    expect(room?.height?.unit).toBe("m");
+  });
+
+  test("should parse room elevation with unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Loft at (0,0) size (10ft x 10ft) elevation 8ft walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.elevation?.value).toBe(8);
+    expect(room?.elevation?.unit).toBe("ft");
+    expect(room?.elevation?.negative).toBe(false);
+  });
+
+  test("should parse negative elevation with unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Basement at (0,0) size (10m x 10m) elevation -2.5m walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.elevation?.value).toBe(2.5);
+    expect(room?.elevation?.unit).toBe("m");
+    expect(room?.elevation?.negative).toBe(true);
+  });
+
+  test("should parse dimension without unit (backward compatibility)", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room OldStyle at (0,0) size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const room = document.parseResult.value.floors[0]?.rooms[0];
+    expect(room?.size?.width?.value).toBe(10);
+    expect(room?.size?.width?.unit).toBeUndefined();
+    expect(room?.size?.height?.value).toBe(8);
+    expect(room?.size?.height?.unit).toBeUndefined();
+  });
+
+  test("should parse mixed units and unit-less in same floorplan", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB at (10m, 0) size (3m x 2m) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const roomA = model.floors[0]?.rooms[0];
+    const roomB = model.floors[0]?.rooms[1];
+
+    // RoomA - no units
+    expect(roomA?.size?.width?.unit).toBeUndefined();
+    
+    // RoomB - has units
+    expect(roomB?.size?.width?.unit).toBe("m");
+  });
+
+  test("should parse default_unit config", async () => {
+    const input = `
+      floorplan
+          config { default_unit: ft }
+          floor f1 {
+              room Test at (0,0) size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    expect(model.config).toBeDefined();
+    
+    const defaultUnitProp = model.config?.properties.find(p => p.name === 'default_unit');
+    expect(defaultUnitProp?.unitRef).toBe('ft');
+  });
+
+  test("should parse define statement with units", async () => {
+    const input = `
+      floorplan
+          define master_bed (15ft x 12ft)
+          floor f1 {
+              room Bedroom at (0,0) size master_bed walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    expect(model.defines[0]?.value.width?.value).toBe(15);
+    expect(model.defines[0]?.value.width?.unit).toBe("ft");
+    expect(model.defines[0]?.value.height?.value).toBe(12);
+    expect(model.defines[0]?.value.height?.unit).toBe("ft");
+  });
+
+  test("should parse floor height with unit", async () => {
+    const input = `
+      floorplan
+          floor Ground height 3.5m {
+              room Test at (0,0) size (5m x 5m) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0];
+    expect(floor?.height?.value).toBe(3.5);
+    expect(floor?.height?.unit).toBe("m");
   });
 });

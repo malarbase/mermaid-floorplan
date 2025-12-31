@@ -3,16 +3,28 @@
  * Resolves dimension variables and config defaults
  */
 
-import type { CONFIG_KEY, Floorplan, Room } from "../../generated/ast.js";
+import type { CONFIG_KEY, Floorplan, Room, LENGTH_UNIT } from "../../generated/ast.js";
+
+/**
+ * Resolved dimension with optional unit information
+ */
+export interface ResolvedDimension {
+  width: number;
+  height: number;
+  widthUnit?: LENGTH_UNIT;
+  heightUnit?: LENGTH_UNIT;
+}
 
 /**
  * Result of variable resolution
  */
 export interface VariableResolutionResult {
   /** Map of variable name to resolved dimension */
-  variables: Map<string, { width: number; height: number }>;
+  variables: Map<string, ResolvedDimension>;
   /** Configuration values */
   config: Map<CONFIG_KEY, number>;
+  /** Default unit from config (if specified) */
+  defaultUnit?: LENGTH_UNIT;
   /** Errors encountered during resolution */
   errors: VariableResolutionError[];
 }
@@ -28,9 +40,10 @@ export interface VariableResolutionError {
  * Collect all variable definitions and config from a floorplan
  */
 export function resolveVariables(floorplan: Floorplan): VariableResolutionResult {
-  const variables = new Map<string, { width: number; height: number }>();
+  const variables = new Map<string, ResolvedDimension>();
   const config = new Map<CONFIG_KEY, number>();
   const errors: VariableResolutionError[] = [];
+  let defaultUnit: LENGTH_UNIT | undefined;
 
   // Process define statements
   for (const define of floorplan.defines) {
@@ -42,23 +55,29 @@ export function resolveVariables(floorplan: Floorplan): VariableResolutionResult
       });
     } else {
       variables.set(define.name, {
-        width: define.value.width,
-        height: define.value.height,
+        width: define.value.width.value,
+        height: define.value.height.value,
+        widthUnit: define.value.width.unit,
+        heightUnit: define.value.height.unit,
       });
     }
   }
 
-  // Process config block (only numeric properties)
+  // Process config block
   if (floorplan.config) {
     for (const prop of floorplan.config.properties) {
       if (prop.value !== undefined) {
         config.set(prop.name, prop.value);
       }
+      // Handle default_unit
+      if (prop.name === 'default_unit' && prop.unitRef) {
+        defaultUnit = prop.unitRef;
+      }
       // Note: styleRef properties like 'default_style' are handled separately
     }
   }
 
-  return { variables, config, errors };
+  return { variables, config, defaultUnit, errors };
 }
 
 /**
@@ -67,11 +86,16 @@ export function resolveVariables(floorplan: Floorplan): VariableResolutionResult
  */
 export function getResolvedSize(
   room: Room,
-  variables: Map<string, { width: number; height: number }>
-): { width: number; height: number } | undefined {
+  variables: Map<string, ResolvedDimension>
+): ResolvedDimension | undefined {
   // If the room has an inline size, use it
   if (room.size) {
-    return { width: room.size.width, height: room.size.height };
+    return { 
+      width: room.size.width.value, 
+      height: room.size.height.value,
+      widthUnit: room.size.width.unit,
+      heightUnit: room.size.height.unit,
+    };
   }
 
   // If the room references a variable, look it up
@@ -87,7 +111,7 @@ export function getResolvedSize(
  */
 export function validateSizeReferences(
   floorplan: Floorplan,
-  variables: Map<string, { width: number; height: number }>
+  variables: Map<string, ResolvedDimension>
 ): VariableResolutionError[] {
   const errors: VariableResolutionError[] = [];
 
@@ -143,15 +167,52 @@ export function getResolvedConfig(
 /**
  * Get room size, ensuring it exists (either inline or from resolved variables)
  * This is a convenience function for use after validation
+ * Returns width/height as numbers (without unit info) for backward compatibility
  * @throws Error if room has no size
  */
 export function getRoomSize(
   room: Room,
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, ResolvedDimension>
 ): { width: number; height: number } {
   // If the room has an inline size, use it
   if (room.size) {
-    return { width: room.size.width, height: room.size.height };
+    return { width: room.size.width.value, height: room.size.height.value };
+  }
+
+  // If the room references a variable, look it up
+  if (room.sizeRef && variables) {
+    const resolved = variables.get(room.sizeRef);
+    if (resolved) {
+      return { width: resolved.width, height: resolved.height };
+    }
+  }
+
+  // If sizeRef but no variables passed, this is likely old code path
+  // Return a fallback to avoid breaking existing code
+  if (room.sizeRef) {
+    throw new Error(`Room '${room.name}' uses variable '${room.sizeRef}' but no variables provided`);
+  }
+
+  throw new Error(`Room '${room.name}' has no size defined`);
+}
+
+/**
+ * Get room size with unit information
+ * This is the unit-aware version for contexts that need unit normalization
+ * @throws Error if room has no size
+ */
+export function getRoomSizeWithUnits(
+  room: Room,
+  variables?: Map<string, ResolvedDimension>
+): ResolvedDimension {
+  // If the room has an inline size, use it
+  if (room.size) {
+    return { 
+      width: room.size.width.value, 
+      height: room.size.height.value,
+      widthUnit: room.size.width.unit,
+      heightUnit: room.size.height.unit,
+    };
   }
 
   // If the room references a variable, look it up
@@ -163,7 +224,6 @@ export function getRoomSize(
   }
 
   // If sizeRef but no variables passed, this is likely old code path
-  // Return a fallback to avoid breaking existing code
   if (room.sizeRef) {
     throw new Error(`Room '${room.name}' uses variable '${room.sizeRef}' but no variables provided`);
   }

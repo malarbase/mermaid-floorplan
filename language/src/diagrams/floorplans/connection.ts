@@ -50,7 +50,7 @@ function getRoomPosition(
   }
   // Fall back to explicit position
   if (room.position) {
-    return { x: room.position.x, y: room.position.y };
+    return { x: room.position.x.value, y: room.position.y.value };
   }
   return null;
 }

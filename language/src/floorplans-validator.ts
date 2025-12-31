@@ -1,6 +1,7 @@
 import type { ValidationAcceptor, ValidationChecks } from "langium";
-import type { FloorplansAstType, Floorplan, Connection, Room, Floor, StyleBlock, StyleProperty } from "./generated/ast.js";
+import type { FloorplansAstType, Floorplan, Connection, Room, Floor, StyleBlock, StyleProperty, ConfigProperty } from "./generated/ast.js";
 import type { FloorplansServices } from "./floorplans-module.js";
+import { hasMixedUnitSystems, VALID_UNITS } from "./diagrams/floorplans/unit-utils.js";
 
 /**
  * Register custom validation checks.
@@ -14,9 +15,11 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkConnectionWallTypes,
       validator.checkStyleReferences,
       validator.checkDuplicateStyleNames,
-      validator.checkSharedWallConflicts
+      validator.checkSharedWallConflicts,
+      validator.checkMixedUnitSystems
     ],
-    StyleProperty: [validator.checkStylePropertyValue]
+    StyleProperty: [validator.checkStylePropertyValue],
+    ConfigProperty: [validator.checkConfigPropertyValue]
   };
   registry.register(checks, validator);
 }
@@ -429,7 +432,7 @@ export class FloorplansValidator {
     const variables = new Map<string, { width: number; height: number }>();
     for (const def of floorplan.defines) {
       if (def.value) {
-        variables.set(def.name, { width: def.value.width, height: def.value.height });
+        variables.set(def.name, { width: def.value.width.value, height: def.value.height.value });
       }
     }
 
@@ -439,13 +442,13 @@ export class FloorplansValidator {
       let x = 0, z = 0, width = 10, height = 10;
       
       if (room.position) {
-        x = room.position.x;
-        z = room.position.y;
+        x = room.position.x.value;
+        z = room.position.y.value;
       }
       
       if (room.size) {
-        width = room.size.width;
-        height = room.size.height;
+        width = room.size.width.value;
+        height = room.size.height.value;
       } else if (room.sizeRef) {
         const varSize = variables.get(room.sizeRef);
         if (varSize) {
@@ -517,7 +520,7 @@ export class FloorplansValidator {
   private getRoomHeight(room: Room, floorplan: Floorplan): number {
     // Check room's explicit height
     if (room.height !== undefined) {
-      return room.height;
+      return room.height.value;
     }
     
     // Check config for default_height
@@ -583,6 +586,43 @@ export class FloorplansValidator {
         accept("error", 
           `${property.name} must be a texture path string (e.g., "textures/wood.jpg"), not a number.`,
           { node: property, property: "numberValue" }
+        );
+      }
+    }
+  }
+
+  /**
+   * Check for mixed unit systems (metric vs imperial) and emit a warning
+   */
+  checkMixedUnitSystems(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    if (hasMixedUnitSystems(floorplan)) {
+      accept("warning",
+        `Mixed unit systems detected: This floorplan uses both metric (m, cm, mm) and imperial (ft, in) units. ` +
+        `Consider using a consistent unit system for clarity.`,
+        { node: floorplan }
+      );
+    }
+  }
+
+  /**
+   * Validate config property values
+   */
+  checkConfigPropertyValue(property: ConfigProperty, accept: ValidationAcceptor): void {
+    // Validate default_unit has a valid value
+    if (property.name === 'default_unit') {
+      // The grammar restricts unitRef to LENGTH_UNIT, but we add a defensive check
+      // In case someone tries to use a number or styleRef for default_unit
+      if (property.value !== undefined) {
+        accept("error",
+          `default_unit must be a unit symbol (${VALID_UNITS.join(', ')}), not a number.`,
+          { node: property, property: "value" }
+        );
+      }
+      if (property.styleRef !== undefined) {
+        accept("error",
+          `default_unit must be a unit symbol (${VALID_UNITS.join(', ')}), not an identifier. ` +
+          `Valid units: ${VALID_UNITS.join(', ')}`,
+          { node: property, property: "styleRef" }
         );
       }
     }

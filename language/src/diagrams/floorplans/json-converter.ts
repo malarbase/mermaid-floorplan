@@ -4,9 +4,16 @@
  * Used by both the CLI export script and the browser-based viewer.
  */
 
-import type { Floorplan } from "../../generated/ast.js";
+import type { Floorplan, LENGTH_UNIT, AREA_UNIT } from "../../generated/ast.js";
 import { resolveFloorPositions } from "./position-resolver.js";
 import { resolveVariables, getRoomSize } from "./variable-resolver.js";
+import { 
+    computeRoomMetrics, 
+    computeFloorMetrics, 
+    computeFloorplanSummary,
+    type FloorMetrics,
+    type FloorplanSummary,
+} from "./metrics.js";
 
 // ============================================================================
 // JSON Export Types
@@ -22,6 +29,8 @@ export interface JsonConfig {
     window_height?: number;
     window_sill?: number;
     default_style?: string;
+    default_unit?: LENGTH_UNIT;
+    area_unit?: AREA_UNIT;
 }
 
 export interface JsonStyle {
@@ -55,6 +64,10 @@ export interface JsonRoom {
     roomHeight?: number;
     elevation?: number;
     style?: string;
+    /** Room area (width × height) */
+    area?: number;
+    /** Room volume (area × roomHeight), computed when roomHeight is specified */
+    volume?: number;
 }
 
 export interface JsonFloor {
@@ -62,6 +75,8 @@ export interface JsonFloor {
     rooms: JsonRoom[];
     index: number;
     height?: number;
+    /** Computed metrics for this floor */
+    metrics?: FloorMetrics;
 }
 
 export interface JsonConnection {
@@ -80,6 +95,8 @@ export interface JsonExport {
     connections: JsonConnection[];
     config?: JsonConfig;
     styles?: JsonStyle[];
+    /** Summary metrics for the entire floorplan */
+    summary?: FloorplanSummary;
 }
 
 // ============================================================================
@@ -122,6 +139,18 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             if (prop.value !== undefined) {
                 (config as Record<string, number>)[prop.name] = prop.value;
             }
+            // Handle default_unit
+            if (prop.name === 'default_unit' && prop.unitRef) {
+                config.default_unit = prop.unitRef;
+            }
+            // Handle default_style
+            if (prop.name === 'default_style' && prop.styleRef) {
+                config.default_style = prop.styleRef;
+            }
+            // Handle area_unit
+            if (prop.name === 'area_unit' && prop.areaUnitRef) {
+                config.area_unit = prop.areaUnitRef;
+            }
         }
         if (Object.keys(config).length > 0) {
             jsonExport.config = config;
@@ -159,7 +188,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             id: floor.id,
             index: i,
             rooms: [],
-            height: floor.height
+            height: floor.height?.value
         };
 
         for (const room of floor.rooms) {
@@ -176,14 +205,14 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                         type: spec.type,
                         position: spec.position,
                         isPercentage: spec.unit === '%',
-                        width: spec.size?.width,
-                        height: spec.size?.height,
+                        width: spec.size?.width?.value,
+                        height: spec.size?.height?.value,
                         wallHeight: spec.height
                     });
                 }
             }
 
-            jsonFloor.rooms.push({
+            const jsonRoom: JsonRoom = {
                 name: room.name,
                 label: room.label,
                 x: pos.x,
@@ -191,11 +220,23 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                 width: resolvedSize.width,
                 height: resolvedSize.height,
                 walls,
-                roomHeight: room.height,
-                elevation: room.elevation,
+                roomHeight: room.height?.value,
+                elevation: room.elevation ? (room.elevation.negative ? -room.elevation.value : room.elevation.value) : undefined,
                 style: room.styleRef
-            });
+            };
+            
+            // Compute room metrics
+            const roomMetrics = computeRoomMetrics(jsonRoom);
+            jsonRoom.area = roomMetrics.area;
+            if (roomMetrics.volume !== undefined) {
+                jsonRoom.volume = roomMetrics.volume;
+            }
+            
+            jsonFloor.rooms.push(jsonRoom);
         }
+        
+        // Compute floor metrics
+        jsonFloor.metrics = computeFloorMetrics(jsonFloor);
 
         jsonExport.floors.push(jsonFloor);
     }
@@ -217,6 +258,9 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             opensInto: conn.opensInto?.name
         });
     }
+    
+    // Compute floorplan summary
+    jsonExport.summary = computeFloorplanSummary(jsonExport.floors);
 
     return { data: jsonExport, errors };
 }

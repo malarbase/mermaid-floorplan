@@ -2,6 +2,7 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { parseFloorplan, extractAllRoomMetadata, validateFloorplan, type ValidationWarning } from "../utils/parser.js";
 import { generateSvg, svgToPng } from "../utils/renderer.js";
+import { convertFloorplanToJson, type FloorplanSummary, type FloorMetrics } from "floorplans-language";
 
 const RenderInputSchema = z.object({
   dsl: z.string().describe("Floorplan DSL code to render"),
@@ -23,6 +24,27 @@ const RenderInputSchema = z.object({
     .enum(["stacked", "sideBySide"])
     .optional()
     .describe("Layout for multi-floor rendering: 'stacked' (vertical) or 'sideBySide' (horizontal). Default: 'sideBySide'"),
+  // Annotation options
+  showArea: z
+    .boolean()
+    .optional()
+    .describe("Show room area labels inside each room. Default: false"),
+  showDimensions: z
+    .boolean()
+    .optional()
+    .describe("Show dimension lines on room edges with measurements. Default: false"),
+  showFloorSummary: z
+    .boolean()
+    .optional()
+    .describe("Show floor summary panel with metrics (room count, net area, efficiency). Default: false"),
+  areaUnit: z
+    .enum(["sqft", "sqm"])
+    .optional()
+    .describe("Unit for area display: 'sqft' (default) or 'sqm'"),
+  lengthUnit: z
+    .enum(["m", "ft", "cm", "in", "mm"])
+    .optional()
+    .describe("Unit for dimension labels: 'ft' (default), 'm', 'cm', 'in', 'mm'"),
 });
 
 export function registerRenderTool(server: McpServer): void {
@@ -31,7 +53,10 @@ export function registerRenderTool(server: McpServer): void {
     "Parse floorplan DSL and render to PNG image that the LLM can visually analyze",
     RenderInputSchema.shape,
     async (args) => {
-      const { dsl, format, width, height, floorIndex, renderAllFloors, multiFloorLayout } = RenderInputSchema.parse(args);
+      const { 
+        dsl, format, width, height, floorIndex, renderAllFloors, multiFloorLayout,
+        showArea, showDimensions, showFloorSummary, areaUnit, lengthUnit
+      } = RenderInputSchema.parse(args);
 
       const parseResult = await parseFloorplan(dsl);
 
@@ -74,9 +99,19 @@ export function registerRenderTool(server: McpServer): void {
           floorIndex,
           renderAllFloors,
           multiFloorLayout,
+          showArea,
+          showDimensions,
+          showFloorSummary,
+          areaUnit,
+          lengthUnit,
         });
         const rooms = extractAllRoomMetadata(parseResult.document);
         const floorCount = parseResult.document.parseResult.value.floors.length;
+        
+        // Compute metrics using JSON converter
+        const jsonResult = convertFloorplanToJson(parseResult.document.parseResult.value);
+        const summary: FloorplanSummary | undefined = jsonResult.data?.summary;
+        const floorMetrics: FloorMetrics[] | undefined = jsonResult.data?.floors.map(f => f.metrics!).filter(Boolean);
 
         // Return SVG format if requested
         if (format === "svg") {
@@ -94,6 +129,8 @@ export function registerRenderTool(server: McpServer): void {
                   floorCount,
                   renderedFloor: renderAllFloors ? "all" : (floorIndex ?? 0),
                   rooms,
+                  summary,
+                  floorMetrics,
                   warnings: warnings.length > 0 ? warnings : undefined,
                 }),
               },
@@ -119,6 +156,8 @@ export function registerRenderTool(server: McpServer): void {
                 floorCount,
                 renderedFloor: renderAllFloors ? "all" : (floorIndex ?? 0),
                 rooms,
+                summary,
+                floorMetrics,
                 warnings: warnings.length > 0 ? warnings : undefined,
               }),
             },

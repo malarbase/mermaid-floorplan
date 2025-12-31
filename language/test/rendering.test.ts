@@ -253,3 +253,210 @@ describe("Door Position Tests", () => {
   });
 });
 
+describe("Metrics Computation Tests", () => {
+  test("should compute room area", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const { convertFloorplanToJson } = await import("floorplans-language");
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data).toBeDefined();
+    expect(result.data!.floors[0]?.rooms[0]?.area).toBe(120);
+  });
+
+  test("should compute room volume when height specified", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) height 3.5 walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const { convertFloorplanToJson } = await import("floorplans-language");
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data).toBeDefined();
+    expect(result.data!.floors[0]?.rooms[0]?.area).toBe(120);
+    expect(result.data!.floors[0]?.rooms[0]?.volume).toBe(420);
+  });
+
+  test("should compute floor metrics", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB at (10,0) size (15 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomC at (0,10) size (20 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const { convertFloorplanToJson } = await import("floorplans-language");
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data).toBeDefined();
+    const metrics = result.data!.floors[0]?.metrics;
+    expect(metrics).toBeDefined();
+    expect(metrics!.netArea).toBe(450); // 100 + 150 + 200
+    expect(metrics!.roomCount).toBe(3);
+    expect(metrics!.boundingBox.width).toBe(25);
+    expect(metrics!.boundingBox.height).toBe(20);
+    expect(metrics!.boundingBox.area).toBe(500);
+    expect(metrics!.efficiency).toBe(0.9); // 450/500
+  });
+
+  test("should compute floorplan summary", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB at (10,0) size (15 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomC at (0,10) size (20 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          floor f2 {
+              room RoomD at (0,0) size (15 x 20) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const { convertFloorplanToJson } = await import("floorplans-language");
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data).toBeDefined();
+    expect(result.data!.summary).toBeDefined();
+    expect(result.data!.summary!.grossFloorArea).toBe(750); // 450 + 300
+    expect(result.data!.summary!.totalRoomCount).toBe(4);
+    expect(result.data!.summary!.floorCount).toBe(2);
+  });
+});
+
+describe("SVG Area Annotations Tests", () => {
+  test("should show room area when showArea is true", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const svg = render(document, { showArea: true, areaUnit: 'sqft' });
+    
+    expect(svg).toContain('class="room-area"');
+    expect(svg).toContain('[120 sqft]');
+  });
+
+  test("should use correct area unit", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const svg = render(document, { showArea: true, areaUnit: 'sqm' });
+    
+    expect(svg).toContain('[120 sqm]');
+  });
+
+  test("should not show area when showArea is false", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const svg = render(document, { showArea: false });
+    
+    expect(svg).not.toContain('class="room-area"');
+  });
+
+  test("should show floor summary panel when showFloorSummary is true", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room RoomB at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const svg = render(document, { showFloorSummary: true });
+    
+    expect(svg).toContain('class="floor-summary"');
+    expect(svg).toContain('Floor Summary');
+    expect(svg).toContain('Net Area:');
+  });
+});
+
+describe("Dimension Line Tests", () => {
+  test("should render dimension lines when showDimensions is true", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const svg = render(document, { showDimensions: true });
+    
+    expect(svg).toContain('class="room-dimensions"');
+    expect(svg).toContain('class="dimension-line"');
+  });
+
+  test("should show width dimension value", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const svg = render(document, { showDimensions: true, dimensionTypes: ['width'] });
+    
+    // Should contain the width value "10ft" (default length unit is 'ft')
+    expect(svg).toContain('>10ft<');
+  });
+
+  test("should not render dimensions when showDimensions is false", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const svg = render(document, { showDimensions: false });
+    
+    expect(svg).not.toContain('class="room-dimensions"');
+    expect(svg).not.toContain('class="dimension-line"');
+  });
+
+  test("should render height label when height is non-default", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) height 4 walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+    
+    const document = await parse(input);
+    const svg = render(document, { showDimensions: true, dimensionTypes: ['height'] });
+    
+    expect(svg).toContain('h: 4');
+  });
+});
+

@@ -10,7 +10,7 @@
     "build": "npm run langium:generate && npm run build --workspaces && tsc && npx vite build",
     "langium:generate": "npm run --workspace language langium:generate",
     "langium:watch": "npm run --workspace language langium:watch",
-    "test": "npm run --workspace language test",
+    "test": "npm run --workspace language test && npm run --workspace mcp-server test",
     "viewer": "npm run --workspace floorplans-viewer dev"
   },
   "devDependencies": {

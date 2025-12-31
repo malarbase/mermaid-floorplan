@@ -4,7 +4,7 @@
  */
 
 import type { Floor, Room } from "../../generated/ast.js";
-import { getRoomSize } from "./variable-resolver.js";
+import { getRoomSize, type ResolvedDimension } from "./variable-resolver.js";
 
 export interface ResolvedPosition {
   x: number;
@@ -47,7 +47,7 @@ export function getResolvedPosition(
   
   // Fall back to explicit position if available
   if (room.position) {
-    return { x: room.position.x, y: room.position.y };
+    return { x: room.position.x.value, y: room.position.y.value };
   }
   
   return undefined;
@@ -60,10 +60,10 @@ function computePosition(
   room: Room,
   referenceRoom: Room,
   referencePosition: ResolvedPosition,
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, ResolvedDimension>
 ): ResolvedPosition {
   const rel = room.relativePosition!;
-  const gap = rel.gap ?? 0;
+  const gap = rel.gap?.value ?? 0;
   const direction = rel.direction;
   const alignment = rel.alignment;
   
@@ -213,7 +213,7 @@ function checkOverlap(
  */
 export function resolveFloorPositions(
   floor: Floor,
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, ResolvedDimension>
 ): PositionResolutionResult {
   const positions = new Map<string, ResolvedPosition>();
   const errors: PositionResolutionError[] = [];
@@ -236,7 +236,7 @@ export function resolveFloorPositions(
   // First pass: resolve rooms with explicit positions
   for (const room of floor.rooms) {
     if (room.position) {
-      positions.set(room.name, { x: room.position.x, y: room.position.y });
+      positions.set(room.name, { x: room.position.x.value, y: room.position.y.value });
       resolved.add(room.name);
     } else if (room.relativePosition) {
       pending.add(room.name);
@@ -336,7 +336,7 @@ export function resolveFloorPositions(
  */
 export function resolveAllPositions(
   floors: Floor[],
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, ResolvedDimension>
 ): Map<string, PositionResolutionResult> {
   const results = new Map<string, PositionResolutionResult>();
   for (const floor of floors) {
