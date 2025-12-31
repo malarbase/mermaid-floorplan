@@ -162,6 +162,7 @@ function renderAllFloors(
   const padding = opts.padding ?? 0;
   const floorGap = 5; // Gap between floors
   const labelHeight = 2; // Height reserved for floor labels
+  const summaryHeight = opts.showFloorSummary ? 4 : 0; // Height for floor summary panel (3) + gap (1)
   
   // Resolve positions for all floors first
   const floorResolutions = new Map<string, PositionResolutionResult>();
@@ -187,12 +188,12 @@ function renderAllFloors(
       offsetY = labelHeight - bounds.minY;
       currentOffset += bounds.width + floorGap;
       totalWidth = currentOffset - floorGap;
-      totalHeight = Math.max(totalHeight, bounds.height + labelHeight);
+      totalHeight = Math.max(totalHeight, bounds.height + labelHeight + summaryHeight);
     } else {
       // Stacked layout (floor 1 at bottom)
       offsetX = -bounds.minX;
       offsetY = currentOffset - bounds.minY + labelHeight;
-      currentOffset += bounds.height + labelHeight + floorGap;
+      currentOffset += bounds.height + labelHeight + summaryHeight + floorGap;
       totalWidth = Math.max(totalWidth, bounds.width);
       totalHeight = currentOffset - floorGap;
     }
