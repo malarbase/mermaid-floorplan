@@ -98,9 +98,79 @@ The viewer SHALL organize all controls in an expandable/collapsible panel.
   - Camera (mode, FOV, presets)
   - Lighting (azimuth, elevation, intensity)
   - View (exploded view)
+  - Annotations (area, dimensions, floor summary)
   - Export (GLTF, GLB buttons)
 
 #### Scenario: Panel remembers state
 - **WHEN** the user collapses a section
 - **THEN** the collapsed state MAY persist during the session
+
+### Requirement: Room Area Annotations
+The viewer SHALL display room area labels in 3D space.
+
+#### Scenario: Enable room area display
+- **WHEN** the user toggles "Show Areas" on
+- **THEN** each room SHALL display its area as a label above the floor
+- **AND** the label SHALL use the selected area unit (sqft/sqm)
+
+#### Scenario: Area labels follow camera
+- **GIVEN** room area display is enabled
+- **WHEN** the camera moves or rotates
+- **THEN** area labels SHALL remain readable (facing camera or horizontal)
+
+#### Scenario: Disable room area display
+- **WHEN** the user toggles "Show Areas" off
+- **THEN** all room area labels SHALL be hidden
+
+### Requirement: Dimension Line Annotations
+The viewer SHALL display room dimension measurements in 3D space.
+
+#### Scenario: Enable dimension lines
+- **WHEN** the user toggles "Show Dimensions" on
+- **THEN** the viewer SHALL display dimension lines showing room width and depth
+- **AND** dimension values SHALL use the selected length unit (ft/m)
+
+#### Scenario: Dimension line appearance
+- **GIVEN** dimension lines are enabled
+- **THEN** dimension lines SHALL include:
+  - Horizontal lines along room edges
+  - Tick marks at endpoints
+  - Measurement labels with unit suffix (e.g., "10ft", "3.5m")
+
+#### Scenario: Height labels
+- **GIVEN** dimension lines are enabled
+- **AND** a room has a non-default height
+- **THEN** the room SHALL display a height label (e.g., "h: 12ft")
+
+### Requirement: Floor Summary Display
+The viewer SHALL display aggregate metrics for each floor.
+
+#### Scenario: Enable floor summary
+- **WHEN** the user toggles "Show Floor Summary" on
+- **THEN** each floor SHALL display a summary panel showing:
+  - Floor name
+  - Number of rooms
+  - Net area (sum of room areas)
+  - Efficiency percentage (net area / bounding box area)
+
+#### Scenario: Floor summary positioning
+- **GIVEN** floor summary is enabled
+- **THEN** the summary panel SHALL appear as an HTML overlay or positioned in 3D space
+- **AND** it SHALL update when floor visibility or exploded view changes
+
+### Requirement: Unit Selection Controls
+The viewer SHALL provide controls to select display units for annotations.
+
+#### Scenario: Area unit selection
+- **WHEN** the user selects an area unit (sqft or sqm)
+- **THEN** all room area labels SHALL update to display in the selected unit
+
+#### Scenario: Length unit selection
+- **WHEN** the user selects a length unit (ft, m, cm, in, mm)
+- **THEN** all dimension labels SHALL update to display in the selected unit
+
+#### Scenario: Default units from DSL config
+- **GIVEN** the loaded floorplan has `area_unit` or `default_unit` in config
+- **WHEN** annotations are displayed
+- **THEN** the viewer SHALL use the DSL-specified units as defaults
 

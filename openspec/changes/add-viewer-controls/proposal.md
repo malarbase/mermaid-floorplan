@@ -4,6 +4,7 @@ The 3D viewer currently has minimal UI controls (only exploded view slider and f
 1. **Light position control** - Fixed directional light at (50, 100, 50) limits shadow visualization options
 2. **No export capability** - Users cannot save 3D models for use in other software
 3. **Camera locked to perspective** - No orthographic or isometric views for technical drawings
+4. **No annotations** - Room areas, dimensions, and metrics are available in 2D SVG but not in 3D viewer
 
 **Research: GLTF/GLB Export**
 
@@ -24,16 +25,27 @@ The 3D viewer currently has minimal UI controls (only exploded view slider and f
 
 Isometric view specifically uses camera angles that produce equal foreshortening on all axes (approximately 45° azimuth, 35.264° elevation).
 
+**Research: 3D Annotations**
+
+Three.js text rendering options:
+- **CSS2DRenderer** - HTML elements positioned in 3D space (recommended for labels)
+- **TextGeometry** - 3D text meshes (expensive, good for decoration)
+- **Sprites with Canvas** - 2D text on billboards (good for always-facing labels)
+
+For dimension lines and area labels, CSS2DRenderer provides the best balance of clarity and performance.
+
 ## What Changes
 - Add light position controls (azimuth/elevation sliders or XYZ inputs)
 - Add GLTF/GLB export button using Three.js GLTFExporter
 - Add camera mode toggle (Perspective/Orthographic)
 - Add FOV slider for perspective mode
 - Add isometric view preset button
+- **Add annotation toggles (room areas, dimensions, floor summary)**
+- **Add unit selection (area: sqft/sqm, length: ft/m)**
 - Expand the controls panel UI
 
 ## Impact
 - Affected specs: `3d-viewer`
 - Affected code: `viewer/src/main.ts`, `viewer/index.html`
-- New dependencies: Three.js GLTFExporter (already available in three/examples)
+- New dependencies: Three.js GLTFExporter, CSS2DRenderer (already available in three/examples)
 
