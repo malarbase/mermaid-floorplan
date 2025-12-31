@@ -101,10 +101,10 @@ function calculateConnectionPoint(
   toWall: WallDirection,
   position: number = 50, // percentage along the wall
   resolvedPositions?: Map<string, ResolvedPosition>,
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, { width: number; height: number }>,
+  doorWidth: number = 2 // Standard door width (approx 2-3 feet), can be overridden by connection size
 ): ConnectionPoint | null {
   const wallThickness = 0.2;
-  const doorWidth = 2; // Standard door width (approx 2-3 feet)
   
   const fromBounds = getWallBounds(fromRoom, fromWall, 0, 0, resolvedPositions, variables);
   const toBounds = getWallBounds(toRoom, toWall, 0, 0, resolvedPositions, variables);
@@ -249,7 +249,14 @@ export function generateConnection(
   }
   
   const position = connection.position ?? 50;
-  const connectionPoint = calculateConnectionPoint(fromRoom, fromWall, toRoom, toWall, position, resolvedPositions, variables);
+  
+  // Get door width from connection size if specified
+  const doorWidth = connection.size?.width?.value ?? 2; // Default to 2 (approx 2-3 feet)
+  
+  const connectionPoint = calculateConnectionPoint(
+    fromRoom, fromWall, toRoom, toWall, 
+    position, resolvedPositions, variables, doorWidth
+  );
   
   if (!connectionPoint) {
     return ""; // No valid connection point

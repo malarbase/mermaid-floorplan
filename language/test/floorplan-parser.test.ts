@@ -1448,3 +1448,122 @@ describe("Room Height Exceeds Floor Validation Tests", () => {
     expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
   });
 });
+
+describe("Connection Size Tests", () => {
+  test("should parse connection with explicit size", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left door at 50% size (3ft x 7ft)
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    const connection = document.parseResult.value.connections[0];
+    expect(connection.size).toBeDefined();
+    expect(connection.size?.width.value).toBe(3);
+    expect(connection.size?.width.unit).toBe("ft");
+    expect(connection.size?.height?.value).toBe(7);
+    expect(connection.size?.height?.unit).toBe("ft");
+    expect(connection.size?.fullHeight).toBeFalsy();
+  });
+
+  test("should parse connection with full height", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left opening at 50% size (4m x full)
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    const connection = document.parseResult.value.connections[0];
+    expect(connection.size).toBeDefined();
+    expect(connection.size?.width.value).toBe(4);
+    expect(connection.size?.width.unit).toBe("m");
+    expect(connection.size?.fullHeight).toBe(true);
+    expect(connection.size?.height).toBeUndefined();
+  });
+
+  test("should parse connection without size (uses defaults)", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left door at 50%
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    const connection = document.parseResult.value.connections[0];
+    expect(connection.size).toBeUndefined();
+  });
+
+  test("should parse door_size in config", async () => {
+    const input = `
+      floorplan
+          config { door_size: (3 x 7), default_unit: ft }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    const config = document.parseResult.value.config;
+    const doorSizeProp = config?.properties.find(p => p.name === "door_size");
+    expect(doorSizeProp).toBeDefined();
+    expect(doorSizeProp?.dimension?.width.value).toBe(3);
+    expect(doorSizeProp?.dimension?.height.value).toBe(7);
+  });
+
+  test("should parse window_size in config", async () => {
+    const input = `
+      floorplan
+          config { window_size: (4 x 3), default_unit: m }
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    const config = document.parseResult.value.config;
+    const windowSizeProp = config?.properties.find(p => p.name === "window_size");
+    expect(windowSizeProp).toBeDefined();
+    expect(windowSizeProp?.dimension?.width.value).toBe(4);
+    expect(windowSizeProp?.dimension?.height.value).toBe(3);
+  });
+
+  test("should parse connection with size and swing direction", async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Room1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              room Room2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          connect Room1.right to Room2.left door at 50% size (2.5ft x 7ft) swing: left
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    const connection = document.parseResult.value.connections[0];
+    expect(connection.size).toBeDefined();
+    expect(connection.size?.width.value).toBe(2.5);
+    expect(connection.swing).toBe("left");
+  });
+});

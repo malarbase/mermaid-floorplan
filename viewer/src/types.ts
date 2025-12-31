@@ -3,12 +3,16 @@ export interface JsonConfig {
     wall_thickness?: number;
     default_height?: number;
     floor_thickness?: number;
-    // Door dimensions
+    // Door dimensions (legacy individual properties)
     door_width?: number;
     door_height?: number;
-    // Window dimensions
+    // Door size as [width, height] (preferred)
+    door_size?: [number, number];
+    // Window dimensions (legacy individual properties)
     window_width?: number;
     window_height?: number;
+    // Window size as [width, height] (preferred)
+    window_size?: [number, number];
     window_sill?: number;
     // Style defaults
     default_style?: string;
@@ -74,5 +78,11 @@ export interface JsonConnection {
     isPercentage?: boolean;
     swing?: string;
     opensInto?: string;
+    /** Connection-specific width override */
+    width?: number;
+    /** Connection-specific height override (undefined if fullHeight is true) */
+    height?: number;
+    /** If true, the opening extends to the ceiling */
+    fullHeight?: boolean;
 }
 

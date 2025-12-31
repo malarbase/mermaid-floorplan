@@ -296,10 +296,48 @@ export class WallGenerator {
     config: JsonConfig
   ): void {
     const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
-    const singleDoorWidth = config.door_width ?? DIMENSIONS.DOOR.WIDTH;
-    const doorHeight = config.door_height ?? DIMENSIONS.DOOR.HEIGHT;
-    const doorWidth = connection.doorType === 'double-door' ? singleDoorWidth * 2 : singleDoorWidth;
-    const holeY = elevation + doorHeight / 2;
+    
+    // Resolve door dimensions with precedence:
+    // 1. Connection-specific size
+    // 2. Config door_size
+    // 3. Config door_width/door_height (legacy)
+    // 4. Default values
+    let doorWidth: number;
+    let doorHeight: number;
+    let isFullHeight = false;
+
+    if (connection.width !== undefined) {
+      // Connection-specific width
+      doorWidth = connection.width;
+    } else if (config.door_size) {
+      // Config door_size [width, height]
+      doorWidth = config.door_size[0];
+    } else {
+      // Legacy door_width or default
+      const singleDoorWidth = config.door_width ?? DIMENSIONS.DOOR.WIDTH;
+      doorWidth = connection.doorType === 'double-door' ? singleDoorWidth * 2 : singleDoorWidth;
+    }
+
+    if (connection.fullHeight) {
+      // Full height opening - use room height
+      isFullHeight = true;
+      const roomHeight = room.roomHeight ?? config.default_height ?? DIMENSIONS.WALL.HEIGHT;
+      doorHeight = roomHeight;
+    } else if (connection.height !== undefined) {
+      // Connection-specific height
+      doorHeight = connection.height;
+    } else if (config.door_size) {
+      // Config door_size [width, height]
+      doorHeight = config.door_size[1];
+    } else {
+      // Legacy door_height or default
+      doorHeight = config.door_height ?? DIMENSIONS.DOOR.HEIGHT;
+    }
+
+    // For full height, center vertically; otherwise, position from floor
+    const holeY = isFullHeight 
+      ? elevation + doorHeight / 2  // Full height: center at room mid-height
+      : elevation + doorHeight / 2; // Standard: center at door mid-height
 
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
     const targetRoom = allRooms.find((r) => r.name === connection.toRoom);

@@ -22,15 +22,24 @@ export class DoorRenderer {
    * Create a door mesh with proper positioning and rotation
    */
   renderDoor(config: DoorConfig): THREE.Mesh {
-    const doorWidth =
-      config.connection.doorType === 'double-door'
-        ? DIMENSIONS.DOUBLE_DOOR.WIDTH
-        : DIMENSIONS.DOOR.WIDTH;
+    // Use connection-specific dimensions if available, else defaults
+    // For double-door, use full width if specified, else double the single door width
+    let doorWidth: number;
+    if (config.connection.width !== undefined) {
+      doorWidth = config.connection.width;
+    } else if (config.connection.doorType === 'double-door') {
+      doorWidth = DIMENSIONS.DOUBLE_DOOR.WIDTH;
+    } else {
+      doorWidth = DIMENSIONS.DOOR.WIDTH;
+    }
+
+    // Use connection height if specified, else default
+    const doorHeight = config.connection.height ?? DIMENSIONS.DOOR.HEIGHT;
 
     // Create door panel geometry with pivot at edge
     const doorPanelGeom = new THREE.BoxGeometry(
       doorWidth,
-      DIMENSIONS.DOOR.HEIGHT,
+      doorHeight,
       DIMENSIONS.DOOR.PANEL_THICKNESS
     );
     // Shift geometry so pivot is at left edge (extending to +x)

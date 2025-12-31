@@ -347,6 +347,70 @@ describe("JSON Converter - Connections", () => {
     
     expect(result.data!.connections[0].doorType).toBe("double-door");
   });
+
+  it("should export connection with explicit size", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          room RoomB at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        connect RoomA.right to RoomB.left door at 50% size (3 x 7)
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const conn = result.data!.connections[0];
+    expect(conn.width).toBe(3);
+    expect(conn.height).toBe(7);
+    expect(conn.fullHeight).toBeUndefined();
+  });
+
+  it("should export connection with full height", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          room RoomB at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        connect RoomA.right to RoomB.left opening at 50% size (4 x full)
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const conn = result.data!.connections[0];
+    expect(conn.width).toBe(4);
+    expect(conn.fullHeight).toBe(true);
+    expect(conn.height).toBeUndefined();
+  });
+
+  it("should export door_size in config", async () => {
+    const input = `
+      floorplan
+        config { door_size: (3 x 7) }
+        floor f1 {
+          room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data!.config?.door_size).toEqual([3, 7]);
+  });
+
+  it("should export window_size in config", async () => {
+    const input = `
+      floorplan
+        config { window_size: (4 x 3) }
+        floor f1 {
+          room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data!.config?.window_size).toEqual([4, 3]);
+  });
 });
 
 describe("JSON Converter - Room Metrics", () => {

@@ -70,6 +70,14 @@ function normalizeFloor(floor: JsonFloor, unit: LengthUnit): JsonFloor {
 }
 
 /**
+ * Convert a size tuple [width, height] to meters
+ */
+function convertSizeTuple(size: [number, number] | undefined, unit: LengthUnit): [number, number] | undefined {
+  if (!size) return undefined;
+  return [toMeters(size[0], unit), toMeters(size[1], unit)];
+}
+
+/**
  * Normalize config dimensional values to meters
  */
 function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
@@ -80,8 +88,10 @@ function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
     floor_thickness: convertValue(config.floor_thickness, unit),
     door_width: convertValue(config.door_width, unit),
     door_height: convertValue(config.door_height, unit),
+    door_size: convertSizeTuple(config.door_size, unit),
     window_width: convertValue(config.window_width, unit),
     window_height: convertValue(config.window_height, unit),
+    window_size: convertSizeTuple(config.window_size, unit),
     window_sill: convertValue(config.window_sill, unit),
     // Keep non-dimensional values unchanged
     default_style: config.default_style,
@@ -94,11 +104,16 @@ function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
  * Normalize a connection's dimensional values to meters
  * Note: Connection positions are ALWAYS percentages in the DSL (e.g., "at 50%"),
  * not length values, so we don't convert them.
+ * But width/height are dimensional values that need conversion.
  */
-function normalizeConnection(conn: JsonConnection, _unit: LengthUnit): JsonConnection {
-  // Connection positions are always percentages, not length values
-  // So we return the connection unchanged
-  return conn;
+function normalizeConnection(conn: JsonConnection, unit: LengthUnit): JsonConnection {
+  return {
+    ...conn,
+    // Convert dimensional values (width, height) but not position (percentage)
+    width: convertValue(conn.width, unit),
+    height: convertValue(conn.height, unit),
+    // fullHeight is a boolean, no conversion needed
+  };
 }
 
 /**
