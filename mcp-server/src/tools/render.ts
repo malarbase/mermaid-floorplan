@@ -24,6 +24,27 @@ const RenderInputSchema = z.object({
     .enum(["stacked", "sideBySide"])
     .optional()
     .describe("Layout for multi-floor rendering: 'stacked' (vertical) or 'sideBySide' (horizontal). Default: 'sideBySide'"),
+  // Annotation options
+  showArea: z
+    .boolean()
+    .optional()
+    .describe("Show room area labels inside each room. Default: false"),
+  showDimensions: z
+    .boolean()
+    .optional()
+    .describe("Show dimension lines on room edges with measurements. Default: false"),
+  showFloorSummary: z
+    .boolean()
+    .optional()
+    .describe("Show floor summary panel with metrics (room count, net area, efficiency). Default: false"),
+  areaUnit: z
+    .enum(["sqft", "sqm"])
+    .optional()
+    .describe("Unit for area display: 'sqft' (default) or 'sqm'"),
+  lengthUnit: z
+    .enum(["m", "ft", "cm", "in", "mm"])
+    .optional()
+    .describe("Unit for dimension labels: 'ft' (default), 'm', 'cm', 'in', 'mm'"),
 });
 
 export function registerRenderTool(server: McpServer): void {
@@ -32,7 +53,10 @@ export function registerRenderTool(server: McpServer): void {
     "Parse floorplan DSL and render to PNG image that the LLM can visually analyze",
     RenderInputSchema.shape,
     async (args) => {
-      const { dsl, format, width, height, floorIndex, renderAllFloors, multiFloorLayout } = RenderInputSchema.parse(args);
+      const { 
+        dsl, format, width, height, floorIndex, renderAllFloors, multiFloorLayout,
+        showArea, showDimensions, showFloorSummary, areaUnit, lengthUnit
+      } = RenderInputSchema.parse(args);
 
       const parseResult = await parseFloorplan(dsl);
 
@@ -75,6 +99,11 @@ export function registerRenderTool(server: McpServer): void {
           floorIndex,
           renderAllFloors,
           multiFloorLayout,
+          showArea,
+          showDimensions,
+          showFloorSummary,
+          areaUnit,
+          lengthUnit,
         });
         const rooms = extractAllRoomMetadata(parseResult.document);
         const floorCount = parseResult.document.parseResult.value.floors.length;

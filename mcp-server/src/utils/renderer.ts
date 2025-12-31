@@ -10,7 +10,7 @@
 
 import { Resvg } from "@resvg/resvg-js";
 import type { LangiumDocument } from "langium";
-import type { Floorplan, RenderOptions } from "floorplans-language";
+import type { Floorplan, RenderOptions, AreaUnit, LengthUnit } from "floorplans-language";
 import { render } from "floorplans-language";
 
 export interface GenerateSvgOptions {
@@ -20,6 +20,16 @@ export interface GenerateSvgOptions {
   renderAllFloors?: boolean;
   /** Layout for multi-floor rendering */
   multiFloorLayout?: 'stacked' | 'sideBySide';
+  /** Show room area inside rooms */
+  showArea?: boolean;
+  /** Show dimension lines on room edges */
+  showDimensions?: boolean;
+  /** Show floor summary panel */
+  showFloorSummary?: boolean;
+  /** Unit for area display */
+  areaUnit?: AreaUnit;
+  /** Unit for dimension labels */
+  lengthUnit?: LengthUnit;
 }
 
 /**
@@ -36,6 +46,12 @@ export function generateSvg(
     floorIndex: options.floorIndex,
     renderAllFloors: options.renderAllFloors,
     multiFloorLayout: options.multiFloorLayout,
+    // Annotation options
+    showArea: options.showArea,
+    showDimensions: options.showDimensions,
+    showFloorSummary: options.showFloorSummary,
+    areaUnit: options.areaUnit,
+    lengthUnit: options.lengthUnit,
   };
   
   return render(document, renderOptions);
