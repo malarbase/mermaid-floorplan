@@ -17,7 +17,8 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkDuplicateStyleNames,
       validator.checkSharedWallConflicts,
       validator.checkMixedUnitSystems,
-      validator.checkRoomHeightExceedsFloor
+      validator.checkRoomHeightExceedsFloor,
+      validator.checkDoorPositionWithinSharedWall
     ],
     StyleProperty: [validator.checkStylePropertyValue],
     ConfigProperty: [validator.checkConfigPropertyValue]
@@ -465,6 +466,81 @@ export class FloorplansValidator {
   }
 
   /**
+   * Calculate what portion of a wall is actually shared between two rooms.
+   * Returns a segment as start/end ratios (0.0 to 1.0) along the fromRoom's wall.
+   */
+  private calculateSharedWallSegment(
+    fromBounds: { x: number; z: number; width: number; height: number },
+    fromWall: string,
+    toBounds: { x: number; z: number; width: number; height: number },
+    toWall: string
+  ): { start: number; end: number } | null {
+    const tolerance = 0.1;
+
+    // Calculate wall edges
+    const fromEdges = {
+      left: fromBounds.x,
+      right: fromBounds.x + fromBounds.width,
+      top: fromBounds.z,
+      bottom: fromBounds.z + fromBounds.height
+    };
+
+    const toEdges = {
+      left: toBounds.x,
+      right: toBounds.x + toBounds.width,
+      top: toBounds.z,
+      bottom: toBounds.z + toBounds.height
+    };
+
+    // Check horizontal walls (top/bottom)
+    if ((fromWall === "top" || fromWall === "bottom") && 
+        (toWall === "top" || toWall === "bottom")) {
+      // Check if they're adjacent vertically
+      const fromEdge = fromWall === "top" ? fromEdges.top : fromEdges.bottom;
+      const toEdge = toWall === "top" ? toEdges.top : toEdges.bottom;
+      
+      if (Math.abs(fromEdge - toEdge) > tolerance) return null;
+
+      // Calculate overlapping horizontal segment
+      const overlapStart = Math.max(fromEdges.left, toEdges.left);
+      const overlapEnd = Math.min(fromEdges.right, toEdges.right);
+      
+      if (overlapEnd <= overlapStart) return null; // No overlap
+
+      // Convert to ratios along fromRoom's wall
+      const start = (overlapStart - fromEdges.left) / fromBounds.width;
+      const end = (overlapEnd - fromEdges.left) / fromBounds.width;
+      
+      return { start: Math.max(0, start), end: Math.min(1, end) };
+    }
+
+    // Check vertical walls (left/right)
+    if ((fromWall === "left" || fromWall === "right") && 
+        (toWall === "left" || toWall === "right")) {
+      // Check if they're adjacent horizontally
+      const fromEdge = fromWall === "left" ? fromEdges.left : fromEdges.right;
+      const toEdge = toWall === "left" ? toEdges.left : toEdges.right;
+      
+      if (Math.abs(fromEdge - toEdge) > tolerance) return null;
+
+      // Calculate overlapping vertical segment
+      const overlapStart = Math.max(fromEdges.top, toEdges.top);
+      const overlapEnd = Math.min(fromEdges.bottom, toEdges.bottom);
+      
+      if (overlapEnd <= overlapStart) return null; // No overlap
+
+      // Convert to ratios along fromRoom's wall
+      const start = (overlapStart - fromEdges.top) / fromBounds.height;
+      const end = (overlapEnd - fromEdges.top) / fromBounds.height;
+      
+      return { start: Math.max(0, start), end: Math.min(1, end) };
+    }
+
+    // Perpendicular walls don't share a boundary
+    return null;
+  }
+
+  /**
    * Find if two rooms share a wall and return the wall directions
    */
   private findSharedWall(
@@ -667,6 +743,65 @@ export class FloorplansValidator {
           `Valid units: ${VALID_UNITS.join(', ')}`,
           { node: property, property: "styleRef" }
         );
+      }
+    }
+  }
+
+  /**
+   * Check that door positions fall within the actual shared wall boundary between rooms.
+   * Warns when a door is positioned outside the overlapping segment of adjacent walls.
+   */
+  checkDoorPositionWithinSharedWall = (floorplan: Floorplan, accept: ValidationAcceptor): void => {
+    // Build variable map
+    const variables = new Map<string, { width: number; height: number }>();
+    for (const def of floorplan.defines) {
+      if (def.value) {
+        variables.set(def.name, { width: def.value.width.value, height: def.value.height.value });
+      }
+    }
+
+    // Process each floor
+    for (const floor of floorplan.floors) {
+      const allRooms = this.collectAllRooms(floor);
+      const bounds = this.computeRoomBounds(allRooms, floorplan);
+
+      // Check each connection
+      for (const conn of floorplan.connections) {
+        const fromRoomName = conn.from.room?.name;
+        const toRoomName = conn.to.room?.name;
+        if (!fromRoomName || !toRoomName) continue;
+
+        const fromBounds = bounds.get(fromRoomName);
+        const toBounds = bounds.get(toRoomName);
+        if (!fromBounds || !toBounds) continue;
+
+        const fromWall = conn.from.wall || "unknown";
+        const toWall = conn.to.wall || "unknown";
+        const position = conn.position || 50;
+
+        // Calculate shared wall segment
+        const sharedSegment = this.calculateSharedWallSegment(
+          fromBounds, fromWall,
+          toBounds, toWall
+        );
+
+        if (!sharedSegment) {
+          // Rooms don't share this wall boundary
+          accept("warning",
+            `Connection from ${fromRoomName}.${fromWall} to ${toRoomName}.${toWall} connects walls that don't share a boundary. The door may not align properly with the rooms.`,
+            { node: conn }
+          );
+          continue;
+        }
+
+        // Check if door position falls within the shared segment
+        const doorPosition = position / 100; // Convert percentage to ratio
+        if (doorPosition < sharedSegment.start || doorPosition > sharedSegment.end) {
+          accept("warning",
+            `Door at ${position}% on ${fromRoomName}.${fromWall} falls outside the shared boundary with ${toRoomName} (shared segment: ${(sharedSegment.start * 100).toFixed(0)}%-${(sharedSegment.end * 100).toFixed(0)}%). The door will not align with ${toRoomName}.`,
+            { node: conn, property: "position" }
+          );
+        }
       }
     }
   }

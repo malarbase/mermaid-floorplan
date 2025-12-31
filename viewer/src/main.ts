@@ -110,6 +110,16 @@ class Viewer {
                         alert(`Failed to parse floorplan:\n${errorMsg}`);
                         return;
                     }
+                    
+                    // Display warnings in console
+                    if (result.warnings.length > 0) {
+                        console.warn("⚠️  Validation warnings:");
+                        for (const warning of result.warnings) {
+                            const line = warning.line ? ` (line ${warning.line})` : "";
+                            console.warn(`  ⚠ ${warning.message}${line}`);
+                        }
+                    }
+                    
                     if (result.data) {
                         this.loadFloorplan(result.data);
                     }

@@ -129,6 +129,29 @@ async function main() {
     process.exit(1);
   }
 
+  // Run validation checks
+  const validationErrors = await services.Floorplans.validation.DocumentValidator.validateDocument(doc);
+  const errors = validationErrors.filter(e => e.severity === 1); // 1 = Error
+  const warnings = validationErrors.filter(e => e.severity === 2); // 2 = Warning
+  
+  if (errors.length > 0) {
+    console.error("\nValidation errors:");
+    for (const error of errors) {
+      const line = error.range ? ` (line ${error.range.start.line + 1})` : "";
+      console.error(`  ✗ ${error.message}${line}`);
+    }
+    process.exit(1);
+  }
+  
+  if (warnings.length > 0) {
+    console.warn("\n⚠ Validation warnings:");
+    for (const warning of warnings) {
+      const line = warning.range ? ` (line ${warning.range.start.line + 1})` : "";
+      console.warn(`  ⚠ ${warning.message}${line}`);
+    }
+    console.log(); // blank line after warnings
+  }
+
   const floorplan = doc.parseResult.value;
   const baseName = path.basename(options.inputFile, path.extname(options.inputFile));
 
