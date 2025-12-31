@@ -1366,3 +1366,85 @@ describe("Dimension Units Tests", () => {
     expect(floor?.height?.unit).toBe("m");
   });
 });
+
+describe("Room Height Exceeds Floor Validation Tests", () => {
+  test("should warn when room height exceeds floor height", async () => {
+    const input = `
+      floorplan
+          floor SecondFloor height 12 {
+              room HomeTheatre at (0,0) size (16 x 22) height 14 walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    // Run validation
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have a warning about room height exceeding floor height
+    expect(diagnostics.length).toBeGreaterThan(0);
+    expect(diagnostics.some(d => 
+      d.message.includes("exceeds") && 
+      d.message.includes("HomeTheatre") && 
+      d.message.includes("14") && 
+      d.message.includes("12")
+    )).toBe(true);
+  });
+
+  test("should not warn when room height equals floor height", async () => {
+    const input = `
+      floorplan
+          floor SecondFloor height 12 {
+              room HomeTheatre at (0,0) size (16 x 22) height 12 walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have no warnings about room height exceeding floor height
+    expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
+  });
+
+  test("should not warn when room height is less than floor height", async () => {
+    const input = `
+      floorplan
+          floor SecondFloor height 12 {
+              room HomeTheatre at (0,0) size (16 x 22) height 10 walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Should have no warnings about room height exceeding floor height
+    expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
+  });
+
+  test("should use default height when room has no explicit height", async () => {
+    const input = `
+      floorplan
+          config { default_height: 10 }
+          floor SecondFloor height 12 {
+              room NormalRoom at (0,0) size (16 x 22) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    const diagnostics = document.diagnostics ?? [];
+    
+    // Room uses default height (10) which is less than floor height (12), no warning
+    expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
+  });
+});

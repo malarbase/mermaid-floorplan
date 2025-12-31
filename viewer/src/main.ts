@@ -6,6 +6,7 @@ import { DIMENSIONS, COLORS } from './constants';
 import { MaterialFactory, MaterialStyle } from './materials';
 import { WallGenerator, StyleResolver } from './wall-generator';
 import { parseFloorplanDSL, isFloorplanFile, isJsonFile } from './dsl-parser';
+import { normalizeToMeters } from './unit-normalizer';
 
 class Viewer {
     private scene: THREE.Scene;
@@ -133,30 +134,33 @@ class Viewer {
     }
 
     public loadFloorplan(data: JsonExport) {
+        // Normalize all dimensions to meters for consistent 3D rendering
+        const normalizedData = normalizeToMeters(data);
+        
         // Clear existing
         this.floors.forEach(f => this.scene.remove(f));
         this.floors = [];
         this.floorHeights = [];
-        this.connections = data.connections;
-        this.config = data.config || {};
+        this.connections = normalizedData.connections;
+        this.config = normalizedData.config || {};
         
         // Build style lookup map
         this.styles.clear();
-        if (data.styles) {
-            for (const style of data.styles) {
+        if (normalizedData.styles) {
+            for (const style of normalizedData.styles) {
                 this.styles.set(style.name, style);
             }
         }
 
         // Center camera roughly
-        if (data.floors.length > 0 && data.floors[0].rooms.length > 0) {
-            const firstRoom = data.floors[0].rooms[0];
+        if (normalizedData.floors.length > 0 && normalizedData.floors[0].rooms.length > 0) {
+            const firstRoom = normalizedData.floors[0].rooms[0];
             this.controls.target.set(firstRoom.x + firstRoom.width/2, 0, firstRoom.z + firstRoom.height/2);
         }
 
         // Generate floors and track heights
         const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-        data.floors.forEach((floorData) => {
+        normalizedData.floors.forEach((floorData) => {
             const floorHeight = floorData.height ?? globalDefault;
             this.floorHeights.push(floorHeight);
             

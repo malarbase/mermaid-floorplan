@@ -12,6 +12,9 @@ export interface JsonConfig {
     window_sill?: number;
     // Style defaults
     default_style?: string;
+    // Unit settings
+    default_unit?: string;
+    area_unit?: string;
 }
 
 export interface JsonStyle {
@@ -68,6 +71,7 @@ export interface JsonConnection {
     toWall: string;
     doorType: string;
     position?: number;
+    isPercentage?: boolean;
     swing?: string;
     opensInto?: string;
 }

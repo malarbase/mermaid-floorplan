@@ -16,7 +16,8 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkStyleReferences,
       validator.checkDuplicateStyleNames,
       validator.checkSharedWallConflicts,
-      validator.checkMixedUnitSystems
+      validator.checkMixedUnitSystems,
+      validator.checkRoomHeightExceedsFloor
     ],
     StyleProperty: [validator.checkStylePropertyValue],
     ConfigProperty: [validator.checkConfigPropertyValue]
@@ -602,6 +603,48 @@ export class FloorplansValidator {
         { node: floorplan }
       );
     }
+  }
+
+  /**
+   * Check that no room height exceeds its floor height.
+   * Rooms taller than their floor will clip through the floor above in 3D rendering.
+   */
+  checkRoomHeightExceedsFloor(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    const defaultHeight = this.getConfigDefaultHeight(floorplan);
+    
+    for (const floor of floorplan.floors) {
+      // Get floor height (explicit or default)
+      const floorHeight = floor.height?.value ?? defaultHeight;
+      
+      // Check each room in the floor
+      const rooms = this.collectAllRooms(floor);
+      for (const room of rooms) {
+        const roomHeight = room.height?.value ?? defaultHeight;
+        
+        if (roomHeight > floorHeight) {
+          accept("warning",
+            `Room '${room.name}' has height ${roomHeight} which exceeds floor '${floor.id}' height of ${floorHeight}. ` +
+            `This will cause the room to clip through the floor above in 3D rendering. ` +
+            `Consider increasing the floor height or reducing the room height.`,
+            { node: room, property: "height" }
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Get default_height from config
+   */
+  private getConfigDefaultHeight(floorplan: Floorplan): number {
+    if (floorplan.config) {
+      for (const prop of floorplan.config.properties) {
+        if (prop.name === 'default_height' && prop.value !== undefined) {
+          return prop.value;
+        }
+      }
+    }
+    return 3.35; // Default fallback (meters)
   }
 
   /**
