@@ -33,17 +33,21 @@ ConfigBlock:
     '}';
 
 ConfigProperty:
-    name=CONFIG_KEY ':' (value=NUMBER | styleRef=ID | unitRef=LENGTH_UNIT);
+    name=CONFIG_KEY ':' (value=NUMBER | styleRef=ID | unitRef=LENGTH_UNIT | areaUnitRef=AREA_UNIT);
 
 // Config property keys - includes default_unit for specifying measurement unit
 CONFIG_KEY returns string:
     'wall_thickness' | 'floor_thickness' | 'default_height' |
     'door_width' | 'door_height' |
-    'window_width' | 'window_height' | 'window_sill' | 'default_style' | 'default_unit';
+    'window_width' | 'window_height' | 'window_sill' | 'default_style' | 'default_unit' | 'area_unit';
 
 // Length unit types for dimensions
 LENGTH_UNIT returns string:
     'm' | 'ft' | 'cm' | 'in' | 'mm';
+
+// Area unit types for metrics display
+AREA_UNIT returns string:
+    'sqft' | 'sqm';
 
 // Value with optional unit (e.g., 10, 10m, 10ft)
 ValueWithUnit:

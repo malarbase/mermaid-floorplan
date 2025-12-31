@@ -426,8 +426,8 @@ describe("Dimension Line Tests", () => {
     const document = await parse(input);
     const svg = render(document, { showDimensions: true, dimensionTypes: ['width'] });
     
-    // Should contain the width value "10"
-    expect(svg).toContain('>10<');
+    // Should contain the width value "10ft" (default length unit is 'ft')
+    expect(svg).toContain('>10ft<');
   });
 
   test("should not render dimensions when showDimensions is false", async () => {

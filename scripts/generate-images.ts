@@ -12,6 +12,7 @@
  *   --show-dims     Show dimension lines on room edges
  *   --show-summary  Show floor summary panel
  *   --area-unit U   Area unit: 'sqft' or 'sqm' (default: sqft)
+ *   --length-unit U Length unit for dimensions: 'm', 'ft', 'cm', 'in', 'mm' (default: ft)
  * 
  * Uses the floorplan diagram renderer from the language package.
  * Reuses PNG conversion from the MCP server package.
@@ -19,7 +20,7 @@
 
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
-import type { Floorplan, AreaUnit } from "floorplans-language";
+import type { Floorplan, AreaUnit, LengthUnit } from "floorplans-language";
 import { createFloorplansServices, renderFloor, render, resolveVariables, buildStyleContext, convertFloorplanToJson, formatSummaryTable } from "floorplans-language";
 import { svgToPng } from "floorplans-mcp-server/utils/renderer";
 import * as fs from "fs";
@@ -45,6 +46,7 @@ interface Options {
   showDimensions: boolean;
   showFloorSummary: boolean;
   areaUnit: AreaUnit;
+  lengthUnit: LengthUnit;
 }
 
 function parseArgs(args: string[]): Options {
@@ -59,6 +61,7 @@ function parseArgs(args: string[]): Options {
     showDimensions: false,
     showFloorSummary: false,
     areaUnit: 'sqft',
+    lengthUnit: 'ft',
   };
 
   const positionalArgs: string[] = [];
@@ -87,6 +90,11 @@ function parseArgs(args: string[]): Options {
       const unit = args[++i];
       if (unit === 'sqft' || unit === 'sqm') {
         options.areaUnit = unit;
+      }
+    } else if (arg === "--length-unit" && i + 1 < args.length) {
+      const unit = args[++i] as LengthUnit;
+      if (['m', 'ft', 'cm', 'in', 'mm'].includes(unit)) {
+        options.lengthUnit = unit;
       }
     } else if (!arg.startsWith("--")) {
       positionalArgs.push(arg);
@@ -134,8 +142,8 @@ async function main() {
   ].filter(Boolean).join(" + ");
 
   const annotations = [
-    options.showArea ? "areas" : null,
-    options.showDimensions ? "dimensions" : null,
+    options.showArea ? `areas (${options.areaUnit})` : null,
+    options.showDimensions ? `dimensions (${options.lengthUnit})` : null,
     options.showFloorSummary ? "floor summary" : null,
   ].filter(Boolean);
 
@@ -143,7 +151,7 @@ async function main() {
   console.log(`Found ${floorplan.connections.length} connection(s)`);
   console.log(`Scale: ${options.scale}x`);
   if (annotations.length > 0) {
-    console.log(`Annotations: ${annotations.join(", ")} (${options.areaUnit})`);
+    console.log(`Annotations: ${annotations.join(", ")}`);
   }
   console.log();
 
@@ -164,6 +172,7 @@ async function main() {
       showDimensions: options.showDimensions,
       showFloorSummary: options.showFloorSummary,
       areaUnit: options.areaUnit,
+      lengthUnit: options.lengthUnit,
     }, floorplan.connections, variables, styleContext);
 
     if (options.generateSvg) {
@@ -195,6 +204,7 @@ async function main() {
       showDimensions: options.showDimensions,
       showFloorSummary: options.showFloorSummary,
       areaUnit: options.areaUnit,
+      lengthUnit: options.lengthUnit,
     });
 
     if (options.generateSvg) {

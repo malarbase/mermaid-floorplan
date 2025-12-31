@@ -17,7 +17,7 @@ import { resolveVariables, getRoomSize } from "./variable-resolver.js";
 import { buildStyleContext, type StyleContext } from "./style-resolver.js";
 import { computeFloorMetrics, type FloorMetrics, formatEfficiency } from "./metrics.js";
 import { convertFloorplanToJson, type JsonFloor } from "./json-converter.js";
-import { generateFloorDimensions, type DimensionType, type DimensionRenderOptions } from "./dimension.js";
+import { generateFloorDimensions, type DimensionType, type DimensionRenderOptions, type LengthUnit } from "./dimension.js";
 
 /**
  * Generate floor summary panel SVG
@@ -86,6 +86,8 @@ export interface RenderOptions {
   showArea?: boolean;
   /** Unit for displaying area */
   areaUnit?: AreaUnit;
+  /** Length unit for dimension annotations (e.g., 'ft', 'm') */
+  lengthUnit?: LengthUnit;
   /** Show floor summary panel below each floor */
   showFloorSummary?: boolean;
   /** Show dimension lines on room edges */
@@ -104,6 +106,7 @@ const defaultRenderOptions: RenderOptions = {
   multiFloorLayout: 'sideBySide',
   showArea: false,
   areaUnit: 'sqft',
+  lengthUnit: 'ft',
   showFloorSummary: false,
   showDimensions: false,
   dimensionTypes: ['width', 'depth'],
@@ -260,6 +263,7 @@ function renderAllFloors(
       const dimensionOpts: DimensionRenderOptions = {
         showDimensions: true,
         dimensionTypes: opts.dimensionTypes,
+        lengthUnit: opts.lengthUnit,
       };
       svg += generateFloorDimensions(floor.rooms, resolvedPositions, variables, dimensionOpts);
     }
@@ -348,6 +352,7 @@ export function renderFloor(
       const dimensionOpts: DimensionRenderOptions = {
         showDimensions: true,
         dimensionTypes: opts.dimensionTypes,
+        lengthUnit: opts.lengthUnit,
       };
       svg += generateFloorDimensions(floor.rooms, resolvedPositions, variables, dimensionOpts);
     }
@@ -408,3 +413,4 @@ export type { FloorplanThemeOptions } from "./styles.js";
 export type { ResolvedPosition, PositionResolutionResult, PositionResolutionError, OverlapWarning } from "./position-resolver.js";
 export { buildStyleContext, resolveRoomStyle, DEFAULT_STYLE } from "./style-resolver.js";
 export type { StyleContext, ResolvedStyle } from "./style-resolver.js";
+export type { DimensionType, LengthUnit } from "./dimension.js";

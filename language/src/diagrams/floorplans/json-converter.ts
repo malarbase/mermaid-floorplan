@@ -4,7 +4,7 @@
  * Used by both the CLI export script and the browser-based viewer.
  */
 
-import type { Floorplan, LENGTH_UNIT } from "../../generated/ast.js";
+import type { Floorplan, LENGTH_UNIT, AREA_UNIT } from "../../generated/ast.js";
 import { resolveFloorPositions } from "./position-resolver.js";
 import { resolveVariables, getRoomSize } from "./variable-resolver.js";
 import { 
@@ -30,6 +30,7 @@ export interface JsonConfig {
     window_sill?: number;
     default_style?: string;
     default_unit?: LENGTH_UNIT;
+    area_unit?: AREA_UNIT;
 }
 
 export interface JsonStyle {
@@ -145,6 +146,10 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             // Handle default_style
             if (prop.name === 'default_style' && prop.styleRef) {
                 config.default_style = prop.styleRef;
+            }
+            // Handle area_unit
+            if (prop.name === 'area_unit' && prop.areaUnitRef) {
+                config.area_unit = prop.areaUnitRef;
             }
         }
         if (Object.keys(config).length > 0) {

@@ -25,12 +25,14 @@ help: ## Show this help message
 	@echo "  SHOW_DIMS       Show dimension lines (default: false)"
 	@echo "  SHOW_SUMMARY    Show floor summary panel (default: false)"
 	@echo "  AREA_UNIT       Area unit: sqft or sqm (default: sqft)"
+	@echo "  LENGTH_UNIT     Length unit for dimensions: ft, m, etc. (default: ft)"
 	@echo ""
 	@echo "Examples:"
 	@echo "  make images                              # Generate all images"
 	@echo "  make images SCALE=20                     # Higher resolution"
 	@echo "  make images-annotated                    # With all annotations"
 	@echo "  make images SHOW_AREA=1 AREA_UNIT=sqm   # Show areas in sqm"
+	@echo "  make images SHOW_DIMS=1 LENGTH_UNIT=m   # Show dimensions in meters"
 	@echo "  make render FLOORPLAN_FILE=my.floorplan  # Render custom file"
 
 # ===============================
@@ -74,11 +76,15 @@ SHOW_AREA ?=
 SHOW_DIMS ?=
 SHOW_SUMMARY ?=
 AREA_UNIT ?= sqft
+LENGTH_UNIT ?= ft
 
 # Build annotation flags
 ANNOTATION_FLAGS := $(if $(SHOW_AREA),--show-area) $(if $(SHOW_DIMS),--show-dims) $(if $(SHOW_SUMMARY),--show-summary)
 ifneq ($(AREA_UNIT),sqft)
 ANNOTATION_FLAGS += --area-unit $(AREA_UNIT)
+endif
+ifneq ($(LENGTH_UNIT),ft)
+ANNOTATION_FLAGS += --length-unit $(LENGTH_UNIT)
 endif
 
 export-images: ## Generate SVG + PNG for all floors
@@ -91,7 +97,7 @@ export-png: ## Generate PNG only
 	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --png-only --scale $(SCALE) $(ANNOTATION_FLAGS)
 
 export-annotated: ## Generate images with all annotations (area, dims, summary)
-	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE) --show-area --show-dims --show-summary --area-unit $(AREA_UNIT)
+	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE) --show-area --show-dims --show-summary --area-unit $(AREA_UNIT) --length-unit $(LENGTH_UNIT)
 
 export-json: ## Export floorplan to JSON (FLOORPLAN_FILE=path OUTPUT_FILE=path)
 ifdef FLOORPLAN_FILE

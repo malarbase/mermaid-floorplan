@@ -6,9 +6,13 @@
 import type { Room } from "../../generated/ast.js";
 import type { ResolvedPosition } from "./position-resolver.js";
 import { getRoomSize } from "./variable-resolver.js";
+import type { LengthUnit } from "./unit-utils.js";
 
 /** Types of dimensions that can be displayed */
 export type DimensionType = 'width' | 'depth' | 'height';
+
+/** Re-export LengthUnit for consumers */
+export type { LengthUnit } from "./unit-utils.js";
 
 /** Options for dimension rendering */
 export interface DimensionRenderOptions {
@@ -24,6 +28,8 @@ export interface DimensionRenderOptions {
   fontSize?: number;
   /** Default room height (for comparison) */
   defaultHeight?: number;
+  /** Length unit to display (e.g., 'ft', 'm') */
+  lengthUnit?: LengthUnit;
 }
 
 const DEFAULT_DIMENSION_OPTIONS: Required<DimensionRenderOptions> = {
@@ -33,6 +39,7 @@ const DEFAULT_DIMENSION_OPTIONS: Required<DimensionRenderOptions> = {
   tickLength: 0.3,
   fontSize: 0.5,
   defaultHeight: 3,
+  lengthUnit: 'ft',
 };
 
 /**
@@ -47,7 +54,7 @@ export function generateDimensionLine(
   options: DimensionRenderOptions = {}
 ): string {
   const opts = { ...DEFAULT_DIMENSION_OPTIONS, ...options };
-  const { tickLength, fontSize } = opts;
+  const { tickLength, fontSize, lengthUnit } = opts;
   
   // Calculate direction and length
   const dx = x2 - x1;
@@ -68,8 +75,9 @@ export function generateDimensionLine(
   const midX = (x1 + x2) / 2;
   const midY = (y1 + y2) / 2;
   
-  // Format value (round to reasonable precision)
-  const valueText = value % 1 === 0 ? value.toString() : value.toFixed(1);
+  // Format value with unit (round to reasonable precision)
+  const valueNum = value % 1 === 0 ? value.toString() : value.toFixed(1);
+  const valueText = `${valueNum}${lengthUnit}`;
   
   let svg = `<g class="dimension-line">`;
   
@@ -162,9 +170,10 @@ export function generateRoomDimensions(
     if (roomHeight !== opts.defaultHeight) {
       const centerX = x + width / 2;
       const labelY = y + height - 0.8; // Near bottom of room
+      const heightText = `h: ${roomHeight}${opts.lengthUnit}`;
       svg += `<text x="${centerX}" y="${labelY}" 
         text-anchor="middle" dominant-baseline="middle"
-        font-size="${opts.fontSize * 0.9}" fill="#666">h: ${roomHeight}</text>`;
+        font-size="${opts.fontSize * 0.9}" fill="#666">${heightText}</text>`;
     }
   }
   
