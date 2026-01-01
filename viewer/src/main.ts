@@ -766,6 +766,14 @@ class Viewer {
             }
         }
         
+        // Apply theme from DSL config (6.7 & 6.8)
+        if (this.config.theme === 'dark' || this.config.darkMode === true) {
+            this.setTheme('dark');
+        } else if (this.config.theme === 'default' || this.config.theme === 'blueprint') {
+            // Light theme for default and blueprint (blueprint is a 2D concept)
+            this.setTheme('light');
+        }
+        
         // Build style lookup map
         this.styles.clear();
         if (normalizedData.styles) {

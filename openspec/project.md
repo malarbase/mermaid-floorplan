@@ -209,17 +209,27 @@ floorplan
 **Supported config keys:**
 | Key | Description | Default |
 |-----|-------------|---------|
-| `wall_thickness` | Wall thickness in units | 0.2 |
-| `floor_thickness` | Floor slab thickness | 0.2 |
-| `default_height` | Default wall/ceiling height | 3.35 |
-| `door_width` | Standard door width (legacy) | 1.0 |
-| `door_height` | Standard door height (legacy) | 2.1 |
-| `door_size` | Door size as `(width x height)` | None |
-| `window_width` | Standard window width (legacy) | 1.5 |
-| `window_height` | Standard window height (legacy) | 1.5 |
-| `window_size` | Window size as `(width x height)` | None |
-| `window_sill` | Window sill height from floor | 0.9 |
-| `default_style` | Default style name for rooms | None |
+| `wall_thickness` / `wallThickness` | Wall thickness in units | 0.2 |
+| `floor_thickness` / `floorThickness` | Floor slab thickness | 0.2 |
+| `default_height` / `defaultHeight` | Default wall/ceiling height | 3.35 |
+| `door_width` / `doorWidth` | Standard door width (legacy) | 1.0 |
+| `door_height` / `doorHeight` | Standard door height (legacy) | 2.1 |
+| `door_size` / `doorSize` | Door size as `(width x height)` | None |
+| `window_width` / `windowWidth` | Standard window width (legacy) | 1.5 |
+| `window_height` / `windowHeight` | Standard window height (legacy) | 2.1 |
+| `window_size` / `windowSize` | Window size as `(width x height)` | None |
+| `window_sill` / `windowSill` | Window sill height from floor | 0.9 |
+| `default_style` / `defaultStyle` | Default style name for rooms | None |
+| `default_unit` / `defaultUnit` | Default length unit (`m`, `ft`, `cm`, `in`, `mm`) | `m` |
+| `area_unit` / `areaUnit` | Area display unit (`sqm`, `sqft`) | `sqft` |
+| `theme` | Color theme (`default`, `dark`, `blueprint`) | `default` |
+| `darkMode` / `dark_mode` | Dark mode toggle (`true`/`false`) | `false` |
+| `fontFamily` / `font_family` | Font family for labels | System default |
+| `fontSize` / `font_size` | Font size for labels (number) | 14 |
+| `showLabels` / `show_labels` | Show room labels (`true`/`false`) | `true` |
+| `showDimensions` / `show_dimensions` | Show dimension annotations (`true`/`false`) | `true` |
+
+**Naming Convention:** Both `snake_case` (e.g., `wall_thickness`) and `camelCase` (e.g., `wallThickness`) are accepted. Internally normalized to camelCase.
 
 **Height resolution priority:** Room height > Floor height > Config `default_height` > Constant (3.35)
 

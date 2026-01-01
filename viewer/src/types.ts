@@ -19,6 +19,19 @@ export interface JsonConfig {
     // Unit settings
     default_unit?: string;
     area_unit?: string;
+    // Theme and display properties (Mermaid-aligned)
+    /** Theme name: 'default', 'dark', or 'blueprint' */
+    theme?: string;
+    /** Dark mode toggle (alternative to theme: 'dark') */
+    darkMode?: boolean;
+    /** Font family for labels */
+    fontFamily?: string;
+    /** Font size for labels */
+    fontSize?: number;
+    /** Whether to show room labels */
+    showLabels?: boolean;
+    /** Whether to show dimension annotations */
+    showDimensions?: boolean;
 }
 
 export interface JsonStyle {

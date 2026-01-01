@@ -14,6 +14,7 @@ import {
     type FloorMetrics,
     type FloorplanSummary,
 } from "./metrics.js";
+import { normalizeConfigKey } from "./styles.js";
 
 // ============================================================================
 // JSON Export Types
@@ -39,6 +40,19 @@ export interface JsonConfig {
     default_style?: string;
     default_unit?: LENGTH_UNIT;
     area_unit?: AREA_UNIT;
+    // Theme and display properties (Mermaid-aligned)
+    /** Theme name: 'default', 'dark', or 'blueprint' */
+    theme?: string;
+    /** Dark mode toggle (alternative to theme: 'dark') */
+    darkMode?: boolean;
+    /** Font family for labels */
+    fontFamily?: string;
+    /** Font size for labels */
+    fontSize?: number;
+    /** Whether to show room labels */
+    showLabels?: boolean;
+    /** Whether to show dimension annotations */
+    showDimensions?: boolean;
 }
 
 export interface JsonStyle {
@@ -150,28 +164,43 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
     if (floorplan.config) {
         const config: JsonConfig = {};
         for (const prop of floorplan.config.properties) {
+            // Normalize property name to camelCase for consistent output
+            const normalizedName = normalizeConfigKey(prop.name);
+            
             if (prop.value !== undefined) {
-                (config as Record<string, number>)[prop.name] = prop.value;
+                (config as Record<string, number>)[normalizedName] = prop.value;
             }
             // Handle dimension properties (door_size, window_size)
             if (prop.dimension !== undefined) {
-                if (prop.name === 'door_size') {
+                if (normalizedName === 'doorSize') {
                     config.door_size = [prop.dimension.width.value, prop.dimension.height.value];
-                } else if (prop.name === 'window_size') {
+                } else if (normalizedName === 'windowSize') {
                     config.window_size = [prop.dimension.width.value, prop.dimension.height.value];
                 }
             }
             // Handle default_unit
-            if (prop.name === 'default_unit' && prop.unitRef) {
+            if ((normalizedName === 'defaultUnit') && prop.unitRef) {
                 config.default_unit = prop.unitRef;
             }
             // Handle default_style
-            if (prop.name === 'default_style' && prop.styleRef) {
+            if ((normalizedName === 'defaultStyle') && prop.styleRef) {
                 config.default_style = prop.styleRef;
             }
             // Handle area_unit
-            if (prop.name === 'area_unit' && prop.areaUnitRef) {
+            if ((normalizedName === 'areaUnit') && prop.areaUnitRef) {
                 config.area_unit = prop.areaUnitRef;
+            }
+            // Handle theme property
+            if ((normalizedName === 'theme') && prop.themeRef) {
+                config.theme = prop.themeRef;
+            }
+            // Handle boolean properties (darkMode, showLabels, showDimensions)
+            if (prop.boolValue !== undefined) {
+                (config as Record<string, boolean>)[normalizedName] = prop.boolValue === 'true';
+            }
+            // Handle string properties (fontFamily)
+            if (prop.stringValue !== undefined && normalizedName === 'fontFamily') {
+                config.fontFamily = prop.stringValue.replace(/^["']|["']$/g, '');
             }
         }
         if (Object.keys(config).length > 0) {
