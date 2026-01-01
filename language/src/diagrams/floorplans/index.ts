@@ -188,3 +188,35 @@ export {
   type JsonGeneratorResult,
   type GeneratorError,
 } from "./generator.js";
+
+// Grammar versioning system
+export {
+  CURRENT_VERSION,
+  parseVersion,
+  compareVersions,
+  isCompatibleVersion,
+  isFutureVersion,
+  extractVersionFromAST,
+  resolveVersion,
+  formatVersion,
+  type SemanticVersion,
+} from "./version-resolver.js";
+
+// Deprecation system
+export {
+  isDeprecated,
+  isRemoved,
+  getDeprecationWarning,
+  getRemovalError,
+  getActiveDeprecations,
+  getRemovedFeatures,
+  DEPRECATION_REGISTRY,
+  type DeprecationInfo,
+} from "./deprecation-registry.js";
+
+// Migration utilities
+export {
+  migrate,
+  type MigrationResult,
+  type MigrationStep,
+} from "./migrator.js";

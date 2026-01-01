@@ -7,14 +7,15 @@
 import type { Floorplan, LENGTH_UNIT, AREA_UNIT } from "../../generated/ast.js";
 import { resolveFloorPositions } from "./position-resolver.js";
 import { resolveVariables, getRoomSize } from "./variable-resolver.js";
-import { 
-    computeRoomMetrics, 
-    computeFloorMetrics, 
+import {
+    computeRoomMetrics,
+    computeFloorMetrics,
     computeFloorplanSummary,
     type FloorMetrics,
     type FloorplanSummary,
 } from "./metrics.js";
 import { normalizeConfigKey } from "./styles.js";
+import { extractVersionFromAST, CURRENT_VERSION } from "./version-resolver.js";
 
 // ============================================================================
 // JSON Export Types
@@ -119,6 +120,8 @@ export interface JsonConnection {
 }
 
 export interface JsonExport {
+    /** Grammar version used to parse the floorplan */
+    grammarVersion: string;
     floors: JsonFloor[];
     connections: JsonConnection[];
     config?: JsonConfig;
@@ -154,7 +157,11 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
     const variableResolution = resolveVariables(floorplan);
     const variables = variableResolution.variables;
 
+    // Extract grammar version from floorplan (or use current version as default)
+    const grammarVersion = extractVersionFromAST(floorplan) || CURRENT_VERSION;
+
     const jsonExport: JsonExport = {
+        grammarVersion,
         floors: [],
         connections: [],
         styles: []

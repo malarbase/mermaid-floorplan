@@ -5,6 +5,8 @@ import { hasMixedUnitSystems, VALID_UNITS, toMeters, type LengthUnit } from "./d
 import { resolveFloorPositions } from "./diagrams/floorplans/position-resolver.js";
 import { getRoomSize, resolveVariables } from "./diagrams/floorplans/variable-resolver.js";
 import { isValidTheme, getAvailableThemes, normalizeConfigKey } from "./diagrams/floorplans/styles.js";
+import { resolveVersion } from "./diagrams/floorplans/version-resolver.js";
+import { isDeprecated, isRemoved, getDeprecationWarning, getRemovalError } from "./diagrams/floorplans/deprecation-registry.js";
 
 /**
  * Register custom validation checks.
@@ -14,7 +16,8 @@ export function registerValidationChecks(services: FloorplansServices) {
   const validator = services.validation.FloorplansValidator;
   const checks: ValidationChecks<FloorplansAstType> = {
     Floorplan: [
-      validator.checkConnectionOverlaps, 
+      validator.checkGrammarVersion,
+      validator.checkConnectionOverlaps,
       validator.checkConnectionWallTypes,
       validator.checkStyleReferences,
       validator.checkDuplicateStyleNames,
@@ -24,7 +27,8 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkDoorPositionWithinSharedWall,
       validator.checkConnectionSizeConstraints,
       validator.checkConflictingDoorSizeConfig,
-      validator.checkThemeAndDarkModeConflict
+      validator.checkThemeAndDarkModeConflict,
+      validator.checkDeprecatedFeatures
     ],
     StyleProperty: [validator.checkStylePropertyValue],
     ConfigProperty: [validator.checkConfigPropertyValue]
@@ -55,6 +59,61 @@ interface SimpleConnection {
  * Implementation of custom validations.
  */
 export class FloorplansValidator {
+  /**
+   * Check and validate grammar version from floorplan.
+   * Emits warnings for missing/legacy versions and errors for unsupported versions.
+   */
+  checkGrammarVersion(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    const result = resolveVersion(floorplan);
+
+    // Emit any version resolution errors
+    for (const error of result.errors) {
+      accept("error", error, { node: floorplan });
+    }
+
+    // Emit any version resolution warnings
+    for (const warning of result.warnings) {
+      accept("warning", warning, { node: floorplan });
+    }
+  }
+
+  /**
+   * Check for usage of deprecated features based on the declared grammar version.
+   */
+  checkDeprecatedFeatures(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    const versionResult = resolveVersion(floorplan);
+    const version = versionResult.version;
+
+    // Skip if there were version errors
+    if (versionResult.errors.length > 0) {
+      return;
+    }
+
+    // Check config properties for deprecated features
+    if (floorplan.config) {
+      for (const prop of floorplan.config.properties) {
+        const normalizedKey = normalizeConfigKey(prop.name);
+
+        // Check if this config key is deprecated
+        const deprecation = isDeprecated(normalizedKey, version);
+        if (deprecation) {
+          const warning = getDeprecationWarning(normalizedKey);
+          if (warning) {
+            accept("warning", warning, { node: prop, property: "name" });
+          }
+        }
+
+        // Check if this config key is removed (error)
+        if (isRemoved(normalizedKey, version)) {
+          const error = getRemovalError(normalizedKey);
+          if (error) {
+            accept("error", error, { node: prop, property: "name" });
+          }
+        }
+      }
+    }
+  }
+
   /**
    * Check for overlapping connections on the same wall.
    * Uses simple string-based comparisons to avoid deep AST traversal.

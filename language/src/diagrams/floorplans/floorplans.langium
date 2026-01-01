@@ -1,13 +1,34 @@
 grammar Floorplans
 
-// Entry rule - defines, styles, config, floors, then connections
+// Entry rule - optional version declaration, then floorplan content
 entry Floorplan:
-    'floorplan' 
+    (frontmatter=YamlFrontmatter | versionDirective=VersionDirective)?
+    'floorplan'
     defines+=DefineStatement*
     styles+=StyleBlock*
     config=ConfigBlock?
-    floors+=Floor* 
+    floors+=Floor*
     connections+=Connection*;
+
+// YAML frontmatter block (optional, at start of file)
+YamlFrontmatter:
+    '---'
+    properties+=YamlProperty+
+    '---';
+
+YamlProperty:
+    key=YamlKey ':' value=YamlValue;
+
+YamlKey returns string:
+    ID | 'version' | 'title' | 'description' | 'author';
+
+YamlValue:
+    stringValue=STRING | numberValue=NUMBER | boolValue=BOOLEAN | versionValue=VERSION_STRING;
+
+// Inline version directive (alternative to frontmatter)
+// Accepts both quoted strings ("1.0") and unquoted numbers (1.0)
+VersionDirective:
+    '%%{' 'version' ':' (version=VERSION_STRING | versionNumber=NUMBER) '}%%';
 
 // Style block for material definitions
 StyleBlock:
@@ -191,6 +212,8 @@ SwingDirection returns string:
     'left' | 'right';
 
 // Terminal rules
+// VERSION_STRING only matches quoted version strings to avoid conflicts with NUMBER
+terminal VERSION_STRING: /"[0-9]+\.[0-9]+(\.[0-9]+)?"/;
 terminal ID: /[_a-zA-Z][\w]*/;
 terminal NUMBER returns number: /[0-9]+(\.[0-9]+)?/;
 terminal STRING: /"[^"]*"|'[^']*'/;
