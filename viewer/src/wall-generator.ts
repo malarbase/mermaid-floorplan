@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { calculatePositionWithFallback, type RoomBounds } from 'floorplans-language';
-import { DIMENSIONS } from './constants';
+import { DIMENSIONS, ViewerTheme } from './constants';
 import { JsonWall, JsonRoom, JsonConnection, JsonConfig } from './types';
 import { MaterialSet, MaterialFactory, MaterialStyle } from './materials';
 import { ConnectionMatcher } from './connection-matcher';
@@ -35,6 +35,7 @@ export class WallGenerator {
   private csgEvaluator: Evaluator;
   private doorRenderer: DoorRenderer;
   private styleResolver: StyleResolver | null = null;
+  private currentTheme?: ViewerTheme;
 
   constructor(csgEvaluator: Evaluator) {
     this.csgEvaluator = csgEvaluator;
@@ -46,6 +47,13 @@ export class WallGenerator {
    */
   setStyleResolver(resolver: StyleResolver): void {
     this.styleResolver = resolver;
+  }
+
+  /**
+   * Set the current theme for material generation
+   */
+  setTheme(theme: ViewerTheme): void {
+    this.currentTheme = theme;
   }
 
   /**
@@ -165,7 +173,8 @@ export class WallGenerator {
       const segmentMaterials = MaterialFactory.createPerFaceWallMaterials(
         segment.ownerStyle,
         segment.hasAdjacentRoom ? segment.adjacentStyle : undefined,
-        wall.direction
+        wall.direction,
+        this.currentTheme
       );
 
       // Create brush for CSG operations

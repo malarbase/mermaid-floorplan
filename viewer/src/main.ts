@@ -4,7 +4,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRe
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Evaluator } from 'three-bvh-csg';
 import { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from './types';
-import { DIMENSIONS, COLORS, LengthUnit, METERS_TO_UNIT, ViewerTheme, getThemeColors } from './constants';
+import { DIMENSIONS, COLORS, COLORS_DARK, LengthUnit, METERS_TO_UNIT, ViewerTheme, getThemeColors } from './constants';
 import { MaterialFactory, MaterialStyle } from './materials';
 import { WallGenerator, StyleResolver } from './wall-generator';
 import { parseFloorplanDSL, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
@@ -140,6 +140,7 @@ class Viewer {
 
         // Init wall generator with CSG evaluator
         this.wallGenerator = new WallGenerator(new Evaluator());
+        this.wallGenerator.setTheme(this.currentTheme);
 
         // Window resize
         window.addEventListener('resize', this.onWindowResize.bind(this));
@@ -301,8 +302,91 @@ class Viewer {
     private applyTheme() {
         const colors = getThemeColors(this.currentTheme);
         this.scene.background = new THREE.Color(colors.BACKGROUND);
+
+        // Update wall generator theme
+        this.wallGenerator.setTheme(this.currentTheme);
+
+        // Regenerate materials for all rooms that don't have explicit styles
+        this.regenerateMaterialsForTheme();
     }
-    
+
+    /**
+     * Regenerate materials for rooms without explicit styles when theme changes
+     */
+    private regenerateMaterialsForTheme() {
+        if (!this.currentFloorplanData) return;
+
+        const themeColors = getThemeColors(this.currentTheme);
+
+        // Traverse all floors and update materials
+        this.currentFloorplanData.floors.forEach((floorData, floorIndex) => {
+            const floorGroup = this.floors[floorIndex];
+            if (!floorGroup) return;
+
+            floorData.rooms.forEach(room => {
+                // Check if room has explicit style
+                const hasExplicitStyle = (room.style && this.styles.has(room.style)) ||
+                    (this.config.default_style && this.styles.has(this.config.default_style));
+
+                // Only update materials for rooms without explicit styles
+                if (!hasExplicitStyle) {
+                    // Find and update floor mesh for this room
+                    floorGroup.traverse((child) => {
+                        if (child instanceof THREE.Mesh) {
+                            const mesh = child as THREE.Mesh;
+                            const material = mesh.material;
+
+                            // Update floor materials (single material)
+                            if (material instanceof THREE.MeshStandardMaterial && !Array.isArray(material)) {
+                                // Check if it's a floor mesh (positioned at room elevation)
+                                const elevation = room.elevation || 0;
+                                if (Math.abs(mesh.position.y - elevation) < 0.1) {
+                                    material.color.setHex(themeColors.FLOOR);
+                                    material.needsUpdate = true;
+                                }
+                            }
+
+                            // Update wall materials (material arrays for per-face materials)
+                            if (Array.isArray(material)) {
+                                material.forEach(mat => {
+                                    if (mat instanceof THREE.MeshStandardMaterial) {
+                                        // Update wall colors
+                                        mat.color.setHex(themeColors.WALL);
+                                        mat.needsUpdate = true;
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        // Update door and window materials (they don't have explicit styles)
+        this.floors.forEach(floorGroup => {
+            floorGroup.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const mesh = child as THREE.Mesh;
+                    const material = mesh.material;
+
+                    if (material instanceof THREE.MeshStandardMaterial) {
+                        // Window materials are transparent
+                        if (material.transparent && material.opacity < 1.0) {
+                            material.color.setHex(themeColors.WINDOW);
+                            material.needsUpdate = true;
+                        }
+                        // Door materials (identified by their color range)
+                        else if (material.color.getHex() === COLORS.DOOR ||
+                                 material.color.getHex() === COLORS_DARK.DOOR) {
+                            material.color.setHex(themeColors.DOOR);
+                            material.needsUpdate = true;
+                        }
+                    }
+                }
+            });
+        });
+    }
+
     private updateThemeButton() {
         const btn = document.getElementById('theme-toggle-btn');
         if (btn) {
@@ -864,9 +948,15 @@ class Viewer {
 
             // Resolve style for this room
             const roomStyle = this.resolveRoomStyle(room);
-            
-            // Create materials for this room with style
-            const materials = MaterialFactory.createMaterialSet(roomStyle);
+
+            // Create materials for this room with style and theme
+            // Only pass theme if room doesn't have explicit style (so theme colors are used as defaults)
+            const hasExplicitStyle = (room.style && this.styles.has(room.style)) ||
+                (this.config.default_style && this.styles.has(this.config.default_style));
+            const materials = MaterialFactory.createMaterialSet(
+                roomStyle,
+                hasExplicitStyle ? undefined : this.currentTheme
+            );
 
             // 1. Floor plate
             const floorMesh = this.createFloorMesh(roomWithDefaults, materials.floor);

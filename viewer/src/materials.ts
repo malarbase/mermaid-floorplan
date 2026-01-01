@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import { COLORS, MATERIAL_PROPERTIES } from './constants';
+import { COLORS, MATERIAL_PROPERTIES, ViewerTheme, getThemeColors } from './constants';
 import type { JsonStyle } from './types';
 
 export interface MaterialSet {
@@ -63,13 +63,14 @@ function parseHexColor(hex: string): number {
 
 export class MaterialFactory {
   /**
-   * Create floor material with optional style
+   * Create floor material with optional style and theme
    */
-  static createFloorMaterial(style?: MaterialStyle): THREE.MeshStandardMaterial {
-    const color = style?.floor_color 
-      ? parseHexColor(style.floor_color) 
-      : COLORS.FLOOR;
-    
+  static createFloorMaterial(style?: MaterialStyle, theme?: ViewerTheme): THREE.MeshStandardMaterial {
+    const themeColors = theme ? getThemeColors(theme) : COLORS;
+    const color = style?.floor_color
+      ? parseHexColor(style.floor_color)
+      : themeColors.FLOOR;
+
     return new THREE.MeshStandardMaterial({
       color,
       roughness: style?.roughness ?? MATERIAL_PROPERTIES.FLOOR.roughness,
@@ -80,9 +81,9 @@ export class MaterialFactory {
   /**
    * Create floor material with texture (async)
    */
-  static async createFloorMaterialAsync(style?: MaterialStyle): Promise<THREE.MeshStandardMaterial> {
-    const material = this.createFloorMaterial(style);
-    
+  static async createFloorMaterialAsync(style?: MaterialStyle, theme?: ViewerTheme): Promise<THREE.MeshStandardMaterial> {
+    const material = this.createFloorMaterial(style, theme);
+
     // Load texture if specified
     if (style?.floor_texture) {
       const texture = await loadTexture(style.floor_texture);
@@ -91,18 +92,19 @@ export class MaterialFactory {
         material.needsUpdate = true;
       }
     }
-    
+
     return material;
   }
 
   /**
-   * Create wall material with optional style
+   * Create wall material with optional style and theme
    */
-  static createWallMaterial(style?: MaterialStyle): THREE.MeshStandardMaterial {
-    const color = style?.wall_color 
-      ? parseHexColor(style.wall_color) 
-      : COLORS.WALL;
-    
+  static createWallMaterial(style?: MaterialStyle, theme?: ViewerTheme): THREE.MeshStandardMaterial {
+    const themeColors = theme ? getThemeColors(theme) : COLORS;
+    const color = style?.wall_color
+      ? parseHexColor(style.wall_color)
+      : themeColors.WALL;
+
     return new THREE.MeshStandardMaterial({
       color,
       roughness: style?.roughness ?? MATERIAL_PROPERTIES.WALL.roughness,
@@ -113,9 +115,9 @@ export class MaterialFactory {
   /**
    * Create wall material with texture (async)
    */
-  static async createWallMaterialAsync(style?: MaterialStyle): Promise<THREE.MeshStandardMaterial> {
-    const material = this.createWallMaterial(style);
-    
+  static async createWallMaterialAsync(style?: MaterialStyle, theme?: ViewerTheme): Promise<THREE.MeshStandardMaterial> {
+    const material = this.createWallMaterial(style, theme);
+
     // Load texture if specified
     if (style?.wall_texture) {
       const texture = await loadTexture(style.wall_texture);
@@ -124,13 +126,14 @@ export class MaterialFactory {
         material.needsUpdate = true;
       }
     }
-    
+
     return material;
   }
 
-  static createWindowMaterial(): THREE.MeshStandardMaterial {
+  static createWindowMaterial(theme?: ViewerTheme): THREE.MeshStandardMaterial {
+    const themeColors = theme ? getThemeColors(theme) : COLORS;
     return new THREE.MeshStandardMaterial({
-      color: COLORS.WINDOW,
+      color: themeColors.WINDOW,
       transparent: MATERIAL_PROPERTIES.WINDOW.transparent,
       opacity: MATERIAL_PROPERTIES.WINDOW.opacity,
       roughness: MATERIAL_PROPERTIES.WINDOW.roughness,
@@ -138,40 +141,41 @@ export class MaterialFactory {
     });
   }
 
-  static createDoorMaterial(): THREE.MeshStandardMaterial {
+  static createDoorMaterial(theme?: ViewerTheme): THREE.MeshStandardMaterial {
+    const themeColors = theme ? getThemeColors(theme) : COLORS;
     return new THREE.MeshStandardMaterial({
-      color: COLORS.DOOR,
+      color: themeColors.DOOR,
       roughness: MATERIAL_PROPERTIES.DOOR.roughness,
       metalness: MATERIAL_PROPERTIES.DOOR.metalness,
     });
   }
 
   /**
-   * Create material set with optional style (sync, no textures)
+   * Create material set with optional style and theme (sync, no textures)
    */
-  static createMaterialSet(style?: MaterialStyle): MaterialSet {
+  static createMaterialSet(style?: MaterialStyle, theme?: ViewerTheme): MaterialSet {
     return {
-      floor: this.createFloorMaterial(style),
-      wall: this.createWallMaterial(style),
-      window: this.createWindowMaterial(),
-      door: this.createDoorMaterial(),
+      floor: this.createFloorMaterial(style, theme),
+      wall: this.createWallMaterial(style, theme),
+      window: this.createWindowMaterial(theme),
+      door: this.createDoorMaterial(theme),
     };
   }
 
   /**
-   * Create material set with textures (async)
+   * Create material set with textures and theme (async)
    */
-  static async createMaterialSetAsync(style?: MaterialStyle): Promise<MaterialSet> {
+  static async createMaterialSetAsync(style?: MaterialStyle, theme?: ViewerTheme): Promise<MaterialSet> {
     const [floor, wall] = await Promise.all([
-      this.createFloorMaterialAsync(style),
-      this.createWallMaterialAsync(style),
+      this.createFloorMaterialAsync(style, theme),
+      this.createWallMaterialAsync(style, theme),
     ]);
-    
+
     return {
       floor,
       wall,
-      window: this.createWindowMaterial(),
-      door: this.createDoorMaterial(),
+      window: this.createWindowMaterial(theme),
+      door: this.createDoorMaterial(theme),
     };
   }
 
@@ -202,7 +206,7 @@ export class MaterialFactory {
   /**
    * Create a 6-material array for per-face wall rendering.
    * Used for shared walls where interior and exterior faces need different colors.
-   * 
+   *
    * BoxGeometry face order:
    *   0: +X (right side)
    *   1: -X (left side)
@@ -210,20 +214,22 @@ export class MaterialFactory {
    *   3: -Y (bottom)
    *   4: +Z (front)
    *   5: -Z (back)
-   * 
+   *
    * @param ownerStyle Style of the wall owner (used for sides, top, bottom, exterior)
    * @param adjacentStyle Style of the adjacent room (used for interior face)
    * @param wallDirection Direction of the wall to determine which face is interior
+   * @param theme Optional theme for material colors when no style is specified
    * @returns Array of 6 materials for BoxGeometry
    */
   static createPerFaceWallMaterials(
     ownerStyle: MaterialStyle | undefined,
     adjacentStyle: MaterialStyle | undefined,
-    wallDirection: 'top' | 'bottom' | 'left' | 'right'
+    wallDirection: 'top' | 'bottom' | 'left' | 'right',
+    theme?: ViewerTheme
   ): THREE.MeshStandardMaterial[] {
-    const ownerMat = this.createWallMaterial(ownerStyle);
-    const adjMat = adjacentStyle 
-      ? this.createWallMaterial(adjacentStyle)
+    const ownerMat = this.createWallMaterial(ownerStyle, theme);
+    const adjMat = adjacentStyle
+      ? this.createWallMaterial(adjacentStyle, theme)
       : ownerMat;
 
     // Default: all faces use owner material
