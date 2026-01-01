@@ -1,0 +1,60 @@
+floorplan
+  # Style definitions - reusable material configurations
+  style Modern {
+    floor_color: "#E8E8E8",
+    wall_color: "#505050",
+    roughness: 0.4,
+    metalness: 0.1
+  }
+  
+  style WarmWood {
+    floor_color: "#8B4513",
+    wall_color: "#D2B48C",
+    roughness: 0.7,
+    metalness: 0.0
+  }
+  
+  style CoolTile {
+    floor_color: "#B0C4DE",
+    wall_color: "#708090",
+    roughness: 0.3,
+    metalness: 0.2
+  }
+  
+  style CozyBedroom {
+    floor_color: "#DEB887",
+    wall_color: "#F5DEB3",
+    roughness: 0.8,
+    metalness: 0.0
+  }
+  
+  # Configuration with default style
+  config { default_style: Modern, wall_thickness: 0.25 }
+  
+  floor MainFloor {
+    # Living area uses warm wood style
+    room LivingRoom at (0,0) size (12 x 10) walls [top: solid, right: solid, bottom: solid, left: window] label "Living Area" style WarmWood
+    
+    # Kitchen with cool tile aesthetic
+    room Kitchen size (8 x 8) walls [top: solid, right: window, bottom: solid, left: open] right-of LivingRoom style CoolTile
+    
+    # Hallway uses default Modern style (no explicit style)
+    room Hallway size (4 x 10) walls [top: solid, right: solid, bottom: solid, left: solid] below LivingRoom gap 0.5
+    
+    # Master bedroom with cozy style
+    room MasterBedroom size (10 x 10) walls [top: solid, right: window, bottom: solid, left: solid] right-of Hallway style CozyBedroom
+    
+    # Bathroom with cool tile
+    room Bathroom size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] right-of MasterBedroom style CoolTile
+    
+    # Guest room also cozy
+    room GuestRoom size (8 x 8) walls [top: solid, right: solid, bottom: window, left: solid] below MasterBedroom style CozyBedroom
+  }
+  
+  # Connections between rooms
+  connect LivingRoom.right to Kitchen.left door at 50%
+  connect LivingRoom.bottom to Hallway.top door at 50%
+  connect Hallway.right to MasterBedroom.left door at 50%
+  connect MasterBedroom.right to Bathroom.left door at 50%
+  connect MasterBedroom.bottom to GuestRoom.top door at 30%
+

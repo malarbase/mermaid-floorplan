@@ -1,0 +1,71 @@
+# Dark Theme Example
+# Demonstrates: theme: dark and darkMode: true config options
+#
+# The dark theme inverts colors for better viewing in dark environments.
+#
+# Two ways to enable dark theme:
+#   1. theme: dark     (explicit theme selection)
+#   2. darkMode: true  (Mermaid-compatible toggle)
+#
+# When both are specified, 'theme' takes precedence.
+
+floorplan
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SIMPLIFIED DEFINITIONS FOR THEME DEMO
+  # ═══════════════════════════════════════════════════════════════════════════
+  
+  define large_room (15 x 12)
+  define medium_room (12 x 10)
+  define small_room (8 x 8)
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CONFIGURATION - DARK THEME
+  # ═══════════════════════════════════════════════════════════════════════════
+  config { 
+    # Standard options
+    default_unit: ft, 
+    wall_thickness: 0.5,
+    
+    # DARK THEME - Choose one:
+    theme: dark,           # Option 1: Explicit theme selection
+    # darkMode: true,      # Option 2: Mermaid-style toggle (commented out)
+    
+    # Typography
+    fontFamily: "Fira Code, monospace",
+    fontSize: 0.85,
+    
+    # Display toggles
+    showLabels: true,
+    showDimensions: true
+  }
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SIMPLE FLOOR TO DEMONSTRATE DARK THEME RENDERING
+  # ═══════════════════════════════════════════════════════════════════════════
+  floor Demo {
+    room Living at (0, 0) size large_room
+      walls [top: window, right: solid, bottom: solid, left: solid]
+      label "Living Room"
+      
+    room Kitchen size medium_room
+      walls [top: solid, right: solid, bottom: solid, left: solid]
+      right-of Living
+      label "Kitchen"
+      
+    room Bedroom size medium_room
+      walls [top: solid, right: solid, bottom: window, left: solid]
+      below Living
+      label "Bedroom"
+      
+    room Bath size small_room
+      walls [top: solid, right: solid, bottom: solid, left: solid]
+      right-of Bedroom
+      label "Bathroom"
+  }
+
+  # Connections
+  connect Living.right to Kitchen.left door at 50%
+  connect Living.bottom to Bedroom.top door at 30%
+  connect Bedroom.right to Bath.left door at 50%
+

@@ -1,0 +1,66 @@
+# Blueprint Theme Example
+# Demonstrates: theme: blueprint config option
+#
+# The blueprint theme creates a classic architectural blueprint look
+# with blue background and light blue/white lines - perfect for
+# professional presentations and technical documentation.
+
+floorplan
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SIMPLIFIED DEFINITIONS FOR THEME DEMO
+  # ═══════════════════════════════════════════════════════════════════════════
+  
+  define large_room (15 x 12)
+  define medium_room (12 x 10)
+  define small_room (8 x 8)
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # CONFIGURATION - BLUEPRINT THEME
+  # ═══════════════════════════════════════════════════════════════════════════
+  config { 
+    # Standard options
+    default_unit: ft, 
+    wall_thickness: 0.5,
+    
+    # BLUEPRINT THEME
+    theme: blueprint,
+    
+    # Typography - using a technical/monospace font for blueprint feel
+    fontFamily: "Courier New, monospace",
+    fontSize: 0.8,
+    
+    # Display toggles - dimensions are essential for blueprints
+    showLabels: true,
+    showDimensions: true
+  }
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # SIMPLE FLOOR TO DEMONSTRATE BLUEPRINT THEME RENDERING
+  # ═══════════════════════════════════════════════════════════════════════════
+  floor Demo {
+    room Living at (0, 0) size large_room
+      walls [top: window, right: solid, bottom: solid, left: solid]
+      label "Living Room"
+      
+    room Kitchen size medium_room
+      walls [top: solid, right: solid, bottom: solid, left: solid]
+      right-of Living
+      label "Kitchen"
+      
+    room Bedroom size medium_room
+      walls [top: solid, right: solid, bottom: window, left: solid]
+      below Living
+      label "Bedroom"
+      
+    room Bath size small_room
+      walls [top: solid, right: solid, bottom: solid, left: solid]
+      right-of Bedroom
+      label "Bathroom"
+  }
+
+  # Connections
+  connect Living.right to Kitchen.left door at 50%
+  connect Living.bottom to Bedroom.top door at 30%
+  connect Bedroom.right to Bath.left door at 50%
+
