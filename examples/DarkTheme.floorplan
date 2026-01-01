@@ -9,6 +9,7 @@
 #
 # When both are specified, 'theme' takes precedence.
 
+%%{version: 1.0}%%
 floorplan
 
   # ═══════════════════════════════════════════════════════════════════════════

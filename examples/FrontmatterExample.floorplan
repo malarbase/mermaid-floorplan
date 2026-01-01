@@ -5,6 +5,7 @@
 # continues to support snake_case (legacy DSL convention).
 
 ---
+version: "1.0"
 title: Modern Apartment
 config:
   theme: blueprint

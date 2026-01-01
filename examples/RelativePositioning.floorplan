@@ -6,6 +6,7 @@
 # - gap N: add spacing between rooms
 # - align top|bottom|left|right|center: control edge alignment
 
+%%{version: 1.0}%%
 floorplan
 
   floor Demo {

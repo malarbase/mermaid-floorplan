@@ -88,7 +88,68 @@ The DSL defines floorplans with:
 - **Wall Types:** `solid`, `door`, `window`, `open`
 - **Connections:** Link rooms/walls (`connect Room1.wall to Room2.wall door`)
 
-Example:
+#### Grammar Versioning
+
+**Current Version:** 1.0.0
+
+The floorplan DSL follows [semantic versioning](https://semver.org/) for grammar compatibility:
+- **MAJOR** version: Breaking changes (incompatible syntax changes)
+- **MINOR** version: New features (backward compatible)
+- **PATCH** version: Bug fixes (no grammar changes)
+
+**Version Declaration:**
+
+You can declare the grammar version in two ways:
+
+1. **YAML Frontmatter** (recommended for files with metadata):
+```floorplan
+---
+version: "1.0"
+title: My Villa
+---
+floorplan
+  floor f1 {
+    room Office at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }
+```
+
+2. **Inline Directive** (recommended for simple files):
+```floorplan
+%%{version: 1.0}%%
+floorplan
+  floor f1 {
+    room Office at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }
+```
+
+**Version Behavior:**
+- **No version declared:** Parser assumes current version (1.0.0) and emits a warning
+- **Compatible version:** File is parsed successfully
+- **Incompatible version:** Parser emits an error with migration guidance
+- **Future version:** Parser rejects the file (upgrade parser first)
+
+**Deprecation Lifecycle:**
+
+Features follow a deprecation lifecycle:
+1. **v1.0:** Feature introduced
+2. **v1.1:** Feature deprecated (warning emitted, still works)
+3. **v2.0:** Feature removed (error if used)
+
+**Migration:**
+
+Use the migration utilities to upgrade between versions:
+```typescript
+import { migrate } from 'floorplans-language';
+
+const result = migrate(content, '2.0.0');
+if (result.success) {
+  console.log(result.content); // Migrated floorplan
+}
+```
+
+See `language/CHANGELOG.md` for version history and planned deprecations.
+
+Example (basic):
 ```
 floorplan
   floor f1 {
