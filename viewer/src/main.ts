@@ -306,10 +306,16 @@ class Viewer {
     private updateThemeButton() {
         const btn = document.getElementById('theme-toggle-btn');
         if (btn) {
-            if (this.currentTheme === 'light') {
-                btn.textContent = '🌙 Dark';
-            } else {
-                btn.textContent = '☀️ Light';
+            switch (this.currentTheme) {
+                case 'light':
+                    btn.textContent = '🌙 Dark';
+                    break;
+                case 'dark':
+                    btn.textContent = '☀️ Light';
+                    break;
+                case 'blueprint':
+                    btn.textContent = '📐 Blueprint';
+                    break;
             }
         }
     }
@@ -769,8 +775,9 @@ class Viewer {
         // Apply theme from DSL config (6.7 & 6.8)
         if (this.config.theme === 'dark' || this.config.darkMode === true) {
             this.setTheme('dark');
-        } else if (this.config.theme === 'default' || this.config.theme === 'blueprint') {
-            // Light theme for default and blueprint (blueprint is a 2D concept)
+        } else if (this.config.theme === 'blueprint') {
+            this.setTheme('blueprint');
+        } else if (this.config.theme === 'default') {
             this.setTheme('light');
         }
         

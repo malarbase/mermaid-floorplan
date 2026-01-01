@@ -137,15 +137,34 @@ export const COLORS_DARK = {
 } as const;
 
 /**
+ * Blueprint theme colors for 3D viewer
+ * Classic architectural blueprint: deep blue background with light lines
+ */
+export const COLORS_BLUEPRINT = {
+  FLOOR: 0x1e3a5f,      // Darker blue for floor
+  WALL: 0x87ceeb,       // Light sky blue for walls (like blueprint lines)
+  WINDOW: 0xadd8e6,     // Light blue for windows
+  DOOR: 0xb8d4e8,       // Pale blue for doors
+  BACKGROUND: 0x0d2137, // Deep blueprint blue
+} as const;
+
+/**
  * Theme type for the viewer
  */
-export type ViewerTheme = 'light' | 'dark';
+export type ViewerTheme = 'light' | 'dark' | 'blueprint';
 
 /**
  * Get color palette for a theme
  */
 export function getThemeColors(theme: ViewerTheme) {
-  return theme === 'dark' ? COLORS_DARK : COLORS;
+  switch (theme) {
+    case 'dark':
+      return COLORS_DARK;
+    case 'blueprint':
+      return COLORS_BLUEPRINT;
+    default:
+      return COLORS;
+  }
 }
 
 export const MATERIAL_PROPERTIES = {

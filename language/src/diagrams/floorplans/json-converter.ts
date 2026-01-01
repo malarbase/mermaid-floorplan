@@ -164,11 +164,12 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
     if (floorplan.config) {
         const config: JsonConfig = {};
         for (const prop of floorplan.config.properties) {
-            // Normalize property name to camelCase for consistent output
+            // Normalize property name to camelCase for matching
             const normalizedName = normalizeConfigKey(prop.name);
             
+            // Handle numeric values - use original key name for backward compatibility
             if (prop.value !== undefined) {
-                (config as Record<string, number>)[normalizedName] = prop.value;
+                (config as Record<string, number>)[prop.name] = prop.value;
             }
             // Handle dimension properties (door_size, window_size)
             if (prop.dimension !== undefined) {
@@ -196,6 +197,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             }
             // Handle boolean properties (darkMode, showLabels, showDimensions)
             if (prop.boolValue !== undefined) {
+                // Use camelCase for new boolean properties
                 (config as Record<string, boolean>)[normalizedName] = prop.boolValue === 'true';
             }
             // Handle string properties (fontFamily)
