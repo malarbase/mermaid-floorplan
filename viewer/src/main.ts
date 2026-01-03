@@ -12,7 +12,12 @@ import {
 } from 'floorplan-3d-core';
 // Browser-specific modules (CSG, DSL parsing)
 import { WallGenerator, StyleResolver } from './wall-generator';
-import { parseFloorplanDSL, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
+import { parseFloorplanDSLWithDocument, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
+// 2D SVG rendering from language package
+import { render as render2D, type RenderOptions } from 'floorplans-language';
+// Editor and chat integration
+import { initializeEditor, type EditorInstance } from './editor';
+import { OpenAIChatService } from './openai-chat';
 
 // Area unit type
 type AreaUnit = 'sqft' | 'sqm';
@@ -81,6 +86,20 @@ class Viewer {
     
     // Theme state
     private currentTheme: ViewerTheme = 'light';
+    
+    // 2D Overlay state
+    private overlayVisible: boolean = false;
+    private overlayOpacity: number = 0.60;
+    private currentLangiumDoc: import('langium').LangiumDocument<import('floorplans-language').Floorplan> | null = null;
+    
+    // Floor visibility state
+    private floorVisibility: Map<string, boolean> = new Map();
+    
+    // Editor panel state
+    private editorInstance: EditorInstance | null = null;
+    private chatService: OpenAIChatService = new OpenAIChatService();
+    private editorPanelOpen: boolean = false;
+    private editorDebounceTimer: number | undefined;
 
     constructor() {
         // Init scene
@@ -164,6 +183,12 @@ class Viewer {
         
         // Create floor summary panel
         this.createFloorSummaryPanel();
+        
+        // Initialize editor panel
+        this.setupEditorPanel();
+        
+        // Setup 2D overlay drag functionality
+        this.setup2DOverlayDrag();
 
         // Start loop
         this.animate();
@@ -274,7 +299,338 @@ class Viewer {
                 section?.classList.toggle('collapsed');
             });
         });
+        
+        // 2D Overlay controls
+        const show2dOverlayToggle = document.getElementById('show-2d-overlay') as HTMLInputElement;
+        show2dOverlayToggle?.addEventListener('change', (e) => {
+            this.overlayVisible = (e.target as HTMLInputElement).checked;
+            this.update2DOverlayVisibility();
+        });
+        
+        const overlayOpacitySlider = document.getElementById('overlay-opacity') as HTMLInputElement;
+        overlayOpacitySlider?.addEventListener('input', (e) => {
+            const val = parseInt((e.target as HTMLInputElement).value);
+            this.overlayOpacity = val / 100;
+            this.update2DOverlayOpacity();
+            this.updateSliderValue('overlay-opacity-value', `${val}%`);
+        });
+        
+        // 2D Overlay close button
+        const overlayCloseBtn = document.getElementById('overlay-2d-close');
+        overlayCloseBtn?.addEventListener('click', (e) => {
+            e.stopPropagation(); // Don't trigger drag
+            this.overlayVisible = false;
+            this.update2DOverlayVisibility();
+            // Update the toggle checkbox
+            if (show2dOverlayToggle) {
+                show2dOverlayToggle.checked = false;
+            }
+        });
+        
+        // Floor visibility controls
+        const showAllFloorsBtn = document.getElementById('show-all-floors') as HTMLButtonElement;
+        showAllFloorsBtn?.addEventListener('click', () => this.setAllFloorsVisible(true));
+        
+        const hideAllFloorsBtn = document.getElementById('hide-all-floors') as HTMLButtonElement;
+        hideAllFloorsBtn?.addEventListener('click', () => this.setAllFloorsVisible(false));
     }
+    
+    // ==================== Editor Panel Setup ====================
+    
+    private async setupEditorPanel() {
+        // Panel toggle button
+        const toggleBtn = document.getElementById('editor-panel-toggle');
+        const panel = document.getElementById('editor-panel');
+        
+        toggleBtn?.addEventListener('click', () => {
+            this.editorPanelOpen = !this.editorPanelOpen;
+            panel?.classList.toggle('open', this.editorPanelOpen);
+            document.body.classList.toggle('editor-open', this.editorPanelOpen);
+            if (toggleBtn) {
+                toggleBtn.textContent = this.editorPanelOpen ? '◀' : '▶';
+            }
+        });
+        
+        // Initialize Monaco editor with default content
+        const defaultContent = this.getDefaultFloorplanContent();
+        try {
+            this.editorInstance = await initializeEditor('editor-container', defaultContent);
+            
+            // Wire up editor changes to reload floorplan (debounced)
+            this.editorInstance.onDidChangeModelContent(() => {
+                this.scheduleEditorUpdate();
+            });
+            
+            // Load the default floorplan
+            this.loadFloorplanFromEditor();
+        } catch (err) {
+            console.error('Failed to initialize editor:', err);
+        }
+        
+        // Setup chat
+        this.setupChat();
+    }
+    
+    private getDefaultFloorplanContent(): string {
+        return `%%{version: 1.0}%%
+floorplan
+  # Style definitions
+  style Modern {
+    floor_color: "#E8E8E8",
+    wall_color: "#505050",
+    roughness: 0.4,
+    metalness: 0.1
+  }
+  
+  style WarmWood {
+    floor_color: "#8B4513",
+    wall_color: "#D2B48C",
+    roughness: 0.7,
+    metalness: 0.0
+  }
+  
+  # Configuration
+  config { default_style: Modern, wall_thickness: 0.25 }
+  
+  floor MainFloor {
+    room LivingRoom at (0,0) size (12 x 10) walls [top: solid, right: solid, bottom: solid, left: window] label "Living Area" style WarmWood
+    room Kitchen size (8 x 8) walls [top: solid, right: window, bottom: solid, left: open] right-of LivingRoom
+    room Hallway size (4 x 10) walls [top: solid, right: solid, bottom: solid, left: solid] below LivingRoom gap 0.5
+    room MasterBedroom size (10 x 10) walls [top: solid, right: window, bottom: solid, left: solid] right-of Hallway
+  }
+  
+  connect LivingRoom.right to Kitchen.left door at 50%
+  connect LivingRoom.bottom to Hallway.top door at 50%
+  connect Hallway.right to MasterBedroom.left door at 50%
+`;
+    }
+    
+    private scheduleEditorUpdate() {
+        if (this.editorDebounceTimer) {
+            window.clearTimeout(this.editorDebounceTimer);
+        }
+        this.editorDebounceTimer = window.setTimeout(() => {
+            this.loadFloorplanFromEditor();
+        }, 500);
+    }
+    
+    private async loadFloorplanFromEditor() {
+        if (!this.editorInstance) return;
+        
+        const content = this.editorInstance.getValue();
+        
+        try {
+            const result = await parseFloorplanDSLWithDocument(content);
+            
+            if (result.errors.length > 0) {
+                // Don't update if there are errors
+                this.validationWarnings = result.errors;
+                this.updateWarningsPanel();
+                return;
+            }
+            
+            // Store validation warnings
+            this.validationWarnings = result.warnings;
+            this.updateWarningsPanel();
+            
+            // Store Langium document for 2D rendering
+            this.currentLangiumDoc = result.document ?? null;
+            
+            if (result.data) {
+                this.loadFloorplan(result.data);
+                
+                // Update chat context with new floorplan
+                this.chatService.updateFloorplanContext(content);
+            }
+        } catch (err) {
+            console.error('Failed to parse floorplan from editor:', err);
+        }
+    }
+    
+    private setupChat() {
+        const chatMessages = document.getElementById('chat-messages') as HTMLElement;
+        const chatInput = document.getElementById('chat-input') as HTMLInputElement;
+        const sendButton = document.getElementById('send-button') as HTMLButtonElement;
+        const baseUrlInput = document.getElementById('base-url-input') as HTMLInputElement;
+        const apiKeyInput = document.getElementById('api-key-input') as HTMLInputElement;
+        const saveApiKeyButton = document.getElementById('save-api-key') as HTMLButtonElement;
+        const removeApiKeyButton = document.getElementById('remove-api-key') as HTMLButtonElement;
+        const apiKeyStatus = document.getElementById('api-key-status') as HTMLElement;
+        const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
+        
+        // Load saved settings
+        const savedBaseUrl = localStorage.getItem('openai_base_url') || 'https://api.openai.com/v1';
+        const savedApiKey = localStorage.getItem('openai_api_key');
+        const savedModel = localStorage.getItem('openai_model') || 'gpt-4o-mini';
+        
+        // Apply saved base URL
+        baseUrlInput.value = savedBaseUrl;
+        this.chatService.setBaseUrl(savedBaseUrl);
+        
+        if (savedApiKey) {
+            apiKeyInput.value = savedApiKey;
+            this.chatService.setApiKey(savedApiKey);
+            this.updateChatUI(true);
+        }
+        
+        modelSelect.value = savedModel;
+        this.chatService.setModel(savedModel);
+        
+        const updateChatUI = (apiKeyValid: boolean) => {
+            if (apiKeyValid) {
+                apiKeyStatus.textContent = 'API key is set';
+                apiKeyStatus.className = 'api-key-status valid';
+                chatInput.disabled = false;
+                sendButton.disabled = false;
+                removeApiKeyButton.style.display = 'inline-block';
+            } else {
+                apiKeyStatus.textContent = 'Enter API key for AI chat';
+                apiKeyStatus.className = 'api-key-status invalid';
+                chatInput.disabled = true;
+                sendButton.disabled = true;
+                removeApiKeyButton.style.display = 'none';
+            }
+        };
+        
+        this.updateChatUI = updateChatUI;
+        
+        const addMessage = (content: string, isUser: boolean, isLoading: boolean = false): HTMLElement => {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${isUser ? 'user-message' : isLoading ? 'loading-message' : 'assistant-message'}`;
+            
+            if (isLoading) {
+                messageDiv.innerHTML = `
+                    <span>Thinking</span>
+                    <div class="loading-ellipsis">
+                        <div></div><div></div><div></div><div></div>
+                    </div>
+                `;
+            } else {
+                messageDiv.textContent = content;
+            }
+            
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            return messageDiv;
+        };
+        
+        const extractFloorplanContent = (response: string): { floorplan: string | null; cleanedResponse: string } => {
+            const floorplanRegex = /```\n*fp\n([\s\S]*?)\n```/g;
+            const match = floorplanRegex.exec(response);
+            
+            if (match) {
+                const floorplan = match[1].trim();
+                const cleanedResponse = response.replace(floorplanRegex, '').trim();
+                return { floorplan, cleanedResponse };
+            }
+            
+            return { floorplan: null, cleanedResponse: response };
+        };
+        
+        const sendMessage = async () => {
+            const message = chatInput.value.trim();
+            if (!message || !this.editorInstance) return;
+            
+            addMessage(message, true);
+            chatInput.value = '';
+            sendButton.disabled = true;
+            
+            const loadingMessage = addMessage('', false, true);
+            
+            try {
+                const response = await this.chatService.sendMessage(message, this.editorInstance.getValue());
+                const { floorplan, cleanedResponse } = extractFloorplanContent(response);
+                
+                // If floorplan content was found, update the editor
+                if (floorplan && this.editorInstance) {
+                    this.editorInstance.setValue(floorplan);
+                }
+                
+                // Replace loading message with actual response
+                loadingMessage.className = 'message assistant-message';
+                loadingMessage.textContent = cleanedResponse || 'Done!';
+            } catch (error) {
+                loadingMessage.className = 'message assistant-message';
+                loadingMessage.textContent = 'Error: ' + (error as Error).message;
+            } finally {
+                sendButton.disabled = false;
+            }
+        };
+        
+        const saveApiKey = async () => {
+            const baseUrl = baseUrlInput.value.trim() || 'https://api.openai.com/v1';
+            const apiKey = apiKeyInput.value.trim();
+            
+            if (!apiKey) {
+                apiKeyStatus.textContent = 'Please enter an API key';
+                apiKeyStatus.className = 'api-key-status invalid';
+                return;
+            }
+            
+            // Save base URL first
+            this.chatService.setBaseUrl(baseUrl);
+            localStorage.setItem('openai_base_url', baseUrl);
+            
+            saveApiKeyButton.disabled = true;
+            saveApiKeyButton.textContent = 'Validating...';
+            
+            try {
+                const isValid = await this.chatService.validateApiKey(apiKey);
+                if (isValid) {
+                    this.chatService.setApiKey(apiKey);
+                    localStorage.setItem('openai_api_key', apiKey);
+                    updateChatUI(true);
+                } else {
+                    apiKeyStatus.textContent = 'Invalid API key or URL';
+                    apiKeyStatus.className = 'api-key-status invalid';
+                }
+            } catch {
+                apiKeyStatus.textContent = 'Error validating (check URL)';
+                apiKeyStatus.className = 'api-key-status invalid';
+            } finally {
+                saveApiKeyButton.disabled = false;
+                saveApiKeyButton.textContent = 'Save';
+            }
+        };
+        
+        const removeApiKey = () => {
+            localStorage.removeItem('openai_api_key');
+            localStorage.removeItem('openai_base_url');
+            this.chatService.setApiKey('');
+            this.chatService.setBaseUrl('https://api.openai.com/v1');
+            apiKeyInput.value = '';
+            baseUrlInput.value = 'https://api.openai.com/v1';
+            updateChatUI(false);
+        };
+        
+        const updateModel = () => {
+            const selectedModel = modelSelect.value;
+            this.chatService.setModel(selectedModel);
+            localStorage.setItem('openai_model', selectedModel);
+        };
+        
+        // Event listeners
+        saveApiKeyButton?.addEventListener('click', saveApiKey);
+        removeApiKeyButton?.addEventListener('click', removeApiKey);
+        modelSelect?.addEventListener('change', updateModel);
+        baseUrlInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') saveApiKey();
+        });
+        apiKeyInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') saveApiKey();
+        });
+        sendButton?.addEventListener('click', sendMessage);
+        chatInput?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') sendMessage();
+        });
+        
+        // Initial UI state
+        if (!savedApiKey) {
+            updateChatUI(false);
+        }
+    }
+    
+    private updateChatUI: (valid: boolean) => void = () => {};
     
     private updateSliderValue(elementId: string, value: string) {
         const element = document.getElementById(elementId);
@@ -604,37 +960,44 @@ class Viewer {
         this.floorSummaryPanel.style.display = 'block';
         
         const floors = this.currentFloorplanData.floors;
+        // Filter to only visible floors
+        const visibleFloors = floors.filter(floor => this.floorVisibility.get(floor.id) ?? true);
+        
         let html = '<div class="floor-summary-title">Floor Summary</div>';
         
-        floors.forEach((floor) => {
-            const roomCount = floor.rooms.length;
-            let totalArea = 0;
-            let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-            
-            floor.rooms.forEach(room => {
-                totalArea += room.width * room.height;
-                minX = Math.min(minX, room.x);
-                maxX = Math.max(maxX, room.x + room.width);
-                minZ = Math.min(minZ, room.z);
-                maxZ = Math.max(maxZ, room.z + room.height);
-            });
-            
-            const boundingArea = (maxX - minX) * (maxZ - minZ);
-            const efficiency = boundingArea > 0 ? (totalArea / boundingArea * 100).toFixed(1) : 0;
-            
-            const areaDisplay = this.formatArea(totalArea);
-            
-            html += `
-                <div class="floor-summary-item">
-                    <div class="floor-name">${floor.id}</div>
-                    <div class="floor-stats">
-                        <span>Rooms: ${roomCount}</span>
-                        <span>Area: ${areaDisplay}</span>
-                        <span>Efficiency: ${efficiency}%</span>
+        if (visibleFloors.length === 0) {
+            html += '<div class="no-floors-message">No visible floors</div>';
+        } else {
+            visibleFloors.forEach((floor) => {
+                const roomCount = floor.rooms.length;
+                let totalArea = 0;
+                let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+                
+                floor.rooms.forEach(room => {
+                    totalArea += room.width * room.height;
+                    minX = Math.min(minX, room.x);
+                    maxX = Math.max(maxX, room.x + room.width);
+                    minZ = Math.min(minZ, room.z);
+                    maxZ = Math.max(maxZ, room.z + room.height);
+                });
+                
+                const boundingArea = (maxX - minX) * (maxZ - minZ);
+                const efficiency = boundingArea > 0 ? (totalArea / boundingArea * 100).toFixed(1) : 0;
+                
+                const areaDisplay = this.formatArea(totalArea);
+                
+                html += `
+                    <div class="floor-summary-item">
+                        <div class="floor-name">${floor.id}</div>
+                        <div class="floor-stats">
+                            <span>Rooms: ${roomCount}</span>
+                            <span>Area: ${areaDisplay}</span>
+                            <span>Efficiency: ${efficiency}%</span>
+                        </div>
                     </div>
-                </div>
-            `;
-        });
+                `;
+            });
+        }
         
         this.floorSummaryPanel.innerHTML = html;
     }
@@ -788,7 +1151,7 @@ class Viewer {
             if (isFloorplanFile(file.name)) {
                 // Parse DSL file directly
                 try {
-                    const result = await parseFloorplanDSL(content);
+                    const result = await parseFloorplanDSLWithDocument(content);
                     if (result.errors.length > 0) {
                         const errorMsg = result.errors.map(e => 
                             e.line ? `Line ${e.line}: ${e.message}` : e.message
@@ -811,6 +1174,9 @@ class Viewer {
                         }
                     }
                     
+                    // Store Langium document for 2D rendering
+                    this.currentLangiumDoc = result.document ?? null;
+                    
                     if (result.data) {
                         this.loadFloorplan(result.data);
                     }
@@ -825,6 +1191,8 @@ class Viewer {
                     // Clear warnings for JSON files (no validation)
                     this.validationWarnings = [];
                     this.updateWarningsPanel();
+                    // JSON files don't have a Langium document for 2D rendering
+                    this.currentLangiumDoc = null;
                     this.loadFloorplan(json);
                 } catch (err) {
                     console.error("Failed to parse JSON", err);
@@ -904,6 +1272,12 @@ class Viewer {
         this.updateAreaAnnotations();
         this.updateDimensionAnnotations();
         this.updateFloorSummary();
+        
+        // Update floor visibility UI
+        this.initFloorVisibility();
+        
+        // Update 2D overlay
+        this.render2DOverlay();
     }
 
     /**
@@ -1038,6 +1412,373 @@ class Viewer {
         this.updateAreaAnnotations();
         this.updateDimensionAnnotations();
         this.updateFloorSummary();
+    }
+    
+    // ==================== 2D Overlay Methods ====================
+    
+    /**
+     * Store the Langium document for 2D rendering
+     */
+    public setLangiumDocument(doc: import('langium').LangiumDocument<import('floorplans-language').Floorplan> | null) {
+        this.currentLangiumDoc = doc;
+        this.render2DOverlay();
+    }
+    
+    /**
+     * Update the 2D overlay visibility
+     */
+    private update2DOverlayVisibility() {
+        const overlay = document.getElementById('overlay-2d');
+        if (overlay) {
+            overlay.classList.toggle('visible', this.overlayVisible);
+            // Apply opacity when becoming visible
+            if (this.overlayVisible) {
+                this.update2DOverlayOpacity();
+            }
+        }
+    }
+    
+    /**
+     * Update the 2D overlay opacity
+     */
+    private update2DOverlayOpacity() {
+        const overlay = document.getElementById('overlay-2d');
+        if (overlay) {
+            overlay.style.opacity = String(this.overlayOpacity);
+        }
+    }
+    
+    /**
+     * Setup drag and resize functionality for the 2D overlay
+     */
+    private setup2DOverlayDrag() {
+        const overlay = document.getElementById('overlay-2d');
+        const header = document.getElementById('overlay-2d-header');
+        const resizeHandle = document.getElementById('overlay-2d-resize');
+        
+        if (!overlay || !header) return;
+        
+        // ===== DRAG FUNCTIONALITY =====
+        let isDragging = false;
+        let dragStartX = 0;
+        let dragStartY = 0;
+        let dragStartLeft = 0;
+        let dragStartBottom = 0;
+        
+        const onDragStart = (e: MouseEvent) => {
+            isDragging = true;
+            overlay.classList.add('dragging');
+            
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            
+            const rect = overlay.getBoundingClientRect();
+            dragStartLeft = rect.left;
+            dragStartBottom = window.innerHeight - rect.bottom;
+            
+            e.preventDefault();
+        };
+        
+        const onDragMove = (e: MouseEvent) => {
+            if (!isDragging) return;
+            
+            const deltaX = e.clientX - dragStartX;
+            const deltaY = e.clientY - dragStartY;
+            
+            let newLeft = dragStartLeft + deltaX;
+            let newBottom = dragStartBottom - deltaY;
+            
+            const rect = overlay.getBoundingClientRect();
+            const maxLeft = window.innerWidth - rect.width - 10;
+            const maxBottom = window.innerHeight - rect.height - 10;
+            
+            newLeft = Math.max(10, Math.min(newLeft, maxLeft));
+            newBottom = Math.max(10, Math.min(newBottom, maxBottom));
+            
+            overlay.style.left = `${newLeft}px`;
+            overlay.style.bottom = `${newBottom}px`;
+            overlay.style.right = 'auto';
+            overlay.style.top = 'auto';
+        };
+        
+        const onDragEnd = () => {
+            if (isDragging) {
+                isDragging = false;
+                overlay.classList.remove('dragging');
+            }
+        };
+        
+        header.addEventListener('mousedown', onDragStart);
+        
+        // ===== RESIZE FUNCTIONALITY =====
+        let isResizing = false;
+        let resizeStartX = 0;
+        let resizeStartY = 0;
+        let resizeStartWidth = 0;
+        let resizeStartHeight = 0;
+        let resizeStartBottom = 0;
+        
+        const onResizeStart = (e: MouseEvent) => {
+            isResizing = true;
+            overlay.classList.add('dragging');
+            
+            resizeStartX = e.clientX;
+            resizeStartY = e.clientY;
+            resizeStartWidth = overlay.offsetWidth;
+            resizeStartHeight = overlay.offsetHeight;
+            
+            // Get current bottom position
+            const rect = overlay.getBoundingClientRect();
+            resizeStartBottom = window.innerHeight - rect.bottom;
+            
+            e.preventDefault();
+            e.stopPropagation();
+        };
+        
+        const onResizeMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+            
+            const deltaX = e.clientX - resizeStartX;
+            const deltaY = e.clientY - resizeStartY;
+            
+            // Calculate new size (resize from bottom-right corner)
+            let newWidth = resizeStartWidth + deltaX;
+            let newHeight = resizeStartHeight + deltaY;
+            
+            // Constrain to min/max sizes
+            newWidth = Math.max(200, Math.min(newWidth, window.innerWidth - 20));
+            newHeight = Math.max(150, Math.min(newHeight, window.innerHeight - 20));
+            
+            // Adjust bottom position so the bottom edge follows the mouse
+            // deltaY positive = mouse moved down = bottom should decrease
+            let newBottom = resizeStartBottom - deltaY;
+            newBottom = Math.max(10, newBottom);
+            
+            overlay.style.width = `${newWidth}px`;
+            overlay.style.height = `${newHeight}px`;
+            overlay.style.bottom = `${newBottom}px`;
+        };
+        
+        const onResizeEnd = () => {
+            if (isResizing) {
+                isResizing = false;
+                overlay.classList.remove('dragging');
+            }
+        };
+        
+        resizeHandle?.addEventListener('mousedown', onResizeStart);
+        
+        // ===== SHARED MOUSE/TOUCH HANDLERS =====
+        document.addEventListener('mousemove', (e) => {
+            onDragMove(e);
+            onResizeMove(e);
+        });
+        
+        document.addEventListener('mouseup', () => {
+            onDragEnd();
+            onResizeEnd();
+        });
+        
+        // Touch events for drag
+        header.addEventListener('touchstart', (e: TouchEvent) => {
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                onDragStart({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => e.preventDefault() } as MouseEvent);
+            }
+        }, { passive: false });
+        
+        // Touch events for resize
+        resizeHandle?.addEventListener('touchstart', (e: TouchEvent) => {
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                onResizeStart({ 
+                    clientX: touch.clientX, 
+                    clientY: touch.clientY, 
+                    preventDefault: () => e.preventDefault(),
+                    stopPropagation: () => e.stopPropagation()
+                } as MouseEvent);
+            }
+        }, { passive: false });
+        
+        document.addEventListener('touchmove', (e: TouchEvent) => {
+            if (e.touches.length === 1) {
+                const touch = e.touches[0];
+                if (isDragging) {
+                    onDragMove({ clientX: touch.clientX, clientY: touch.clientY } as MouseEvent);
+                }
+                if (isResizing) {
+                    onResizeMove({ clientX: touch.clientX, clientY: touch.clientY } as MouseEvent);
+                }
+            }
+        }, { passive: true });
+        
+        document.addEventListener('touchend', () => {
+            onDragEnd();
+            onResizeEnd();
+        });
+    }
+    
+    /**
+     * Render the 2D SVG overlay
+     */
+    private render2DOverlay() {
+        const contentEl = document.getElementById('overlay-2d-content');
+        const emptyEl = document.getElementById('overlay-2d-empty');
+        
+        if (!contentEl) return;
+        
+        // If no Langium document, show empty state
+        if (!this.currentLangiumDoc) {
+            if (emptyEl) {
+                emptyEl.style.display = 'block';
+                emptyEl.textContent = this.currentFloorplanData ? 'JSON files don\'t support 2D overlay' : 'Load a floorplan';
+            }
+            // Clear any existing SVG
+            const existingSvg = contentEl.querySelector('svg');
+            if (existingSvg) {
+                existingSvg.remove();
+            }
+            return;
+        }
+        
+        // Hide empty state
+        if (emptyEl) {
+            emptyEl.style.display = 'none';
+        }
+        
+        try {
+            // Render 2D SVG with all floors visible
+            const renderOptions: RenderOptions = {
+                renderAllFloors: true,
+                includeStyles: true,
+                theme: this.currentTheme === 'dark' ? { 
+                    floorBackground: '#2d2d2d',
+                    floorBorder: '#888',
+                    wallColor: '#ccc',
+                    textColor: '#eee'
+                } : undefined,
+            };
+            
+            const svg = render2D(this.currentLangiumDoc, renderOptions);
+            
+            // Clear existing content and add new SVG
+            const existingSvg = contentEl.querySelector('svg');
+            if (existingSvg) {
+                existingSvg.remove();
+            }
+            
+            // Parse and insert SVG
+            const parser = new DOMParser();
+            const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
+            const svgElement = svgDoc.querySelector('svg');
+            
+            if (svgElement) {
+                // Ensure SVG scales properly
+                svgElement.setAttribute('width', '100%');
+                svgElement.setAttribute('height', '100%');
+                svgElement.style.display = 'block';
+                contentEl.appendChild(svgElement);
+            }
+        } catch (err) {
+            console.error('Failed to render 2D overlay:', err);
+            if (emptyEl) {
+                emptyEl.style.display = 'block';
+                emptyEl.textContent = 'Failed to render 2D';
+            }
+        }
+    }
+    
+    // ==================== Floor Visibility Methods ====================
+    
+    /**
+     * Update the floor list UI based on current floorplan data
+     */
+    private updateFloorListUI() {
+        const floorListEl = document.getElementById('floor-list');
+        if (!floorListEl) return;
+        
+        // Clear existing content
+        floorListEl.innerHTML = '';
+        
+        if (!this.currentFloorplanData || this.currentFloorplanData.floors.length === 0) {
+            floorListEl.innerHTML = '<div class="no-floors-message">Load a floorplan to see floors</div>';
+            return;
+        }
+        
+        // Create checkbox for each floor
+        this.currentFloorplanData.floors.forEach((floor, index) => {
+            const floorId = floor.id;
+            const isVisible = this.floorVisibility.get(floorId) ?? true;
+            
+            const floorItem = document.createElement('div');
+            floorItem.className = 'floor-item';
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.id = `floor-toggle-${index}`;
+            checkbox.checked = isVisible;
+            checkbox.addEventListener('change', () => {
+                this.setFloorVisible(floorId, checkbox.checked);
+            });
+            
+            const label = document.createElement('label');
+            label.htmlFor = `floor-toggle-${index}`;
+            label.textContent = floorId;
+            
+            floorItem.appendChild(checkbox);
+            floorItem.appendChild(label);
+            floorListEl.appendChild(floorItem);
+        });
+    }
+    
+    /**
+     * Set visibility of a specific floor
+     */
+    private setFloorVisible(floorId: string, visible: boolean) {
+        this.floorVisibility.set(floorId, visible);
+        
+        // Find and update the THREE.Group
+        const floorIndex = this.currentFloorplanData?.floors.findIndex(f => f.id === floorId) ?? -1;
+        if (floorIndex >= 0 && this.floors[floorIndex]) {
+            this.floors[floorIndex].visible = visible;
+        }
+        
+        // Update floor summary to only show visible floors
+        this.updateFloorSummary();
+    }
+    
+    /**
+     * Set visibility of all floors
+     */
+    private setAllFloorsVisible(visible: boolean) {
+        if (!this.currentFloorplanData) return;
+        
+        this.currentFloorplanData.floors.forEach((floor, index) => {
+            this.floorVisibility.set(floor.id, visible);
+            if (this.floors[index]) {
+                this.floors[index].visible = visible;
+            }
+        });
+        
+        // Update UI checkboxes
+        this.updateFloorListUI();
+        this.updateFloorSummary();
+    }
+    
+    /**
+     * Initialize floor visibility state when loading a new floorplan
+     */
+    private initFloorVisibility() {
+        this.floorVisibility.clear();
+        
+        if (this.currentFloorplanData) {
+            // All floors visible by default
+            this.currentFloorplanData.floors.forEach(floor => {
+                this.floorVisibility.set(floor.id, true);
+            });
+        }
+        
+        this.updateFloorListUI();
     }
 }
 

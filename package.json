@@ -1,22 +1,21 @@
 {
   "name": "floorplans-workspace",
   "description": "Base workspace package",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "type": "module",
   "private": true,
   "scripts": {
     "clean": "npm run clean --workspaces",
-    "dev": "vite",
-    "build": "npm run langium:generate && npm run build --workspaces && tsc && npx vite build",
+    "dev": "npm run --workspace floorplans-viewer dev",
+    "build": "npm run langium:generate && npm run build --workspaces",
+    "build:all": "npm run langium:generate && npm run build --workspaces",
     "langium:generate": "npm run --workspace language langium:generate",
     "langium:watch": "npm run --workspace language langium:watch",
-    "test": "npm run --workspace language test && npm run --workspace mcp-server test",
-    "viewer": "npm run --workspace floorplans-viewer dev"
+    "test": "npm run --workspace language test && npm run --workspace mcp-server test"
   },
   "devDependencies": {
     "langium": "^4.0.0",
     "langium-cli": "^4.1.0",
-    "monaco-editor": "^0.52.2",
     "shx": "~0.4.0",
     "typescript": "~5.8.3",
     "vite": "^6.3.5"

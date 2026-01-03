@@ -1,6 +1,6 @@
 {
   "name": "floorplans-viewer",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -14,6 +14,7 @@
     "floorplan-3d-core": "*",
     "floorplans-language": "*",
     "langium": "~4.0.0",
+    "monaco-editor": "^0.52.2",
     "three": "^0.170.0",
     "three-bvh-csg": "^0.0.16"
   },
