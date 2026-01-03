@@ -2,14 +2,15 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { parseFloorplan, extractAllRoomMetadata, validateFloorplan, type ValidationWarning } from "../utils/parser.js";
 import { generateSvg, svgToPng } from "../utils/renderer.js";
+import { render3DToPng, formatSceneBounds } from "../utils/renderer3d.js";
 import { convertFloorplanToJson, type FloorplanSummary, type FloorMetrics } from "floorplans-language";
 
 const RenderInputSchema = z.object({
   dsl: z.string().describe("Floorplan DSL code to render"),
   format: z
-    .enum(["png", "svg"])
+    .enum(["png", "svg", "3d-png"])
     .default("png")
-    .describe("Output format: 'png' for image (default), 'svg' for vector"),
+    .describe("Output format: 'png' for 2D image (default), 'svg' for vector, '3d-png' for 3D perspective view"),
   width: z.number().default(800).describe("Output image width in pixels"),
   height: z.number().default(600).describe("Output image height in pixels"),
   floorIndex: z
@@ -45,17 +46,37 @@ const RenderInputSchema = z.object({
     .enum(["m", "ft", "cm", "in", "mm"])
     .optional()
     .describe("Unit for dimension labels: 'ft' (default), 'm', 'cm', 'in', 'mm'"),
+  // 3D rendering options
+  projection: z
+    .enum(["isometric", "perspective"])
+    .optional()
+    .describe("3D camera projection mode: 'isometric' (default) for orthographic view, 'perspective' for realistic depth"),
+  cameraPosition: z
+    .tuple([z.number(), z.number(), z.number()])
+    .optional()
+    .describe("Camera position [x, y, z] for perspective mode. Y is up."),
+  cameraTarget: z
+    .tuple([z.number(), z.number(), z.number()])
+    .optional()
+    .describe("Camera look-at target [x, y, z] for perspective mode"),
+  fov: z
+    .number()
+    .min(10)
+    .max(120)
+    .optional()
+    .describe("Field of view in degrees for perspective mode (default: 50)"),
 });
 
 export function registerRenderTool(server: McpServer): void {
   server.tool(
     "render_floorplan",
-    "Parse floorplan DSL and render to PNG image that the LLM can visually analyze",
+    "Parse floorplan DSL and render to PNG image that the LLM can visually analyze. Supports 2D top-down view (png/svg) and 3D perspective view (3d-png).",
     RenderInputSchema.shape,
     async (args) => {
       const { 
         dsl, format, width, height, floorIndex, renderAllFloors, multiFloorLayout,
-        showArea, showDimensions, showFloorSummary, areaUnit, lengthUnit
+        showArea, showDimensions, showFloorSummary, areaUnit, lengthUnit,
+        projection, cameraPosition, cameraTarget, fov
       } = RenderInputSchema.parse(args);
 
       const parseResult = await parseFloorplan(dsl);
@@ -94,7 +115,96 @@ export function registerRenderTool(server: McpServer): void {
             ],
           };
         }
+
+        // Get JSON data for all formats
+        const jsonResult = convertFloorplanToJson(parseResult.document.parseResult.value);
+        const summary: FloorplanSummary | undefined = jsonResult.data?.summary;
+        const floorMetrics: FloorMetrics[] | undefined = jsonResult.data?.floors.map(f => f.metrics!).filter(Boolean);
+        const floorCount = parseResult.document.parseResult.value.floors.length;
+
+        // Handle 3D PNG format
+        if (format === "3d-png") {
+          if (!jsonResult.data) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    success: false,
+                    errors: [{ message: "Failed to convert floorplan to JSON for 3D rendering" }],
+                  }),
+                },
+              ],
+            };
+          }
+
+          try {
+            const result = await render3DToPng(jsonResult.data, {
+              width,
+              height,
+              projection,
+              cameraPosition,
+              cameraTarget,
+              fov,
+              renderAllFloors,
+              floorIndex,
+            });
+
+            return {
+              content: [
+                {
+                  type: "image" as const,
+                  data: result.pngBuffer.toString("base64"),
+                  mimeType: "image/png" as const,
+                },
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    success: true,
+                    format: "3d-png",
+                    projection: result.metadata.projection,
+                    floorCount,
+                    floorsRendered: result.metadata.floorsRendered,
+                    cameraPosition: result.metadata.cameraPosition,
+                    cameraTarget: result.metadata.cameraTarget,
+                    fov: result.metadata.fov,
+                    sceneBounds: formatSceneBounds(result.metadata.sceneBounds),
+                    summary,
+                    floorMetrics,
+                    warnings: warnings.length > 0 ? warnings : undefined,
+                  }),
+                },
+              ],
+            };
+          } catch (error) {
+            // Provide helpful error message for 3D rendering failures
+            const errorMessage = error instanceof Error ? error.message : "Unknown 3D rendering error";
+            const isGLError = errorMessage.includes("WebGL") || errorMessage.includes("headless");
+
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    success: false,
+                    errors: [
+                      {
+                        message: errorMessage,
+                        ...(isGLError && {
+                          guidance: "3D rendering requires headless-gl. Install platform dependencies: " +
+                            "macOS (XCode CLI), Linux (libxi-dev, libglu1-mesa-dev, libglew-dev), " +
+                            "Windows (Visual Studio Build Tools).",
+                        }),
+                      },
+                    ],
+                  }),
+                },
+              ],
+            };
+          }
+        }
         
+        // 2D rendering (SVG or PNG)
         const svg = generateSvg(parseResult.document, {
           floorIndex,
           renderAllFloors,
@@ -106,12 +216,6 @@ export function registerRenderTool(server: McpServer): void {
           lengthUnit,
         });
         const rooms = extractAllRoomMetadata(parseResult.document);
-        const floorCount = parseResult.document.parseResult.value.floors.length;
-        
-        // Compute metrics using JSON converter
-        const jsonResult = convertFloorplanToJson(parseResult.document.parseResult.value);
-        const summary: FloorplanSummary | undefined = jsonResult.data?.summary;
-        const floorMetrics: FloorMetrics[] | undefined = jsonResult.data?.floors.map(f => f.metrics!).filter(Boolean);
 
         // Return SVG format if requested
         if (format === "svg") {
@@ -138,7 +242,7 @@ export function registerRenderTool(server: McpServer): void {
           };
         }
 
-        // Default: return PNG format
+        // Default: return PNG format (2D)
         const pngBuffer = await svgToPng(svg, width, height);
 
         return {

@@ -27,6 +27,7 @@
   },
   "workspaces": [
     "language",
+    "floorplan-3d-core",
     "mcp-server",
     "viewer"
   ],

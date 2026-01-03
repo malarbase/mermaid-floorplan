@@ -11,15 +11,16 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "floorplan-3d-core": "*",
     "floorplans-language": "*",
     "langium": "~4.0.0",
-    "three": "^0.160.0",
+    "three": "^0.170.0",
     "three-bvh-csg": "^0.0.16"
   },
   "devDependencies": {
     "typescript": "^5.2.2",
     "vite": "^5.0.0",
-    "@types/three": "^0.160.0",
+    "@types/three": "^0.170.0",
     "vitest": "^3.0.0"
   }
 }

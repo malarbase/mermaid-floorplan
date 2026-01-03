@@ -3,11 +3,15 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Evaluator } from 'three-bvh-csg';
-import { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from './types';
-import { DIMENSIONS, COLORS, COLORS_DARK, LengthUnit, METERS_TO_UNIT, ViewerTheme, getThemeColors } from './constants';
-import { MaterialFactory, MaterialStyle } from './materials';
+// Import types and shared code from floorplan-3d-core for consistent rendering
+import type { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from 'floorplan-3d-core';
+import { 
+  DIMENSIONS, COLORS, COLORS_DARK, METERS_TO_UNIT, getThemeColors,
+  MaterialFactory, StairGenerator,
+  type LengthUnit, type ViewerTheme, type MaterialStyle
+} from 'floorplan-3d-core';
+// Browser-specific modules (CSG, DSL parsing)
 import { WallGenerator, StyleResolver } from './wall-generator';
-import { StairGenerator } from './stair-generator';
 import { parseFloorplanDSL, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
 import { normalizeToMeters } from './unit-normalizer';
 

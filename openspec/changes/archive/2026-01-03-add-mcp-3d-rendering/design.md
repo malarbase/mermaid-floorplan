@@ -28,19 +28,20 @@ The project already has a browser-based 3D viewer (`viewer/` package) using Thre
 
 ## Decisions
 
-### 1. Library Selection: Three.js + headless-gl
+### 1. Library Selection: Three.js + Puppeteer
 
-**Decision:** Use Three.js with `gl` (headless-gl) for server-side 3D rendering.
+**Decision:** Use Three.js with Puppeteer (headless Chromium) for server-side 3D rendering.
 
 **Alternatives Considered:**
 - **Babylon.js with NullEngine**: Better headless support, but smaller ecosystem and less architectural visualization examples.
 - **node-canvas-webgl**: Lightweight, but requires manual WebGL calls (too low-level).
-- **Puppeteer with browser Three.js**: Heavy dependency, slower startup, more complex.
+- **headless-gl**: Only supports WebGL 1.0, not compatible with Three.js 0.170+ which requires WebGL 2.0.
 
 **Rationale:**
 - Three.js is already used in the `viewer/` package → code reuse potential
 - Large ecosystem with extensive documentation
-- `gl` package provides headless WebGL 1.0 context for server-side rendering
+- Puppeteer provides full WebGL 2.0 support via headless Chromium
+- Cross-platform compatible (macOS, Linux, Windows) without native dependencies
 - JSON export format already uses Three.js coordinate conventions (x/z floor plane, y vertical)
 
 ### 2. Rendering Pipeline Architecture
@@ -92,45 +93,62 @@ mcp-server/src/utils/
 - Apply textures if provided (`floor_texture`, `wall_texture`)
 - Set PBR properties (`roughness`, `metalness`)
 
-### 5. Headless GL Context Setup
+### 5. Puppeteer-Based Rendering
 
 **Approach:**
 ```typescript
-import { createGLContext } from 'gl';
-import { WebGLRenderer } from 'three';
+import puppeteer from 'puppeteer';
 
-const gl = createGLContext(width, height);
-const renderer = new WebGLRenderer({ 
-  context: gl,
-  antialias: options.antiAlias ?? true 
+const browser = await puppeteer.launch({
+  headless: true,
+  args: [
+    '--no-sandbox',
+    '--use-gl=angle',
+    '--use-angle=swiftshader',
+    '--enable-webgl',
+  ],
 });
+const page = await browser.newPage();
+
+// Set HTML content with canvas
+await page.setContent('<canvas id="canvas">');
+
+// Inject Three.js from node_modules
+await page.addScriptTag({ content: threeJsSource });
+
+// Inject rendering code and execute
+await page.evaluate(renderFloorplan, jsonData, options);
 ```
 
 **PNG Extraction:**
 ```typescript
-import { PNG } from 'pngjs';
-
-const pixels = new Uint8Array(width * height * 4);
-gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-const png = new PNG({ width, height });
-png.data = Buffer.from(pixels);
-return PNG.sync.write(png);
+// Use Puppeteer's built-in screenshot capability
+const canvasHandle = await page.$('canvas');
+const pngBuffer = await canvasHandle.screenshot({
+  type: 'png',
+  omitBackground: false,
+});
 ```
+
+**Why Puppeteer over headless-gl:**
+- headless-gl only supports WebGL 1.0
+- Three.js 0.170+ requires WebGL 2.0 features
+- Puppeteer uses Chrome's native WebGL2 implementation
+- No native build dependencies required
 
 ## Risks / Trade-offs
 
-### Risk 1: Headless GL Compatibility
-- **Risk**: `gl` package may have platform-specific issues (macOS, Linux, Windows)
-- **Mitigation**: Provide fallback error message with clear instructions. Document platform requirements in README.
+### Risk 1: Browser Startup Overhead
+- **Risk**: Puppeteer browser startup adds latency (~500ms-1s on first render)
+- **Mitigation**: Use a shared browser instance across renders. First render is slower, subsequent renders are fast (~300-400ms).
 
 ### Risk 2: Performance for Large Floorplans
 - **Risk**: Complex floorplans with many rooms/floors may be slow to render
 - **Mitigation**: Start with basic geometry (no CSG). If needed, add geometry simplification or render caching.
 
-### Risk 3: Dependency Bloat
-- **Risk**: Adding Three.js + gl increases MCP server package size
-- **Mitigation**: These are optional dependencies. Document that 3D rendering requires additional setup. Keep 2D rendering as default.
+### Risk 3: Dependency Size
+- **Risk**: Puppeteer downloads Chromium (~200MB)
+- **Mitigation**: Chromium is only downloaded once during npm install. The actual `node_modules` size is minimal. Keep 2D rendering as default.
 
 ### Risk 4: CSG Complexity
 - **Risk**: Boolean operations for door/window cutouts may be complex

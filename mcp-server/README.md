@@ -1,13 +1,21 @@
 # Floorplans MCP Server
 
-An MCP (Model Context Protocol) server that enables AI assistants to render, validate, and modify floorplan DSL code. Returns **PNG images** or **SVG vectors** for visual analysis.
+An MCP (Model Context Protocol) server that enables AI assistants to render, validate, and modify floorplan DSL code. Returns **PNG images**, **SVG vectors**, or **3D PNG renders** for visual analysis.
 
 ## Features
 
-- **`render_floorplan`** - Parse DSL and render to PNG image or SVG vector + room metadata
+- **`render_floorplan`** - Parse DSL and render to PNG image, SVG vector, or 3D PNG + room metadata
 - **`validate_floorplan`** - Fast syntax validation without rendering
 - **`modify_floorplan`** - Apply programmatic modifications to DSL code
 - **`floorplan://schema`** - DSL documentation and examples
+
+### Output Formats
+
+| Format | Description | Best For |
+|--------|-------------|----------|
+| `png` | 2D top-down view | Floor layouts, room arrangements |
+| `svg` | 2D vector (scalable) | High-quality exports, web embedding |
+| `3d-png` | 3D perspective or isometric | Visualization, architectural presentation |
 
 ## Installation
 
@@ -53,7 +61,7 @@ Add to your `claude_desktop_config.json`:
 
 ### render_floorplan
 
-Renders floorplan DSL to a PNG image or SVG vector.
+Renders floorplan DSL to a PNG image, SVG vector, or 3D PNG.
 
 **Input:**
 ```json
@@ -69,24 +77,33 @@ Renders floorplan DSL to a PNG image or SVG vector.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `dsl` | string | required | Floorplan DSL code to render |
-| `format` | `"png"` \| `"svg"` | `"png"` | Output format |
-| `width` | number | 800 | Image width in pixels (PNG only) |
-| `height` | number | 600 | Image height in pixels (PNG only) |
+| `format` | `"png"` \| `"svg"` \| `"3d-png"` | `"png"` | Output format |
+| `width` | number | 800 | Image width in pixels |
+| `height` | number | 600 | Image height in pixels |
 | `floorIndex` | number | 0 | Which floor to render (0-based index) |
 | `renderAllFloors` | boolean | false | Render all floors in a single image |
-| `multiFloorLayout` | `"stacked"` \| `"sideBySide"` | `"sideBySide"` | Layout when rendering all floors |
+| `multiFloorLayout` | `"stacked"` \| `"sideBySide"` | `"sideBySide"` | Layout for 2D multi-floor rendering |
 
-**Output (PNG):**
+**3D-Specific Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `projection` | `"isometric"` \| `"perspective"` | `"isometric"` | Camera projection mode |
+| `cameraPosition` | `[x, y, z]` | auto | Camera position for perspective mode |
+| `cameraTarget` | `[x, y, z]` | auto | Look-at target for perspective mode |
+| `fov` | number | 50 | Field of view in degrees (10-120) |
+
+**Output (PNG/3D-PNG):**
 - PNG image (base64 encoded)
 - Room metadata with positions, sizes, walls, labels
 - Floor count and which floor(s) were rendered
+- Scene bounds (for 3D)
 
 **Output (SVG):**
 - SVG markup as text (can be saved directly to `.svg` file)
 - Room metadata with positions, sizes, walls, labels
 - Floor count and which floor(s) were rendered
 
-**Multi-Floor Examples:**
+**2D Multi-Floor Examples:**
 ```json
 // Render second floor only
 {
@@ -106,6 +123,34 @@ Renders floorplan DSL to a PNG image or SVG vector.
   "dsl": "floorplan\n  floor Ground {...}\n  floor First {...}",
   "renderAllFloors": true,
   "multiFloorLayout": "stacked"
+}
+```
+
+**3D Rendering Examples:**
+```json
+// Isometric 3D view (default orthographic projection)
+{
+  "dsl": "floorplan\n  floor f1 {...}",
+  "format": "3d-png",
+  "width": 1920,
+  "height": 1080
+}
+
+// Perspective 3D view with custom camera
+{
+  "dsl": "floorplan\n  floor f1 {...}",
+  "format": "3d-png",
+  "projection": "perspective",
+  "cameraPosition": [30, 20, 30],
+  "cameraTarget": [5, 0, 5],
+  "fov": 60
+}
+
+// 3D view of all floors
+{
+  "dsl": "floorplan\n  floor Ground {...}\n  floor First {...}",
+  "format": "3d-png",
+  "renderAllFloors": true
 }
 ```
 
@@ -229,6 +274,37 @@ Returns DSL syntax documentation in Markdown format. Includes:
 - Room properties
 - Wall types
 - Complete examples
+
+## 3D Rendering Requirements
+
+The 3D PNG rendering feature (`format: "3d-png"`) uses Puppeteer with headless Chromium for full WebGL2 support:
+
+- **Node.js 20+** (for native ES modules)
+- **Puppeteer** - headless Chromium browser for WebGL2 rendering
+- **three** - Three.js for 3D scene construction
+
+### Platform Notes
+
+| Platform | Status | Notes |
+|----------|--------|-------|
+| macOS | ✅ Supported | Works out of the box |
+| Linux | ✅ Supported | Works out of the box |
+| Windows | ✅ Supported | Works out of the box |
+
+### Installation
+
+```bash
+# Dependencies are installed automatically with npm install
+# Puppeteer will download Chromium automatically on first install
+npm install --workspace mcp-server
+```
+
+### Why Puppeteer?
+
+The 3D renderer uses Puppeteer instead of headless-gl because:
+- **Full WebGL2 support**: headless-gl only supports WebGL 1.0
+- **Cross-platform**: No native dependencies or build tools required
+- **Consistent rendering**: Uses Chrome's actual WebGL implementation
 
 ## Development
 

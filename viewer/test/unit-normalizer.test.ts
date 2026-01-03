@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { normalizeToMeters } from '../src/unit-normalizer';
-import type { JsonExport, JsonConfig, JsonConnection, JsonRoom, JsonFloor } from '../src/types';
+import type { JsonExport, JsonConfig, JsonConnection, JsonRoom, JsonFloor } from 'floorplan-3d-core';
 
 /**
  * Helper to create a minimal JsonExport for testing

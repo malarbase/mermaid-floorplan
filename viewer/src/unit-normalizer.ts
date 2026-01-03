@@ -5,8 +5,8 @@
  * for consistent 3D rendering in Three.js.
  */
 
-import { toMeters, LengthUnit, isLengthUnit, DEFAULT_UNIT } from './constants';
-import { JsonExport, JsonFloor, JsonRoom, JsonConfig, JsonConnection, JsonWall } from './types';
+import type { JsonExport, JsonFloor, JsonRoom, JsonConfig, JsonConnection, JsonWall } from 'floorplan-3d-core';
+import { toMeters, isLengthUnit, DEFAULT_UNIT, type LengthUnit } from 'floorplan-3d-core';
 
 /**
  * Get the source unit from config, defaulting to meters if not specified

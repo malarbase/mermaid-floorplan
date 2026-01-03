@@ -4,7 +4,8 @@
 
 .PHONY: all help install build clean dev test langium langium-watch \
         images images-svg images-png images-annotated render mcp-server mcp-build rebuild watch \
-        viewer-dev viewer-build export-json export-images export-svg export-png export-annotated
+        viewer-dev viewer-build export-json export-images export-svg export-png export-annotated \
+        export-3d export-3d-perspective
 
 # Default target
 all: help
@@ -27,6 +28,14 @@ help: ## Show this help message
 	@echo "  AREA_UNIT       Area unit: sqft or sqm (default: sqft)"
 	@echo "  LENGTH_UNIT     Length unit for dimensions: ft, m, etc. (default: ft)"
 	@echo ""
+	@echo "3D Rendering Variables:"
+	@echo "  PROJECTION      3D projection: isometric (default) or perspective"
+	@echo "  CAMERA_POS      Camera position for perspective: X,Y,Z (e.g., 50,30,50)"
+	@echo "  CAMERA_TARGET   Camera target for perspective: X,Y,Z (e.g., 0,0,0)"
+	@echo "  FOV             Field of view in degrees (default: 50)"
+	@echo "  WIDTH_3D        3D image width in pixels (default: 1200)"
+	@echo "  HEIGHT_3D       3D image height in pixels (default: 900)"
+	@echo ""
 	@echo "Examples:"
 	@echo "  make images                              # Generate all images"
 	@echo "  make images SCALE=20                     # Higher resolution"
@@ -34,6 +43,8 @@ help: ## Show this help message
 	@echo "  make images SHOW_AREA=1 AREA_UNIT=sqm   # Show areas in sqm"
 	@echo "  make images SHOW_DIMS=1 LENGTH_UNIT=m   # Show dimensions in meters"
 	@echo "  make render FLOORPLAN_FILE=my.floorplan  # Render custom file"
+	@echo "  make export-3d                           # Generate 3D PNG (isometric)"
+	@echo "  make export-3d-perspective CAMERA_POS=50,30,50  # 3D with custom camera"
 
 # ===============================
 # Core Targets
@@ -111,6 +122,32 @@ images: export-images
 images-svg: export-svg
 images-png: export-png
 images-annotated: export-annotated
+
+# ===============================
+# 3D Rendering
+# ===============================
+
+PROJECTION ?= isometric
+CAMERA_POS ?=
+CAMERA_TARGET ?=
+FOV ?= 50
+WIDTH_3D ?= 1200
+HEIGHT_3D ?= 900
+
+# Build 3D camera flags
+3D_FLAGS := --projection $(PROJECTION) --width $(WIDTH_3D) --height $(HEIGHT_3D) --fov $(FOV)
+ifneq ($(CAMERA_POS),)
+3D_FLAGS += --camera-pos $(CAMERA_POS)
+endif
+ifneq ($(CAMERA_TARGET),)
+3D_FLAGS += --camera-target $(CAMERA_TARGET)
+endif
+
+export-3d: ## Generate 3D PNG (isometric view)
+	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS)
+
+export-3d-perspective: ## Generate 3D PNG (perspective view)
+	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --projection perspective $(3D_FLAGS)
 
 # ===============================
 # 3D Viewer

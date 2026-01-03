@@ -7,9 +7,13 @@
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 import { calculatePositionWithFallback, type RoomBounds } from 'floorplans-language';
-import { DIMENSIONS, ViewerTheme } from './constants';
-import { JsonWall, JsonRoom, JsonConnection, JsonConfig } from './types';
-import { MaterialSet, MaterialFactory, MaterialStyle } from './materials';
+// Import shared types and utilities from floorplan-3d-core
+import type { JsonWall, JsonRoom, JsonConnection, JsonConfig } from 'floorplan-3d-core';
+import { 
+  DIMENSIONS, MaterialFactory,
+  type ViewerTheme, type MaterialSet, type MaterialStyle 
+} from 'floorplan-3d-core';
+// Browser-specific modules
 import { ConnectionMatcher } from './connection-matcher';
 import { DoorRenderer } from './door-renderer';
 import { 
