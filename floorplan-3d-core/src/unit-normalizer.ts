@@ -1,12 +1,26 @@
 /**
- * Unit normalization for 3D viewer
+ * Unit normalization for 3D rendering
  * 
  * Converts all dimensional values from the DSL's unit to meters
  * for consistent 3D rendering in Three.js.
+ * 
+ * This module is shared between viewer and MCP server to ensure
+ * consistent rendering behavior across all consumers.
  */
 
-import type { JsonExport, JsonFloor, JsonRoom, JsonConfig, JsonConnection, JsonWall } from 'floorplan-3d-core';
-import { toMeters, isLengthUnit, DEFAULT_UNIT, type LengthUnit } from 'floorplan-3d-core';
+import type {
+  JsonExport,
+  JsonFloor,
+  JsonRoom,
+  JsonConfig,
+  JsonConnection,
+  JsonWall,
+  JsonStair,
+  JsonStairShape,
+  JsonStairSegment,
+  JsonLift,
+} from './types.js';
+import { toMeters, isLengthUnit, DEFAULT_UNIT, type LengthUnit } from './constants.js';
 
 /**
  * Get the source unit from config, defaulting to meters if not specified
@@ -28,14 +42,27 @@ function convertValue(value: number | undefined, unit: LengthUnit): number | und
 }
 
 /**
+ * Convert a size tuple [width, height] to meters
+ */
+function convertSizeTuple(
+  size: [number, number] | undefined,
+  unit: LengthUnit
+): [number, number] | undefined {
+  if (!size) return undefined;
+  return [toMeters(size[0], unit), toMeters(size[1], unit)];
+}
+
+/**
  * Normalize a wall's dimensional values to meters
  */
 function normalizeWall(wall: JsonWall, unit: LengthUnit): JsonWall {
   return {
     ...wall,
-    position: wall.position !== undefined && !wall.isPercentage 
-      ? toMeters(wall.position, unit) 
-      : wall.position,
+    // Position is only converted if it's not a percentage
+    position:
+      wall.position !== undefined && !wall.isPercentage
+        ? toMeters(wall.position, unit)
+        : wall.position,
     width: convertValue(wall.width, unit),
     height: convertValue(wall.height, unit),
     wallHeight: convertValue(wall.wallHeight, unit),
@@ -54,7 +81,69 @@ function normalizeRoom(room: JsonRoom, unit: LengthUnit): JsonRoom {
     height: toMeters(room.height, unit),
     roomHeight: convertValue(room.roomHeight, unit),
     elevation: convertValue(room.elevation, unit),
-    walls: room.walls.map(w => normalizeWall(w, unit)),
+    walls: room.walls.map((w) => normalizeWall(w, unit)),
+  };
+}
+
+/**
+ * Normalize a stair segment's dimensional values to meters
+ */
+function normalizeStairSegment(
+  segment: JsonStairSegment,
+  unit: LengthUnit
+): JsonStairSegment {
+  return {
+    ...segment,
+    width: convertValue(segment.width, unit),
+    landing: convertSizeTuple(segment.landing, unit),
+  };
+}
+
+/**
+ * Normalize a stair shape's dimensional values to meters
+ */
+function normalizeStairShape(
+  shape: JsonStairShape,
+  unit: LengthUnit
+): JsonStairShape {
+  return {
+    ...shape,
+    landing: convertSizeTuple(shape.landing, unit),
+    outerRadius: convertValue(shape.outerRadius, unit),
+    innerRadius: convertValue(shape.innerRadius, unit),
+    radius: convertValue(shape.radius, unit),
+    segments: shape.segments?.map((seg) => normalizeStairSegment(seg, unit)),
+  };
+}
+
+/**
+ * Normalize a stair's dimensional values to meters
+ */
+function normalizeStair(stair: JsonStair, unit: LengthUnit): JsonStair {
+  return {
+    ...stair,
+    x: toMeters(stair.x, unit),
+    z: toMeters(stair.z, unit),
+    rise: toMeters(stair.rise, unit),
+    width: convertValue(stair.width, unit),
+    riser: convertValue(stair.riser, unit),
+    tread: convertValue(stair.tread, unit),
+    nosing: convertValue(stair.nosing, unit),
+    headroom: convertValue(stair.headroom, unit),
+    shape: normalizeStairShape(stair.shape, unit),
+  };
+}
+
+/**
+ * Normalize a lift's dimensional values to meters
+ */
+function normalizeLift(lift: JsonLift, unit: LengthUnit): JsonLift {
+  return {
+    ...lift,
+    x: toMeters(lift.x, unit),
+    z: toMeters(lift.z, unit),
+    width: toMeters(lift.width, unit),
+    height: toMeters(lift.height, unit),
   };
 }
 
@@ -65,16 +154,10 @@ function normalizeFloor(floor: JsonFloor, unit: LengthUnit): JsonFloor {
   return {
     ...floor,
     height: convertValue(floor.height, unit),
-    rooms: floor.rooms.map(r => normalizeRoom(r, unit)),
+    rooms: floor.rooms.map((r) => normalizeRoom(r, unit)),
+    stairs: floor.stairs?.map((s) => normalizeStair(s, unit)),
+    lifts: floor.lifts?.map((l) => normalizeLift(l, unit)),
   };
-}
-
-/**
- * Convert a size tuple [width, height] to meters
- */
-function convertSizeTuple(size: [number, number] | undefined, unit: LengthUnit): [number, number] | undefined {
-  if (!size) return undefined;
-  return [toMeters(size[0], unit), toMeters(size[1], unit)];
 }
 
 /**
@@ -114,7 +197,10 @@ function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
  * not length values, so we don't convert them.
  * But width/height are dimensional values that need conversion.
  */
-function normalizeConnection(conn: JsonConnection, unit: LengthUnit): JsonConnection {
+function normalizeConnection(
+  conn: JsonConnection,
+  unit: LengthUnit
+): JsonConnection {
   return {
     ...conn,
     // Convert dimensional values (width, height) but not position (percentage)
@@ -127,24 +213,27 @@ function normalizeConnection(conn: JsonConnection, unit: LengthUnit): JsonConnec
 /**
  * Normalize all dimensional values in a JsonExport from DSL units to meters.
  * This ensures consistent 3D rendering regardless of the source unit.
+ * 
+ * @param data - The JSON export from DSL parsing
+ * @returns A new JsonExport with all dimensions converted to meters
  */
 export function normalizeToMeters(data: JsonExport): JsonExport {
   const sourceUnit = getSourceUnit(data.config);
-  
+
   // If already in meters, return as-is
   if (sourceUnit === 'm') {
     return data;
   }
-  
-  console.log(`Normalizing dimensions from ${sourceUnit} to meters`);
-  
+
   return {
     ...data,
     config: data.config ? normalizeConfig(data.config, sourceUnit) : undefined,
-    floors: data.floors.map(f => normalizeFloor(f, sourceUnit)),
-    connections: data.connections.map(c => normalizeConnection(c, sourceUnit)),
+    floors: data.floors.map((f) => normalizeFloor(f, sourceUnit)),
+    connections: data.connections.map((c) => normalizeConnection(c, sourceUnit)),
     // styles don't have dimensional values, pass through
     styles: data.styles,
+    // vertical connections are just references, pass through
+    verticalConnections: data.verticalConnections,
   };
 }
 
