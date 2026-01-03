@@ -107,3 +107,20 @@
   - Compare output consistency between MCP and viewer
 - [x] 8.8 Update `floorplan-3d-core/package.json` exports if needed
 
+## 9. Shared Unit Normalization
+
+- [x] 9.1 Create `floorplan-3d-core/src/unit-normalizer.ts`
+  - Add `normalizeToMeters()` function to convert all dimensions from DSL units to meters
+  - Include normalization for rooms, walls, stairs, lifts, config, and connections
+  - Handle stair shape-specific properties (landing, outerRadius, innerRadius, segments)
+- [x] 9.2 Export `normalizeToMeters` from `floorplan-3d-core/src/index.ts`
+- [x] 9.3 Update `floorplan-3d-core/src/scene-builder.ts` to normalize internally
+  - Call `normalizeToMeters()` at start of `buildFloorplanScene()`
+  - Call `normalizeToMeters()` at start of `buildCompleteScene()`
+- [x] 9.4 Update `viewer/src/main.ts` to use shared normalizer from core
+  - Remove local `unit-normalizer.ts`
+  - Import `normalizeToMeters` from `floorplan-3d-core`
+- [x] 9.5 Update `mcp-server/src/utils/renderer3d.ts` to normalize before rendering
+  - Call `normalizeToMeters()` before passing data to puppeteer-renderer
+- [x] 9.6 Verify consistent rendering between viewer and MCP
+
