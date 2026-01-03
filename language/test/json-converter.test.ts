@@ -604,7 +604,7 @@ describe("JSON Converter - Stairs", () => {
     const input = `
       floorplan
         floor f1 {
-          stair MainStair at (10, 20) shape straight direction north rise 10ft width 3.5ft
+          stair MainStair at (10, 20) shape straight toward top rise 10ft width 3.5ft
         }
     `;
     const document = await parse(input);
@@ -626,7 +626,7 @@ describe("JSON Converter - Stairs", () => {
     const input = `
       floorplan
         floor f1 {
-          stair CornerStair shape L-shaped entry south turn left runs 6, 6 rise 10ft width 3.5ft
+          stair CornerStair shape L-shaped from bottom turn left runs 6, 6 rise 10ft width 3.5ft
         }
     `;
     const document = await parse(input);
@@ -634,7 +634,7 @@ describe("JSON Converter - Stairs", () => {
     
     const stair = result.data!.floors[0].stairs[0];
     expect(stair.shape.type).toBe("L-shaped");
-    expect(stair.shape.entry).toBe("south");
+    expect(stair.shape.entry).toBe("bottom");
     expect(stair.shape.turn).toBe("left");
     expect(stair.shape.runs).toEqual([6, 6]);
   });
@@ -659,7 +659,7 @@ describe("JSON Converter - Stairs", () => {
     const input = `
       floorplan
         floor f1 {
-          stair CustomStair shape custom entry south [
+          stair CustomStair shape custom from bottom [
             flight 5,
             turn right landing (4ft x 4ft),
             flight 6
@@ -684,7 +684,7 @@ describe("JSON Converter - Stairs", () => {
     const input = `
       floorplan
         floor f1 {
-          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft riser 7in tread 11in nosing 1.25in headroom 84in
+          stair MainStair at (0, 0) shape straight toward top rise 9ft width 3.5ft riser 7in tread 11in nosing 1.25in headroom 84in
         }
     `;
     const document = await parse(input);
@@ -701,7 +701,7 @@ describe("JSON Converter - Stairs", () => {
     const input = `
       floorplan
         floor f1 {
-          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft handrail (both) stringers open
+          stair MainStair at (0, 0) shape straight toward top rise 9ft width 3.5ft handrail (both) stringers open
         }
     `;
     const document = await parse(input);
@@ -716,7 +716,7 @@ describe("JSON Converter - Stairs", () => {
     const input = `
       floorplan
         floor f1 {
-          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft label "Main Staircase"
+          stair MainStair at (0, 0) shape straight toward top rise 9ft width 3.5ft label "Main Staircase"
         }
     `;
     const document = await parse(input);
@@ -730,7 +730,7 @@ describe("JSON Converter - Stairs", () => {
     const input = `
       floorplan
         floor f1 {
-          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft material { tread: "oak", riser: "white" }
+          stair MainStair at (0, 0) shape straight toward top rise 9ft width 3.5ft material { tread: "oak", riser: "white" }
         }
     `;
     const document = await parse(input);
@@ -747,7 +747,7 @@ describe("JSON Converter - Stairs", () => {
       floorplan
         config { stair_code: residential }
         floor f1 {
-          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft
+          stair MainStair at (0, 0) shape straight toward top rise 9ft width 3.5ft
         }
     `;
     const document = await parse(input);
@@ -783,14 +783,14 @@ describe("JSON Converter - Lifts", () => {
     const input = `
       floorplan
         floor f1 {
-          lift MainLift at (20, 25) size (5ft x 5ft) doors (north, south)
+          lift MainLift at (20, 25) size (5ft x 5ft) doors (top, bottom)
         }
     `;
     const document = await parse(input);
     const result = convertFloorplanToJson(document.parseResult.value);
     
     const lift = result.data!.floors[0].lifts[0];
-    expect(lift.doors).toEqual(["north", "south"]);
+    expect(lift.doors).toEqual(["top", "bottom"]);
   });
 
   it("should export lift with label", async () => {
@@ -813,10 +813,10 @@ describe("JSON Converter - Vertical Connections", () => {
     const input = `
       floorplan
         floor GroundFloor {
-          stair MainStair at (0, 0) shape straight direction north rise 10ft
+          stair MainStair at (0, 0) shape straight toward top rise 10ft
         }
         floor FirstFloor {
-          stair MainStair at (0, 0) shape straight direction north rise 10ft
+          stair MainStair at (0, 0) shape straight toward top rise 10ft
         }
         vertical GroundFloor.MainStair to FirstFloor.MainStair
     `;
@@ -863,11 +863,11 @@ describe("JSON Converter - Vertical Connections", () => {
     const input = `
       floorplan
         floor GroundFloor {
-          stair MainStair at (0, 0) shape straight direction north rise 10ft
+          stair MainStair at (0, 0) shape straight toward top rise 10ft
           lift Elevator at (10, 0) size (5ft x 5ft)
         }
         floor FirstFloor {
-          stair MainStair at (0, 0) shape straight direction north rise 10ft
+          stair MainStair at (0, 0) shape straight toward top rise 10ft
           lift Elevator at (10, 0) size (5ft x 5ft)
         }
         vertical GroundFloor.MainStair to FirstFloor.MainStair

@@ -1821,7 +1821,7 @@ describe("Stair Parser Tests", () => {
       floorplan
           floor GroundFloor {
               room Hall at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
-              stair MainStair at (10, 0) shape straight direction north rise 10ft width 3.5ft
+              stair MainStair at (10, 0) shape straight toward top rise 10ft width 3.5ft
           }
       `;
 
@@ -1844,7 +1844,7 @@ describe("Stair Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair CornerStair at (0, 0) shape L-shaped entry south turn left runs 6, 6 rise 10ft width 3.5ft
+              stair CornerStair at (0, 0) shape L-shaped from bottom turn left runs 6, 6 rise 10ft width 3.5ft
           }
       `;
 
@@ -1854,7 +1854,7 @@ describe("Stair Parser Tests", () => {
     const model = document.parseResult.value;
     const stair = model.floors[0]?.stairs[0];
     expect(stair?.shape?.shapeType).toBe("L-shaped");
-    expect(stair?.shape?.entry).toBe("south");
+    expect(stair?.shape?.entry).toBe("bottom");
     expect(stair?.shape?.turn).toBe("left");
     expect(stair?.shape?.runs).toEqual([6, 6]);
   });
@@ -1863,7 +1863,7 @@ describe("Stair Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair ServiceStair at (0, 0) shape U-shaped entry east turn right runs 8, 8 rise 12ft width 3ft
+              stair ServiceStair at (0, 0) shape U-shaped from right turn right runs 8, 8 rise 12ft width 3ft
           }
       `;
 
@@ -1872,7 +1872,7 @@ describe("Stair Parser Tests", () => {
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
     expect(stair?.shape?.shapeType).toBe("U-shaped");
-    expect(stair?.shape?.entry).toBe("east");
+    expect(stair?.shape?.entry).toBe("right");
     expect(stair?.shape?.turn).toBe("right");
   });
 
@@ -1880,7 +1880,7 @@ describe("Stair Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair ThreeFlightStair at (0, 0) shape double-L entry south turn right runs 5, 6, 5 rise 14ft width 3.5ft
+              stair ThreeFlightStair at (0, 0) shape double-L from bottom turn right runs 5, 6, 5 rise 14ft width 3.5ft
           }
       `;
 
@@ -1913,7 +1913,7 @@ describe("Stair Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair CompactStair at (0, 0) shape winder entry west turn right winders 3 runs 4, 5 rise 9ft width 2.5ft
+              stair CompactStair at (0, 0) shape winder from left turn right winders 3 runs 4, 5 rise 9ft width 2.5ft
           }
       `;
 
@@ -1930,7 +1930,7 @@ describe("Stair Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair CustomStair at (0, 0) shape custom entry south [
+              stair CustomStair at (0, 0) shape custom from bottom [
                   flight 5,
                   turn right landing (4ft x 4ft),
                   flight 6,
@@ -1953,7 +1953,7 @@ describe("Stair Parser Tests", () => {
       floorplan
           floor GroundFloor {
               stair FullySpecifiedStair at (0, 0) 
-                  shape straight direction north 
+                  shape straight toward top 
                   rise 10ft 
                   width 3.5ft 
                   riser 7in 
@@ -1983,7 +1983,7 @@ describe("Stair Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair GrandStair at (0, 0) shape custom entry south [
+              stair GrandStair at (0, 0) shape custom from bottom [
                   flight 8 width 6ft,
                   turn right landing (6ft x 6ft),
                   flight 6 width 4ft
@@ -2006,7 +2006,7 @@ describe("Stair Parser Tests", () => {
       floorplan
           floor GroundFloor {
               room StairWell at (0, 0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
-              stair PerimeterStair at (0, 0) shape custom entry south [
+              stair PerimeterStair at (0, 0) shape custom from bottom [
                   flight 5 along StairWell.bottom,
                   turn right landing (4ft x 4ft),
                   flight 6 along StairWell.left
@@ -2029,7 +2029,7 @@ describe("Stair Parser Tests", () => {
       floorplan
           floor GroundFloor {
               stair MaterialStair at (0, 0) 
-                  shape straight direction north 
+                  shape straight toward top 
                   rise 10ft 
                   material { tread: "oak", riser: "painted-white" }
           }
@@ -2048,8 +2048,8 @@ describe("Stair Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair OpenStair at (0, 0) shape straight direction north rise 10ft stringers open
-              stair GlassStair at (5, 0) shape straight direction north rise 10ft stringers glass
+              stair OpenStair at (0, 0) shape straight toward top rise 10ft stringers open
+              stair GlassStair at (5, 0) shape straight toward top rise 10ft stringers glass
           }
       `;
 
@@ -2086,7 +2086,7 @@ describe("Lift Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              lift MainLift at (20, 25) size (5ft x 5ft) doors (north, south)
+              lift MainLift at (20, 25) size (5ft x 5ft) doors (top, bottom)
           }
       `;
 
@@ -2094,7 +2094,7 @@ describe("Lift Parser Tests", () => {
     expectNoErrors(document);
 
     const lift = document.parseResult.value.floors[0]?.lifts[0];
-    expect(lift?.doors).toEqual(["north", "south"]);
+    expect(lift?.doors).toEqual(["top", "bottom"]);
   });
 
   test("should parse lift with label and style", async () => {
@@ -2120,10 +2120,10 @@ describe("Vertical Connection Parser Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 10ft
+              stair MainStair at (0, 0) shape straight toward top rise 10ft
           }
           floor FirstFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 10ft
+              stair MainStair at (0, 0) shape straight toward top rise 10ft
           }
           vertical GroundFloor.MainStair to FirstFloor.MainStair
       `;
@@ -2168,7 +2168,7 @@ describe("Stair Building Code Config Tests", () => {
       floorplan
           config { stair_code: residential }
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 10ft
+              stair MainStair at (0, 0) shape straight toward top rise 10ft
           }
       `;
 
@@ -2186,7 +2186,7 @@ describe("Stair Building Code Config Tests", () => {
         floorplan
             config { stair_code: ${code} }
             floor GroundFloor {
-                stair MainStair at (0, 0) shape straight direction north rise 10ft
+                stair MainStair at (0, 0) shape straight toward top rise 10ft
             }
         `;
 
@@ -2204,7 +2204,7 @@ describe("Stair Dimensional Validation Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft riser 7in tread 11in
+              stair MainStair at (0, 0) shape straight toward top rise 9ft width 3ft riser 7in tread 11in
           }
       `;
 
@@ -2225,7 +2225,7 @@ describe("Stair Dimensional Validation Tests", () => {
       floorplan
           config { stair_code: residential }
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft riser 8in tread 11in
+              stair MainStair at (0, 0) shape straight toward top rise 9ft width 3ft riser 8in tread 11in
           }
       `;
 
@@ -2246,7 +2246,7 @@ describe("Stair Dimensional Validation Tests", () => {
       floorplan
           config { stair_code: commercial }
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 9ft width 4ft riser 7in tread 9in
+              stair MainStair at (0, 0) shape straight toward top rise 9ft width 4ft riser 7in tread 9in
           }
       `;
 
@@ -2267,7 +2267,7 @@ describe("Stair Dimensional Validation Tests", () => {
       floorplan
           config { stair_code: residential }
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft headroom 72in
+              stair MainStair at (0, 0) shape straight toward top rise 9ft width 3ft headroom 72in
           }
       `;
 
@@ -2290,7 +2290,7 @@ describe("Stair Wall Alignment Validation Tests", () => {
       floorplan
           floor GroundFloor {
               room StairWell at (0, 0) size (10 x 15) walls [top: solid, right: solid, bottom: solid, left: solid]
-              stair MainStair shape custom entry south [
+              stair MainStair shape custom from bottom [
                   flight 5 along StairWell.bottom,
                   turn right landing (4ft x 4ft),
                   flight 6
@@ -2314,7 +2314,7 @@ describe("Stair Wall Alignment Validation Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair MainStair shape custom entry south [
+              stair MainStair shape custom from bottom [
                   flight 5 along NonExistent.bottom,
                   turn right landing (4ft x 4ft),
                   flight 6
@@ -2341,7 +2341,7 @@ describe("Building Code Compliance Validation Tests", () => {
       floorplan
           config { stair_code: commercial }
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft
+              stair MainStair at (0, 0) shape straight toward top rise 9ft width 3ft
           }
       `;
 
@@ -2362,7 +2362,7 @@ describe("Building Code Compliance Validation Tests", () => {
       floorplan
           config { stair_code: ada }
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft
+              stair MainStair at (0, 0) shape straight toward top rise 9ft width 3.5ft
           }
       `;
 
@@ -2383,7 +2383,7 @@ describe("Building Code Compliance Validation Tests", () => {
       floorplan
           config { stair_code: none }
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 9ft width 4ft riser 7in tread 11in
+              stair MainStair at (0, 0) shape straight toward top rise 9ft width 4ft riser 7in tread 11in
           }
       `;
 
@@ -2404,7 +2404,7 @@ describe("Building Code Compliance Validation Tests", () => {
       floorplan
           config { stair_code: residential }
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft riser 7.5in tread 10in headroom 80in
+              stair MainStair at (0, 0) shape straight toward top rise 9ft width 3ft riser 7.5in tread 10in headroom 80in
           }
       `;
 
@@ -2426,10 +2426,10 @@ describe("Vertical Connection Validation Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair MainStair at (0, 0) shape straight direction north rise 10ft width 3ft
+              stair MainStair at (0, 0) shape straight toward top rise 10ft width 3ft
           }
           floor FirstFloor {
-              stair MainStair at (5, 0) shape straight direction north rise 10ft width 3ft
+              stair MainStair at (5, 0) shape straight toward top rise 10ft width 3ft
           }
           vertical GroundFloor.MainStair to FirstFloor.MainStair
       `;
@@ -2450,10 +2450,10 @@ describe("Vertical Connection Validation Tests", () => {
     const input = `
       floorplan
           floor GroundFloor {
-              stair MainStair at (10, 20) shape straight direction north rise 10ft width 3ft
+              stair MainStair at (10, 20) shape straight toward top rise 10ft width 3ft
           }
           floor FirstFloor {
-              stair MainStair at (10, 20) shape straight direction north rise 10ft width 3ft
+              stair MainStair at (10, 20) shape straight toward top rise 10ft width 3ft
           }
           vertical GroundFloor.MainStair to FirstFloor.MainStair
       `;

@@ -1,6 +1,6 @@
 import type { ValidationAcceptor, ValidationChecks } from "langium";
 import type { FloorplansAstType, Floorplan, Connection, Room, Floor, StyleBlock, StyleProperty, ConfigProperty, Stair, Lift } from "./generated/ast.js";
-import { isFlightSegment, isSegmentedStair, isStraightStair, isLShapedStair, isSpiralStair } from "./generated/ast.js";
+import { isFlightSegment, isTurnSegment, isSegmentedStair, isStraightStair, isLShapedStair, isSpiralStair } from "./generated/ast.js";
 import type { FloorplansServices } from "./floorplans-module.js";
 import { hasMixedUnitSystems, VALID_UNITS, toMeters, type LengthUnit } from "./diagrams/floorplans/unit-utils.js";
 import { resolveFloorPositions } from "./diagrams/floorplans/position-resolver.js";
@@ -35,7 +35,8 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkStairWallAlignmentReferences,
       validator.checkBuildingCodeCompliance,
       validator.checkCirculationOutsideRoomBounds,
-      validator.checkCirculationOverlaps
+      validator.checkCirculationOverlaps,
+      validator.checkSegmentWidthConsistency
     ],
     StyleProperty: [validator.checkStylePropertyValue],
     ConfigProperty: [validator.checkConfigPropertyValue]
@@ -1569,7 +1570,7 @@ export class FloorplansValidator {
     // Adjust based on shape
     if (isStraightStair(stair.shape)) {
       const dir = stair.shape.direction;
-      if (dir === 'east' || dir === 'west') {
+      if (dir === 'right' || dir === 'left') {
         return { width: runLength, height: width };
       }
       return { width, height: runLength };
@@ -1588,6 +1589,76 @@ export class FloorplansValidator {
 
     // For other complex stairs, estimate bounding box
     return { width: width * 2, height: runLength };
+  }
+
+  /**
+   * Check per-segment width consistency in custom/segmented stairs.
+   * Validates that landing widths can accommodate adjacent flight widths.
+   */
+  checkSegmentWidthConsistency(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    for (const floor of floorplan.floors) {
+      for (const stair of floor.stairs) {
+        if (!isSegmentedStair(stair.shape)) continue;
+        
+        const segments = stair.shape.segments;
+        const stairWidth = stair.width?.value;
+        
+        // Collect flight widths from segments
+        const flightWidths: number[] = [];
+        for (const segment of segments) {
+          if (isFlightSegment(segment)) {
+            // Use segment width if specified, otherwise stair width, otherwise default
+            const width = segment.width?.value ?? stairWidth ?? 1;
+            flightWidths.push(width);
+          }
+        }
+        
+        // If no explicit widths, nothing to validate
+        if (flightWidths.length === 0 || flightWidths.every(w => w === flightWidths[0])) {
+          continue;
+        }
+        
+        // Check that turn segments (landings) can accommodate adjacent flights
+        let flightIndex = 0;
+        for (let i = 0; i < segments.length; i++) {
+          const segment = segments[i];
+          
+          if (isTurnSegment(segment) && segment.landing) {
+            const landingWidth = segment.landing.width.value;
+            const landingHeight = segment.landing.height.value;
+            
+            // Get widths of flights before and after this turn
+            const prevFlightWidth = flightIndex > 0 ? flightWidths[flightIndex - 1] : undefined;
+            const nextFlightWidth = flightIndex < flightWidths.length ? flightWidths[flightIndex] : undefined;
+            
+            // Landing should be at least as wide as the widest adjacent flight
+            const maxAdjacentWidth = Math.max(prevFlightWidth ?? 0, nextFlightWidth ?? 0);
+            
+            if (maxAdjacentWidth > 0) {
+              // Check landing width dimension (perpendicular to entry direction)
+              if (landingWidth < maxAdjacentWidth) {
+                accept("warning",
+                  `Stair '${stair.name}' turn landing width (${landingWidth}) is narrower than adjacent flight width (${maxAdjacentWidth}). ` +
+                  `Consider increasing landing width to at least ${maxAdjacentWidth} for proper flow.`,
+                  { node: stair }
+                );
+              }
+              
+              // Check landing height/depth dimension
+              if (landingHeight < maxAdjacentWidth) {
+                accept("warning",
+                  `Stair '${stair.name}' turn landing depth (${landingHeight}) is narrower than adjacent flight width (${maxAdjacentWidth}). ` +
+                  `Consider increasing landing depth to at least ${maxAdjacentWidth} for proper flow.`,
+                  { node: stair }
+                );
+              }
+            }
+          } else if (isFlightSegment(segment)) {
+            flightIndex++;
+          }
+        }
+      }
+    }
   }
 }
 

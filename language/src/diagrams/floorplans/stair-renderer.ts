@@ -152,10 +152,13 @@ export function generateLiftSvg(
 // Stair Shape Generators
 // ============================================================================
 
+/** View-relative direction type (consistent with wall directions) */
+type ViewDirection = 'top' | 'bottom' | 'left' | 'right';
+
 interface StairDimensions {
     width: number;
     height: number;
-    direction: 'north' | 'south' | 'east' | 'west';
+    direction: ViewDirection;
     stepCount: number;
     stairWidth: number;
 }
@@ -185,13 +188,13 @@ function calculateStairDimensions(stair: Stair, defaultUnit: LengthUnit = 'ft'):
     const stepCount = Math.ceil(rise / riser);
     const totalRunLength = stepCount * tread;
     
-    let direction: 'north' | 'south' | 'east' | 'west' = 'north';
+    let direction: ViewDirection = 'top';
     let width = defaultWidth;
     let height = totalRunLength;
     
     if (isStraightStair(stair.shape)) {
-        direction = stair.shape.direction as 'north' | 'south' | 'east' | 'west';
-        if (direction === 'east' || direction === 'west') {
+        direction = stair.shape.direction as ViewDirection;
+        if (direction === 'right' || direction === 'left') {
             // Swap dimensions for horizontal stairs
             width = totalRunLength;
             height = defaultWidth;
@@ -209,14 +212,14 @@ function calculateStairDimensions(stair: Stair, defaultUnit: LengthUnit = 'ft'):
         const landingH = normalize(stair.shape.landing?.height, landingW); // Square landing default
 
         // Determine orientation
-        const entry = stair.shape.entry as 'north' | 'south' | 'east' | 'west';
+        const entry = stair.shape.entry as ViewDirection;
         
-        // Vertical first leg? (North/South entry)
-        if (entry === 'north' || entry === 'south') {
+        // Vertical first leg? (top/bottom entry)
+        if (entry === 'top' || entry === 'bottom') {
             height = run1 + landingH;
             width = landingW + run2;
         } else {
-            // Horizontal first leg (East/West entry)
+            // Horizontal first leg (left/right entry)
             width = run1 + landingW;
             height = landingH + run2;
         }
@@ -231,9 +234,9 @@ function calculateStairDimensions(stair: Stair, defaultUnit: LengthUnit = 'ft'):
         const landingW = normalize(stair.shape.landing?.width, defaultWidth * 2);
         const landingH = normalize(stair.shape.landing?.height, defaultWidth);
         
-        const entry = stair.shape.entry as 'north' | 'south' | 'east' | 'west';
+        const entry = stair.shape.entry as ViewDirection;
         
-        if (entry === 'north' || entry === 'south') {
+        if (entry === 'top' || entry === 'bottom') {
             width = landingW;
             height = Math.max(run1, runs[1] * tread) + landingH;
         } else {
@@ -299,7 +302,7 @@ function generateStraightStairSvg(
         fill="${opts.fillColor}" stroke="${opts.strokeColor}" stroke-width="${opts.strokeWidth}" />`;
     
     // Determine orientation
-    const isVertical = dims.direction === 'north' || dims.direction === 'south';
+    const isVertical = dims.direction === 'top' || dims.direction === 'bottom';
     
     if (isVertical) {
         // Vertical run: Horizontal tread lines
@@ -316,12 +319,12 @@ function generateStraightStairSvg(
         const cy = dims.height / 2;
         
         let y1, y2;
-        if (dims.direction === 'north') {
-            // Climb North (Up): Arrow points Up (-Y)
+        if (dims.direction === 'top') {
+            // Climb toward top: Arrow points Up (-Y)
             y1 = cy + arrowLen / 2;
             y2 = cy - arrowLen / 2;
         } else {
-            // Climb South (Down): Arrow points Down (+Y)
+            // Climb toward bottom: Arrow points Down (+Y)
             y1 = cy - arrowLen / 2;
             y2 = cy + arrowLen / 2;
         }
@@ -331,7 +334,7 @@ function generateStraightStairSvg(
             
         // Arrow head
         const headSize = Math.min(0.3, dims.width * 0.15);
-        const directionSign = dims.direction === 'north' ? -1 : 1;
+        const directionSign = dims.direction === 'top' ? -1 : 1;
         svg += `<polygon points="${cx},${y2} ${cx - headSize},${y2 - headSize * directionSign} ${cx + headSize},${y2 - headSize * directionSign}" 
             fill="${opts.strokeColor}" />`;
             
@@ -350,12 +353,12 @@ function generateStraightStairSvg(
         const cx = dims.width / 2;
         
         let x1, x2;
-        if (dims.direction === 'west') {
-            // Climb West (Left): Arrow points Left (-X)
+        if (dims.direction === 'left') {
+            // Climb toward left: Arrow points Left (-X)
             x1 = cx + arrowLen / 2;
             x2 = cx - arrowLen / 2;
         } else {
-            // Climb East (Right): Arrow points Right (+X)
+            // Climb toward right: Arrow points Right (+X)
             x1 = cx - arrowLen / 2;
             x2 = cx + arrowLen / 2;
         }
@@ -365,7 +368,7 @@ function generateStraightStairSvg(
             
         // Arrow head
         const headSize = Math.min(0.3, dims.height * 0.15);
-        const directionSign = dims.direction === 'west' ? -1 : 1;
+        const directionSign = dims.direction === 'left' ? -1 : 1;
         svg += `<polygon points="${x2},${cy} ${x2 - headSize * directionSign},${cy - headSize} ${x2 - headSize * directionSign},${cy + headSize}" 
             fill="${opts.strokeColor}" />`;
     }
@@ -396,7 +399,7 @@ function generateLShapedStairSvg(
     const landingW = shape.landing?.width?.value ?? (dims.width < dims.height ? dims.width * 0.4 : dims.height * 0.4); // fallback
     const landingH = shape.landing?.height?.value ?? landingW;
     
-    const entry = shape.entry as 'north' | 'south' | 'east' | 'west';
+    const entry = shape.entry as ViewDirection;
     const turn = shape.turn as 'left' | 'right';
     
     // We have 4 orientations x 2 turns = 8 cases.
@@ -414,7 +417,7 @@ function generateLShapedStairSvg(
     
     // Note: dims.width/height matches the bounding box of the L-shape.
     
-    if (entry === 'south') { // Climbing Up
+    if (entry === 'bottom') { // Climbing Up (from bottom)
         // Leg 1 is vertical at bottom.
         l1h = dims.height - landingH;
         l1w = landingW; // Assuming stair width matches landing
@@ -439,7 +442,7 @@ function generateLShapedStairSvg(
             l2w = dims.width - landingW;
             l2h = landingH;
         }
-    } else if (entry === 'north') { // Climbing Down
+    } else if (entry === 'top') { // Climbing Down (from top)
         // Leg 1 is vertical at top.
         l1h = dims.height - landingH;
         l1w = landingW;
@@ -448,8 +451,8 @@ function generateLShapedStairSvg(
         ly = dims.height - landingH; // Landing at bottom
         
         if (turn === 'right') {
-            // Turn Right (relative to climbing South).
-            // Walking South, Turn Right = West (Left in SVG).
+            // Turn Right (relative to climbing toward bottom).
+            // Walking toward bottom, Turn Right = left (Left in SVG).
             // Leg 1 on Right. Landing at Bottom-Right. Leg 2 goes Left.
             l1x = dims.width - l1w;
             lx = dims.width - landingW;
@@ -457,7 +460,7 @@ function generateLShapedStairSvg(
             l2y = ly;
             l2w = dims.width - landingW;
             l2h = landingH;
-        } else { // Turn Left (East/Right in SVG)
+        } else { // Turn Left (right in SVG)
             // Leg 1 on Left. Landing at Bottom-Left. Leg 2 goes Right.
             l1x = 0;
             lx = 0;
@@ -466,7 +469,7 @@ function generateLShapedStairSvg(
             l2w = dims.width - landingW;
             l2h = landingH;
         }
-    } else if (entry === 'west') { // Climbing Right
+    } else if (entry === 'left') { // Climbing Right (from left)
         // Leg 1 is horizontal at left.
         l1w = dims.width - landingW;
         l1h = landingH;
@@ -475,7 +478,7 @@ function generateLShapedStairSvg(
         lx = l1w; // Landing at right
         
         if (turn === 'right') {
-            // Walking East, Turn Right = South (Down).
+            // Walking right, Turn Right = bottom (Down).
             // Leg 1 at Top. Landing at Top-Right. Leg 2 goes Down.
             l1y = 0;
             ly = 0;
@@ -483,7 +486,7 @@ function generateLShapedStairSvg(
             l2y = landingH;
             l2w = landingW;
             l2h = dims.height - landingH;
-        } else { // Turn Left = North (Up)
+        } else { // Turn Left = top (Up)
             // Leg 1 at Bottom. Landing at Bottom-Right. Leg 2 goes Up.
             l1y = dims.height - l1h;
             ly = l1y;
@@ -492,7 +495,7 @@ function generateLShapedStairSvg(
             l2w = landingW;
             l2h = dims.height - landingH;
         }
-    } else if (entry === 'east') { // Climbing Left
+    } else if (entry === 'right') { // Climbing Left (from right)
         // Leg 1 is horizontal at right.
         l1w = dims.width - landingW;
         l1h = landingH;
@@ -501,7 +504,7 @@ function generateLShapedStairSvg(
         lx = 0; // Landing at left
         
         if (turn === 'right') {
-            // Walking West, Turn Right = North (Up).
+            // Walking left, Turn Right = top (Up).
             // Leg 1 at Bottom. Landing at Bottom-Left. Leg 2 goes Up.
             l1y = dims.height - l1h;
             ly = l1y;
@@ -509,7 +512,7 @@ function generateLShapedStairSvg(
             l2y = 0;
             l2w = landingW;
             l2h = dims.height - landingH;
-        } else { // Turn Left = South (Down)
+        } else { // Turn Left = bottom (Down)
             // Leg 1 at Top. Landing at Top-Left. Leg 2 goes Down.
             l1y = 0;
             ly = 0;
@@ -529,18 +532,18 @@ function generateLShapedStairSvg(
     // We assume Leg 1 has half steps for simplicity if not specified
     const numSteps = Math.floor(dims.stepCount / 2); // Approximate
     
-    if (entry === 'north' || entry === 'south') {
+    if (entry === 'top' || entry === 'bottom') {
         // Vertical Leg 1
         const stepSpacing = l1h / numSteps;
         for (let i = 1; i < numSteps; i++) {
-            const y = entry === 'south' ? (l1y + l1h - i*stepSpacing) : (l1y + i*stepSpacing);
+            const y = entry === 'bottom' ? (l1y + l1h - i*stepSpacing) : (l1y + i*stepSpacing);
             svg += `<line x1="${l1x}" y1="${y}" x2="${l1x + l1w}" y2="${y}" stroke="${opts.strokeColor}" stroke-width="${opts.strokeWidth * 0.5}" />`;
         }
     } else {
         // Horizontal Leg 1
         const stepSpacing = l1w / numSteps;
         for (let i = 1; i < numSteps; i++) {
-            const x = entry === 'east' ? (l1x + l1w - i*stepSpacing) : (l1x + i*stepSpacing);
+            const x = entry === 'right' ? (l1x + l1w - i*stepSpacing) : (l1x + i*stepSpacing);
             svg += `<line x1="${x}" y1="${l1y}" x2="${x}" y2="${l1y + l1h}" stroke="${opts.strokeColor}" stroke-width="${opts.strokeWidth * 0.5}" />`;
         }
     }
@@ -759,7 +762,7 @@ function generateSegmentedStairSvg(
     // Track current position and direction as we build the stair
     let currentX = 0;
     let currentY = 0;
-    let currentDirection = shape.entry as 'north' | 'south' | 'east' | 'west';
+    let currentDirection = shape.entry as ViewDirection;
     
     const defaultWidth = dims.stairWidth;
     // Estimate tread depth from total dimensions
@@ -777,15 +780,15 @@ function generateSegmentedStairSvg(
             let flightH = flightLength;
             
             // Adjust dimensions based on direction
-            if (currentDirection === 'east' || currentDirection === 'west') {
+            if (currentDirection === 'right' || currentDirection === 'left') {
                 flightW = flightLength;
                 flightH = flightWidth;
             }
             
             // Offset based on direction (flight extends in direction of travel)
-            if (currentDirection === 'north') {
+            if (currentDirection === 'top') {
                 flightY = currentY - flightLength;
-            } else if (currentDirection === 'west') {
+            } else if (currentDirection === 'left') {
                 flightX = currentX - flightLength;
             }
             
@@ -794,7 +797,7 @@ function generateSegmentedStairSvg(
                 fill="${opts.fillColor}" stroke="${opts.strokeColor}" stroke-width="${opts.strokeWidth}" />`;
             
             // Draw tread lines
-            if (currentDirection === 'north' || currentDirection === 'south') {
+            if (currentDirection === 'top' || currentDirection === 'bottom') {
                 const stepSpacing = flightH / flightSteps;
                 for (let i = 1; i < flightSteps; i++) {
                     const y = flightY + i * stepSpacing;
@@ -812,10 +815,10 @@ function generateSegmentedStairSvg(
             
             // Update current position to end of flight
             switch (currentDirection) {
-                case 'north': currentY -= flightLength; break;
-                case 'south': currentY += flightLength; break;
-                case 'east': currentX += flightLength; break;
-                case 'west': currentX -= flightLength; break;
+                case 'top': currentY -= flightLength; break;
+                case 'bottom': currentY += flightLength; break;
+                case 'right': currentX += flightLength; break;
+                case 'left': currentX -= flightLength; break;
             }
             
         } else if (segment.segmentType === 'turn') {
@@ -826,9 +829,9 @@ function generateSegmentedStairSvg(
             let landingY = currentY;
             
             // Position landing based on current direction
-            if (currentDirection === 'north') {
+            if (currentDirection === 'top') {
                 landingY = currentY - landingH;
-            } else if (currentDirection === 'west') {
+            } else if (currentDirection === 'left') {
                 landingX = currentX - landingW;
             }
             
@@ -841,19 +844,19 @@ function generateSegmentedStairSvg(
             
             // Update position to corner of landing based on new direction
             switch (currentDirection) {
-                case 'north': 
+                case 'top': 
                     currentX = landingX;
                     currentY = landingY; 
                     break;
-                case 'south': 
+                case 'bottom': 
                     currentX = landingX;
                     currentY = landingY + landingH; 
                     break;
-                case 'east': 
+                case 'right': 
                     currentX = landingX + landingW;
                     currentY = landingY; 
                     break;
-                case 'west': 
+                case 'left': 
                     currentX = landingX;
                     currentY = landingY; 
                     break;
@@ -868,10 +871,10 @@ function generateSegmentedStairSvg(
  * Apply a turn to the current direction
  */
 function applyTurn(
-    current: 'north' | 'south' | 'east' | 'west',
+    current: ViewDirection,
     turn: 'left' | 'right'
-): 'north' | 'south' | 'east' | 'west' {
-    const directions: ('north' | 'east' | 'south' | 'west')[] = ['north', 'east', 'south', 'west'];
+): ViewDirection {
+    const directions: ViewDirection[] = ['top', 'right', 'bottom', 'left'];
     const idx = directions.indexOf(current);
     const delta = turn === 'right' ? 1 : -1;
     return directions[(idx + delta + 4) % 4];
@@ -892,25 +895,25 @@ function generateLiftDoor(
     let x = 0, y = 0, w = doorWidth, h = doorDepth;
     
     switch (door) {
-        case 'north':
+        case 'top':
             x = (width - doorWidth) / 2;
             y = 0;
             w = doorWidth;
             h = doorDepth;
             break;
-        case 'south':
+        case 'bottom':
             x = (width - doorWidth) / 2;
             y = height - doorDepth;
             w = doorWidth;
             h = doorDepth;
             break;
-        case 'east':
+        case 'right':
             x = width - doorDepth;
             y = (height - doorWidth) / 2;
             w = doorDepth;
             h = doorWidth;
             break;
-        case 'west':
+        case 'left':
             x = 0;
             y = (height - doorWidth) / 2;
             w = doorDepth;

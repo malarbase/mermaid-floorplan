@@ -47,8 +47,8 @@ function getStairBoundingBox(
   let height = totalRunLength;
 
   if (isStraightStair(stair.shape)) {
-    const direction = stair.shape.direction as 'north' | 'south' | 'east' | 'west';
-    if (direction === 'east' || direction === 'west') {
+    const direction = stair.shape.direction as 'top' | 'bottom' | 'left' | 'right';
+    if (direction === 'right' || direction === 'left') {
       width = totalRunLength;
       height = defaultWidth;
     }
@@ -58,9 +58,9 @@ function getStairBoundingBox(
     const run2 = runs[1] * tread;
     const landingW = normalize(stair.shape.landing?.width, defaultWidth);
     const landingH = normalize(stair.shape.landing?.height, landingW);
-    const entry = stair.shape.entry as 'north' | 'south' | 'east' | 'west';
+    const entry = stair.shape.entry as 'top' | 'bottom' | 'left' | 'right';
 
-    if (entry === 'north' || entry === 'south') {
+    if (entry === 'top' || entry === 'bottom') {
       height = run1 + landingH;
       width = landingW + run2;
     } else {
@@ -72,9 +72,9 @@ function getStairBoundingBox(
     const run1 = runs[0] * tread;
     const landingW = normalize(stair.shape.landing?.width, defaultWidth * 2);
     const landingH = normalize(stair.shape.landing?.height, defaultWidth);
-    const entry = stair.shape.entry as 'north' | 'south' | 'east' | 'west';
+    const entry = stair.shape.entry as 'top' | 'bottom' | 'left' | 'right';
 
-    if (entry === 'north' || entry === 'south') {
+    if (entry === 'top' || entry === 'bottom') {
       width = landingW;
       height = Math.max(run1, runs[1] * tread) + landingH;
     } else {
