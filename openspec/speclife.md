@@ -32,6 +32,16 @@ This is a demonstration and development tool project with a monorepo structure:
 
 All packages are private and not published to npm. The project is deployed to GitHub Pages for the demo.
 
+## Git Workflow
+
+- **Upstream:** `origin` → `langalex/mermaid-floorplan` (fetch only)
+- **Fork:** `self` → `malarbase/mermaid-floorplan` (push here)
+- **PRs:** Create against `malarbase/mermaid-floorplan`, not upstream
+
+When shipping changes:
+1. Push to `self` remote
+2. Create PR with `--repo malarbase/mermaid-floorplan`
+
 ## Context Files
 
 When implementing changes, always read:
