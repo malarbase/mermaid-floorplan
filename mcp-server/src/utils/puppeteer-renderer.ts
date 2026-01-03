@@ -325,6 +325,253 @@ function getRenderingCode(): string {
       return { camera, position, target, fov };
     }
 
+    // StairGenerator class for proper stair/lift 3D geometry
+    class StairGenerator {
+      constructor() {
+        this.material = new THREE.MeshStandardMaterial({
+          color: 0xa0a0a0,
+          roughness: 0.6,
+          metalness: 0.1,
+        });
+      }
+
+      generateStair(stair) {
+        const group = new THREE.Group();
+        group.name = 'stair_' + stair.name;
+        group.position.set(stair.x, 0, stair.z);
+
+        const shapeType = stair.shape?.type || 'straight';
+        switch (shapeType) {
+          case 'straight':
+            this._generateStraightStair(group, stair);
+            break;
+          case 'L-shaped':
+            this._generateLShapedStair(group, stair);
+            break;
+          case 'U-shaped':
+            this._generateUShapedStair(group, stair);
+            break;
+          case 'spiral':
+            this._generateSpiralStair(group, stair);
+            break;
+          default:
+            this._generateStraightStair(group, stair);
+        }
+        return group;
+      }
+
+      generateLift(lift, floorHeight) {
+        const group = new THREE.Group();
+        group.name = 'lift_' + lift.name;
+        group.position.set(lift.x, 0, lift.z);
+
+        const width = lift.width;
+        const depth = lift.height;
+        
+        // Lift shaft - semi-transparent box
+        const geometry = new THREE.BoxGeometry(width, floorHeight, depth);
+        const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
+          color: 0x888888,
+          transparent: true,
+          opacity: 0.3,
+          roughness: 0.1,
+          metalness: 0.5,
+        }));
+        mesh.position.y = floorHeight / 2;
+        group.add(mesh);
+
+        // Door indicators
+        if (lift.doors) {
+          lift.doors.forEach(dir => {
+            const doorGeom = new THREE.BoxGeometry(
+              (dir === 'north' || dir === 'south') ? width * 0.8 : 0.22,
+              floorHeight * 0.8,
+              (dir === 'east' || dir === 'west') ? depth * 0.8 : 0.22
+            );
+            const doorMesh = new THREE.Mesh(doorGeom, new THREE.MeshStandardMaterial({ color: 0x333333 }));
+            doorMesh.position.y = floorHeight / 2;
+            if (dir === 'north') doorMesh.position.z = -depth / 2;
+            if (dir === 'south') doorMesh.position.z = depth / 2;
+            if (dir === 'east') doorMesh.position.x = width / 2;
+            if (dir === 'west') doorMesh.position.x = -width / 2;
+            group.add(doorMesh);
+          });
+        }
+        return group;
+      }
+
+      _generateStraightStair(group, stair) {
+        const rise = stair.rise || 3;
+        const riserHeight = stair.riser || 0.18;
+        const treadDepth = stair.tread || 0.28;
+        const width = stair.width || 1.0;
+
+        const stepCount = Math.round(rise / riserHeight);
+        const actualRiser = rise / stepCount;
+
+        // Direction handling
+        let rotation = 0;
+        const direction = stair.shape?.direction || 'north';
+        switch (direction) {
+          case 'north': rotation = 0; break;
+          case 'south': rotation = Math.PI; break;
+          case 'east': rotation = -Math.PI / 2; break;
+          case 'west': rotation = Math.PI / 2; break;
+        }
+
+        // Create steps
+        for (let i = 0; i < stepCount; i++) {
+          const stepGroup = new THREE.Group();
+
+          // Tread
+          const treadGeom = new THREE.BoxGeometry(width, 0.05, treadDepth);
+          const tread = new THREE.Mesh(treadGeom, this.material);
+          tread.position.y = (i + 1) * actualRiser;
+          tread.castShadow = true;
+          tread.receiveShadow = true;
+          stepGroup.add(tread);
+
+          // Riser (if closed or glass)
+          if (stair.stringers !== 'open') {
+            let riserMat = this.material;
+            if (stair.stringers === 'glass') {
+              riserMat = new THREE.MeshStandardMaterial({
+                color: 0x88ccff,
+                transparent: true,
+                opacity: 0.5,
+                roughness: 0.1,
+                metalness: 0.9
+              });
+            }
+            const riserGeom = new THREE.BoxGeometry(width, actualRiser, 0.02);
+            const riser = new THREE.Mesh(riserGeom, riserMat);
+            riser.position.y = (i + 0.5) * actualRiser;
+            riser.position.z = treadDepth / 2;
+            stepGroup.add(riser);
+          }
+
+          stepGroup.position.z = -(i * treadDepth) - (treadDepth / 2);
+          group.add(stepGroup);
+        }
+
+        group.rotation.y = rotation;
+
+        // Handrails
+        if (stair.handrail && stair.handrail !== 'none') {
+          const totalDepth = stepCount * treadDepth;
+          const totalHeight = stepCount * actualRiser;
+          const postMat = new THREE.MeshStandardMaterial({ color: 0x555555, metalness: 0.8, roughness: 0.2 });
+          const railHeight = 0.9;
+
+          const addHandrail = (xPos) => {
+            // Bottom post
+            const postGeom = new THREE.CylinderGeometry(0.02, 0.02, railHeight);
+            const post1 = new THREE.Mesh(postGeom, postMat);
+            post1.position.set(xPos, railHeight / 2, 0);
+            group.add(post1);
+
+            // Top post
+            const post2 = new THREE.Mesh(postGeom, postMat);
+            post2.position.set(xPos, totalHeight + railHeight / 2, -totalDepth);
+            group.add(post2);
+
+            // Rail
+            const railLength = Math.sqrt(totalDepth * totalDepth + totalHeight * totalHeight);
+            const railGeom = new THREE.CylinderGeometry(0.02, 0.02, railLength);
+            const rail = new THREE.Mesh(railGeom, postMat);
+            rail.position.set(xPos, totalHeight / 2 + railHeight, -totalDepth / 2);
+            rail.rotation.x = Math.atan2(totalHeight, totalDepth);
+            group.add(rail);
+          };
+
+          if (stair.handrail === 'both' || stair.handrail === 'left') addHandrail(-width / 2);
+          if (stair.handrail === 'both' || stair.handrail === 'right') addHandrail(width / 2);
+        }
+      }
+
+      _generateLShapedStair(group, stair) {
+        const runs = stair.shape?.runs || [10, 10];
+        const run1Steps = runs[0] || Math.floor((stair.rise || 3) / 0.18 / 2);
+        const run2Steps = runs[1] || Math.floor((stair.rise || 3) / 0.18 / 2);
+        const treadDepth = stair.tread || 0.28;
+        const width = stair.width || 1.0;
+        const actualRiser = (stair.rise || 3) / (run1Steps + run2Steps);
+
+        // First run
+        for (let i = 0; i < run1Steps; i++) {
+          const treadGeom = new THREE.BoxGeometry(width, 0.05, treadDepth);
+          const tread = new THREE.Mesh(treadGeom, this.material);
+          tread.position.set(0, (i + 1) * actualRiser, -(i * treadDepth) - (treadDepth / 2));
+          group.add(tread);
+        }
+
+        // Landing
+        const landingY = run1Steps * actualRiser;
+        const landingDepth = stair.shape?.landing ? stair.shape.landing[1] : width;
+        const landingWidth = stair.shape?.landing ? stair.shape.landing[0] : width;
+        const landingGeom = new THREE.BoxGeometry(landingWidth, 0.05, landingDepth);
+        const landing = new THREE.Mesh(landingGeom, this.material);
+        landing.position.set(0, landingY, -(run1Steps * treadDepth) - (landingDepth / 2) + (treadDepth / 2));
+        group.add(landing);
+
+        // Second run (turned)
+        const turn = stair.shape?.turn || 'right';
+        const turnAngle = turn === 'right' ? -Math.PI / 2 : Math.PI / 2;
+        const run2Group = new THREE.Group();
+        run2Group.position.set(0, landingY, -(run1Steps * treadDepth) - (landingDepth / 2) + (treadDepth / 2));
+        run2Group.rotation.y = turnAngle;
+
+        for (let i = 0; i < run2Steps; i++) {
+          const treadGeom = new THREE.BoxGeometry(width, 0.05, treadDepth);
+          const tread = new THREE.Mesh(treadGeom, this.material);
+          tread.position.set(0, (i + 1) * actualRiser, -(landingDepth / 2 + treadDepth / 2) - (i * treadDepth) - (treadDepth / 2));
+          run2Group.add(tread);
+        }
+        group.add(run2Group);
+
+        // Apply entry rotation
+        const entry = stair.shape?.entry || 'north';
+        let rotation = 0;
+        switch (entry) {
+          case 'north': rotation = 0; break;
+          case 'south': rotation = Math.PI; break;
+          case 'east': rotation = -Math.PI / 2; break;
+          case 'west': rotation = Math.PI / 2; break;
+        }
+        group.rotation.y = rotation;
+      }
+
+      _generateUShapedStair(group, stair) {
+        // Simplified: render as straight for now
+        this._generateStraightStair(group, stair);
+      }
+
+      _generateSpiralStair(group, stair) {
+        const rise = stair.rise || 3;
+        const riserHeight = stair.riser || 0.18;
+        const stepCount = Math.round(rise / riserHeight);
+        const actualRiser = rise / stepCount;
+
+        const outerRadius = stair.shape?.outerRadius || 1.0;
+        const innerRadius = stair.shape?.innerRadius || 0.1;
+        const stepWidth = outerRadius - innerRadius;
+
+        const rotationDir = stair.shape?.rotation === 'counterclockwise' ? 1 : -1;
+        const anglePerStep = (Math.PI * 2) / 12 * rotationDir;
+
+        for (let i = 0; i < stepCount; i++) {
+          const stepGroup = new THREE.Group();
+          const treadGeom = new THREE.BoxGeometry(stepWidth, 0.05, 0.3);
+          const tread = new THREE.Mesh(treadGeom, this.material);
+          tread.position.x = innerRadius + stepWidth / 2;
+          tread.position.y = (i + 1) * actualRiser;
+          stepGroup.add(tread);
+          stepGroup.rotation.y = i * anglePerStep;
+          group.add(stepGroup);
+        }
+      }
+    }
+
     function buildScene(jsonData, options) {
       const theme = resolveTheme(jsonData.config);
       const themeColors = getThemeColors(theme);
@@ -440,43 +687,21 @@ function getRenderingCode(): string {
           });
         });
 
-        // Stairs
+        // Stairs - using StairGenerator for proper geometry
         if (floor.stairs) {
+          const stairGen = new StairGenerator();
           floor.stairs.forEach(stair => {
-            const stairMat = new THREE.MeshStandardMaterial({
-              color: 0xcccccc,
-              roughness: 0.7,
-              metalness: 0.1,
-            });
-            const stairGeom = new THREE.BoxGeometry(
-              stair.width || 1,
-              stair.rise || 3,
-              (stair.tread || 0.28) * 10
-            );
-            const stairMesh = new THREE.Mesh(stairGeom, stairMat);
-            stairMesh.position.set(stair.x + 0.5, (stair.rise || 3) / 2, stair.z + 1);
-            floorGroup.add(stairMesh);
+            const stairGroup = stairGen.generateStair(stair);
+            floorGroup.add(stairGroup);
           });
         }
 
-        // Lifts
+        // Lifts - using StairGenerator for proper geometry
         if (floor.lifts) {
+          const stairGen = new StairGenerator();
           floor.lifts.forEach(lift => {
-            const liftMat = new THREE.MeshStandardMaterial({
-              color: 0xaaaaaa,
-              transparent: true,
-              opacity: 0.3,
-              roughness: 0.1,
-              metalness: 0.5,
-            });
-            const liftGeom = new THREE.BoxGeometry(lift.width, floorHeight, lift.height);
-            const liftMesh = new THREE.Mesh(liftGeom, liftMat);
-            liftMesh.position.set(
-              lift.x + lift.width / 2,
-              floorHeight / 2,
-              lift.z + lift.height / 2
-            );
-            floorGroup.add(liftMesh);
+            const liftGroup = stairGen.generateLift(lift, floorHeight);
+            floorGroup.add(liftGroup);
           });
         }
 

@@ -76,3 +76,51 @@
 - [x] 7.2 Add examples to project README or trial folder
 - [x] 7.3 Document dimensional defaults and building code rationale
 
+## 8. Shared 3D Rendering (MCP + Viewer Consolidation)
+
+- [x] 8.1 Move `viewer/src/stair-generator.ts` logic to `floorplan-3d-core/src/stair-geometry.ts`
+  - Export `generateStairGeometry()` function taking stair data and returning THREE.Group
+  - Include all shape variants: straight, L-shaped, U-shaped, spiral, custom segments
+  - Include handrail and stringer geometry generation
+- [x] 8.2 Move `viewer/src/lift-generator.ts` logic to `floorplan-3d-core/src/lift-geometry.ts`
+  - Export `generateLiftGeometry()` function for elevator shaft geometry
+  - Include door openings and shaft wall rendering
+- [x] 8.3 Update `floorplan-3d-core/src/scene-builder.ts` to use new stair/lift generators
+  - Add stair iteration in `buildFloorGroup()`
+  - Add lift iteration in `buildFloorGroup()`
+  - Ensure proper Y-offset per floor
+- [x] 8.4 Refactor `viewer/src/main.ts` to use `floorplan-3d-core` stair/lift functions
+  - Replace inline stair geometry with `generateStairGeometry()` import
+  - Replace inline lift geometry with `generateLiftGeometry()` import
+  - Verify viewer still renders correctly
+- [x] 8.5 Update `mcp-server/src/utils/renderer3d.ts` to include stair/lift rendering
+  - Import and call `generateStairGeometry()` from core
+  - Import and call `generateLiftGeometry()` from core
+  - Iterate over `floor.stairs` and `floor.lifts` arrays in parsed data
+- [x] 8.6 Add shared types in `floorplan-3d-core/src/types.ts`
+  - `StairData` interface matching JSON export
+  - `LiftData` interface matching JSON export
+  - Shape-specific parameter interfaces
+- [x] 8.7 Test MCP 3D rendering with `examples/StairsAndLifts.floorplan`
+  - Verify stairs appear in 3D PNG output
+  - Verify lifts appear in 3D PNG output
+  - Compare output consistency between MCP and viewer
+- [x] 8.8 Update `floorplan-3d-core/package.json` exports if needed
+
+## 9. Shared Unit Normalization
+
+- [x] 9.1 Create `floorplan-3d-core/src/unit-normalizer.ts`
+  - Add `normalizeToMeters()` function to convert all dimensions from DSL units to meters
+  - Include normalization for rooms, walls, stairs, lifts, config, and connections
+  - Handle stair shape-specific properties (landing, outerRadius, innerRadius, segments)
+- [x] 9.2 Export `normalizeToMeters` from `floorplan-3d-core/src/index.ts`
+- [x] 9.3 Update `floorplan-3d-core/src/scene-builder.ts` to normalize internally
+  - Call `normalizeToMeters()` at start of `buildFloorplanScene()`
+  - Call `normalizeToMeters()` at start of `buildCompleteScene()`
+- [x] 9.4 Update `viewer/src/main.ts` to use shared normalizer from core
+  - Remove local `unit-normalizer.ts`
+  - Import `normalizeToMeters` from `floorplan-3d-core`
+- [x] 9.5 Update `mcp-server/src/utils/renderer3d.ts` to normalize before rendering
+  - Call `normalizeToMeters()` before passing data to puppeteer-renderer
+- [x] 9.6 Verify consistent rendering between viewer and MCP
+

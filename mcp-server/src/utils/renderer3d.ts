@@ -8,6 +8,7 @@ import {
   type Render3DOptions,
   type Render3DResult,
   type SceneBounds,
+  normalizeToMeters,
 } from 'floorplan-3d-core';
 import {
   renderWithPuppeteer,
@@ -28,7 +29,10 @@ export async function render3DToPng(
   jsonData: JsonExport,
   options: Render3DOptions = {}
 ): Promise<Render3DResult> {
-  return renderWithPuppeteer(jsonData, options);
+  // Normalize all dimensions to meters for consistent 3D rendering
+  // This ensures stairs, lifts, rooms, and other elements are correctly scaled
+  const normalizedData = normalizeToMeters(jsonData);
+  return renderWithPuppeteer(normalizedData, options);
 }
 
 /**

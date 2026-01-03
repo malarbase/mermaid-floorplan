@@ -7,13 +7,12 @@ import { Evaluator } from 'three-bvh-csg';
 import type { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from 'floorplan-3d-core';
 import { 
   DIMENSIONS, COLORS, COLORS_DARK, METERS_TO_UNIT, getThemeColors,
-  MaterialFactory, StairGenerator,
+  MaterialFactory, StairGenerator, normalizeToMeters,
   type LengthUnit, type ViewerTheme, type MaterialStyle
 } from 'floorplan-3d-core';
 // Browser-specific modules (CSG, DSL parsing)
 import { WallGenerator, StyleResolver } from './wall-generator';
 import { parseFloorplanDSL, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
-import { normalizeToMeters } from './unit-normalizer';
 
 // Area unit type
 type AreaUnit = 'sqft' | 'sqm';

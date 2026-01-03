@@ -102,3 +102,6 @@ export type {
   SceneBuildResult,
 } from './scene-builder.js';
 
+// Unit normalization
+export { normalizeToMeters } from './unit-normalizer.js';
+

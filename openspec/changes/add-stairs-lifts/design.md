@@ -177,6 +177,62 @@ vertical GroundFloor.Elevator to FirstFloor.Elevator to SecondFloor.Elevator
 - Cut holes through floor slabs for lifts
 - Handrail geometry (cylinder + newel posts)
 
+### Decision 7: Shared 3D Rendering via floorplan-3d-core
+
+**Decision:** Consolidate all 3D stair/lift geometry generation into `floorplan-3d-core` package, used by both the viewer and MCP server.
+
+**Current Architecture (Problem):**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    floorplan-3d-core (shared)                    │
+│  ┌──────────────┬──────────────┬──────────────┬──────────────┐  │
+│  │scene-builder │stair-geometry│wall-geometry │floor-geometry│  │
+│  │              │ (INCOMPLETE) │              │              │  │
+│  └──────────────┴──────────────┴──────────────┴──────────────┘  │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │
+        ┌────────────────────────┼────────────────────────┐
+        │                        │                        │
+┌───────▼───────┐        ┌───────▼───────┐        ┌───────▼───────┐
+│    viewer     │        │  mcp-server   │        │   (future)    │
+│ stair-gen.ts  │        │ renderer3d.ts │        │               │
+│ (COMPLETE ✓)  │        │ (NO stairs ✗) │        │               │
+└───────────────┘        └───────────────┘        └───────────────┘
+```
+
+**Target Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    floorplan-3d-core (shared)                    │
+│  ┌──────────────┬──────────────┬──────────────┬──────────────┐  │
+│  │scene-builder │stair-geometry│wall-geometry │floor-geometry│  │
+│  │              │ (COMPLETE ✓) │              │              │  │
+│  │              │ lift-geometry│              │              │  │
+│  └──────────────┴──────────────┴──────────────┴──────────────┘  │
+└────────────────────────────────┬────────────────────────────────┘
+                                 │ (imports)
+        ┌────────────────────────┼────────────────────────┐
+        │                        │                        │
+┌───────▼───────┐        ┌───────▼───────┐        ┌───────▼───────┐
+│    viewer     │        │  mcp-server   │        │   (future)    │
+│  (thin layer) │        │ renderer3d.ts │        │               │
+│  uses core ✓  │        │  uses core ✓  │        │  uses core    │
+└───────────────┘        └───────────────┘        └───────────────┘
+```
+
+**Rationale:**
+1. Single source of truth for stair geometry (DRY)
+2. Both viewer and MCP render identically
+3. Easier testing—test core once
+4. Future consumers (CLI, API) get stairs for free
+
+**Migration steps:**
+1. Move viewer's complete `stair-generator.ts` → `floorplan-3d-core/src/stair-geometry.ts`
+2. Add `lift-geometry.ts` to core
+3. Update `scene-builder.ts` to call new generators
+4. Refactor viewer to import from core
+5. Update MCP server's `renderer3d.ts` to use core
+
 ## Risks / Trade-offs
 
 | Risk | Mitigation |
@@ -185,6 +241,7 @@ vertical GroundFloor.Elevator to FirstFloor.Elevator to SecondFloor.Elevator
 | Rendering effort | Start with 2D symbols only, 3D in follow-up |
 | Building code variations | Use conservative US residential defaults; make overridable |
 | Spiral stair geometry | Complex math for 3D; can simplify to cylinder placeholder initially |
+| 3D code duplication | Consolidate into `floorplan-3d-core` (Decision 7) |
 
 ## Open Questions
 

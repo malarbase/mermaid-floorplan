@@ -14,6 +14,7 @@ import { generateFloorWalls } from './wall-geometry.js';
 import { StairGenerator } from './stair-geometry.js';
 import { computeSceneBounds, setupCamera, type CameraSetupResult } from './camera-utils.js';
 import { setupLighting } from './lighting-utils.js';
+import { normalizeToMeters } from './unit-normalizer.js';
 
 /**
  * Scene building options
@@ -51,11 +52,17 @@ export interface SceneBuildResult {
 
 /**
  * Build a Three.js scene from JSON floorplan data
+ * 
+ * Note: This function automatically normalizes all dimensions to meters
+ * for consistent 3D rendering, regardless of the source unit.
  */
 export function buildFloorplanScene(
   data: JsonExport,
   options: SceneBuildOptions = {}
 ): SceneBuildResult {
+  // Normalize all dimensions to meters for consistent 3D rendering
+  const normalizedData = normalizeToMeters(data);
+
   const {
     floorIndices,
     theme,
@@ -72,17 +79,17 @@ export function buildFloorplanScene(
   scene.background = new THREE.Color(themeColors.BACKGROUND);
 
   // Build style lookup map
-  const styleMap = buildStyleMap(data.styles);
+  const styleMap = buildStyleMap(normalizedData.styles);
 
   // Determine which floors to render
   const floorsToRender = floorIndices
-    ? data.floors.filter((_, i) => floorIndices.includes(i))
-    : data.floors;
+    ? normalizedData.floors.filter((_, i) => floorIndices.includes(i))
+    : normalizedData.floors;
 
   const floorsRendered = floorsToRender.map(f => f.index);
 
-  // Get config values
-  const config = data.config ?? {};
+  // Get config values (already normalized to meters)
+  const config = normalizedData.config ?? {};
   const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
   const defaultHeight = config.default_height ?? DIMENSIONS.WALL.HEIGHT;
   const floorThickness = config.floor_thickness ?? DIMENSIONS.FLOOR.THICKNESS;
@@ -154,6 +161,9 @@ export function buildFloorplanScene(
 
 /**
  * Build a complete scene with camera and lighting
+ * 
+ * Note: This function automatically normalizes all dimensions to meters
+ * for consistent 3D rendering, regardless of the source unit.
  */
 export function buildCompleteScene(
   data: JsonExport,
@@ -166,16 +176,21 @@ export function buildCompleteScene(
   bounds: SceneBounds;
   floorsRendered: number[];
 } {
+  // Normalize all dimensions to meters (buildFloorplanScene does this internally,
+  // but we need it here for theme resolution too)
+  const normalizedData = normalizeToMeters(data);
+
   // Determine theme from config
-  const theme = resolveTheme(data.config);
+  const theme = resolveTheme(normalizedData.config);
   
   // Determine which floors to render
   const floorIndices = renderOptions.renderAllFloors 
     ? undefined 
     : [renderOptions.floorIndex ?? 0];
 
-  // Build scene
-  const { scene, bounds, floorsRendered } = buildFloorplanScene(data, {
+  // Build scene (normalizedData is already in meters, so buildFloorplanScene
+  // will detect this and skip re-normalization)
+  const { scene, bounds, floorsRendered } = buildFloorplanScene(normalizedData, {
     ...sceneOptions,
     theme,
     floorIndices,
