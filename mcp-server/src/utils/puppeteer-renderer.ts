@@ -50,18 +50,33 @@ function getThreeJsSource(): string {
 }
 
 /**
+ * Check if we're running in a CI environment
+ */
+function isCI(): boolean {
+  return !!(
+    process.env.CI ||
+    process.env.GITHUB_ACTIONS ||
+    process.env.JENKINS_URL ||
+    process.env.GITLAB_CI ||
+    process.env.CIRCLECI
+  );
+}
+
+/**
  * Get or create a shared browser instance
  */
 async function getBrowser(): Promise<Browser> {
   if (!browserInstance || !browserInstance.connected) {
-    // Check if we can use Chrome's sandbox (not running as root)
-    const canUseSandbox = process.getuid?.() !== 0;
+    // Disable sandbox in CI environments or when running as root
+    // CI environments like GitHub Actions have restrictions that prevent Chrome's sandbox
+    const isRoot = process.getuid?.() === 0;
+    const needsNoSandbox = isRoot || isCI();
     
     browserInstance = await puppeteer.launch({
       headless: true,
       args: [
-        // Only disable sandbox if running as root (sandbox requires non-root)
-        ...(canUseSandbox ? [] : ['--no-sandbox', '--disable-setuid-sandbox']),
+        // Disable sandbox in CI or when running as root
+        ...(needsNoSandbox ? ['--no-sandbox', '--disable-setuid-sandbox'] : []),
         // Prevent crashes in Docker/constrained environments
         '--disable-dev-shm-usage',
         // Enable WebGL with software rendering (no GPU required)
