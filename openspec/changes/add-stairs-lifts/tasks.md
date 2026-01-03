@@ -76,3 +76,34 @@
 - [x] 7.2 Add examples to project README or trial folder
 - [x] 7.3 Document dimensional defaults and building code rationale
 
+## 8. Shared 3D Rendering (MCP + Viewer Consolidation)
+
+- [ ] 8.1 Move `viewer/src/stair-generator.ts` logic to `floorplan-3d-core/src/stair-geometry.ts`
+  - Export `generateStairGeometry()` function taking stair data and returning THREE.Group
+  - Include all shape variants: straight, L-shaped, U-shaped, spiral, custom segments
+  - Include handrail and stringer geometry generation
+- [ ] 8.2 Move `viewer/src/lift-generator.ts` logic to `floorplan-3d-core/src/lift-geometry.ts`
+  - Export `generateLiftGeometry()` function for elevator shaft geometry
+  - Include door openings and shaft wall rendering
+- [ ] 8.3 Update `floorplan-3d-core/src/scene-builder.ts` to use new stair/lift generators
+  - Add stair iteration in `buildFloorGroup()`
+  - Add lift iteration in `buildFloorGroup()`
+  - Ensure proper Y-offset per floor
+- [ ] 8.4 Refactor `viewer/src/main.ts` to use `floorplan-3d-core` stair/lift functions
+  - Replace inline stair geometry with `generateStairGeometry()` import
+  - Replace inline lift geometry with `generateLiftGeometry()` import
+  - Verify viewer still renders correctly
+- [ ] 8.5 Update `mcp-server/src/utils/renderer3d.ts` to include stair/lift rendering
+  - Import and call `generateStairGeometry()` from core
+  - Import and call `generateLiftGeometry()` from core
+  - Iterate over `floor.stairs` and `floor.lifts` arrays in parsed data
+- [ ] 8.6 Add shared types in `floorplan-3d-core/src/types.ts`
+  - `StairData` interface matching JSON export
+  - `LiftData` interface matching JSON export
+  - Shape-specific parameter interfaces
+- [ ] 8.7 Test MCP 3D rendering with `examples/StairsAndLifts.floorplan`
+  - Verify stairs appear in 3D PNG output
+  - Verify lifts appear in 3D PNG output
+  - Compare output consistency between MCP and viewer
+- [ ] 8.8 Update `floorplan-3d-core/package.json` exports if needed
+
