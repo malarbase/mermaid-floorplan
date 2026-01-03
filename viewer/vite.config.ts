@@ -2,7 +2,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
-  base: './', // Use relative paths for assets
+  // Use '/mermaid-floorplan/' for GitHub Pages deployment
+  // Local dev will work with relative paths
+  base: process.env.GITHUB_ACTIONS ? '/mermaid-floorplan/' : './',
   build: {
     outDir: 'dist',
     emptyOutDir: true,

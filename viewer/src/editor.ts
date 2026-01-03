@@ -40,6 +40,10 @@ export async function initializeEditor(
     automaticLayout: true,
     minimap: { enabled: false },
     scrollBeyondLastLine: false,
+    theme: "vs-dark",
+    fontSize: 13,
+    lineNumbers: "on",
+    wordWrap: "on",
   });
 
   // Return the editor instance with callbacks
@@ -51,3 +55,4 @@ export async function initializeEditor(
       editor.onDidChangeModelContent(callback),
   };
 }
+

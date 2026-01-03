@@ -1,8 +1,22 @@
-import floorplanGrammar from "./floorplans.mdc?raw";
+// Grammar instructions for the AI assistant
+const GRAMMAR_INSTRUCTIONS = `
+You are a helpful assistant for a floorplan 3D viewer application. Users can ask questions about their floorplans, request modifications, or get help with the syntax.
+
+The floorplan DSL supports:
+- Floors with rooms: floor <name> { room definitions }
+- Rooms: room <name> at (x, y) size (w x h) walls [...]
+- Wall types: solid, door, window, open
+- Connections: connect room1.wall to room2.wall door at 50%
+- Styles: style <name> { floor_color, wall_color, roughness, metalness }
+- Config: config { default_style, wall_thickness, theme }
+
+When modifying the floorplan, return the modified content surrounded with \`\`\`fp and \`\`\`
+`;
 
 export class OpenAIChatService {
   private apiKey: string | null = null;
-  private model: string = "gpt-3.5-turbo";
+  private model: string = "gpt-4o-mini";
+  private baseUrl: string = "https://api.openai.com/v1";
   private messages: Array<{ role: string; content: string }> = [];
 
   setApiKey(apiKey: string) {
@@ -13,9 +27,18 @@ export class OpenAIChatService {
     this.model = model;
   }
 
+  setBaseUrl(baseUrl: string) {
+    // Remove trailing slash if present
+    this.baseUrl = baseUrl.replace(/\/+$/, '');
+  }
+
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
   async validateApiKey(apiKey: string): Promise<boolean> {
     try {
-      const response = await fetch("https://api.openai.com/v1/models", {
+      const response = await fetch(`${this.baseUrl}/models`, {
         headers: {
           Authorization: `Bearer ${apiKey}`,
           "Content-Type": "application/json",
@@ -38,7 +61,7 @@ export class OpenAIChatService {
     if (this.messages.length === 0) {
       this.messages.push({
         role: "system",
-        content: `You are a helpful assistant for a floorplan application. Users can ask questions about their floorplans, request modifications, or get help with the syntax. The current floorplan content is: ${floorplanContent}. This is how floorplans are written: ${floorplanGrammar}`,
+        content: `${GRAMMAR_INSTRUCTIONS}\n\nThe current floorplan content is:\n${floorplanContent}`,
       });
     }
 
@@ -54,7 +77,7 @@ export class OpenAIChatService {
 
     try {
       const response = await fetch(
-        "https://api.openai.com/v1/chat/completions",
+        `${this.baseUrl}/chat/completions`,
         {
           method: "POST",
           headers: {
@@ -64,7 +87,7 @@ export class OpenAIChatService {
           body: JSON.stringify({
             model: this.model,
             messages: this.messages,
-            max_tokens: 1000,
+            max_tokens: 2000,
             temperature: 0.7,
             stream: false,
           }),
@@ -100,6 +123,17 @@ export class OpenAIChatService {
   }
 
   isApiKeySet(): boolean {
-    return this.apiKey !== null;
+    return this.apiKey !== null && this.apiKey.length > 0;
+  }
+
+  updateFloorplanContext(floorplanContent: string) {
+    // Update the system message with new floorplan content
+    if (this.messages.length > 0) {
+      this.messages[0] = {
+        role: "system",
+        content: `${GRAMMAR_INSTRUCTIONS}\n\nThe current floorplan content is:\n${floorplanContent}`,
+      };
+    }
   }
 }
+

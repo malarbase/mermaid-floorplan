@@ -39,11 +39,29 @@ export interface ParseResult {
     warnings: ParseError[];
 }
 
+export interface ParseResultWithDocument extends ParseResult {
+    document: LangiumDocument<Floorplan> | null;
+}
+
 /**
  * Parse a floorplan DSL string and convert to JSON format.
  * Uses the shared convertFloorplanToJson function from floorplans-language.
  */
 export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult> {
+    const result = await parseFloorplanDSLWithDocument(dslContent);
+    // Return without the document for backwards compatibility
+    return {
+        data: result.data,
+        errors: result.errors,
+        warnings: result.warnings,
+    };
+}
+
+/**
+ * Parse a floorplan DSL string and convert to JSON format.
+ * Also returns the Langium document for 2D rendering.
+ */
+export async function parseFloorplanDSLWithDocument(dslContent: string): Promise<ParseResultWithDocument> {
     const errors: ParseError[] = [];
     const warnings: ParseError[] = [];
 
@@ -68,7 +86,7 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
         }
 
         if (errors.length > 0) {
-            return { data: null, errors, warnings };
+            return { data: null, document: null, errors, warnings };
         }
 
         // Run validation checks
@@ -88,7 +106,7 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
         }
 
         if (errors.length > 0) {
-            return { data: null, errors, warnings };
+            return { data: null, document: null, errors, warnings };
         }
 
         // Use shared conversion logic (single source of truth)
@@ -102,16 +120,16 @@ export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult
         }
 
         if (errors.length > 0) {
-            return { data: null, errors, warnings };
+            return { data: null, document: null, errors, warnings };
         }
 
-        return { data: result.data, errors: [], warnings };
+        return { data: result.data, document: doc, errors: [], warnings };
 
     } catch (err) {
         errors.push({
             message: `Unexpected error: ${err instanceof Error ? err.message : String(err)}`
         });
-        return { data: null, errors, warnings };
+        return { data: null, document: null, errors, warnings };
     }
 }
 

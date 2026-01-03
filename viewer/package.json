@@ -14,6 +14,7 @@
     "floorplan-3d-core": "*",
     "floorplans-language": "*",
     "langium": "~4.0.0",
+    "monaco-editor": "^0.52.2",
     "three": "^0.170.0",
     "three-bvh-csg": "^0.0.16"
   },
