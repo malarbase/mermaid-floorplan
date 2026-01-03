@@ -68,12 +68,15 @@ export interface JsonFloor {
 
 export type JsonStairShapeType = 'straight' | 'L-shaped' | 'U-shaped' | 'double-L' | 'spiral' | 'curved' | 'winder' | 'custom';
 
+/** View-relative direction type (consistent with wall directions) */
+export type ViewDirection = 'top' | 'bottom' | 'left' | 'right';
+
 export interface JsonStairShape {
   type: JsonStairShapeType;
-  /** For straight stairs: climb direction */
-  direction?: 'north' | 'south' | 'east' | 'west';
-  /** For turned stairs: entry direction */
-  entry?: 'north' | 'south' | 'east' | 'west';
+  /** For straight stairs: climb direction (toward top/bottom/left/right) */
+  direction?: ViewDirection;
+  /** For turned stairs: entry direction (from top/bottom/left/right) */
+  entry?: ViewDirection;
   /** For turned stairs: turn direction */
   turn?: 'left' | 'right';
   /** For spiral/curved: rotation direction */
@@ -147,8 +150,8 @@ export interface JsonLift {
   z: number;
   width: number;
   height: number;
-  /** Door directions */
-  doors: Array<'north' | 'south' | 'east' | 'west'>;
+  /** Door directions (view-relative: top/bottom/left/right) */
+  doors: Array<ViewDirection>;
   label?: string;
   style?: string;
 }

@@ -31,7 +31,7 @@ floorplan
     
     # Main straight stair - positioned at left side of StairHall
     stair MainStair at (20.5, 8) 
-        shape straight direction north 
+        shape straight toward top 
         rise 10ft 
         width 4ft 
         riser 7in 
@@ -43,7 +43,7 @@ floorplan
     
     # L-shaped service stair - positioned below main stair
     stair ServiceStair at (25.5, 8) 
-        shape L-shaped entry south turn left runs 5, 5 
+        shape L-shaped from bottom turn left runs 5, 5 
         landing (3ft x 3ft)
         rise 10ft 
         width 3ft
@@ -53,7 +53,7 @@ floorplan
     # Elevator shaft - positioned at top right of StairHall
     lift MainElevator at (30, 2) 
         size (5ft x 5ft) 
-        doors (south) 
+        doors (bottom) 
         label "Elevator"
         style Circulation
   }
@@ -68,7 +68,7 @@ floorplan
     
     # Main stair continues - same position as GroundFloor
     stair MainStair at (20.5, 8) 
-        shape straight direction north 
+        shape straight toward top 
         rise 10ft 
         width 4ft
         stringers closed
@@ -76,14 +76,14 @@ floorplan
     
     # Service stair continues - same position as GroundFloor
     stair ServiceStair at (25.5, 8) 
-        shape L-shaped entry south turn left runs 5, 5 
+        shape L-shaped from bottom turn left runs 5, 5 
         rise 10ft 
         width 3ft
     
     # Elevator continues - same position as GroundFloor
     lift MainElevator at (30, 2) 
         size (5ft x 5ft) 
-        doors (south)
+        doors (bottom)
         style Circulation
   }
   
@@ -104,7 +104,7 @@ floorplan
     
     # Custom segmented stair for complex layout
     stair CustomStair at (15, 10) 
-        shape custom entry south [
+        shape custom from bottom [
             flight 5 width 5ft,
             turn right landing (5ft x 5ft),
             flight 6 width 4ft,
@@ -120,7 +120,7 @@ floorplan
     # Glass elevator - aligned with lower floor elevators (adjusted for Penthouse position)
     lift GlassElevator at (30, 2) 
         size (5ft x 5ft) 
-        doors (south, west) 
+        doors (bottom, left) 
         label "Glass Lift"
   }
   

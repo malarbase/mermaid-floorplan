@@ -254,7 +254,7 @@ interface StraightStair {
     direction: string;
 }
 StraightStair returns StraightStair:
-    shapeType='straight' 'direction' direction=CompassDirection;
+    shapeType='straight' 'toward' direction=ViewDirection;
 
 // L-shaped stair: two flights with one 90° turn
 interface LShapedStair {
@@ -265,7 +265,7 @@ interface LShapedStair {
     landing?: Dimension;
 }
 LShapedStair returns LShapedStair:
-    shapeType='L-shaped' 'entry' entry=CompassDirection 'turn' turn=TurnDirection
+    shapeType='L-shaped' 'from' entry=ViewDirection 'turn' turn=TurnDirection
     ('runs' runs+=NUMBER (',' runs+=NUMBER)+)?
     ('landing' landing=Dimension)?;
 
@@ -278,7 +278,7 @@ interface UShapedStair {
     landing?: Dimension;
 }
 UShapedStair returns UShapedStair:
-    shapeType='U-shaped' 'entry' entry=CompassDirection 'turn' turn=TurnDirection
+    shapeType='U-shaped' 'from' entry=ViewDirection 'turn' turn=TurnDirection
     ('runs' runs+=NUMBER (',' runs+=NUMBER)+)?
     ('landing' landing=Dimension)?;
 
@@ -291,7 +291,7 @@ interface DoubleLStair {
     landing?: Dimension;
 }
 DoubleLStair returns DoubleLStair:
-    shapeType='double-L' 'entry' entry=CompassDirection 'turn' turn=TurnDirection
+    shapeType='double-L' 'from' entry=ViewDirection 'turn' turn=TurnDirection
     ('runs' runs+=NUMBER (',' runs+=NUMBER (',' runs+=NUMBER)?)?)?
     ('landing' landing=Dimension)?;
 
@@ -315,7 +315,7 @@ interface CurvedStair {
     radius: ValueWithUnit;
 }
 CurvedStair returns CurvedStair:
-    shapeType='curved' 'entry' entry=CompassDirection
+    shapeType='curved' 'from' entry=ViewDirection
     ('arc' arc=NUMBER '°')?
     'radius' radius=ValueWithUnit;
 
@@ -328,7 +328,7 @@ interface WinderStair {
     runs: number[];
 }
 WinderStair returns WinderStair:
-    shapeType='winder' 'entry' entry=CompassDirection 'turn' turn=TurnDirection
+    shapeType='winder' 'from' entry=ViewDirection 'turn' turn=TurnDirection
     'winders' winders=NUMBER
     ('runs' runs+=NUMBER (',' runs+=NUMBER)+)?;
 
@@ -339,7 +339,7 @@ interface SegmentedStair {
     segments: StairSegment[];
 }
 SegmentedStair returns SegmentedStair:
-    shapeType='custom' 'entry' entry=CompassDirection
+    shapeType='custom' 'from' entry=ViewDirection
     '[' segments+=StairSegment (',' segments+=StairSegment)* ']';
 
 // Stair segment: either a flight or a turn
@@ -375,9 +375,9 @@ TurnSegment returns TurnSegment:
 WallAlignmentRef:
     room=ID '.' wall=WallDirection;
 
-// Compass directions for stair orientation
-CompassDirection returns string:
-    'north' | 'south' | 'east' | 'west';
+// View-relative directions for stair/lift orientation (consistent with WallDirection)
+ViewDirection returns string:
+    'top' | 'bottom' | 'left' | 'right';
 
 // Turn direction (left or right)
 TurnDirection returns string:
@@ -414,7 +414,7 @@ Lift:
     'lift' name=ID
     ('at' position=Coordinate)?
     'size' size=Dimension
-    ('doors' '(' doors+=CompassDirection (',' doors+=CompassDirection)* ')')?
+    ('doors' '(' doors+=ViewDirection (',' doors+=ViewDirection)* ')')?
     relativePosition=RelativePosition?
     ('label' label=STRING)?
     ('style' styleRef=ID)?;

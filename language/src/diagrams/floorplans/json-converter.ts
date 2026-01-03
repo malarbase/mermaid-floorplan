@@ -120,12 +120,15 @@ export interface JsonFloor {
 
 export type JsonStairShapeType = 'straight' | 'L-shaped' | 'U-shaped' | 'double-L' | 'spiral' | 'curved' | 'winder' | 'custom';
 
+/** View-relative direction type (consistent with wall directions) */
+export type ViewDirection = 'top' | 'bottom' | 'left' | 'right';
+
 export interface JsonStairShape {
     type: JsonStairShapeType;
-    /** For straight stairs: climb direction */
-    direction?: 'north' | 'south' | 'east' | 'west';
-    /** For turned stairs: entry direction */
-    entry?: 'north' | 'south' | 'east' | 'west';
+    /** For straight stairs: climb direction (toward top/bottom/left/right) */
+    direction?: ViewDirection;
+    /** For turned stairs: entry direction (from top/bottom/left/right) */
+    entry?: ViewDirection;
     /** For turned stairs: turn direction */
     turn?: 'left' | 'right';
     /** For spiral/curved: rotation direction */
@@ -156,6 +159,8 @@ export interface JsonStairSegment {
     width?: number;
     /** For flight segments: wall alignment reference */
     wallRef?: { room: string; wall: string };
+    /** For flight segments with wall alignment: resolved position along the wall */
+    wallAlignedPosition?: { x: number; z: number; direction: ViewDirection };
     /** For turn segments: direction */
     direction?: 'left' | 'right';
     /** For turn segments with landing: dimensions [width, height] */
@@ -199,8 +204,8 @@ export interface JsonLift {
     z: number;
     width: number;
     height: number;
-    /** Door directions */
-    doors: Array<'north' | 'south' | 'east' | 'west'>;
+    /** Door directions (view-relative: top/bottom/left/right) */
+    doors: Array<ViewDirection>;
     label?: string;
     style?: string;
 }
@@ -411,17 +416,32 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             jsonFloor.rooms.push(jsonRoom);
         }
 
+        // Build room bounds map for wall alignment calculation
+        const roomBoundsMap = new Map<string, RoomBounds>();
+        for (const room of floor.rooms) {
+            const pos = resolution.positions.get(room.name);
+            if (pos) {
+                const resolvedSize = getRoomSize(room, variables);
+                roomBoundsMap.set(room.name, {
+                    x: pos.x,
+                    z: pos.y,
+                    width: resolvedSize.width,
+                    height: resolvedSize.height
+                });
+            }
+        }
+
         // Process stairs
         for (const stair of floor.stairs) {
             const stairPos = stair.position 
                 ? { x: stair.position.x.value, y: stair.position.y.value }
-                : { x: 0, y: 0 }; // TODO: resolve relative positions
+                : { x: 0, y: 0 }; // TODO: resolve relative positions for stairs
 
             const jsonStair: JsonStair = {
                 name: stair.name,
                 x: stairPos.x,
                 z: stairPos.y,
-                shape: convertStairShape(stair.shape),
+                shape: convertStairShape(stair.shape, roomBoundsMap, stair.width?.value),
                 rise: stair.rise.value,
                 width: stair.width?.value,
                 riser: stair.riser?.value,
@@ -449,7 +469,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                 z: liftPos.y,
                 width: lift.size.width.value,
                 height: lift.size.height.value,
-                doors: lift.doors as Array<'north' | 'south' | 'east' | 'west'>,
+                doors: lift.doors as Array<ViewDirection>,
                 label: lift.label,
                 style: lift.styleRef
             };
@@ -513,20 +533,82 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
 // Stair Shape Conversion Helpers
 // ============================================================================
 
+/** Room bounds for wall alignment calculation */
+interface RoomBounds {
+    x: number;
+    z: number;
+    width: number;
+    height: number;
+}
+
+/**
+ * Calculate wall-aligned position for a stair segment.
+ * Returns the position and direction for a flight that runs along a room's wall.
+ */
+function calculateWallAlignedPosition(
+    wallRef: { room: string; wall: string },
+    roomBoundsMap: Map<string, RoomBounds>,
+    stairWidth: number = 1
+): { x: number; z: number; direction: ViewDirection } | undefined {
+    const roomBounds = roomBoundsMap.get(wallRef.room);
+    if (!roomBounds) return undefined;
+    
+    const wall = wallRef.wall as ViewDirection;
+    
+    // Position the stair along the specified wall
+    // The stair runs parallel to the wall, inset by its width
+    switch (wall) {
+        case 'top':
+            // Stair runs along the top wall, climbing toward bottom
+            return {
+                x: roomBounds.x,
+                z: roomBounds.z,
+                direction: 'bottom'
+            };
+        case 'bottom':
+            // Stair runs along the bottom wall, climbing toward top
+            return {
+                x: roomBounds.x,
+                z: roomBounds.z + roomBounds.height - stairWidth,
+                direction: 'top'
+            };
+        case 'left':
+            // Stair runs along the left wall, climbing toward right
+            return {
+                x: roomBounds.x,
+                z: roomBounds.z,
+                direction: 'right'
+            };
+        case 'right':
+            // Stair runs along the right wall, climbing toward left
+            return {
+                x: roomBounds.x + roomBounds.width - stairWidth,
+                z: roomBounds.z,
+                direction: 'left'
+            };
+        default:
+            return undefined;
+    }
+}
+
 /**
  * Convert a StairShape AST node to JsonStairShape
  */
-function convertStairShape(shape: StairShape): JsonStairShape {
+function convertStairShape(
+    shape: StairShape,
+    roomBoundsMap?: Map<string, RoomBounds>,
+    stairWidth?: number
+): JsonStairShape {
     if (isStraightStair(shape)) {
         return {
             type: 'straight',
-            direction: shape.direction as 'north' | 'south' | 'east' | 'west'
+            direction: shape.direction as ViewDirection
         };
     }
     if (isLShapedStair(shape)) {
         return {
             type: 'L-shaped',
-            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            entry: shape.entry as ViewDirection,
             turn: shape.turn as 'left' | 'right',
             runs: shape.runs.length > 0 ? shape.runs : undefined,
             landing: shape.landing 
@@ -537,7 +619,7 @@ function convertStairShape(shape: StairShape): JsonStairShape {
     if (isUShapedStair(shape)) {
         return {
             type: 'U-shaped',
-            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            entry: shape.entry as ViewDirection,
             turn: shape.turn as 'left' | 'right',
             runs: shape.runs.length > 0 ? shape.runs : undefined,
             landing: shape.landing 
@@ -548,7 +630,7 @@ function convertStairShape(shape: StairShape): JsonStairShape {
     if (isDoubleLStair(shape)) {
         return {
             type: 'double-L',
-            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            entry: shape.entry as ViewDirection,
             turn: shape.turn as 'left' | 'right',
             runs: shape.runs.length > 0 ? shape.runs : undefined,
             landing: shape.landing 
@@ -567,7 +649,7 @@ function convertStairShape(shape: StairShape): JsonStairShape {
     if (isCurvedStair(shape)) {
         return {
             type: 'curved',
-            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            entry: shape.entry as ViewDirection,
             arc: shape.arc,
             radius: shape.radius.value
         };
@@ -575,7 +657,7 @@ function convertStairShape(shape: StairShape): JsonStairShape {
     if (isWinderStair(shape)) {
         return {
             type: 'winder',
-            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            entry: shape.entry as ViewDirection,
             turn: shape.turn as 'left' | 'right',
             winders: shape.winders,
             runs: shape.runs.length > 0 ? shape.runs : undefined
@@ -584,8 +666,8 @@ function convertStairShape(shape: StairShape): JsonStairShape {
     if (isSegmentedStair(shape)) {
         return {
             type: 'custom',
-            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
-            segments: shape.segments.map(convertStairSegment)
+            entry: shape.entry as ViewDirection,
+            segments: shape.segments.map(seg => convertStairSegment(seg, roomBoundsMap, stairWidth))
         };
     }
     // Fallback - should not happen
@@ -595,9 +677,13 @@ function convertStairShape(shape: StairShape): JsonStairShape {
 /**
  * Convert a StairSegment AST node to JsonStairSegment
  */
-function convertStairSegment(segment: StairSegment): JsonStairSegment {
+function convertStairSegment(
+    segment: StairSegment,
+    roomBoundsMap?: Map<string, RoomBounds>,
+    stairWidth?: number
+): JsonStairSegment {
     if (isFlightSegment(segment)) {
-        return {
+        const result: JsonStairSegment = {
             type: 'flight',
             steps: segment.steps,
             width: segment.width?.value,
@@ -605,6 +691,20 @@ function convertStairSegment(segment: StairSegment): JsonStairSegment {
                 ? { room: segment.wallRef.room, wall: segment.wallRef.wall }
                 : undefined
         };
+        
+        // Calculate wall-aligned position if wallRef is present
+        if (segment.wallRef && roomBoundsMap) {
+            const alignedPos = calculateWallAlignedPosition(
+                { room: segment.wallRef.room, wall: segment.wallRef.wall },
+                roomBoundsMap,
+                segment.width?.value ?? stairWidth
+            );
+            if (alignedPos) {
+                result.wallAlignedPosition = alignedPos;
+            }
+        }
+        
+        return result;
     }
     if (isTurnSegment(segment)) {
         return {

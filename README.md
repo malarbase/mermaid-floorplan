@@ -127,10 +127,10 @@ Stairs are vertical circulation elements that connect floors:
 
 ```
 # Basic straight stair
-stair MainStair at (10, 0) shape straight direction north rise 10ft width 3.5ft
+stair MainStair at (10, 0) shape straight toward top rise 10ft width 3.5ft
 
 # L-shaped stair with landing
-stair CornerStair shape L-shaped entry south turn left runs 6, 6 rise 10ft width 3.5ft
+stair CornerStair shape L-shaped from bottom turn left runs 6, 6 rise 10ft width 3.5ft
 
 # U-shaped stair (switchback)
 stair ServiceStair shape U-shaped entry east turn right runs 8, 8 rise 12ft width 3ft
@@ -139,7 +139,7 @@ stair ServiceStair shape U-shaped entry east turn right runs 8, 8 rise 12ft widt
 stair TowerSpiral shape spiral rotation clockwise outer-radius 4ft rise 10ft
 
 # Custom segmented stair with landings
-stair CustomStair shape custom entry south [
+stair CustomStair shape custom from bottom [
     flight 5,
     turn right landing (4ft x 4ft),
     flight 6

@@ -21,6 +21,11 @@ export type {
     JsonConnection,
     JsonConfig,
     JsonStyle,
+    JsonStair,
+    JsonStairShape,
+    JsonStairSegment,
+    JsonLift,
+    JsonVerticalConnection,
 } from "floorplans-language";
 
 // Initialize services

@@ -24,7 +24,7 @@
 - [x] 2.4 Add warning for skipped floors in vertical connections
 - [x] 2.5 Add validator for wall alignment room references (room must exist on same floor)
 - [x] 2.6 Add building code compliance validator (residential/commercial/ada rules)
-- [ ] 2.7 Add validator for per-segment width consistency (landing width vs flight widths)
+- [x] 2.7 Add validator for per-segment width consistency (landing width vs flight widths)
 
 ## 3. JSON Export
 
@@ -33,8 +33,8 @@
 - [x] 3.3 Add `JsonLift` interface with position and dimensions
 - [x] 3.4 Add `JsonVerticalConnection` interface
 - [x] 3.5 Update `convertToJson` to include circulation elements
-- [ ] 3.6 Implement wall alignment position calculation (resolve `along Room.wall` to coordinates)
-- [ ] 3.7 Update `export-json.ts` script
+- [x] 3.6 Implement wall alignment position calculation (resolve `along Room.wall` to coordinates)
+- [x] 3.7 Update `export-json.ts` script
 
 ## 4. 2D Rendering (SVG)
 

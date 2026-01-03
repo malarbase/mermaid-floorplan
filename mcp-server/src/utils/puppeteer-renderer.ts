@@ -380,20 +380,20 @@ function getRenderingCode(): string {
         mesh.position.y = floorHeight / 2;
         group.add(mesh);
 
-        // Door indicators
+        // Door indicators (view-relative: top/bottom/left/right)
         if (lift.doors) {
           lift.doors.forEach(dir => {
             const doorGeom = new THREE.BoxGeometry(
-              (dir === 'north' || dir === 'south') ? width * 0.8 : 0.22,
+              (dir === 'top' || dir === 'bottom') ? width * 0.8 : 0.22,
               floorHeight * 0.8,
-              (dir === 'east' || dir === 'west') ? depth * 0.8 : 0.22
+              (dir === 'right' || dir === 'left') ? depth * 0.8 : 0.22
             );
             const doorMesh = new THREE.Mesh(doorGeom, new THREE.MeshStandardMaterial({ color: 0x333333 }));
             doorMesh.position.y = floorHeight / 2;
-            if (dir === 'north') doorMesh.position.z = -depth / 2;
-            if (dir === 'south') doorMesh.position.z = depth / 2;
-            if (dir === 'east') doorMesh.position.x = width / 2;
-            if (dir === 'west') doorMesh.position.x = -width / 2;
+            if (dir === 'top') doorMesh.position.z = -depth / 2;
+            if (dir === 'bottom') doorMesh.position.z = depth / 2;
+            if (dir === 'right') doorMesh.position.x = width / 2;
+            if (dir === 'left') doorMesh.position.x = -width / 2;
             group.add(doorMesh);
           });
         }
@@ -409,14 +409,14 @@ function getRenderingCode(): string {
         const stepCount = Math.round(rise / riserHeight);
         const actualRiser = rise / stepCount;
 
-        // Direction handling
+        // Direction handling (view-relative: top/bottom/left/right)
         let rotation = 0;
-        const direction = stair.shape?.direction || 'north';
+        const direction = stair.shape?.direction || 'top';
         switch (direction) {
-          case 'north': rotation = 0; break;
-          case 'south': rotation = Math.PI; break;
-          case 'east': rotation = -Math.PI / 2; break;
-          case 'west': rotation = Math.PI / 2; break;
+          case 'top': rotation = 0; break;
+          case 'bottom': rotation = Math.PI; break;
+          case 'right': rotation = -Math.PI / 2; break;
+          case 'left': rotation = Math.PI / 2; break;
         }
 
         // Create steps
@@ -529,14 +529,14 @@ function getRenderingCode(): string {
         }
         group.add(run2Group);
 
-        // Apply entry rotation
-        const entry = stair.shape?.entry || 'north';
+        // Apply entry rotation (view-relative: top/bottom/left/right)
+        const entry = stair.shape?.entry || 'top';
         let rotation = 0;
         switch (entry) {
-          case 'north': rotation = 0; break;
-          case 'south': rotation = Math.PI; break;
-          case 'east': rotation = -Math.PI / 2; break;
-          case 'west': rotation = Math.PI / 2; break;
+          case 'top': rotation = 0; break;
+          case 'bottom': rotation = Math.PI; break;
+          case 'right': rotation = -Math.PI / 2; break;
+          case 'left': rotation = Math.PI / 2; break;
         }
         group.rotation.y = rotation;
       }
