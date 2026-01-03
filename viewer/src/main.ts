@@ -3,9 +3,14 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Evaluator } from 'three-bvh-csg';
-import { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from './types';
-import { DIMENSIONS, COLORS, LengthUnit, METERS_TO_UNIT } from './constants';
-import { MaterialFactory, MaterialStyle } from './materials';
+// Import types and shared code from floorplan-3d-core for consistent rendering
+import type { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from 'floorplan-3d-core';
+import { 
+  DIMENSIONS, COLORS, COLORS_DARK, METERS_TO_UNIT, getThemeColors,
+  MaterialFactory, StairGenerator,
+  type LengthUnit, type ViewerTheme, type MaterialStyle
+} from 'floorplan-3d-core';
+// Browser-specific modules (CSG, DSL parsing)
 import { WallGenerator, StyleResolver } from './wall-generator';
 import { parseFloorplanDSL, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
 import { normalizeToMeters } from './unit-normalizer';
@@ -41,6 +46,7 @@ class Viewer {
     private styles: Map<string, JsonStyle> = new Map();
     private explodedViewFactor: number = 0;
     private wallGenerator: WallGenerator;
+    private stairGenerator: StairGenerator;
     
     // Light controls
     private directionalLight: THREE.DirectionalLight;
@@ -73,6 +79,9 @@ class Viewer {
     
     // Current floorplan data (for annotations)
     private currentFloorplanData: JsonExport | null = null;
+    
+    // Theme state
+    private currentTheme: ViewerTheme = 'light';
 
     constructor() {
         // Init scene
@@ -137,6 +146,10 @@ class Viewer {
 
         // Init wall generator with CSG evaluator
         this.wallGenerator = new WallGenerator(new Evaluator());
+        this.wallGenerator.setTheme(this.currentTheme);
+
+        // Init stair generator
+        this.stairGenerator = new StairGenerator();
 
         // Window resize
         window.addEventListener('resize', this.onWindowResize.bind(this));
@@ -249,6 +262,12 @@ class Viewer {
             this.updateDimensionAnnotations();
         });
         
+        // Theme toggle
+        const themeToggleBtn = document.getElementById('theme-toggle-btn') as HTMLButtonElement;
+        themeToggleBtn?.addEventListener('click', () => {
+            this.toggleTheme();
+        });
+        
         // Collapsible sections
         document.querySelectorAll('.section-header').forEach(header => {
             header.addEventListener('click', () => {
@@ -275,6 +294,123 @@ class Viewer {
         const z = this.lightRadius * Math.cos(elevationRad) * Math.cos(azimuthRad);
         
         this.directionalLight.position.set(x, y, z);
+    }
+    
+    private toggleTheme() {
+        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
+        this.applyTheme();
+        this.updateThemeButton();
+    }
+    
+    public setTheme(theme: ViewerTheme) {
+        this.currentTheme = theme;
+        this.applyTheme();
+        this.updateThemeButton();
+    }
+    
+    private applyTheme() {
+        const colors = getThemeColors(this.currentTheme);
+        this.scene.background = new THREE.Color(colors.BACKGROUND);
+
+        // Update wall generator theme
+        this.wallGenerator.setTheme(this.currentTheme);
+
+        // Regenerate materials for all rooms that don't have explicit styles
+        this.regenerateMaterialsForTheme();
+    }
+
+    /**
+     * Regenerate materials for rooms without explicit styles when theme changes
+     */
+    private regenerateMaterialsForTheme() {
+        if (!this.currentFloorplanData) return;
+
+        const themeColors = getThemeColors(this.currentTheme);
+
+        // Traverse all floors and update materials
+        this.currentFloorplanData.floors.forEach((floorData, floorIndex) => {
+            const floorGroup = this.floors[floorIndex];
+            if (!floorGroup) return;
+
+            floorData.rooms.forEach(room => {
+                // Check if room has explicit style
+                const hasExplicitStyle = (room.style && this.styles.has(room.style)) ||
+                    (this.config.default_style && this.styles.has(this.config.default_style));
+
+                // Only update materials for rooms without explicit styles
+                if (!hasExplicitStyle) {
+                    // Find and update floor mesh for this room
+                    floorGroup.traverse((child) => {
+                        if (child instanceof THREE.Mesh) {
+                            const mesh = child as THREE.Mesh;
+                            const material = mesh.material;
+
+                            // Update floor materials (single material)
+                            if (material instanceof THREE.MeshStandardMaterial && !Array.isArray(material)) {
+                                // Check if it's a floor mesh (positioned at room elevation)
+                                const elevation = room.elevation || 0;
+                                if (Math.abs(mesh.position.y - elevation) < 0.1) {
+                                    material.color.setHex(themeColors.FLOOR);
+                                    material.needsUpdate = true;
+                                }
+                            }
+
+                            // Update wall materials (material arrays for per-face materials)
+                            if (Array.isArray(material)) {
+                                material.forEach(mat => {
+                                    if (mat instanceof THREE.MeshStandardMaterial) {
+                                        // Update wall colors
+                                        mat.color.setHex(themeColors.WALL);
+                                        mat.needsUpdate = true;
+                                    }
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        // Update door and window materials (they don't have explicit styles)
+        this.floors.forEach(floorGroup => {
+            floorGroup.traverse((child) => {
+                if (child instanceof THREE.Mesh) {
+                    const mesh = child as THREE.Mesh;
+                    const material = mesh.material;
+
+                    if (material instanceof THREE.MeshStandardMaterial) {
+                        // Window materials are transparent
+                        if (material.transparent && material.opacity < 1.0) {
+                            material.color.setHex(themeColors.WINDOW);
+                            material.needsUpdate = true;
+                        }
+                        // Door materials (identified by their color range)
+                        else if (material.color.getHex() === COLORS.DOOR ||
+                                 material.color.getHex() === COLORS_DARK.DOOR) {
+                            material.color.setHex(themeColors.DOOR);
+                            material.needsUpdate = true;
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    private updateThemeButton() {
+        const btn = document.getElementById('theme-toggle-btn');
+        if (btn) {
+            switch (this.currentTheme) {
+                case 'light':
+                    btn.textContent = '🌙 Dark';
+                    break;
+                case 'dark':
+                    btn.textContent = '☀️ Light';
+                    break;
+                case 'blueprint':
+                    btn.textContent = '📐 Blueprint';
+                    break;
+            }
+        }
     }
     
     private toggleCameraMode() {
@@ -729,6 +865,15 @@ class Viewer {
             }
         }
         
+        // Apply theme from DSL config (6.7 & 6.8)
+        if (this.config.theme === 'dark' || this.config.darkMode === true) {
+            this.setTheme('dark');
+        } else if (this.config.theme === 'blueprint') {
+            this.setTheme('blueprint');
+        } else if (this.config.theme === 'default') {
+            this.setTheme('light');
+        }
+        
         // Build style lookup map
         this.styles.clear();
         if (normalizedData.styles) {
@@ -812,9 +957,15 @@ class Viewer {
 
             // Resolve style for this room
             const roomStyle = this.resolveRoomStyle(room);
-            
-            // Create materials for this room with style
-            const materials = MaterialFactory.createMaterialSet(roomStyle);
+
+            // Create materials for this room with style and theme
+            // Only pass theme if room doesn't have explicit style (so theme colors are used as defaults)
+            const hasExplicitStyle = (room.style && this.styles.has(room.style)) ||
+                (this.config.default_style && this.styles.has(this.config.default_style));
+            const materials = MaterialFactory.createMaterialSet(
+                roomStyle,
+                hasExplicitStyle ? undefined : this.currentTheme
+            );
 
             // 1. Floor plate
             const floorMesh = this.createFloorMesh(roomWithDefaults, materials.floor);
@@ -834,6 +985,22 @@ class Viewer {
                 );
             });
         });
+
+        // 3. Stairs
+        if (floorData.stairs) {
+            floorData.stairs.forEach(stair => {
+                const stairGroup = this.stairGenerator.generateStair(stair);
+                group.add(stairGroup);
+            });
+        }
+
+        // 4. Lifts
+        if (floorData.lifts) {
+            floorData.lifts.forEach(lift => {
+                const liftGroup = this.stairGenerator.generateLift(lift, floorDefault);
+                group.add(liftGroup);
+            });
+        }
 
         return group;
     }

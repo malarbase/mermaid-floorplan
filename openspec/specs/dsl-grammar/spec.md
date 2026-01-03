@@ -228,7 +228,8 @@ The DSL SHALL support a `define` statement to create named dimension values.
 - **AND** variables SHALL be accessible in all floors
 
 ### Requirement: Config Block Syntax
-The DSL SHALL support a `config` block for global rendering defaults.
+
+The DSL SHALL support a `config` block for global rendering defaults, including theme selection, font configuration, display toggles, and both camelCase and snake_case property naming.
 
 #### Scenario: Config block with wall thickness
 - **WHEN** user writes `config { wall_thickness: 0.5 }`
@@ -239,6 +240,43 @@ The DSL SHALL support a `config` block for global rendering defaults.
 - **WHEN** user writes `config { wall_thickness: 0.3, door_width: 1.0 }`
 - **THEN** the parser SHALL accept multiple property definitions
 - **AND** all properties SHALL be available for rendering
+
+#### Scenario: Config block with theme
+- **WHEN** user writes `config { theme: dark, wallThickness: 0.3 }`
+- **THEN** the parser SHALL accept the theme property
+- **AND** the dark theme SHALL be applied to rendering
+
+#### Scenario: Config block with darkMode
+- **WHEN** user writes `config { darkMode: true }`
+- **THEN** the parser SHALL accept the boolean darkMode property
+- **AND** the dark theme SHALL be applied to rendering
+
+#### Scenario: Config block with font configuration
+- **WHEN** user writes `config { fontFamily: "Helvetica", fontSize: 12 }`
+- **THEN** the parser SHALL accept string and number values
+- **AND** font settings SHALL be applied to text elements
+
+#### Scenario: Config block with display toggles
+- **WHEN** user writes `config { showLabels: true, showDimensions: false }`
+- **THEN** the parser SHALL accept boolean property values
+- **AND** labels SHALL be shown while dimensions are hidden
+
+#### Scenario: All config properties together (camelCase)
+- **WHEN** user writes:
+  ```
+  config { 
+    theme: blueprint,
+    darkMode: false,
+    wallThickness: 0.3,
+    fontFamily: "Roboto",
+    fontSize: 12,
+    showLabels: true,
+    showDimensions: true,
+    defaultUnit: m
+  }
+  ```
+- **THEN** the parser SHALL accept all property types together
+- **AND** all properties SHALL be correctly applied to rendering
 
 ### Requirement: Style Block Definition
 The DSL SHALL support defining named style blocks with material properties.
@@ -735,3 +773,664 @@ The system SHALL validate connection size dimensions against physical constraint
 - **THEN** the system SHALL emit a warning that height exceeds room height
 - **AND** the system MAY clamp height to room height
 
+### Requirement: Theme Selection Configuration
+
+The DSL SHALL support a `theme` property in the config block for selecting rendering theme presets.
+
+#### Scenario: Theme specified in config
+- **WHEN** `config { theme: dark }` is defined
+- **THEN** the renderer SHALL use the "dark" theme colors and styles
+- **AND** all SVG elements SHALL use dark theme CSS classes
+
+#### Scenario: Blueprint theme selection
+- **WHEN** `config { theme: blueprint }` is defined
+- **THEN** the renderer SHALL use blue background with light blue lines
+- **AND** text elements SHALL use light colors for contrast
+
+#### Scenario: Default theme when not specified
+- **GIVEN** no `theme` property is set in config
+- **WHEN** the floorplan is rendered
+- **THEN** the "default" theme SHALL be applied (beige floor, black walls)
+
+#### Scenario: Unknown theme warning
+- **WHEN** `config { theme: nonexistent }` is defined
+- **AND** no theme named "nonexistent" is registered
+- **THEN** the system SHALL emit a validation warning about unknown theme
+- **AND** rendering SHALL proceed with the default theme
+
+### Requirement: Dark Mode Toggle
+
+The DSL SHALL support a `darkMode` boolean property matching Mermaid.js configuration schema for quick theme switching.
+
+#### Scenario: Dark mode enabled
+- **WHEN** `config { darkMode: true }` is defined
+- **THEN** the renderer SHALL use the "dark" theme preset
+- **AND** this SHALL be equivalent to `config { theme: dark }`
+
+#### Scenario: Dark mode disabled explicitly
+- **WHEN** `config { darkMode: false }` is defined
+- **THEN** the renderer SHALL use the default (light) theme
+
+#### Scenario: Theme takes precedence over darkMode
+- **WHEN** `config { theme: blueprint, darkMode: true }` is defined
+- **THEN** the `theme` property SHALL take precedence
+- **AND** the blueprint theme SHALL be applied (not dark)
+- **AND** a validation warning MAY be emitted about conflicting settings
+
+### Requirement: Naming Convention Normalization
+
+The DSL SHALL support both camelCase (Mermaid convention) and snake_case (existing DSL convention) for configuration property names.
+
+#### Scenario: camelCase config accepted
+- **WHEN** `config { wallThickness: 0.3, fontFamily: "Roboto" }` is defined
+- **THEN** the parser SHALL accept camelCase property names
+- **AND** values SHALL be correctly applied to rendering
+
+#### Scenario: snake_case config accepted (backward compatibility)
+- **WHEN** `config { wall_thickness: 0.3, font_family: "Roboto" }` is defined
+- **THEN** the parser SHALL accept snake_case property names
+- **AND** values SHALL be correctly applied to rendering
+
+#### Scenario: Mixed naming conventions
+- **WHEN** `config { wallThickness: 0.3, door_width: 1.0 }` is defined
+- **THEN** the parser SHALL accept both conventions in the same block
+- **AND** all values SHALL be normalized internally to camelCase
+
+#### Scenario: Normalization mapping
+- **GIVEN** the following key mappings:
+  | snake_case | camelCase |
+  |------------|-----------|
+  | `wall_thickness` | `wallThickness` |
+  | `font_family` | `fontFamily` |
+  | `font_size` | `fontSize` |
+  | `show_labels` | `showLabels` |
+  | `show_dimensions` | `showDimensions` |
+  | `dark_mode` | `darkMode` |
+- **WHEN** either naming convention is used
+- **THEN** the value SHALL be accessible via the camelCase normalized key
+
+### Requirement: Font Configuration
+
+The DSL SHALL support `fontFamily` and `fontSize` properties in the config block for text rendering customization.
+
+#### Scenario: Custom font family (camelCase)
+- **WHEN** `config { fontFamily: "Roboto, sans-serif" }` is defined
+- **THEN** all text elements (room labels, dimension annotations) SHALL use the specified font
+
+#### Scenario: Custom font family (snake_case)
+- **WHEN** `config { font_family: "Roboto, sans-serif" }` is defined
+- **THEN** all text elements SHALL use the specified font
+
+#### Scenario: Custom font size
+- **WHEN** `config { fontSize: 14 }` is defined
+- **THEN** the base font size SHALL be 14 (in SVG user units)
+
+#### Scenario: Default font values
+- **GIVEN** no `fontFamily` or `fontSize` is specified
+- **WHEN** the floorplan is rendered
+- **THEN** fontFamily SHALL default to "Arial, sans-serif"
+- **AND** fontSize SHALL default to 0.8 (SVG user units)
+
+### Requirement: Label Display Toggle
+
+The DSL SHALL support a `showLabels` boolean property to toggle room label display.
+
+#### Scenario: Hide room labels
+- **WHEN** `config { showLabels: false }` is defined
+- **THEN** room name text elements SHALL NOT be rendered in SVG output
+- **AND** room size text elements SHALL NOT be rendered
+
+#### Scenario: Show labels by default
+- **GIVEN** no `showLabels` property is set in config
+- **WHEN** the floorplan is rendered
+- **THEN** room labels SHALL be displayed (default: true)
+
+### Requirement: Dimension Display Toggle in Config
+
+The DSL SHALL support a `showDimensions` boolean property in the config block to enable dimension annotations.
+
+#### Scenario: Enable dimension annotations via config
+- **WHEN** `config { showDimensions: true }` is defined
+- **THEN** dimension annotation lines and values SHALL be rendered on room boundaries
+
+#### Scenario: Dimensions disabled by default
+- **GIVEN** no `showDimensions` property is set in config
+- **WHEN** the floorplan is rendered
+- **THEN** dimension annotations SHALL NOT be displayed (default: false)
+
+### Requirement: YAML Frontmatter Configuration
+
+The DSL SHALL support an optional YAML frontmatter block at the beginning of the diagram for configuration, following Mermaid.js v10.5.0+ conventions.
+
+#### Scenario: Frontmatter with title
+- **GIVEN** a floorplan with frontmatter:
+  ```
+  ---
+  title: Villa Layout
+  ---
+  floorplan
+    floor Ground { ... }
+  ```
+- **WHEN** the floorplan is parsed
+- **THEN** the title "Villa Layout" SHALL be extracted as metadata
+
+#### Scenario: Frontmatter with camelCase config (Mermaid-style)
+- **GIVEN** a floorplan with frontmatter:
+  ```
+  ---
+  config:
+    theme: blueprint
+    wallThickness: 0.5
+    fontFamily: "Roboto"
+  ---
+  floorplan
+    floor Ground { ... }
+  ```
+- **WHEN** the floorplan is parsed
+- **THEN** the theme SHALL be set to "blueprint"
+- **AND** wallThickness SHALL resolve to 0.5
+- **AND** fontFamily SHALL be "Roboto"
+
+#### Scenario: Frontmatter merges with inline config
+- **GIVEN** a floorplan with frontmatter `config: { theme: dark }` and inline `config { theme: blueprint }`
+- **WHEN** the floorplan is parsed
+- **THEN** the inline config SHALL take precedence
+- **AND** theme SHALL resolve to "blueprint"
+
+#### Scenario: Frontmatter only (no inline config)
+- **GIVEN** a floorplan with frontmatter config but no `config { }` block
+- **WHEN** the floorplan is parsed
+- **THEN** frontmatter config values SHALL be applied
+
+### Requirement: Boolean Config Values
+
+The DSL SHALL support boolean values (`true`, `false`) for config properties that require them.
+
+#### Scenario: Boolean true value
+- **WHEN** `config { showLabels: true }` is defined
+- **THEN** the parser SHALL accept `true` as a valid boolean value
+
+#### Scenario: Boolean false value
+- **WHEN** `config { showDimensions: false }` is defined
+- **THEN** the parser SHALL accept `false` as a valid boolean value
+
+#### Scenario: Invalid boolean value
+- **WHEN** `config { showLabels: yes }` is defined
+- **THEN** the parser SHALL report a syntax error
+- **AND** the error SHALL indicate expected `true` or `false`
+
+### Requirement: Grammar Version Declaration
+
+The DSL SHALL support an optional version declaration to specify which grammar version the floorplan was authored for.
+
+#### Scenario: YAML frontmatter version declaration
+
+- **GIVEN** a floorplan file starting with YAML frontmatter
+- **WHEN** the frontmatter contains `version: "1.0"`
+- **THEN** the parser SHALL use grammar version 1.0 rules
+- **AND** the version SHALL be accessible in the parsed AST
+
+#### Scenario: Inline directive version declaration
+
+- **GIVEN** a floorplan file starting with `%%{version: 1.0}%%`
+- **WHEN** the file is parsed
+- **THEN** the parser SHALL use grammar version 1.0 rules
+- **AND** the directive SHALL be consumed (not passed to diagram content)
+
+#### Scenario: No version declaration
+
+- **GIVEN** a floorplan file without any version declaration
+- **WHEN** the file is parsed
+- **THEN** the parser SHALL assume the current (latest) grammar version
+- **AND** a warning SHALL be emitted recommending explicit version declaration
+
+### Requirement: Semantic Versioning
+
+The grammar SHALL follow semantic versioning (MAJOR.MINOR.PATCH) where:
+- MAJOR: Breaking changes that remove or alter existing syntax
+- MINOR: New features that are backward compatible
+- PATCH: Bug fixes and clarifications
+
+#### Scenario: Major version breaking change
+
+- **GIVEN** grammar version 2.0 removes the `door_width` config property
+- **WHEN** a file declares `version: "2.0"` and uses `door_width`
+- **THEN** the parser SHALL emit an error
+- **AND** the error message SHALL reference the migration path
+
+#### Scenario: Minor version new feature
+
+- **GIVEN** grammar version 1.1 adds the `size` attribute to connections
+- **WHEN** a file declares `version: "1.0"` and uses connection size
+- **THEN** the parser SHALL accept the syntax (minor versions are backward compatible within major)
+
+#### Scenario: Patch version compatibility
+
+- **GIVEN** grammar versions 1.0.0 and 1.0.1
+- **WHEN** a file declares `version: "1.0"` (without patch)
+- **THEN** the parser SHALL use the latest patch version (1.0.1)
+
+### Requirement: Deprecation Warnings
+
+The system SHALL emit deprecation warnings for features scheduled for removal in a future major version.
+
+#### Scenario: Using deprecated feature
+
+- **GIVEN** `door_width` is deprecated in favor of `door_size`
+- **WHEN** a floorplan uses `door_width` in config
+- **THEN** the system SHALL emit a warning indicating deprecation
+- **AND** the warning SHALL specify the replacement (`door_size`)
+- **AND** the warning SHALL specify when it becomes an error (version 2.0)
+
+#### Scenario: Deprecated feature in older version file
+
+- **GIVEN** a file declares `version: "1.0"`
+- **AND** `door_width` is deprecated in 1.1 for removal in 2.0
+- **WHEN** the file is parsed
+- **THEN** a deprecation warning SHALL still be emitted
+- **AND** parsing SHALL succeed (feature still valid in 1.x)
+
+### Requirement: Version Compatibility Validation
+
+The system SHALL validate version declarations against supported grammar versions.
+
+#### Scenario: Unsupported future version
+
+- **GIVEN** the current grammar version is 1.2.0
+- **WHEN** a file declares `version: "2.0"`
+- **THEN** the parser SHALL emit an error
+- **AND** the error SHALL indicate the maximum supported version
+
+#### Scenario: Unsupported old version
+
+- **GIVEN** grammar versions prior to 1.0 are not supported
+- **WHEN** a file declares `version: "0.9"`
+- **THEN** the parser SHALL emit an error
+- **AND** the error SHALL recommend upgrading to a supported version
+
+### Requirement: Migration Support
+
+The system SHALL provide tooling to migrate floorplan files between grammar versions.
+
+#### Scenario: Migrate command updates syntax
+
+- **GIVEN** a floorplan file using `door_width: 3, door_height: 7`
+- **WHEN** the user runs `floorplan migrate file.floorplan --to 2.0`
+- **THEN** the file SHALL be updated to use `door_size: (3 x 7)`
+- **AND** the version declaration SHALL be updated to `version: "2.0"`
+
+#### Scenario: Dry run mode
+
+- **GIVEN** a floorplan file requiring migration
+- **WHEN** the user runs `floorplan migrate file.floorplan --to 2.0 --dry-run`
+- **THEN** the system SHALL display proposed changes
+- **AND** the file SHALL NOT be modified
+
+#### Scenario: Migration preserves semantics
+
+- **GIVEN** a valid floorplan file in version 1.0
+- **WHEN** migrated to version 2.0
+- **THEN** the rendered output (SVG/3D) SHALL be identical
+- **AND** no functional changes SHALL occur
+
+### Requirement: Version in Export
+
+The grammar version SHALL be included in exported formats.
+
+#### Scenario: JSON export includes version
+
+- **GIVEN** a floorplan file with `version: "1.0"`
+- **WHEN** exported to JSON
+- **THEN** the JSON SHALL include `"grammarVersion": "1.0"`
+
+#### Scenario: SVG includes version metadata
+
+- **GIVEN** a floorplan file with `version: "1.0"`
+- **WHEN** rendered to SVG
+- **THEN** the SVG SHALL include version in metadata or comments
+
+### Requirement: Stair Element Definition
+The DSL SHALL support a `stair` element type within floors for defining vertical circulation via stairs.
+
+#### Scenario: Basic straight stair
+- **WHEN** a user defines `stair MainStair shape straight direction north rise 10ft width 3.5ft`
+- **THEN** the parser SHALL accept this as valid syntax
+- **AND** the stair SHALL be available for rendering with the specified dimensions
+
+#### Scenario: Stair with position
+- **WHEN** a user defines `stair Lobby at (10, 20) shape straight direction south rise 9ft width 4ft`
+- **THEN** the stair SHALL be positioned at coordinates (10, 20)
+
+#### Scenario: Stair with relative position
+- **WHEN** a user defines `stair BackStair shape straight direction north rise 9ft width 3ft right-of Kitchen`
+- **THEN** the stair SHALL be positioned relative to the Kitchen room
+
+### Requirement: Stair Shape Presets
+The DSL SHALL support preset stair shapes for common configurations.
+
+#### Scenario: L-shaped stair
+- **WHEN** a user defines `stair CornerStair shape L-shaped entry south turn left runs 6, 6 rise 10ft width 3.5ft`
+- **THEN** the parser SHALL accept this as a two-flight stair with one 90° turn
+- **AND** the stair SHALL have 6 steps before and 6 steps after the landing
+
+#### Scenario: U-shaped stair
+- **WHEN** a user defines `stair ServiceStair shape U-shaped entry east turn right runs 8, 8 rise 12ft width 3ft`
+- **THEN** the parser SHALL accept this as a two-flight stair with one 180° turn
+
+#### Scenario: Double-L stair (three flights)
+- **WHEN** a user defines `stair ThreeFlightStair shape double-L entry south turn right runs 5, 6, 5 rise 14ft width 3.5ft`
+- **THEN** the parser SHALL accept this as a three-flight stair with two 90° turns
+- **AND** the stair SHALL have runs of 5, 6, and 5 steps respectively
+
+#### Scenario: Spiral stair
+- **WHEN** a user defines `stair TowerSpiral shape spiral rotation clockwise outer-radius 4ft rise 10ft`
+- **THEN** the parser SHALL accept this as a helical stair
+- **AND** the stair SHALL use the specified outer radius
+
+#### Scenario: Winder stair
+- **WHEN** a user defines `stair CompactStair shape winder entry west turn right winders 3 runs 4, 5 rise 9ft width 2.5ft`
+- **THEN** the parser SHALL accept this as a stair with triangular winder treads at the corner
+
+### Requirement: Custom Segmented Stair
+The DSL SHALL support a composable `custom` shape using flight and turn segments for arbitrary stair configurations.
+
+#### Scenario: Custom double-L via segments
+- **WHEN** a user defines:
+  ```
+  stair CustomStair shape custom entry south [
+    flight 5,
+    turn right landing (4ft x 4ft),
+    flight 6,
+    turn right landing (4ft x 4ft),
+    flight 5
+  ] rise 14ft width 3.5ft
+  ```
+- **THEN** the parser SHALL accept this as a valid segmented stair
+- **AND** the stair SHALL have three flights with two quarter landings
+
+#### Scenario: Tower stair with winders
+- **WHEN** a user defines:
+  ```
+  stair TowerStair shape custom entry south [
+    flight 4,
+    turn right winders 3,
+    flight 4,
+    turn right winders 3,
+    flight 4,
+    turn right winders 3,
+    flight 4
+  ] rise 16ft width 3ft
+  ```
+- **THEN** the parser SHALL accept this as a four-flight stair with winder corners
+
+#### Scenario: Mixed landing and winder turns
+- **WHEN** a user defines segments mixing `landing` and `winders` turns
+- **THEN** the parser SHALL accept different turn types within the same stair
+
+### Requirement: Stair Segment Wall Alignment
+The DSL SHALL support aligning stair flight segments along room walls for perimeter stairs.
+
+#### Scenario: Single flight aligned to wall
+- **WHEN** a user defines `flight 5 along StairWell.south`
+- **THEN** the flight's outer edge SHALL be positioned against the south wall of StairWell
+- **AND** the stair width SHALL extend inward from the wall
+
+#### Scenario: Perimeter stair along three walls
+- **WHEN** a user defines:
+  ```
+  stair PerimeterStair shape custom entry south [
+    flight 5 along StairWell.south,
+    turn right landing (4ft x 4ft),
+    flight 6 along StairWell.west,
+    turn right landing (4ft x 4ft),
+    flight 5 along StairWell.north
+  ] rise 14ft width 3.5ft
+  ```
+- **THEN** the parser SHALL accept this as a valid perimeter stair
+- **AND** each flight SHALL be positioned against its specified wall
+- **AND** landings SHALL be placed at wall corners
+
+#### Scenario: Invalid wall reference
+- **GIVEN** a flight aligned to `NonExistent.south`
+- **AND** no room named "NonExistent" exists
+- **WHEN** the floorplan is validated
+- **THEN** the system SHALL report an error about the missing room reference
+
+### Requirement: Stair Dimensional Parameters
+The DSL SHALL support dimensional parameters for building code compliance.
+
+#### Scenario: Explicit riser and tread
+- **WHEN** a user defines `stair MainStair shape straight direction north rise 9ft width 3.5ft riser 7in tread 11in`
+- **THEN** the stair SHALL use 7-inch risers and 11-inch treads
+
+#### Scenario: Auto-calculated steps
+- **WHEN** a user defines `stair MainStair shape straight direction north rise 9ft width 3.5ft` without riser specification
+- **THEN** the system SHALL auto-calculate the number of steps to achieve compliant riser heights (≤7.75 inches)
+
+#### Scenario: Nosing specification
+- **WHEN** a user defines `stair MainStair shape straight direction north rise 9ft width 3.5ft nosing 1.25in`
+- **THEN** the stair treads SHALL have 1.25-inch nosing overhang
+
+#### Scenario: Headroom specification
+- **WHEN** a user defines `stair MainStair shape straight direction north rise 9ft width 3.5ft headroom 84in`
+- **THEN** the stair SHALL have 84-inch minimum headroom clearance
+- **AND** this value SHALL be used for 3D rendering and validation
+
+#### Scenario: Default headroom
+- **WHEN** a user defines a stair without explicit headroom
+- **THEN** the system SHALL use 80 inches (6'8") as the default headroom
+
+### Requirement: Per-Segment Width Override
+The DSL SHALL support width overrides on individual flight segments in custom stairs.
+
+#### Scenario: Flight with custom width
+- **WHEN** a user defines `flight 8 width 6ft` within a custom stair
+- **THEN** that flight SHALL use 6-foot width regardless of the stair's default width
+
+#### Scenario: Grand stair with varying widths
+- **WHEN** a user defines:
+  ```
+  stair GrandStair shape custom entry south [
+    flight 8 width 6ft,
+    turn right landing (6ft x 6ft),
+    flight 6 width 4ft
+  ] rise 12ft width 4ft
+  ```
+- **THEN** the first flight SHALL be 6 feet wide
+- **AND** the second flight SHALL be 4 feet wide
+- **AND** the landing SHALL be 6 feet by 6 feet
+
+### Requirement: Stringer Style Configuration
+The DSL SHALL support stringer style specification for controlling riser appearance.
+
+#### Scenario: Open stringers (floating treads)
+- **WHEN** a user defines `stair ModernStair ... stringers open`
+- **THEN** the stair SHALL be rendered without solid risers
+- **AND** 3D rendering SHALL show visible side stringers and floating treads
+
+#### Scenario: Closed stringers (default)
+- **WHEN** a user defines `stair TraditionalStair ... stringers closed`
+- **THEN** the stair SHALL be rendered with solid risers between treads
+
+#### Scenario: Glass stringers
+- **WHEN** a user defines `stair GlassStair ... stringers glass`
+- **THEN** the stair SHALL be rendered with translucent/glass risers
+- **AND** 3D rendering SHALL use appropriate transparent material
+
+#### Scenario: Default stringer style
+- **WHEN** a user defines a stair without explicit stringers style
+- **THEN** the system SHALL default to `closed` (solid risers)
+
+### Requirement: Building Code Compliance Configuration
+The DSL SHALL support optional building code compliance validation via config.
+
+#### Scenario: Residential code (IRC)
+- **WHEN** config specifies `stair_code: residential`
+- **AND** a stair has riser height greater than 7.75 inches
+- **THEN** the system SHALL emit a warning about non-compliant riser height
+
+#### Scenario: Commercial code (IBC)
+- **WHEN** config specifies `stair_code: commercial`
+- **AND** a stair has width less than 44 inches
+- **THEN** the system SHALL emit a warning about non-compliant stair width
+
+#### Scenario: ADA compliance
+- **WHEN** config specifies `stair_code: ada`
+- **AND** a stair has tread depth less than 11 inches
+- **THEN** the system SHALL emit a warning about non-compliant tread depth
+
+#### Scenario: No code validation
+- **WHEN** config specifies `stair_code: none` or omits stair_code
+- **THEN** no building code validation warnings SHALL be emitted
+
+#### Scenario: Code validation is non-blocking
+- **WHEN** a stair fails code validation
+- **THEN** the system SHALL emit warnings
+- **AND** rendering SHALL proceed (warnings are non-blocking)
+
+### Requirement: Stair Handrail Configuration
+The DSL SHALL support handrail specification for stairs.
+
+#### Scenario: Single-side handrail
+- **WHEN** a user defines `stair MainStair ... handrail (right)`
+- **THEN** the stair SHALL have a handrail on the right side only
+
+#### Scenario: Both-side handrail
+- **WHEN** a user defines `stair MainStair ... handrail (both)`
+- **THEN** the stair SHALL have handrails on both sides
+
+#### Scenario: Inner/outer handrail for curved stairs
+- **WHEN** a user defines `stair SpiralStair shape spiral ... handrail (outer)`
+- **THEN** the spiral stair SHALL have a handrail on the outer edge only
+
+### Requirement: Stair Direction Specification
+The DSL SHALL support specifying the climb direction for stairs.
+
+#### Scenario: Compass direction for straight stair
+- **WHEN** a user defines `shape straight direction north`
+- **THEN** the stair SHALL climb toward the north
+
+#### Scenario: Entry direction for turned stairs
+- **WHEN** a user defines `shape L-shaped entry south turn left`
+- **THEN** the stair entry SHALL face south and turn left (climbing toward east)
+
+#### Scenario: Rotation direction for spiral
+- **WHEN** a user defines `shape spiral rotation clockwise`
+- **THEN** the spiral SHALL rotate clockwise when viewed from above
+
+### Requirement: Stair Material Specification
+The DSL SHALL support material specification for stair components.
+
+#### Scenario: Tread and riser materials
+- **WHEN** a user defines `stair MainStair ... material { tread: "oak", riser: "painted-white" }`
+- **THEN** the stair SHALL have oak treads and white-painted risers for rendering
+
+#### Scenario: Full material specification
+- **WHEN** a user defines `material { tread: "marble", riser: "marble", stringer: "steel", handrail: "brass" }`
+- **THEN** all stair components SHALL have their respective materials for 3D rendering
+
+### Requirement: Lift Element Definition
+The DSL SHALL support a `lift` element type for elevator shafts.
+
+#### Scenario: Basic lift
+- **WHEN** a user defines `lift MainLift at (20, 25) size (5ft x 5ft)`
+- **THEN** the parser SHALL accept this as a valid lift definition
+- **AND** the lift SHALL have a 5ft × 5ft footprint
+
+#### Scenario: Lift with door specification
+- **WHEN** a user defines `lift MainLift at (20, 25) size (5ft x 5ft) doors (north, south)`
+- **THEN** the lift SHALL have door openings on the north and south sides
+
+#### Scenario: Lift with relative position
+- **WHEN** a user defines `lift ServiceLift size (4ft x 4ft) right-of StairLanding`
+- **THEN** the lift SHALL be positioned relative to StairLanding
+
+#### Scenario: Lift with label and style
+- **WHEN** a user defines `lift Elevator size (5ft x 5ft) label "Main Elevator" style Circulation`
+- **THEN** the lift SHALL have the specified label and style for rendering
+
+### Requirement: Vertical Connection Statement
+The DSL SHALL support `vertical` statements to link circulation elements across floors.
+
+#### Scenario: Two-floor stair connection
+- **WHEN** a user defines `vertical GroundFloor.MainStair to FirstFloor.MainStair`
+- **THEN** the system SHALL record a vertical link between these stair elements
+
+#### Scenario: Multi-floor lift connection
+- **WHEN** a user defines `vertical GroundFloor.Elevator to FirstFloor.Elevator to SecondFloor.Elevator`
+- **THEN** the system SHALL record a chain of vertical links through all three floors
+
+#### Scenario: Vertical connection validation
+- **GIVEN** `stair MainStair` on GroundFloor at position (10, 20)
+- **AND** `stair MainStair` on FirstFloor at position (10, 20)
+- **WHEN** `vertical GroundFloor.MainStair to FirstFloor.MainStair` is validated
+- **THEN** validation SHALL pass (positions match)
+
+#### Scenario: Misaligned vertical connection warning
+- **GIVEN** `stair MainStair` on GroundFloor at position (10, 20)
+- **AND** `stair MainStair` on FirstFloor at position (15, 20)
+- **WHEN** `vertical GroundFloor.MainStair to FirstFloor.MainStair` is validated
+- **THEN** the system SHALL emit a warning about position mismatch
+
+### Requirement: Floor Element Arrays
+The DSL SHALL include stairs and lifts as floor-level element arrays.
+
+#### Scenario: Floor with rooms and stairs
+- **WHEN** a user defines:
+  ```
+  floor GroundFloor height 12 {
+    room Living at (0, 0) size (15 x 20) walls [...]
+    stair MainStair at (15, 0) shape straight direction north rise 12ft width 4ft
+  }
+  ```
+- **THEN** the parser SHALL accept both room and stair within the same floor
+
+#### Scenario: Floor with multiple circulation elements
+- **WHEN** a floor contains multiple stairs and lifts
+- **THEN** the parser SHALL accept all circulation elements as valid floor children
+
+### Requirement: Stair Dimensional Defaults
+The system SHALL apply sensible defaults for stair dimensions when not explicitly specified.
+
+#### Scenario: Default riser height calculation
+- **GIVEN** a stair with `rise 9ft` but no explicit riser height
+- **WHEN** the stair is processed
+- **THEN** the system SHALL calculate risers to achieve ≤7.75" (residential) or ≤7" (commercial) per step
+
+#### Scenario: Default tread depth
+- **GIVEN** a stair without explicit tread specification
+- **WHEN** the stair is processed
+- **THEN** the system SHALL use 11 inches as the default tread depth (meets both IRC and IBC minimums)
+
+#### Scenario: Default width
+- **GIVEN** a stair without explicit width
+- **WHEN** the stair is processed
+- **THEN** the system SHALL use 36 inches (3 feet) as the default width
+
+#### Scenario: Default nosing
+- **GIVEN** a stair without explicit nosing
+- **WHEN** the stair is processed
+- **THEN** the system SHALL use 1 inch as the default nosing overhang
+
+### Requirement: Building Code Reference Table
+The system SHALL validate against the following building code parameters:
+
+| Parameter | Residential (IRC) | Commercial (IBC) | ADA |
+|-----------|-------------------|------------------|-----|
+| Max Riser Height | 7.75" (196mm) | 7" (178mm) | 7" (178mm) |
+| Min Tread Depth | 10" (254mm) | 11" (279mm) | 11" (279mm) |
+| Min Width | 36" (914mm) | 44" (1118mm) | 48" (1219mm) |
+| Min Headroom | 80" (2032mm) | 80" (2032mm) | 80" (2032mm) |
+| Max Nosing | 1.25" (32mm) | 1.25" (32mm) | 1.5" (38mm) |
+
+#### Scenario: Residential validation thresholds
+- **WHEN** `stair_code: residential` is configured
+- **THEN** the system SHALL warn if riser > 7.75" or tread < 10" or width < 36"
+
+#### Scenario: Commercial validation thresholds
+- **WHEN** `stair_code: commercial` is configured
+- **THEN** the system SHALL warn if riser > 7" or tread < 11" or width < 44"
+
+#### Scenario: ADA validation thresholds
+- **WHEN** `stair_code: ada` is configured
+- **THEN** the system SHALL warn if riser > 7" or tread < 11" or width < 48"

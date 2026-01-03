@@ -146,3 +146,86 @@ export const blueprintTheme: FloorplanThemeOptions = {
   sizeColor: "#90cdf4",
 };
 
+/**
+ * Theme registry mapping theme names to theme options
+ */
+export const themeRegistry: Record<string, FloorplanThemeOptions> = {
+  'default': defaultThemeOptions,
+  'dark': darkTheme,
+  'blueprint': blueprintTheme,
+};
+
+/**
+ * Get theme options by name
+ * @param name Theme name ('default', 'dark', 'blueprint')
+ * @returns Theme options or undefined if not found
+ */
+export function getThemeByName(name: string): FloorplanThemeOptions | undefined {
+  return themeRegistry[name];
+}
+
+/**
+ * Check if a theme name is valid
+ */
+export function isValidTheme(name: string): boolean {
+  return name in themeRegistry;
+}
+
+/**
+ * Get list of available theme names
+ */
+export function getAvailableThemes(): string[] {
+  return Object.keys(themeRegistry);
+}
+
+/**
+ * Config key normalization - maps snake_case to camelCase
+ * Aligns floorplan DSL conventions with Mermaid.js camelCase style
+ */
+const CONFIG_KEY_MAP: Record<string, string> = {
+  // Dimension properties
+  'wall_thickness': 'wallThickness',
+  'floor_thickness': 'floorThickness',
+  'default_height': 'defaultHeight',
+  'door_width': 'doorWidth',
+  'door_height': 'doorHeight',
+  'door_size': 'doorSize',
+  'window_width': 'windowWidth',
+  'window_height': 'windowHeight',
+  'window_sill': 'windowSill',
+  'window_size': 'windowSize',
+  // Style and unit properties
+  'default_style': 'defaultStyle',
+  'default_unit': 'defaultUnit',
+  'area_unit': 'areaUnit',
+  // Theme properties
+  'dark_mode': 'darkMode',
+  // Font properties
+  'font_family': 'fontFamily',
+  'font_size': 'fontSize',
+  // Display properties
+  'show_labels': 'showLabels',
+  'show_dimensions': 'showDimensions',
+  // Stair building code
+  'stair_code': 'stairCode',
+};
+
+/**
+ * Normalize a config key from snake_case to camelCase
+ * If already camelCase or unknown, returns as-is
+ */
+export function normalizeConfigKey(key: string): string {
+  return CONFIG_KEY_MAP[key] ?? key;
+}
+
+/**
+ * Normalize all keys in a config object
+ */
+export function normalizeConfigKeys<T extends Record<string, unknown>>(config: T): Record<string, unknown> {
+  const normalized: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(config)) {
+    normalized[normalizeConfigKey(key)] = value;
+  }
+  return normalized;
+}
+

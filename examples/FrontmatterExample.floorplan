@@ -1,0 +1,51 @@
+# Example: YAML Frontmatter (Mermaid v10.5.0+ compatible)
+#
+# This demonstrates the new frontmatter support that aligns with Mermaid.js
+# The frontmatter uses camelCase keys (Mermaid convention), while inline config
+# continues to support snake_case (legacy DSL convention).
+
+---
+version: "1.0"
+title: Modern Apartment
+config:
+  theme: blueprint
+  fontFamily: "Roboto, sans-serif"
+  wallThickness: 0.3
+---
+floorplan
+
+# Define room templates
+define living (15 x 12)
+define bedroom (12 x 10)
+define kitchen (10 x 10)
+define bathroom (6 x 8)
+
+# Config can also be inline - inline takes precedence over frontmatter
+# Uncomment to override: config { theme: dark }
+
+floor Main {
+  room Living at (0, 0) size living
+    walls [top: solid, right: solid, bottom: solid, left: solid]
+    label "Living Room"
+    
+  room Kitchen at (15, 0) size kitchen
+    walls [top: solid, right: solid, bottom: solid, left: solid]
+    right-of Living
+    label "Kitchen"
+    
+  room Bedroom at (0, 12) size bedroom
+    walls [top: solid, right: solid, bottom: solid, left: solid]
+    below Living
+    label "Master Bedroom"
+    
+  room Bathroom at (12, 12) size bathroom
+    walls [top: solid, right: solid, bottom: solid, left: solid]
+    right-of Bedroom
+    label "Bathroom"
+}
+
+# Connections
+connect Living.right to Kitchen.left door at 50%
+connect Living.bottom to Bedroom.top door at 30%
+connect Bedroom.right to Bathroom.left door at 50%
+

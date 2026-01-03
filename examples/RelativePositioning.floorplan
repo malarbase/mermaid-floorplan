@@ -1,0 +1,41 @@
+# Example: Relative Positioning
+# This demonstrates the relative positioning feature
+# Rooms can be placed relative to other rooms using:
+# - right-of, left-of, above, below
+# - diagonal: above-right-of, below-left-of, etc.
+# - gap N: add spacing between rooms
+# - align top|bottom|left|right|center: control edge alignment
+
+%%{version: 1.0}%%
+floorplan
+
+  floor Demo {
+    # Anchor room with explicit position
+    room Foyer at (0,0) size (6 x 6) walls [top: door, right: open, bottom: solid, left: solid] label "Entry"
+    
+    # Room to the right, aligned at top (default)
+    room LivingRoom size (14 x 12) walls [top: window, right: solid, bottom: solid, left: open] right-of Foyer label "Living Room"
+    
+    # Room below LivingRoom with 2-unit gap, aligned left (default)
+    room DiningRoom size (10 x 8) walls [top: solid, right: open, bottom: solid, left: window] below LivingRoom gap 2 label "Dining"
+    
+    # Room to the right of DiningRoom, aligned at bottom
+    room Kitchen size (8 x 8) walls [top: solid, right: solid, bottom: window, left: open] right-of DiningRoom align bottom label "Kitchen"
+    
+    # Room below Foyer, no gap
+    room Study size (6 x 8) walls [top: solid, right: solid, bottom: window, left: solid] below Foyer label "Study"
+    
+    # Room to the right of Study, aligned at center
+    room Bathroom size (4 x 4) walls [top: solid, right: solid, bottom: solid, left: door] right-of Study align center label "Bath"
+    
+    # Diagonal positioning example
+    room Closet size (3 x 3) walls [top: solid, right: solid, bottom: solid, left: door] below-right-of LivingRoom gap 1 label "Storage"
+  }
+
+  # Connections
+  connect Foyer.top to outside door at 50%
+  connect LivingRoom.bottom to DiningRoom.top door at 30%
+  connect DiningRoom.right to Kitchen.left door at 50%
+  connect Study.top to Foyer.bottom door at 50%
+  connect Study.right to Bathroom.left door at 50%
+

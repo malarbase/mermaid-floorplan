@@ -1,0 +1,40 @@
+{
+  "name": "floorplan-3d-core",
+  "version": "0.2.0",
+  "description": "Shared 3D rendering primitives for floorplan visualization",
+  "type": "module",
+  "main": "./out/index.js",
+  "types": "./out/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./out/index.d.ts",
+      "import": "./out/index.js"
+    }
+  },
+  "files": [
+    "out"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "shx rm -rf out",
+    "watch": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "peerDependencies": {
+    "three": ">=0.150.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "shx": "~0.4.0",
+    "three": "^0.170.0",
+    "typescript": "~5.8.3",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [
+    "3d",
+    "floorplan",
+    "three.js",
+    "visualization"
+  ]
+}

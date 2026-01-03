@@ -1,0 +1,135 @@
+%%{version: 1.0}%%
+floorplan
+  # Style definitions for circulation elements
+  style Circulation {
+    floor_color: "#D0D0D0",
+    wall_color: "#808080",
+    roughness: 0.5,
+    metalness: 0.1
+  }
+  
+  style ModernStair {
+    floor_color: "#A0A0A0",
+    wall_color: "#606060",
+    roughness: 0.3,
+    metalness: 0.2
+  }
+  
+  # Configuration with stair building code
+  config { 
+    default_unit: ft,
+    stair_code: residential
+  }
+  
+  # Ground Floor - Main level
+  floor GroundFloor height 10ft {
+    # Main lobby area
+    room Lobby at (0, 0) size (20 x 15) walls [top: solid, right: solid, bottom: solid, left: window] label "Main Lobby"
+    
+    # Stair hall (widened to accommodate all circulation elements)
+    room StairHall at (20, 0) size (16 x 15) walls [top: solid, right: solid, bottom: solid, left: open]
+    
+    # Main straight stair - positioned at left side of StairHall
+    stair MainStair at (20.5, 8) 
+        shape straight direction north 
+        rise 10ft 
+        width 4ft 
+        riser 7in 
+        tread 11in
+        handrail (both)
+        stringers closed
+        label "Main Staircase" 
+        style Circulation
+    
+    # L-shaped service stair - positioned below main stair
+    stair ServiceStair at (25.5, 8) 
+        shape L-shaped entry south turn left runs 5, 5 
+        landing (3ft x 3ft)
+        rise 10ft 
+        width 3ft
+        handrail (right)
+        label "Service Stair"
+    
+    # Elevator shaft - positioned at top right of StairHall
+    lift MainElevator at (30, 2) 
+        size (5ft x 5ft) 
+        doors (south) 
+        label "Elevator"
+        style Circulation
+  }
+  
+  # First Floor - Upper level
+  floor FirstFloor height 10ft {
+    # Upper lobby
+    room UpperLobby at (0, 0) size (20 x 15) walls [top: solid, right: solid, bottom: solid, left: window] label "Upper Lobby"
+    
+    # Upper stair hall (matching GroundFloor dimensions)
+    room UpperStairHall at (20, 0) size (16 x 15) walls [top: solid, right: solid, bottom: solid, left: open]
+    
+    # Main stair continues - same position as GroundFloor
+    stair MainStair at (20.5, 8) 
+        shape straight direction north 
+        rise 10ft 
+        width 4ft
+        stringers closed
+        style Circulation
+    
+    # Service stair continues - same position as GroundFloor
+    stair ServiceStair at (25.5, 8) 
+        shape L-shaped entry south turn left runs 5, 5 
+        rise 10ft 
+        width 3ft
+    
+    # Elevator continues - same position as GroundFloor
+    lift MainElevator at (30, 2) 
+        size (5ft x 5ft) 
+        doors (south)
+        style Circulation
+  }
+  
+  # Penthouse Floor - Special stairs
+  floor Penthouse height 12ft {
+    # Grand foyer with spiral stair (extended to include elevator shaft)
+    room GrandFoyer at (0, 0) size (36 x 25) walls [top: solid, right: solid, bottom: solid, left: window] label "Grand Foyer"
+    
+    # Decorative spiral stair
+    stair SpiralStair at (5, 5) 
+        shape spiral rotation clockwise outer-radius 5ft 
+        rise 12ft
+        handrail (outer)
+        stringers open
+        material { tread: "oak", handrail: "brass" }
+        label "Spiral Feature Stair"
+        style ModernStair
+    
+    # Custom segmented stair for complex layout
+    stair CustomStair at (15, 10) 
+        shape custom entry south [
+            flight 5 width 5ft,
+            turn right landing (5ft x 5ft),
+            flight 6 width 4ft,
+            turn right landing (4ft x 4ft),
+            flight 5 width 4ft
+        ] 
+        rise 12ft 
+        width 4ft
+        stringers glass
+        label "Custom Grand Stair"
+        style ModernStair
+    
+    # Glass elevator - aligned with lower floor elevators (adjusted for Penthouse position)
+    lift GlassElevator at (30, 2) 
+        size (5ft x 5ft) 
+        doors (south, west) 
+        label "Glass Lift"
+  }
+  
+  # Room connections
+  connect Lobby.right to StairHall.left opening at 50%
+  connect UpperLobby.right to UpperStairHall.left opening at 50%
+  
+  # Vertical connections for circulation elements
+  vertical GroundFloor.MainStair to FirstFloor.MainStair
+  vertical GroundFloor.ServiceStair to FirstFloor.ServiceStair
+  vertical GroundFloor.MainElevator to FirstFloor.MainElevator to Penthouse.GlassElevator
+

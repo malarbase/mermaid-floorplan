@@ -1,8 +1,8 @@
 import { describe, expect, test, vi } from 'vitest';
 import * as THREE from 'three';
 import { DoorRenderer, DoorConfig } from '../src/door-renderer';
-import { DIMENSIONS } from '../src/constants';
-import type { JsonConnection, JsonRoom, JsonWall } from '../src/types';
+import type { JsonConnection, JsonRoom, JsonWall } from 'floorplan-3d-core';
+import { DIMENSIONS } from 'floorplan-3d-core';
 
 /**
  * Helper to create a mock material

@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { normalizeToMeters } from '../src/unit-normalizer';
-import type { JsonExport, JsonConfig, JsonConnection, JsonRoom, JsonFloor } from '../src/types';
+import type { JsonExport, JsonConfig, JsonConnection, JsonRoom, JsonFloor } from 'floorplan-3d-core';
 
 /**
  * Helper to create a minimal JsonExport for testing
@@ -253,8 +253,8 @@ describe('unit-normalizer', () => {
         expect(result.floors[0].rooms[0].width).toBeCloseTo(20 * FT_TO_M, 5);
         expect(result.floors[0].rooms[0].height).toBeCloseTo(16 * FT_TO_M, 5);
         
-        // Result should be in meters
-        expect(result.config?.default_unit).toBe('m');
+        // User's display preference should be preserved
+        expect(result.config?.default_unit).toBe('ft');
       });
     });
   });

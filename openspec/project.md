@@ -88,7 +88,68 @@ The DSL defines floorplans with:
 - **Wall Types:** `solid`, `door`, `window`, `open`
 - **Connections:** Link rooms/walls (`connect Room1.wall to Room2.wall door`)
 
-Example:
+#### Grammar Versioning
+
+**Current Version:** 1.0.0
+
+The floorplan DSL follows [semantic versioning](https://semver.org/) for grammar compatibility:
+- **MAJOR** version: Breaking changes (incompatible syntax changes)
+- **MINOR** version: New features (backward compatible)
+- **PATCH** version: Bug fixes (no grammar changes)
+
+**Version Declaration:**
+
+You can declare the grammar version in two ways:
+
+1. **YAML Frontmatter** (recommended for files with metadata):
+```floorplan
+---
+version: "1.0"
+title: My Villa
+---
+floorplan
+  floor f1 {
+    room Office at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }
+```
+
+2. **Inline Directive** (recommended for simple files):
+```floorplan
+%%{version: 1.0}%%
+floorplan
+  floor f1 {
+    room Office at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }
+```
+
+**Version Behavior:**
+- **No version declared:** Parser assumes current version (1.0.0) and emits a warning
+- **Compatible version:** File is parsed successfully
+- **Incompatible version:** Parser emits an error with migration guidance
+- **Future version:** Parser rejects the file (upgrade parser first)
+
+**Deprecation Lifecycle:**
+
+Features follow a deprecation lifecycle:
+1. **v1.0:** Feature introduced
+2. **v1.1:** Feature deprecated (warning emitted, still works)
+3. **v2.0:** Feature removed (error if used)
+
+**Migration:**
+
+Use the migration utilities to upgrade between versions:
+```typescript
+import { migrate } from 'floorplans-language';
+
+const result = migrate(content, '2.0.0');
+if (result.success) {
+  console.log(result.content); // Migrated floorplan
+}
+```
+
+See `language/CHANGELOG.md` for version history and planned deprecations.
+
+Example (basic):
 ```
 floorplan
   floor f1 {
@@ -209,17 +270,27 @@ floorplan
 **Supported config keys:**
 | Key | Description | Default |
 |-----|-------------|---------|
-| `wall_thickness` | Wall thickness in units | 0.2 |
-| `floor_thickness` | Floor slab thickness | 0.2 |
-| `default_height` | Default wall/ceiling height | 3.35 |
-| `door_width` | Standard door width (legacy) | 1.0 |
-| `door_height` | Standard door height (legacy) | 2.1 |
-| `door_size` | Door size as `(width x height)` | None |
-| `window_width` | Standard window width (legacy) | 1.5 |
-| `window_height` | Standard window height (legacy) | 1.5 |
-| `window_size` | Window size as `(width x height)` | None |
-| `window_sill` | Window sill height from floor | 0.9 |
-| `default_style` | Default style name for rooms | None |
+| `wall_thickness` / `wallThickness` | Wall thickness in units | 0.2 |
+| `floor_thickness` / `floorThickness` | Floor slab thickness | 0.2 |
+| `default_height` / `defaultHeight` | Default wall/ceiling height | 3.35 |
+| `door_width` / `doorWidth` | Standard door width (legacy) | 1.0 |
+| `door_height` / `doorHeight` | Standard door height (legacy) | 2.1 |
+| `door_size` / `doorSize` | Door size as `(width x height)` | None |
+| `window_width` / `windowWidth` | Standard window width (legacy) | 1.5 |
+| `window_height` / `windowHeight` | Standard window height (legacy) | 2.1 |
+| `window_size` / `windowSize` | Window size as `(width x height)` | None |
+| `window_sill` / `windowSill` | Window sill height from floor | 0.9 |
+| `default_style` / `defaultStyle` | Default style name for rooms | None |
+| `default_unit` / `defaultUnit` | Default length unit (`m`, `ft`, `cm`, `in`, `mm`) | `m` |
+| `area_unit` / `areaUnit` | Area display unit (`sqm`, `sqft`) | `sqft` |
+| `theme` | Color theme (`default`, `dark`, `blueprint`) | `default` |
+| `darkMode` / `dark_mode` | Dark mode toggle (`true`/`false`) | `false` |
+| `fontFamily` / `font_family` | Font family for labels | System default |
+| `fontSize` / `font_size` | Font size for labels (number) | 14 |
+| `showLabels` / `show_labels` | Show room labels (`true`/`false`) | `true` |
+| `showDimensions` / `show_dimensions` | Show dimension annotations (`true`/`false`) | `true` |
+
+**Naming Convention:** Both `snake_case` (e.g., `wall_thickness`) and `camelCase` (e.g., `wallThickness`) are accepted. Internally normalized to camelCase.
 
 **Height resolution priority:** Room height > Floor height > Config `default_height` > Constant (3.35)
 

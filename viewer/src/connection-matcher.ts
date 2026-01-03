@@ -2,7 +2,7 @@
  * Connection matching utilities for determining door placement and responsibility
  */
 
-import { JsonConnection, JsonRoom, JsonWall } from './types';
+import type { JsonConnection, JsonRoom, JsonWall } from 'floorplan-3d-core';
 
 export interface ConnectionMatch {
   connection: JsonConnection;

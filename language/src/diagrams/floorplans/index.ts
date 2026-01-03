@@ -38,6 +38,12 @@ export { wallRectangle } from "./wall.js";
 export { generateDoor } from "./door.js";
 export { generateWindow } from "./window.js";
 export { generateConnection, generateConnections } from "./connection.js";
+export { 
+  generateFloorCirculation, 
+  generateStairSvg, 
+  generateLiftSvg,
+  type StairRenderOptions 
+} from "./stair-renderer.js";
 
 // Position resolution (relative positioning)
 export {
@@ -95,8 +101,31 @@ export {
   defaultThemeOptions,
   darkTheme,
   blueprintTheme,
+  themeRegistry,
+  getThemeByName,
+  isValidTheme,
+  getAvailableThemes,
+  normalizeConfigKey,
+  normalizeConfigKeys,
   type FloorplanThemeOptions,
 } from "./styles.js";
+
+// Config resolution (Mermaid-aligned)
+export {
+  resolveConfig,
+  resolveThemeOptions,
+  getEffectiveThemeName,
+  DEFAULT_CONFIG,
+  type ParsedConfig,
+} from "./config-resolver.js";
+
+// Frontmatter parsing (Mermaid v10.5.0+ compatible)
+export {
+  parseFrontmatter,
+  hasFrontmatter,
+  stripFrontmatter,
+  type FrontmatterResult,
+} from "./frontmatter-parser.js";
 
 // Style resolution
 export {
@@ -118,6 +147,11 @@ export {
   type JsonConnection,
   type JsonConfig,
   type JsonStyle,
+  type JsonStair,
+  type JsonStairShape,
+  type JsonStairSegment,
+  type JsonLift,
+  type JsonVerticalConnection,
   type ConversionResult,
   type ConversionError,
 } from "./json-converter.js";
@@ -165,3 +199,35 @@ export {
   type JsonGeneratorResult,
   type GeneratorError,
 } from "./generator.js";
+
+// Grammar versioning system
+export {
+  CURRENT_VERSION,
+  parseVersion,
+  compareVersions,
+  isCompatibleVersion,
+  isFutureVersion,
+  extractVersionFromAST,
+  resolveVersion,
+  formatVersion,
+  type SemanticVersion,
+} from "./version-resolver.js";
+
+// Deprecation system
+export {
+  isDeprecated,
+  isRemoved,
+  getDeprecationWarning,
+  getRemovalError,
+  getActiveDeprecations,
+  getRemovedFeatures,
+  DEPRECATION_REGISTRY,
+  type DeprecationInfo,
+} from "./deprecation-registry.js";
+
+// Migration utilities
+export {
+  migrate,
+  type MigrationResult,
+  type MigrationStep,
+} from "./migrator.js";

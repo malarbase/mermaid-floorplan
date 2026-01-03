@@ -599,3 +599,284 @@ describe("JSON Converter - Error Handling", () => {
   });
 });
 
+describe("JSON Converter - Stairs", () => {
+  it("should export straight stair", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          stair MainStair at (10, 20) shape straight direction north rise 10ft width 3.5ft
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data).toBeDefined();
+    expect(result.data!.floors[0].stairs).toHaveLength(1);
+    
+    const stair = result.data!.floors[0].stairs[0];
+    expect(stair.name).toBe("MainStair");
+    expect(stair.x).toBe(10);
+    expect(stair.z).toBe(20);
+    expect(stair.shape.type).toBe("straight");
+    expect(stair.rise).toBe(10);
+    expect(stair.width).toBe(3.5);
+  });
+
+  it("should export L-shaped stair", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          stair CornerStair shape L-shaped entry south turn left runs 6, 6 rise 10ft width 3.5ft
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const stair = result.data!.floors[0].stairs[0];
+    expect(stair.shape.type).toBe("L-shaped");
+    expect(stair.shape.entry).toBe("south");
+    expect(stair.shape.turn).toBe("left");
+    expect(stair.shape.runs).toEqual([6, 6]);
+  });
+
+  it("should export spiral stair", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          stair SpiralStair shape spiral rotation clockwise outer-radius 4ft rise 10ft
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const stair = result.data!.floors[0].stairs[0];
+    expect(stair.shape.type).toBe("spiral");
+    expect(stair.shape.rotation).toBe("clockwise");
+    expect(stair.shape.outerRadius).toBe(4);
+  });
+
+  it("should export custom segmented stair", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          stair CustomStair shape custom entry south [
+            flight 5,
+            turn right landing (4ft x 4ft),
+            flight 6
+          ] rise 12ft width 3.5ft
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const stair = result.data!.floors[0].stairs[0];
+    expect(stair.shape.type).toBe("custom");
+    expect(stair.shape.segments).toHaveLength(3);
+    expect(stair.shape.segments![0].type).toBe("flight");
+    expect(stair.shape.segments![0].steps).toBe(5);
+    expect(stair.shape.segments![1].type).toBe("turn");
+    expect(stair.shape.segments![1].direction).toBe("right");
+    expect(stair.shape.segments![2].type).toBe("flight");
+    expect(stair.shape.segments![2].steps).toBe(6);
+  });
+
+  it("should export stair with dimensional parameters", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft riser 7in tread 11in nosing 1.25in headroom 84in
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const stair = result.data!.floors[0].stairs[0];
+    expect(stair.riser).toBe(7);
+    expect(stair.tread).toBe(11);
+    expect(stair.nosing).toBe(1.25);
+    expect(stair.headroom).toBe(84);
+  });
+
+  it("should export stair with handrail and stringers", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft handrail (both) stringers open
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const stair = result.data!.floors[0].stairs[0];
+    expect(stair.handrail).toBe("both");
+    expect(stair.stringers).toBe("open");
+  });
+
+  it("should export stair with label", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft label "Main Staircase"
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const stair = result.data!.floors[0].stairs[0];
+    expect(stair.label).toBe("Main Staircase");
+  });
+
+  it("should export stair with material specification", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft material { tread: "oak", riser: "white" }
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const stair = result.data!.floors[0].stairs[0];
+    expect(stair.material).toBeDefined();
+    expect(stair.material?.tread).toBe("oak");
+    expect(stair.material?.riser).toBe("white");
+  });
+
+  it("should export stair_code in config", async () => {
+    const input = `
+      floorplan
+        config { stair_code: residential }
+        floor f1 {
+          stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data!.config?.stair_code).toBe("residential");
+  });
+});
+
+describe("JSON Converter - Lifts", () => {
+  it("should export basic lift", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          lift MainLift at (20, 25) size (5ft x 5ft)
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data).toBeDefined();
+    expect(result.data!.floors[0].lifts).toHaveLength(1);
+    
+    const lift = result.data!.floors[0].lifts[0];
+    expect(lift.name).toBe("MainLift");
+    expect(lift.x).toBe(20);
+    expect(lift.z).toBe(25);
+    expect(lift.width).toBe(5);
+    expect(lift.height).toBe(5);
+  });
+
+  it("should export lift with door specification", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          lift MainLift at (20, 25) size (5ft x 5ft) doors (north, south)
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const lift = result.data!.floors[0].lifts[0];
+    expect(lift.doors).toEqual(["north", "south"]);
+  });
+
+  it("should export lift with label", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          lift Elevator at (20, 25) size (5ft x 5ft) label "Main Elevator"
+        }
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    const lift = result.data!.floors[0].lifts[0];
+    expect(lift.label).toBe("Main Elevator");
+  });
+});
+
+describe("JSON Converter - Vertical Connections", () => {
+  it("should export two-floor vertical connection", async () => {
+    const input = `
+      floorplan
+        floor GroundFloor {
+          stair MainStair at (0, 0) shape straight direction north rise 10ft
+        }
+        floor FirstFloor {
+          stair MainStair at (0, 0) shape straight direction north rise 10ft
+        }
+        vertical GroundFloor.MainStair to FirstFloor.MainStair
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data!.verticalConnections).toHaveLength(1);
+    
+    const vc = result.data!.verticalConnections![0];
+    expect(vc.links).toHaveLength(2);
+    expect(vc.links[0].floor).toBe("GroundFloor");
+    expect(vc.links[0].element).toBe("MainStair");
+    expect(vc.links[1].floor).toBe("FirstFloor");
+    expect(vc.links[1].element).toBe("MainStair");
+  });
+
+  it("should export multi-floor vertical connection", async () => {
+    const input = `
+      floorplan
+        floor GroundFloor {
+          lift Elevator at (0, 0) size (5ft x 5ft)
+        }
+        floor FirstFloor {
+          lift Elevator at (0, 0) size (5ft x 5ft)
+        }
+        floor SecondFloor {
+          lift Elevator at (0, 0) size (5ft x 5ft)
+        }
+        vertical GroundFloor.Elevator to FirstFloor.Elevator to SecondFloor.Elevator
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data!.verticalConnections).toHaveLength(1);
+    
+    const vc = result.data!.verticalConnections![0];
+    expect(vc.links).toHaveLength(3);
+    expect(vc.links[0].floor).toBe("GroundFloor");
+    expect(vc.links[1].floor).toBe("FirstFloor");
+    expect(vc.links[2].floor).toBe("SecondFloor");
+  });
+
+  it("should export multiple vertical connections", async () => {
+    const input = `
+      floorplan
+        floor GroundFloor {
+          stair MainStair at (0, 0) shape straight direction north rise 10ft
+          lift Elevator at (10, 0) size (5ft x 5ft)
+        }
+        floor FirstFloor {
+          stair MainStair at (0, 0) shape straight direction north rise 10ft
+          lift Elevator at (10, 0) size (5ft x 5ft)
+        }
+        vertical GroundFloor.MainStair to FirstFloor.MainStair
+        vertical GroundFloor.Elevator to FirstFloor.Elevator
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data!.verticalConnections).toHaveLength(2);
+  });
+});
+

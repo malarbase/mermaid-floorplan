@@ -5,8 +5,7 @@
  * Supports per-face materials for walls shared by multiple rooms.
  */
 
-import { JsonRoom, JsonWall } from './types';
-import { MaterialStyle } from './materials';
+import type { JsonRoom, JsonWall, MaterialStyle } from 'floorplan-3d-core';
 
 /**
  * Information about an adjacent room and its overlap with a wall

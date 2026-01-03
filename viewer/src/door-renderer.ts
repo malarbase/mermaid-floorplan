@@ -3,8 +3,8 @@
  */
 
 import * as THREE from 'three';
-import { DIMENSIONS } from './constants';
-import { JsonConnection, JsonRoom, JsonWall } from './types';
+import type { JsonConnection, JsonRoom, JsonWall } from 'floorplan-3d-core';
+import { DIMENSIONS } from 'floorplan-3d-core';
 
 export interface DoorConfig {
   connection: JsonConnection;

@@ -4,16 +4,26 @@
  * Used by both the CLI export script and the browser-based viewer.
  */
 
-import type { Floorplan, LENGTH_UNIT, AREA_UNIT } from "../../generated/ast.js";
+import type { 
+    Floorplan, LENGTH_UNIT, AREA_UNIT,
+    StairShape, StairSegment
+} from "../../generated/ast.js";
+import { 
+    isStraightStair, isLShapedStair, isUShapedStair, isDoubleLStair,
+    isSpiralStair, isCurvedStair, isWinderStair, isSegmentedStair,
+    isFlightSegment, isTurnSegment
+} from "../../generated/ast.js";
 import { resolveFloorPositions } from "./position-resolver.js";
 import { resolveVariables, getRoomSize } from "./variable-resolver.js";
-import { 
-    computeRoomMetrics, 
-    computeFloorMetrics, 
+import {
+    computeRoomMetrics,
+    computeFloorMetrics,
     computeFloorplanSummary,
     type FloorMetrics,
     type FloorplanSummary,
 } from "./metrics.js";
+import { normalizeConfigKey } from "./styles.js";
+import { extractVersionFromAST, CURRENT_VERSION } from "./version-resolver.js";
 
 // ============================================================================
 // JSON Export Types
@@ -39,6 +49,21 @@ export interface JsonConfig {
     default_style?: string;
     default_unit?: LENGTH_UNIT;
     area_unit?: AREA_UNIT;
+    // Theme and display properties (Mermaid-aligned)
+    /** Theme name: 'default', 'dark', or 'blueprint' */
+    theme?: string;
+    /** Dark mode toggle (alternative to theme: 'dark') */
+    darkMode?: boolean;
+    /** Font family for labels */
+    fontFamily?: string;
+    /** Font size for labels */
+    fontSize?: number;
+    /** Whether to show room labels */
+    showLabels?: boolean;
+    /** Whether to show dimension annotations */
+    showDimensions?: boolean;
+    /** Building code for stair validation */
+    stair_code?: 'residential' | 'commercial' | 'ada' | 'none';
 }
 
 export interface JsonStyle {
@@ -81,10 +106,108 @@ export interface JsonRoom {
 export interface JsonFloor {
     id: string;
     rooms: JsonRoom[];
+    stairs: JsonStair[];
+    lifts: JsonLift[];
     index: number;
     height?: number;
     /** Computed metrics for this floor */
     metrics?: FloorMetrics;
+}
+
+// ============================================================================
+// Stair and Lift JSON Types
+// ============================================================================
+
+export type JsonStairShapeType = 'straight' | 'L-shaped' | 'U-shaped' | 'double-L' | 'spiral' | 'curved' | 'winder' | 'custom';
+
+export interface JsonStairShape {
+    type: JsonStairShapeType;
+    /** For straight stairs: climb direction */
+    direction?: 'north' | 'south' | 'east' | 'west';
+    /** For turned stairs: entry direction */
+    entry?: 'north' | 'south' | 'east' | 'west';
+    /** For turned stairs: turn direction */
+    turn?: 'left' | 'right';
+    /** For spiral/curved: rotation direction */
+    rotation?: 'clockwise' | 'counterclockwise';
+    /** Step counts per run (for preset shapes) */
+    runs?: number[];
+    /** Landing dimensions [width, height] */
+    landing?: [number, number];
+    /** For spiral stairs: outer radius */
+    outerRadius?: number;
+    /** For spiral stairs: inner radius */
+    innerRadius?: number;
+    /** For curved stairs: arc angle in degrees */
+    arc?: number;
+    /** For curved stairs: curve radius */
+    radius?: number;
+    /** For winder stairs: number of winder treads */
+    winders?: number;
+    /** For segmented/custom stairs: flight/turn segments */
+    segments?: JsonStairSegment[];
+}
+
+export interface JsonStairSegment {
+    type: 'flight' | 'turn';
+    /** For flight segments: number of steps */
+    steps?: number;
+    /** For flight segments: optional width override */
+    width?: number;
+    /** For flight segments: wall alignment reference */
+    wallRef?: { room: string; wall: string };
+    /** For turn segments: direction */
+    direction?: 'left' | 'right';
+    /** For turn segments with landing: dimensions [width, height] */
+    landing?: [number, number];
+    /** For turn segments with winders: count */
+    winders?: number;
+    /** For turn segments: angle in degrees (90 or 180) */
+    angle?: number;
+}
+
+export interface JsonStair {
+    name: string;
+    x: number;
+    z: number;
+    shape: JsonStairShape;
+    /** Total vertical rise */
+    rise: number;
+    /** Stair width */
+    width?: number;
+    /** Individual riser height */
+    riser?: number;
+    /** Individual tread depth */
+    tread?: number;
+    /** Tread nosing overhang */
+    nosing?: number;
+    /** Minimum headroom clearance */
+    headroom?: number;
+    /** Handrail configuration */
+    handrail?: 'left' | 'right' | 'both' | 'inner' | 'outer' | 'none';
+    /** Stringer style */
+    stringers?: 'open' | 'closed' | 'glass';
+    /** Material specifications */
+    material?: { [key: string]: string };
+    label?: string;
+    style?: string;
+}
+
+export interface JsonLift {
+    name: string;
+    x: number;
+    z: number;
+    width: number;
+    height: number;
+    /** Door directions */
+    doors: Array<'north' | 'south' | 'east' | 'west'>;
+    label?: string;
+    style?: string;
+}
+
+export interface JsonVerticalConnection {
+    /** Chain of floor.element references */
+    links: Array<{ floor: string; element: string }>;
 }
 
 export interface JsonConnection {
@@ -105,8 +228,11 @@ export interface JsonConnection {
 }
 
 export interface JsonExport {
+    /** Grammar version used to parse the floorplan */
+    grammarVersion: string;
     floors: JsonFloor[];
     connections: JsonConnection[];
+    verticalConnections: JsonVerticalConnection[];
     config?: JsonConfig;
     styles?: JsonStyle[];
     /** Summary metrics for the entire floorplan */
@@ -140,9 +266,14 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
     const variableResolution = resolveVariables(floorplan);
     const variables = variableResolution.variables;
 
+    // Extract grammar version from floorplan (or use current version as default)
+    const grammarVersion = extractVersionFromAST(floorplan) || CURRENT_VERSION;
+
     const jsonExport: JsonExport = {
+        grammarVersion,
         floors: [],
         connections: [],
+        verticalConnections: [],
         styles: []
     };
 
@@ -150,28 +281,49 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
     if (floorplan.config) {
         const config: JsonConfig = {};
         for (const prop of floorplan.config.properties) {
+            // Normalize property name to camelCase for matching
+            const normalizedName = normalizeConfigKey(prop.name);
+            
+            // Handle numeric values - use original key name for backward compatibility
             if (prop.value !== undefined) {
                 (config as Record<string, number>)[prop.name] = prop.value;
             }
             // Handle dimension properties (door_size, window_size)
             if (prop.dimension !== undefined) {
-                if (prop.name === 'door_size') {
+                if (normalizedName === 'doorSize') {
                     config.door_size = [prop.dimension.width.value, prop.dimension.height.value];
-                } else if (prop.name === 'window_size') {
+                } else if (normalizedName === 'windowSize') {
                     config.window_size = [prop.dimension.width.value, prop.dimension.height.value];
                 }
             }
             // Handle default_unit
-            if (prop.name === 'default_unit' && prop.unitRef) {
+            if ((normalizedName === 'defaultUnit') && prop.unitRef) {
                 config.default_unit = prop.unitRef;
             }
             // Handle default_style
-            if (prop.name === 'default_style' && prop.styleRef) {
+            if ((normalizedName === 'defaultStyle') && prop.styleRef) {
                 config.default_style = prop.styleRef;
             }
             // Handle area_unit
-            if (prop.name === 'area_unit' && prop.areaUnitRef) {
+            if ((normalizedName === 'areaUnit') && prop.areaUnitRef) {
                 config.area_unit = prop.areaUnitRef;
+            }
+            // Handle theme property
+            if ((normalizedName === 'theme') && prop.themeRef) {
+                config.theme = prop.themeRef;
+            }
+            // Handle boolean properties (darkMode, showLabels, showDimensions)
+            if (prop.boolValue !== undefined) {
+                // Use camelCase for new boolean properties
+                (config as Record<string, boolean>)[normalizedName] = prop.boolValue === 'true';
+            }
+            // Handle string properties (fontFamily)
+            if (prop.stringValue !== undefined && normalizedName === 'fontFamily') {
+                config.fontFamily = prop.stringValue.replace(/^["']|["']$/g, '');
+            }
+            // Handle stair_code property
+            if ((normalizedName === 'stairCode' || prop.name === 'stair_code') && prop.stairCodeRef) {
+                config.stair_code = prop.stairCodeRef as 'residential' | 'commercial' | 'ada' | 'none';
             }
         }
         if (Object.keys(config).length > 0) {
@@ -210,6 +362,8 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             id: floor.id,
             index: i,
             rooms: [],
+            stairs: [],
+            lifts: [],
             height: floor.height?.value
         };
 
@@ -256,6 +410,51 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             
             jsonFloor.rooms.push(jsonRoom);
         }
+
+        // Process stairs
+        for (const stair of floor.stairs) {
+            const stairPos = stair.position 
+                ? { x: stair.position.x.value, y: stair.position.y.value }
+                : { x: 0, y: 0 }; // TODO: resolve relative positions
+
+            const jsonStair: JsonStair = {
+                name: stair.name,
+                x: stairPos.x,
+                z: stairPos.y,
+                shape: convertStairShape(stair.shape),
+                rise: stair.rise.value,
+                width: stair.width?.value,
+                riser: stair.riser?.value,
+                tread: stair.tread?.value,
+                nosing: stair.nosing?.value,
+                headroom: stair.headroom?.value,
+                handrail: stair.handrail,
+                stringers: stair.stringers,
+                material: stair.material ? convertStairMaterial(stair.material) : undefined,
+                label: stair.label,
+                style: stair.styleRef
+            };
+            jsonFloor.stairs.push(jsonStair);
+        }
+
+        // Process lifts
+        for (const lift of floor.lifts) {
+            const liftPos = lift.position 
+                ? { x: lift.position.x.value, y: lift.position.y.value }
+                : { x: 0, y: 0 }; // TODO: resolve relative positions
+
+            const jsonLift: JsonLift = {
+                name: lift.name,
+                x: liftPos.x,
+                z: liftPos.y,
+                width: lift.size.width.value,
+                height: lift.size.height.value,
+                doors: lift.doors as Array<'north' | 'south' | 'east' | 'west'>,
+                label: lift.label,
+                style: lift.styleRef
+            };
+            jsonFloor.lifts.push(jsonLift);
+        }
         
         // Compute floor metrics
         jsonFloor.metrics = computeFloorMetrics(jsonFloor);
@@ -292,10 +491,144 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
 
         jsonExport.connections.push(jsonConn);
     }
+
+    // Process vertical connections
+    for (const vc of floorplan.verticalConnections) {
+        const jsonVC: JsonVerticalConnection = {
+            links: vc.links.map(link => ({
+                floor: link.floor,
+                element: link.element
+            }))
+        };
+        jsonExport.verticalConnections.push(jsonVC);
+    }
     
     // Compute floorplan summary
     jsonExport.summary = computeFloorplanSummary(jsonExport.floors);
 
     return { data: jsonExport, errors };
+}
+
+// ============================================================================
+// Stair Shape Conversion Helpers
+// ============================================================================
+
+/**
+ * Convert a StairShape AST node to JsonStairShape
+ */
+function convertStairShape(shape: StairShape): JsonStairShape {
+    if (isStraightStair(shape)) {
+        return {
+            type: 'straight',
+            direction: shape.direction as 'north' | 'south' | 'east' | 'west'
+        };
+    }
+    if (isLShapedStair(shape)) {
+        return {
+            type: 'L-shaped',
+            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            turn: shape.turn as 'left' | 'right',
+            runs: shape.runs.length > 0 ? shape.runs : undefined,
+            landing: shape.landing 
+                ? [shape.landing.width.value, shape.landing.height.value] 
+                : undefined
+        };
+    }
+    if (isUShapedStair(shape)) {
+        return {
+            type: 'U-shaped',
+            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            turn: shape.turn as 'left' | 'right',
+            runs: shape.runs.length > 0 ? shape.runs : undefined,
+            landing: shape.landing 
+                ? [shape.landing.width.value, shape.landing.height.value] 
+                : undefined
+        };
+    }
+    if (isDoubleLStair(shape)) {
+        return {
+            type: 'double-L',
+            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            turn: shape.turn as 'left' | 'right',
+            runs: shape.runs.length > 0 ? shape.runs : undefined,
+            landing: shape.landing 
+                ? [shape.landing.width.value, shape.landing.height.value] 
+                : undefined
+        };
+    }
+    if (isSpiralStair(shape)) {
+        return {
+            type: 'spiral',
+            rotation: shape.rotation as 'clockwise' | 'counterclockwise',
+            outerRadius: shape.outerRadius.value,
+            innerRadius: shape.innerRadius?.value
+        };
+    }
+    if (isCurvedStair(shape)) {
+        return {
+            type: 'curved',
+            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            arc: shape.arc,
+            radius: shape.radius.value
+        };
+    }
+    if (isWinderStair(shape)) {
+        return {
+            type: 'winder',
+            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            turn: shape.turn as 'left' | 'right',
+            winders: shape.winders,
+            runs: shape.runs.length > 0 ? shape.runs : undefined
+        };
+    }
+    if (isSegmentedStair(shape)) {
+        return {
+            type: 'custom',
+            entry: shape.entry as 'north' | 'south' | 'east' | 'west',
+            segments: shape.segments.map(convertStairSegment)
+        };
+    }
+    // Fallback - should not happen
+    return { type: 'straight' };
+}
+
+/**
+ * Convert a StairSegment AST node to JsonStairSegment
+ */
+function convertStairSegment(segment: StairSegment): JsonStairSegment {
+    if (isFlightSegment(segment)) {
+        return {
+            type: 'flight',
+            steps: segment.steps,
+            width: segment.width?.value,
+            wallRef: segment.wallRef 
+                ? { room: segment.wallRef.room, wall: segment.wallRef.wall }
+                : undefined
+        };
+    }
+    if (isTurnSegment(segment)) {
+        return {
+            type: 'turn',
+            direction: segment.direction as 'left' | 'right',
+            landing: segment.landing 
+                ? [segment.landing.width.value, segment.landing.height.value]
+                : undefined,
+            winders: segment.winders,
+            angle: segment.angle
+        };
+    }
+    // Fallback
+    return { type: 'flight', steps: 0 };
+}
+
+/**
+ * Convert StairMaterial AST node to a simple key-value object
+ */
+function convertStairMaterial(material: { properties: Array<{ name: string; value: string }> }): { [key: string]: string } {
+    const result: { [key: string]: string } = {};
+    for (const prop of material.properties) {
+        result[prop.name] = prop.value.replace(/^["']|["']$/g, '');
+    }
+    return result;
 }
 

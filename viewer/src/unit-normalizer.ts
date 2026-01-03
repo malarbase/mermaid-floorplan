@@ -5,8 +5,8 @@
  * for consistent 3D rendering in Three.js.
  */
 
-import { toMeters, LengthUnit, isLengthUnit, DEFAULT_UNIT } from './constants';
-import { JsonExport, JsonFloor, JsonRoom, JsonConfig, JsonConnection, JsonWall } from './types';
+import type { JsonExport, JsonFloor, JsonRoom, JsonConfig, JsonConnection, JsonWall } from 'floorplan-3d-core';
+import { toMeters, isLengthUnit, DEFAULT_UNIT, type LengthUnit } from 'floorplan-3d-core';
 
 /**
  * Get the source unit from config, defaulting to meters if not specified
@@ -83,6 +83,7 @@ function convertSizeTuple(size: [number, number] | undefined, unit: LengthUnit):
 function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
   return {
     ...config,
+    // Dimensional values - convert to meters
     wall_thickness: convertValue(config.wall_thickness, unit),
     default_height: convertValue(config.default_height, unit),
     floor_thickness: convertValue(config.floor_thickness, unit),
@@ -93,10 +94,17 @@ function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
     window_height: convertValue(config.window_height, unit),
     window_size: convertSizeTuple(config.window_size, unit),
     window_sill: convertValue(config.window_sill, unit),
-    // Keep non-dimensional values unchanged
+    // Non-dimensional values - preserve as-is
     default_style: config.default_style,
     default_unit: config.default_unit, // Preserve user's display preference
     area_unit: config.area_unit,
+    // Theme properties - preserve as-is
+    theme: config.theme,
+    darkMode: config.darkMode,
+    fontFamily: config.fontFamily,
+    fontSize: config.fontSize,
+    showLabels: config.showLabels,
+    showDimensions: config.showDimensions,
   };
 }
 

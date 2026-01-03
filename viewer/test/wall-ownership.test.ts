@@ -7,8 +7,7 @@ import {
   analyzeWallOwnership,
   type AdjacentRoomInfo,
 } from '../src/wall-ownership';
-import type { JsonRoom, JsonWall } from '../src/types';
-import type { MaterialStyle } from '../src/materials';
+import type { JsonRoom, JsonWall, MaterialStyle } from 'floorplan-3d-core';
 
 /**
  * Helper to create a room with minimal required fields
