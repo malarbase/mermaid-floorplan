@@ -7,6 +7,7 @@ import { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle 
 import { DIMENSIONS, COLORS, COLORS_DARK, LengthUnit, METERS_TO_UNIT, ViewerTheme, getThemeColors } from './constants';
 import { MaterialFactory, MaterialStyle } from './materials';
 import { WallGenerator, StyleResolver } from './wall-generator';
+import { StairGenerator } from './stair-generator';
 import { parseFloorplanDSL, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
 import { normalizeToMeters } from './unit-normalizer';
 
@@ -41,6 +42,7 @@ class Viewer {
     private styles: Map<string, JsonStyle> = new Map();
     private explodedViewFactor: number = 0;
     private wallGenerator: WallGenerator;
+    private stairGenerator: StairGenerator;
     
     // Light controls
     private directionalLight: THREE.DirectionalLight;
@@ -141,6 +143,9 @@ class Viewer {
         // Init wall generator with CSG evaluator
         this.wallGenerator = new WallGenerator(new Evaluator());
         this.wallGenerator.setTheme(this.currentTheme);
+
+        // Init stair generator
+        this.stairGenerator = new StairGenerator();
 
         // Window resize
         window.addEventListener('resize', this.onWindowResize.bind(this));
@@ -976,6 +981,22 @@ class Viewer {
                 );
             });
         });
+
+        // 3. Stairs
+        if (floorData.stairs) {
+            floorData.stairs.forEach(stair => {
+                const stairGroup = this.stairGenerator.generateStair(stair);
+                group.add(stairGroup);
+            });
+        }
+
+        // 4. Lifts
+        if (floorData.lifts) {
+            floorData.lifts.forEach(lift => {
+                const liftGroup = this.stairGenerator.generateLift(lift, floorDefault);
+                group.add(liftGroup);
+            });
+        }
 
         return group;
     }

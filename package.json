@@ -29,5 +29,8 @@
     "language",
     "mcp-server",
     "viewer"
-  ]
+  ],
+  "dependencies": {
+    "@speclife/cli": "^0.6.1"
+  }
 }

@@ -121,6 +121,92 @@ floorplan
     }
 ```
 
+### Stairs
+
+Stairs are vertical circulation elements that connect floors:
+
+```
+# Basic straight stair
+stair MainStair at (10, 0) shape straight direction north rise 10ft width 3.5ft
+
+# L-shaped stair with landing
+stair CornerStair shape L-shaped entry south turn left runs 6, 6 rise 10ft width 3.5ft
+
+# U-shaped stair (switchback)
+stair ServiceStair shape U-shaped entry east turn right runs 8, 8 rise 12ft width 3ft
+
+# Spiral stair
+stair TowerSpiral shape spiral rotation clockwise outer-radius 4ft rise 10ft
+
+# Custom segmented stair with landings
+stair CustomStair shape custom entry south [
+    flight 5,
+    turn right landing (4ft x 4ft),
+    flight 6
+] rise 12ft width 3.5ft
+```
+
+#### Stair Shapes
+
+- `straight` - Single flight stair (requires `direction`)
+- `L-shaped` - Two flights with 90° turn (requires `entry`, `turn`, `runs`)
+- `U-shaped` - Two flights with 180° turn (switchback)
+- `double-L` - Three flights with two 90° turns
+- `spiral` - Helical stair (requires `rotation`, `outer-radius`)
+- `winder` - Stair with triangular winder treads at corners
+- `custom` - Composable segments with `flight` and `turn`
+
+#### Stair Properties
+
+- `rise` - Total vertical rise of the stair
+- `width` - Stair width
+- `riser` - Individual riser height (auto-calculated if omitted)
+- `tread` - Tread depth (default: 11")
+- `nosing` - Nosing overhang (default: 1")
+- `headroom` - Minimum headroom clearance (default: 80")
+- `handrail (left|right|both|inner|outer)` - Handrail placement
+- `stringers (open|closed|glass)` - Riser style (default: closed)
+- `label "Display Name"` - Custom display label
+- `material { tread: "oak", riser: "white" }` - Material specification
+
+#### Building Code Compliance
+
+Enable validation against building codes in the config block:
+
+```
+config { stair_code: residential }  # IRC code (max riser 7.75")
+config { stair_code: commercial }   # IBC code (max riser 7", min width 44")
+config { stair_code: ada }          # ADA compliance (min width 48")
+config { stair_code: none }         # No validation (default)
+```
+
+### Lifts (Elevators)
+
+```
+# Basic lift
+lift MainLift at (20, 25) size (5ft x 5ft)
+
+# Lift with door openings
+lift MainLift at (20, 25) size (5ft x 5ft) doors (north, south)
+
+# Lift with label
+lift Elevator size (5ft x 5ft) label "Main Elevator"
+```
+
+### Vertical Connections
+
+Link stairs and lifts across floors:
+
+```
+# Connect stairs between two floors
+vertical Ground.MainStair to First.MainStair
+
+# Connect lift through multiple floors
+vertical Ground.Elevator to First.Elevator to Second.Elevator
+```
+
+The system validates that vertically connected elements have matching positions and compatible footprints.
+
 ### Sub-Rooms (Nested Rooms)
 
 ```
@@ -194,11 +280,14 @@ See [mcp-server/README.md](./mcp-server/README.md) for full documentation.
 - **Relative positioning** (`right-of`, `below`, etc.) with automatic coordinate resolution
 - Gap spacing and alignment options for relative positioning
 - Overlap detection warnings
+- **Stairs** - Multiple shapes (straight, L-shaped, U-shaped, spiral, custom segmented)
+- **Lifts/Elevators** - Shaft definitions with door openings
+- **Vertical connections** - Link stairs/lifts across floors with position validation
 
 ### Planned
 
-- Staircase/elevator connections between floors
 - Interactive door manipulation
+- 3D stair geometry generation
 
 ## 3D Viewer
 

@@ -1,5 +1,6 @@
 import type { ValidationAcceptor, ValidationChecks } from "langium";
-import type { FloorplansAstType, Floorplan, Connection, Room, Floor, StyleBlock, StyleProperty, ConfigProperty } from "./generated/ast.js";
+import type { FloorplansAstType, Floorplan, Connection, Room, Floor, StyleBlock, StyleProperty, ConfigProperty, Stair, Lift } from "./generated/ast.js";
+import { isFlightSegment, isSegmentedStair, isStraightStair, isLShapedStair, isSpiralStair } from "./generated/ast.js";
 import type { FloorplansServices } from "./floorplans-module.js";
 import { hasMixedUnitSystems, VALID_UNITS, toMeters, type LengthUnit } from "./diagrams/floorplans/unit-utils.js";
 import { resolveFloorPositions } from "./diagrams/floorplans/position-resolver.js";
@@ -28,7 +29,13 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkConnectionSizeConstraints,
       validator.checkConflictingDoorSizeConfig,
       validator.checkThemeAndDarkModeConflict,
-      validator.checkDeprecatedFeatures
+      validator.checkDeprecatedFeatures,
+      validator.checkStairDimensionalConstraints,
+      validator.checkVerticalConnectionAlignment,
+      validator.checkStairWallAlignmentReferences,
+      validator.checkBuildingCodeCompliance,
+      validator.checkCirculationOutsideRoomBounds,
+      validator.checkCirculationOverlaps
     ],
     StyleProperty: [validator.checkStylePropertyValue],
     ConfigProperty: [validator.checkConfigPropertyValue]
@@ -1102,6 +1109,485 @@ export class FloorplansValidator {
    */
   private findRoomByName(rooms: Room[], name: string): Room | undefined {
     return rooms.find(r => r.name === name);
+  }
+
+  // ============================================================================
+  // Stair and Lift Validation
+  // ============================================================================
+
+  /**
+   * Building code constants for stair validation
+   */
+  private static readonly STAIR_CODES = {
+    residential: {
+      maxRiserHeight: 7.75, // inches
+      minTreadDepth: 10,   // inches
+      minWidth: 36,        // inches
+      minHeadroom: 80      // inches (6'8")
+    },
+    commercial: {
+      maxRiserHeight: 7,   // inches
+      minTreadDepth: 11,   // inches
+      minWidth: 44,        // inches
+      minHeadroom: 80      // inches
+    },
+    ada: {
+      maxRiserHeight: 7,   // inches
+      minTreadDepth: 11,   // inches
+      minWidth: 48,        // inches
+      minHeadroom: 80      // inches
+    }
+  };
+
+  /**
+   * Check stair dimensional constraints.
+   * Validates riser height, tread depth, and width against defaults.
+   */
+  checkStairDimensionalConstraints(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    const defaultUnit = this.getDefaultUnit(floorplan);
+    
+    for (const floor of floorplan.floors) {
+      for (const stair of floor.stairs) {
+        // Validate riser height if specified (should be ≤ 7.75 inches for residential)
+        if (stair.riser) {
+          const riserHeight = this.toInches(stair.riser.value, stair.riser.unit || defaultUnit);
+          if (riserHeight > 7.75) {
+            accept("warning",
+              `Stair '${stair.name}' has riser height ${riserHeight.toFixed(2)}" which exceeds the typical maximum of 7.75". ` +
+              `Consider reducing riser height for code compliance.`,
+              { node: stair, property: "riser" }
+            );
+          }
+        }
+
+        // Validate tread depth if specified (should be ≥ 10 inches for residential)
+        if (stair.tread) {
+          const treadDepth = this.toInches(stair.tread.value, stair.tread.unit || defaultUnit);
+          if (treadDepth < 10) {
+            accept("warning",
+              `Stair '${stair.name}' has tread depth ${treadDepth.toFixed(2)}" which is below the typical minimum of 10". ` +
+              `Consider increasing tread depth for safety.`,
+              { node: stair, property: "tread" }
+            );
+          }
+        }
+
+        // Validate width if specified (should be ≥ 36 inches for residential)
+        if (stair.width) {
+          const width = this.toInches(stair.width.value, stair.width.unit || defaultUnit);
+          if (width < 36) {
+            accept("warning",
+              `Stair '${stair.name}' has width ${width.toFixed(2)}" which is below the typical minimum of 36". ` +
+              `Consider increasing width for accessibility.`,
+              { node: stair, property: "width" }
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Check vertical connection alignment.
+   * Warns if connected elements have mismatched positions.
+   */
+  checkVerticalConnectionAlignment(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    // Build position maps for all circulation elements
+    const elementPositions = new Map<string, { x: number; y: number; floor: string }>();
+    
+    for (const floor of floorplan.floors) {
+      for (const stair of floor.stairs) {
+        const pos = stair.position 
+          ? { x: stair.position.x.value, y: stair.position.y.value }
+          : { x: 0, y: 0 };
+        elementPositions.set(`${floor.id}.${stair.name}`, { ...pos, floor: floor.id });
+      }
+      
+      for (const lift of floor.lifts) {
+        const pos = lift.position 
+          ? { x: lift.position.x.value, y: lift.position.y.value }
+          : { x: 0, y: 0 };
+        elementPositions.set(`${floor.id}.${lift.name}`, { ...pos, floor: floor.id });
+      }
+    }
+
+    // Check each vertical connection
+    for (const vc of floorplan.verticalConnections) {
+      const links = vc.links;
+      
+      // Check for position alignment between consecutive links
+      for (let i = 0; i < links.length - 1; i++) {
+        const currentKey = `${links[i].floor}.${links[i].element}`;
+        const nextKey = `${links[i + 1].floor}.${links[i + 1].element}`;
+        
+        const currentPos = elementPositions.get(currentKey);
+        const nextPos = elementPositions.get(nextKey);
+        
+        if (!currentPos) {
+          accept("error",
+            `Vertical connection references non-existent element '${currentKey}'. ` +
+            `Ensure the element exists on the specified floor.`,
+            { node: vc }
+          );
+          continue;
+        }
+        
+        if (!nextPos) {
+          accept("error",
+            `Vertical connection references non-existent element '${nextKey}'. ` +
+            `Ensure the element exists on the specified floor.`,
+            { node: vc }
+          );
+          continue;
+        }
+        
+        // Check position alignment (tolerance of 0.5 units)
+        const tolerance = 0.5;
+        if (Math.abs(currentPos.x - nextPos.x) > tolerance || 
+            Math.abs(currentPos.y - nextPos.y) > tolerance) {
+          accept("warning",
+            `Vertical connection between '${currentKey}' and '${nextKey}' has position mismatch. ` +
+            `Element at (${currentPos.x}, ${currentPos.y}) connects to element at (${nextPos.x}, ${nextPos.y}). ` +
+            `Consider aligning positions for realistic 3D rendering.`,
+            { node: vc }
+          );
+        }
+      }
+
+      // Check for skipped floors
+      const floorOrder = floorplan.floors.map(f => f.id);
+      for (let i = 0; i < links.length - 1; i++) {
+        const currentFloorIdx = floorOrder.indexOf(links[i].floor);
+        const nextFloorIdx = floorOrder.indexOf(links[i + 1].floor);
+        
+        if (currentFloorIdx !== -1 && nextFloorIdx !== -1) {
+          const floorGap = Math.abs(nextFloorIdx - currentFloorIdx);
+          if (floorGap > 1) {
+            accept("warning",
+              `Vertical connection skips ${floorGap - 1} floor(s) between '${links[i].floor}' and '${links[i + 1].floor}'. ` +
+              `This may cause rendering issues in 3D view.`,
+              { node: vc }
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Check stair wall alignment references.
+   * Validates that referenced rooms exist on the same floor.
+   */
+  checkStairWallAlignmentReferences(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    for (const floor of floorplan.floors) {
+      const roomNames = new Set(floor.rooms.map(r => r.name));
+      
+      for (const stair of floor.stairs) {
+        // Check segmented stairs for wall alignment references
+        if (isSegmentedStair(stair.shape)) {
+          for (const segment of stair.shape.segments) {
+            if (isFlightSegment(segment) && segment.wallRef) {
+              const referencedRoom = segment.wallRef.room;
+              if (!roomNames.has(referencedRoom)) {
+                accept("error",
+                  `Stair '${stair.name}' references non-existent room '${referencedRoom}' for wall alignment. ` +
+                  `Ensure the room exists on floor '${floor.id}'.`,
+                  { node: stair }
+                );
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Check building code compliance for stairs.
+   * Validates stair dimensions against the configured building code.
+   */
+  checkBuildingCodeCompliance(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    // Get the configured stair code
+    let stairCode: 'residential' | 'commercial' | 'ada' | 'none' | undefined;
+    
+    if (floorplan.config) {
+      for (const prop of floorplan.config.properties) {
+        const normalizedKey = normalizeConfigKey(prop.name);
+        if (normalizedKey === 'stairCode' && prop.stairCodeRef) {
+          stairCode = prop.stairCodeRef as 'residential' | 'commercial' | 'ada' | 'none';
+        }
+      }
+    }
+    
+    // Skip if no code or 'none' specified
+    if (!stairCode || stairCode === 'none') return;
+    
+    const codeRequirements = FloorplansValidator.STAIR_CODES[stairCode];
+    const defaultUnit = this.getDefaultUnit(floorplan);
+    
+    for (const floor of floorplan.floors) {
+      for (const stair of floor.stairs) {
+        // Check riser height
+        if (stair.riser) {
+          const riserHeight = this.toInches(stair.riser.value, stair.riser.unit || defaultUnit);
+          if (riserHeight > codeRequirements.maxRiserHeight) {
+            accept("warning",
+              `[${stairCode.toUpperCase()}] Stair '${stair.name}' riser height ${riserHeight.toFixed(2)}" ` +
+              `exceeds maximum ${codeRequirements.maxRiserHeight}" for ${stairCode} code.`,
+              { node: stair, property: "riser" }
+            );
+          }
+        }
+        
+        // Check tread depth
+        if (stair.tread) {
+          const treadDepth = this.toInches(stair.tread.value, stair.tread.unit || defaultUnit);
+          if (treadDepth < codeRequirements.minTreadDepth) {
+            accept("warning",
+              `[${stairCode.toUpperCase()}] Stair '${stair.name}' tread depth ${treadDepth.toFixed(2)}" ` +
+              `is below minimum ${codeRequirements.minTreadDepth}" for ${stairCode} code.`,
+              { node: stair, property: "tread" }
+            );
+          }
+        }
+        
+        // Check width
+        if (stair.width) {
+          const width = this.toInches(stair.width.value, stair.width.unit || defaultUnit);
+          if (width < codeRequirements.minWidth) {
+            accept("warning",
+              `[${stairCode.toUpperCase()}] Stair '${stair.name}' width ${width.toFixed(2)}" ` +
+              `is below minimum ${codeRequirements.minWidth}" for ${stairCode} code.`,
+              { node: stair, property: "width" }
+            );
+          }
+        }
+        
+        // Check headroom
+        if (stair.headroom) {
+          const headroom = this.toInches(stair.headroom.value, stair.headroom.unit || defaultUnit);
+          if (headroom < codeRequirements.minHeadroom) {
+            accept("warning",
+              `[${stairCode.toUpperCase()}] Stair '${stair.name}' headroom ${headroom.toFixed(2)}" ` +
+              `is below minimum ${codeRequirements.minHeadroom}" for ${stairCode} code.`,
+              { node: stair, property: "headroom" }
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Convert a value to inches based on its unit
+   */
+  private toInches(value: number, unit: string): number {
+    switch (unit) {
+      case 'in':
+        return value;
+      case 'ft':
+        return value * 12;
+      case 'm':
+        return value * 39.3701;
+      case 'cm':
+        return value * 0.393701;
+      case 'mm':
+        return value * 0.0393701;
+      default:
+        // Assume meters if no unit
+        return value * 39.3701;
+    }
+  }
+
+  /**
+   * Check if circulation elements (stairs, lifts) are positioned outside room bounds.
+   * Emits warnings for elements that may cause unexpected rendering.
+   */
+  checkCirculationOutsideRoomBounds(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    // Resolve variables for size calculations
+    const variableResolution = resolveVariables(floorplan);
+    const variables = variableResolution.variables;
+
+    for (const floor of floorplan.floors) {
+      // Build a map of room bounds for this floor
+      const roomBounds: Array<{ name: string; minX: number; minY: number; maxX: number; maxY: number }> = [];
+      
+      // Resolve positions for this floor
+      const resolution = resolveFloorPositions(floor, variables);
+      const resolvedPositions = resolution.positions;
+
+      for (const room of floor.rooms) {
+        const resolved = resolvedPositions.get(room.name);
+        if (!resolved) continue;
+
+        const size = getRoomSize(room, variables);
+        roomBounds.push({
+          name: room.name,
+          minX: resolved.x,
+          minY: resolved.y,
+          maxX: resolved.x + size.width,
+          maxY: resolved.y + size.height
+        });
+      }
+
+      // Check each stair
+      for (const stair of floor.stairs) {
+        if (!stair.position) continue;
+
+        const stairX = stair.position.x.value;
+        const stairY = stair.position.y.value;
+
+        // Check if stair start position is inside any room
+        const containingRoom = roomBounds.find(r => 
+          stairX >= r.minX && stairX < r.maxX &&
+          stairY >= r.minY && stairY < r.maxY
+        );
+
+        if (!containingRoom) {
+          accept("warning",
+            `Stair '${stair.name}' at position (${stairX}, ${stairY}) is not inside any room on floor '${floor.id}'. ` +
+            `Consider moving the stair inside a room or extending room bounds.`,
+            { node: stair }
+          );
+        }
+      }
+
+      // Check each lift
+      for (const lift of floor.lifts) {
+        if (!lift.position) continue;
+
+        const liftX = lift.position.x.value;
+        const liftY = lift.position.y.value;
+
+        // Check if lift start position is inside any room
+        const containingRoom = roomBounds.find(r => 
+          liftX >= r.minX && liftX < r.maxX &&
+          liftY >= r.minY && liftY < r.maxY
+        );
+
+        if (!containingRoom) {
+          accept("warning",
+            `Lift '${lift.name}' at position (${liftX}, ${liftY}) is not inside any room on floor '${floor.id}'. ` +
+            `Consider moving the lift inside a room or extending room bounds.`,
+            { node: lift }
+          );
+        }
+      }
+    }
+  }
+
+  /**
+   * Check for overlapping circulation elements (stairs and lifts) on each floor.
+   */
+  checkCirculationOverlaps(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    for (const floor of floorplan.floors) {
+      // Collect all circulation elements with their bounds
+      const elements: Array<{
+        name: string;
+        type: 'stair' | 'lift';
+        x: number;
+        y: number;
+        width: number;
+        height: number;
+        node: Stair | Lift;
+      }> = [];
+
+      // Add stairs
+      for (const stair of floor.stairs) {
+        if (stair.position) {
+          const dims = this.calculateStairBounds(stair);
+          elements.push({
+            name: stair.name,
+            type: 'stair',
+            x: stair.position.x.value,
+            y: stair.position.y.value,
+            width: dims.width,
+            height: dims.height,
+            node: stair,
+          });
+        }
+      }
+
+      // Add lifts
+      for (const lift of floor.lifts) {
+        if (lift.position && lift.size) {
+          elements.push({
+            name: lift.name,
+            type: 'lift',
+            x: lift.position.x.value,
+            y: lift.position.y.value,
+            width: lift.size.width.value,
+            height: lift.size.height.value,
+            node: lift,
+          });
+        }
+      }
+
+      // Check all pairs for overlap
+      for (let i = 0; i < elements.length; i++) {
+        for (let j = i + 1; j < elements.length; j++) {
+          const e1 = elements[i];
+          const e2 = elements[j];
+
+          if (this.circulationBoundsOverlap(e1, e2)) {
+            accept(
+              'warning',
+              `${e1.type} '${e1.name}' overlaps with ${e2.type} '${e2.name}' on floor '${floor.id}'`,
+              { node: e1.node }
+            );
+          }
+        }
+      }
+    }
+  }
+
+  /**
+   * Check if two circulation element bounds overlap
+   */
+  private circulationBoundsOverlap(
+    a: { x: number; y: number; width: number; height: number },
+    b: { x: number; y: number; width: number; height: number }
+  ): boolean {
+    const tolerance = 0.01;
+    const overlapX = a.x < b.x + b.width - tolerance && a.x + a.width > b.x + tolerance;
+    const overlapY = a.y < b.y + b.height - tolerance && a.y + a.height > b.y + tolerance;
+    return overlapX && overlapY;
+  }
+
+  /**
+   * Calculate approximate bounds for a stair
+   */
+  private calculateStairBounds(stair: Stair): { width: number; height: number } {
+    // Default dimensions
+    const width = stair.width?.value ?? 3;
+    const rise = stair.rise?.value ?? 10;
+    const riser = stair.riser?.value ?? 0.583; // 7 inches in feet
+    const tread = stair.tread?.value ?? 0.917; // 11 inches in feet
+    const stepCount = Math.ceil(rise / riser);
+    const runLength = stepCount * tread;
+
+    // Adjust based on shape
+    if (isStraightStair(stair.shape)) {
+      const dir = stair.shape.direction;
+      if (dir === 'east' || dir === 'west') {
+        return { width: runLength, height: width };
+      }
+      return { width, height: runLength };
+    }
+
+    if (isSpiralStair(stair.shape)) {
+      const radius = stair.shape.outerRadius?.value ?? width;
+      return { width: radius * 2, height: radius * 2 };
+    }
+
+    if (isLShapedStair(stair.shape)) {
+      // L-shaped stairs take up roughly width + landing in both directions
+      const landingSize = stair.shape.landing?.width?.value ?? width;
+      return { width: width + landingSize, height: runLength / 2 + landingSize };
+    }
+
+    // For other complex stairs, estimate bounding box
+    return { width: width * 2, height: runLength };
   }
 }
 

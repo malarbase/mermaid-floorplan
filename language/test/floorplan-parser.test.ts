@@ -1810,3 +1810,690 @@ describe("Conflicting Door Size Config Validation Tests", () => {
     )).toBe(true);
   });
 });
+
+// ============================================================================
+// Stair and Lift Parser Tests
+// ============================================================================
+
+describe("Stair Parser Tests", () => {
+  test("should parse straight stair", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              room Hall at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+              stair MainStair at (10, 0) shape straight direction north rise 10ft width 3.5ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const floor = model.floors[0];
+    expect(floor?.stairs).toHaveLength(1);
+    
+    const stair = floor?.stairs[0];
+    expect(stair?.name).toBe("MainStair");
+    expect(stair?.rise?.value).toBe(10);
+    expect(stair?.rise?.unit).toBe("ft");
+    expect(stair?.width?.value).toBe(3.5);
+    expect(stair?.shape?.shapeType).toBe("straight");
+  });
+
+  test("should parse L-shaped stair with runs", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair CornerStair at (0, 0) shape L-shaped entry south turn left runs 6, 6 rise 10ft width 3.5ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const model = document.parseResult.value;
+    const stair = model.floors[0]?.stairs[0];
+    expect(stair?.shape?.shapeType).toBe("L-shaped");
+    expect(stair?.shape?.entry).toBe("south");
+    expect(stair?.shape?.turn).toBe("left");
+    expect(stair?.shape?.runs).toEqual([6, 6]);
+  });
+
+  test("should parse U-shaped stair", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair ServiceStair at (0, 0) shape U-shaped entry east turn right runs 8, 8 rise 12ft width 3ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    expect(stair?.shape?.shapeType).toBe("U-shaped");
+    expect(stair?.shape?.entry).toBe("east");
+    expect(stair?.shape?.turn).toBe("right");
+  });
+
+  test("should parse double-L stair (three flights)", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair ThreeFlightStair at (0, 0) shape double-L entry south turn right runs 5, 6, 5 rise 14ft width 3.5ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    expect(stair?.shape?.shapeType).toBe("double-L");
+    expect(stair?.shape?.runs).toEqual([5, 6, 5]);
+  });
+
+  test("should parse spiral stair", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair TowerSpiral at (0, 0) shape spiral rotation clockwise outer-radius 4ft rise 10ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    expect(stair?.shape?.shapeType).toBe("spiral");
+    expect(stair?.shape?.rotation).toBe("clockwise");
+    expect(stair?.shape?.outerRadius?.value).toBe(4);
+  });
+
+  test("should parse winder stair", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair CompactStair at (0, 0) shape winder entry west turn right winders 3 runs 4, 5 rise 9ft width 2.5ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    expect(stair?.shape?.shapeType).toBe("winder");
+    expect(stair?.shape?.winders).toBe(3);
+    expect(stair?.shape?.runs).toEqual([4, 5]);
+  });
+
+  test("should parse custom segmented stair", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair CustomStair at (0, 0) shape custom entry south [
+                  flight 5,
+                  turn right landing (4ft x 4ft),
+                  flight 6,
+                  turn right landing (4ft x 4ft),
+                  flight 5
+              ] rise 14ft width 3.5ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    expect(stair?.shape?.shapeType).toBe("custom");
+    expect(stair?.shape?.segments).toHaveLength(5);
+  });
+
+  test("should parse stair with all optional properties", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair FullySpecifiedStair at (0, 0) 
+                  shape straight direction north 
+                  rise 10ft 
+                  width 3.5ft 
+                  riser 7in 
+                  tread 11in 
+                  nosing 1.25in
+                  headroom 84in
+                  handrail (both)
+                  stringers closed
+                  label "Main Staircase"
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    expect(stair?.riser?.value).toBe(7);
+    expect(stair?.tread?.value).toBe(11);
+    expect(stair?.nosing?.value).toBe(1.25);
+    expect(stair?.headroom?.value).toBe(84);
+    expect(stair?.handrail).toBe("both");
+    expect(stair?.stringers).toBe("closed");
+    expect(stair?.label).toBe("Main Staircase");
+  });
+
+  test("should parse stair with per-segment width overrides", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair GrandStair at (0, 0) shape custom entry south [
+                  flight 8 width 6ft,
+                  turn right landing (6ft x 6ft),
+                  flight 6 width 4ft
+              ] rise 12ft width 4ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    const segments = stair?.shape?.segments ?? [];
+    expect(segments[0]?.segmentType).toBe("flight");
+    expect(segments[0]?.width?.value).toBe(6);
+    expect(segments[2]?.width?.value).toBe(4);
+  });
+
+  test("should parse stair with wall alignment", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              room StairWell at (0, 0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+              stair PerimeterStair at (0, 0) shape custom entry south [
+                  flight 5 along StairWell.bottom,
+                  turn right landing (4ft x 4ft),
+                  flight 6 along StairWell.left
+              ] rise 14ft width 3.5ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    const flight = stair?.shape?.segments?.[0];
+    expect(flight?.segmentType).toBe("flight");
+    expect(flight?.wallRef?.room).toBe("StairWell");
+    expect(flight?.wallRef?.wall).toBe("bottom");
+  });
+
+  test("should parse stair with material specification", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair MaterialStair at (0, 0) 
+                  shape straight direction north 
+                  rise 10ft 
+                  material { tread: "oak", riser: "painted-white" }
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const stair = document.parseResult.value.floors[0]?.stairs[0];
+    expect(stair?.material?.properties).toHaveLength(2);
+    expect(stair?.material?.properties[0]?.name).toBe("tread");
+    expect(stair?.material?.properties[0]?.value).toBe("oak");
+  });
+
+  test("should parse stair with stringer styles", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair OpenStair at (0, 0) shape straight direction north rise 10ft stringers open
+              stair GlassStair at (5, 0) shape straight direction north rise 10ft stringers glass
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const floor = document.parseResult.value.floors[0];
+    expect(floor?.stairs[0]?.stringers).toBe("open");
+    expect(floor?.stairs[1]?.stringers).toBe("glass");
+  });
+});
+
+describe("Lift Parser Tests", () => {
+  test("should parse basic lift", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              lift MainLift at (20, 25) size (5ft x 5ft)
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const lift = document.parseResult.value.floors[0]?.lifts[0];
+    expect(lift?.name).toBe("MainLift");
+    expect(lift?.position?.x?.value).toBe(20);
+    expect(lift?.position?.y?.value).toBe(25);
+    expect(lift?.size?.width?.value).toBe(5);
+    expect(lift?.size?.height?.value).toBe(5);
+  });
+
+  test("should parse lift with door specification", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              lift MainLift at (20, 25) size (5ft x 5ft) doors (north, south)
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const lift = document.parseResult.value.floors[0]?.lifts[0];
+    expect(lift?.doors).toEqual(["north", "south"]);
+  });
+
+  test("should parse lift with label and style", async () => {
+    const input = `
+      floorplan
+          style Circulation { floor_color: "#E0E0E0" }
+          floor GroundFloor {
+              lift Elevator at (20, 25) size (5ft x 5ft) label "Main Elevator" style Circulation
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const lift = document.parseResult.value.floors[0]?.lifts[0];
+    expect(lift?.label).toBe("Main Elevator");
+    expect(lift?.styleRef).toBe("Circulation");
+  });
+});
+
+describe("Vertical Connection Parser Tests", () => {
+  test("should parse two-floor stair connection", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 10ft
+          }
+          floor FirstFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 10ft
+          }
+          vertical GroundFloor.MainStair to FirstFloor.MainStair
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const vc = document.parseResult.value.verticalConnections[0];
+    expect(vc?.links).toHaveLength(2);
+    expect(vc?.links[0]?.floor).toBe("GroundFloor");
+    expect(vc?.links[0]?.element).toBe("MainStair");
+    expect(vc?.links[1]?.floor).toBe("FirstFloor");
+    expect(vc?.links[1]?.element).toBe("MainStair");
+  });
+
+  test("should parse multi-floor lift connection", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              lift Elevator at (0, 0) size (5ft x 5ft)
+          }
+          floor FirstFloor {
+              lift Elevator at (0, 0) size (5ft x 5ft)
+          }
+          floor SecondFloor {
+              lift Elevator at (0, 0) size (5ft x 5ft)
+          }
+          vertical GroundFloor.Elevator to FirstFloor.Elevator to SecondFloor.Elevator
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const vc = document.parseResult.value.verticalConnections[0];
+    expect(vc?.links).toHaveLength(3);
+  });
+});
+
+describe("Stair Building Code Config Tests", () => {
+  test("should parse stair_code config property", async () => {
+    const input = `
+      floorplan
+          config { stair_code: residential }
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 10ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+
+    const config = document.parseResult.value.config;
+    const stairCodeProp = config?.properties.find(p => p.name === "stair_code");
+    expect(stairCodeProp?.stairCodeRef).toBe("residential");
+  });
+
+  test("should parse all stair_code options", async () => {
+    for (const code of ["residential", "commercial", "ada", "none"]) {
+      const input = `
+        floorplan
+            config { stair_code: ${code} }
+            floor GroundFloor {
+                stair MainStair at (0, 0) shape straight direction north rise 10ft
+            }
+        `;
+
+      const document = await parse(input);
+      expectNoErrors(document);
+      
+      const stairCodeProp = document.parseResult.value.config?.properties.find(p => p.name === "stair_code");
+      expect(stairCodeProp?.stairCodeRef).toBe(code);
+    }
+  });
+});
+
+describe("Stair Dimensional Validation Tests", () => {
+  test("should accept compliant riser height", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft riser 7in tread 11in
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // 7in riser is compliant (< 7.75in maximum)
+    const riserWarnings = document.diagnostics?.filter(d =>
+      d.message.toLowerCase().includes("riser")
+    ) || [];
+    expect(riserWarnings.length).toBe(0);
+  });
+
+  test("should warn for excessive riser height", async () => {
+    const input = `
+      floorplan
+          config { stair_code: residential }
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft riser 8in tread 11in
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // 8in riser exceeds both general max of 7.75in and residential max of 7.75in
+    const riserWarnings = document.diagnostics?.filter(d =>
+      d.message.toLowerCase().includes("riser")
+    ) || [];
+    expect(riserWarnings.length).toBeGreaterThan(0);
+  });
+
+  test("should warn for insufficient tread depth", async () => {
+    const input = `
+      floorplan
+          config { stair_code: commercial }
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 9ft width 4ft riser 7in tread 9in
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // 9in tread is less than commercial min of 11in
+    const treadWarnings = document.diagnostics?.filter(d =>
+      d.message.toLowerCase().includes("tread")
+    ) || [];
+    expect(treadWarnings.length).toBeGreaterThan(0);
+  });
+
+  test("should warn for insufficient headroom with building code", async () => {
+    const input = `
+      floorplan
+          config { stair_code: residential }
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft headroom 72in
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // 72in headroom is less than residential minimum 80in
+    const headroomWarnings = document.diagnostics?.filter(d =>
+      d.message.toLowerCase().includes("headroom")
+    ) || [];
+    expect(headroomWarnings.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Stair Wall Alignment Validation Tests", () => {
+  test("should accept valid wall alignment reference", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              room StairWell at (0, 0) size (10 x 15) walls [top: solid, right: solid, bottom: solid, left: solid]
+              stair MainStair shape custom entry south [
+                  flight 5 along StairWell.bottom,
+                  turn right landing (4ft x 4ft),
+                  flight 6
+              ] rise 10ft width 3ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // StairWell exists on same floor, so no alignment error
+    const alignmentErrors = document.diagnostics?.filter(d =>
+      d.message.includes("non-existent room") || d.message.includes("wall alignment")
+    ) || [];
+    expect(alignmentErrors.length).toBe(0);
+  });
+
+  test("should error for invalid wall alignment room reference", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair MainStair shape custom entry south [
+                  flight 5 along NonExistent.bottom,
+                  turn right landing (4ft x 4ft),
+                  flight 6
+              ] rise 10ft width 3ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // NonExistent room doesn't exist - should produce error
+    const alignmentErrors = document.diagnostics?.filter(d =>
+      d.message.includes("non-existent room") || d.message.includes("wall alignment")
+    ) || [];
+    expect(alignmentErrors.length).toBeGreaterThan(0);
+  });
+});
+
+describe("Building Code Compliance Validation Tests", () => {
+  test("should warn for non-compliant width under commercial code", async () => {
+    const input = `
+      floorplan
+          config { stair_code: commercial }
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // 3ft (36in) width is less than commercial minimum of 44in
+    const widthWarnings = document.diagnostics?.filter(d =>
+      d.message.toLowerCase().includes("width")
+    ) || [];
+    expect(widthWarnings.length).toBeGreaterThan(0);
+  });
+
+  test("should warn for non-compliant width under ADA code", async () => {
+    const input = `
+      floorplan
+          config { stair_code: ada }
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3.5ft
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // 3.5ft (42in) width is less than ADA minimum of 48in
+    const widthWarnings = document.diagnostics?.filter(d =>
+      d.message.toLowerCase().includes("width")
+    ) || [];
+    expect(widthWarnings.length).toBeGreaterThan(0);
+  });
+
+  test("should not warn when stair_code is none", async () => {
+    const input = `
+      floorplan
+          config { stair_code: none }
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 9ft width 4ft riser 7in tread 11in
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // With stair_code: none and compliant general dimensions, no code-specific warnings
+    const codeWarnings = document.diagnostics?.filter(d =>
+      d.message.includes("[RESIDENTIAL]") || d.message.includes("[COMMERCIAL]") || d.message.includes("[ADA]")
+    ) || [];
+    expect(codeWarnings.length).toBe(0);
+  });
+
+  test("should accept compliant stair under residential code", async () => {
+    const input = `
+      floorplan
+          config { stair_code: residential }
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 9ft width 3ft riser 7.5in tread 10in headroom 80in
+          }
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // All dimensions meet residential requirements exactly at the limits
+    const codeWarnings = document.diagnostics?.filter(d =>
+      d.message.includes("[RESIDENTIAL]")
+    ) || [];
+    expect(codeWarnings.length).toBe(0);
+  });
+});
+
+describe("Vertical Connection Validation Tests", () => {
+  test("should warn for misaligned vertical connection positions", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair MainStair at (0, 0) shape straight direction north rise 10ft width 3ft
+          }
+          floor FirstFloor {
+              stair MainStair at (5, 0) shape straight direction north rise 10ft width 3ft
+          }
+          vertical GroundFloor.MainStair to FirstFloor.MainStair
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // Position mismatch: (0, 0) vs (5, 0) - message says "Position mismatch:"
+    const positionWarnings = document.diagnostics?.filter(d =>
+      d.message.includes("Position mismatch") || d.message.toLowerCase().includes("position")
+    ) || [];
+    expect(positionWarnings.length).toBeGreaterThan(0);
+  });
+
+  test("should accept aligned vertical connection", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              stair MainStair at (10, 20) shape straight direction north rise 10ft width 3ft
+          }
+          floor FirstFloor {
+              stair MainStair at (10, 20) shape straight direction north rise 10ft width 3ft
+          }
+          vertical GroundFloor.MainStair to FirstFloor.MainStair
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // Positions match: both at (10, 20)
+    const positionWarnings = document.diagnostics?.filter(d =>
+      d.message.includes("Position mismatch")
+    ) || [];
+    expect(positionWarnings.length).toBe(0);
+  });
+
+  test("should warn for skipped floors in vertical connection", async () => {
+    const input = `
+      floorplan
+          floor GroundFloor {
+              lift Elevator at (0, 0) size (5ft x 5ft)
+          }
+          floor FirstFloor {
+              room Lobby at (0, 0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+          floor SecondFloor {
+              lift Elevator at (0, 0) size (5ft x 5ft)
+          }
+          vertical GroundFloor.Elevator to SecondFloor.Elevator
+      `;
+
+    const document = await parse(input);
+    expectNoErrors(document);
+    
+    await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
+    
+    // FirstFloor is skipped - message says "Vertical connection skips"
+    const skippedWarnings = document.diagnostics?.filter(d =>
+      d.message.includes("skips") || d.message.toLowerCase().includes("skip")
+    ) || [];
+    expect(skippedWarnings.length).toBeGreaterThan(0);
+  });
+});

@@ -105,8 +105,6 @@ export function generateRoomSvg(
   const size = getRoomSize(room, variables);
   const width = size.width;
   const height = size.height;
-  const centerX = x + width / 2;
-  const centerY = y + height / 2;
 
   const wallThickness = 0.2;
   
@@ -140,6 +138,56 @@ export function generateRoomSvg(
     }
   }
 
-  return `<g class="room" data-room="${room.name}">${roomBackground}${topWall}${rightWall}${bottomWall}${leftWall}${generateRoomText(room, centerX, centerY, variables, renderOptions)}${subRoomSvg}</g>`;
+  // Note: Room text is now rendered separately via generateRoomLabels to ensure z-order above circulation elements
+  return `<g class="room" data-room="${room.name}">${roomBackground}${topWall}${rightWall}${bottomWall}${leftWall}${subRoomSvg}</g>`;
+}
+
+/**
+ * Generate labels for all rooms on a floor (to be rendered after circulation elements for proper z-order)
+ */
+export function generateRoomLabels(
+  rooms: Room[],
+  parentOffsetX: number = 0,
+  parentOffsetY: number = 0,
+  resolvedPositions?: Map<string, ResolvedPosition>,
+  variables?: Map<string, { width: number; height: number }>,
+  renderOptions?: RoomRenderOptions
+): string {
+  let svg = `<g class="room-labels" aria-label="Room labels">`;
+  
+  for (const room of rooms) {
+    // Get position from resolved map or explicit position
+    let baseX: number;
+    let baseY: number;
+    
+    const resolved = resolvedPositions?.get(room.name);
+    if (resolved) {
+      baseX = resolved.x;
+      baseY = resolved.y;
+    } else if (room.position) {
+      baseX = room.position.x.value;
+      baseY = room.position.y.value;
+    } else {
+      continue;
+    }
+    
+    const x = baseX + parentOffsetX;
+    const y = baseY + parentOffsetY;
+    const size = getRoomSize(room, variables);
+    const width = size.width;
+    const height = size.height;
+    const centerX = x + width / 2;
+    const centerY = y + height / 2;
+    
+    svg += generateRoomText(room, centerX, centerY, variables, renderOptions);
+    
+    // Handle sub-rooms recursively
+    if (room.subRooms && room.subRooms.length > 0) {
+      svg += generateRoomLabels(room.subRooms, x, y, resolvedPositions, variables, renderOptions);
+    }
+  }
+  
+  svg += `</g>`;
+  return svg;
 }
 

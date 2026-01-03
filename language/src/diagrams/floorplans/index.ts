@@ -38,6 +38,12 @@ export { wallRectangle } from "./wall.js";
 export { generateDoor } from "./door.js";
 export { generateWindow } from "./window.js";
 export { generateConnection, generateConnections } from "./connection.js";
+export { 
+  generateFloorCirculation, 
+  generateStairSvg, 
+  generateLiftSvg,
+  type StairRenderOptions 
+} from "./stair-renderer.js";
 
 // Position resolution (relative positioning)
 export {
@@ -141,6 +147,11 @@ export {
   type JsonConnection,
   type JsonConfig,
   type JsonStyle,
+  type JsonStair,
+  type JsonStairShape,
+  type JsonStairSegment,
+  type JsonLift,
+  type JsonVerticalConnection,
   type ConversionResult,
   type ConversionError,
 } from "./json-converter.js";

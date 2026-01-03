@@ -206,6 +206,8 @@ const CONFIG_KEY_MAP: Record<string, string> = {
   // Display properties
   'show_labels': 'showLabels',
   'show_dimensions': 'showDimensions',
+  // Stair building code
+  'stair_code': 'stairCode',
 };
 
 /**
