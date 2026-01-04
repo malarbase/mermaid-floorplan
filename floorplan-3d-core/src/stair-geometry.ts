@@ -19,12 +19,10 @@ export class StairGenerator {
 
   public generateStair(stair: JsonStair): THREE.Group {
     const group = new THREE.Group();
-    group.name = `stair_${stair.name}`;
+    group.name = `stair_${stair.name ?? 'unnamed'}`;
     group.position.set(stair.x, 0, stair.z);
 
-    const shapeType = stair.shape.type;
-
-    switch (shapeType) {
+    switch (stair.shape.type) {
       case 'straight':
         this.generateStraightStair(group, stair);
         break;
@@ -48,7 +46,7 @@ export class StairGenerator {
 
   public generateLift(lift: JsonLift, floorHeight: number): THREE.Group {
     const group = new THREE.Group();
-    group.name = `lift_${lift.name}`;
+    group.name = `lift_${lift.name ?? 'unnamed'}`;
     group.position.set(lift.x, 0, lift.z);
 
     const width = lift.width;
@@ -99,8 +97,7 @@ export class StairGenerator {
 
     // Direction handling (view-relative: top/bottom/left/right)
     let rotation = 0;
-    const direction = stair.shape.direction || 'top';
-    switch (direction) {
+    switch (stair.shape.direction ?? 'top') {
       case 'top': rotation = 0; break;
       case 'bottom': rotation = Math.PI; break;
       case 'right': rotation = -Math.PI / 2; break;
@@ -170,7 +167,7 @@ export class StairGenerator {
   }
 
   private generateLShapedStair(group: THREE.Group, stair: JsonStair): void {
-    const runs = stair.shape.runs || [10, 10];
+    const runs = stair.shape.runs ?? [10, 10];
     const run1Steps = runs[0] || Math.floor(stair.rise / 0.18 / 2);
     const run2Steps = runs[1] || Math.floor(stair.rise / 0.18 / 2);
 
@@ -195,7 +192,7 @@ export class StairGenerator {
     group.add(landing);
 
     // Second run
-    const turn = stair.shape.turn || 'right';
+    const turn = stair.shape.turn ?? 'right';
     const turnAngle = turn === 'right' ? -Math.PI / 2 : Math.PI / 2;
 
     const run2StartPos = new THREE.Vector3(0, landingY, -(run1Steps * treadDepth) - (landingDepth / 2) + (treadDepth / 2));
@@ -211,7 +208,7 @@ export class StairGenerator {
     group.add(run2Group);
 
     // Apply entry rotation (view-relative: top/bottom/left/right)
-    const entry = stair.shape.entry || 'top';
+    const entry = stair.shape.entry ?? 'top';
     let rotation = 0;
     switch (entry) {
       case 'top': rotation = 0; break;

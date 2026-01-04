@@ -11,6 +11,8 @@ import type { SceneBounds, Render3DOptions } from './types.js';
  */
 export interface CameraSetupResult {
   camera: THREE.Camera;
+  /** Projection type used */
+  projection: 'isometric' | 'perspective';
   /** Camera position used */
   position: [number, number, number];
   /** Camera target (look-at point) */
@@ -110,6 +112,7 @@ function setupIsometricCamera(
 
   return {
     camera,
+    projection: 'isometric',
     position: [camX, camY, camZ],
     target: [center.x, center.y, center.z],
   };
@@ -154,6 +157,7 @@ function setupPerspectiveCamera(
 
   return {
     camera,
+    projection: 'perspective',
     position,
     target,
     fov,

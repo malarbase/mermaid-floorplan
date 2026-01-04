@@ -84,7 +84,7 @@ const multiFloorFloorplan: JsonExport = {
         },
       ],
       stairs: [
-        { id: 's1', x: 3, z: 1, width: 1, height: 2, connects_floors: [0, 1] },
+        { name: 's1', x: 3, z: 1, width: 1, rise: 3, shape: { type: 'straight' } },
       ],
       lifts: [],
     },
@@ -238,7 +238,7 @@ const styledFloorplan: JsonExport = {
       ],
       stairs: [],
       lifts: [
-        { id: 'lift1', x: 5, z: 3, width: 1.5, height: 1.5, connects_floors: [0, 1] },
+        { name: 'lift1', x: 5, z: 3, width: 1.5, height: 1.5, doors: ['bottom'] },
       ],
     },
   ],

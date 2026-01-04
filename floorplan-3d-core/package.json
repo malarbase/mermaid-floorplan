@@ -8,14 +8,20 @@
   "exports": {
     ".": {
       "types": "./out/index.d.ts",
-      "import": "./out/index.js"
+      "import": "./out/index.js",
+      "default": "./out/index.js"
+    },
+    "./browser": {
+      "default": "./out/floorplan-3d-core.browser.js"
     }
   },
   "files": [
     "out"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm run build:browser",
+    "build:tsc": "tsc",
+    "build:browser": "node scripts/build-browser.js",
     "clean": "shx rm -rf out",
     "watch": "tsc --watch",
     "test": "vitest run",
@@ -26,6 +32,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
+    "esbuild": "^0.24.0",
     "shx": "~0.4.0",
     "three": "^0.170.0",
     "typescript": "~5.8.3",

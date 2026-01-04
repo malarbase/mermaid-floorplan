@@ -229,7 +229,7 @@ export function normalizeToMeters(data: JsonExport): JsonExport {
     ...data,
     config: data.config ? normalizeConfig(data.config, sourceUnit) : undefined,
     floors: data.floors.map((f) => normalizeFloor(f, sourceUnit)),
-    connections: data.connections.map((c) => normalizeConnection(c, sourceUnit)),
+    connections: data.connections?.map((c) => normalizeConnection(c, sourceUnit)),
     // styles don't have dimensional values, pass through
     styles: data.styles,
     // vertical connections are just references, pass through
