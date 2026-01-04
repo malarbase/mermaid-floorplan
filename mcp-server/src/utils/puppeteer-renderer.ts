@@ -116,6 +116,9 @@ export async function renderWithPuppeteer(
     // Set viewport to match output dimensions
     await page.setViewport({ width, height });
 
+    // Capture browser errors for debugging
+    page.on('pageerror', err => console.error('Browser error:', String(err)));
+
     // Create a minimal HTML page
     const html = createRenderingHTML(width, height);
     await page.setContent(html, { waitUntil: 'domcontentloaded' });
@@ -413,7 +416,9 @@ function getRenderingCode(): string {
             const isDoor = conn.doorType === 'door' || conn.doorType === 'double-door';
             const isWindow = conn.doorType === 'window';
 
-            if (!isDoor && !isWindow) return;
+            if (!isDoor && !isWindow) {
+              return;
+            }
 
             // Calculate position
             const isVertical = wall.direction === 'left' || wall.direction === 'right';
@@ -423,27 +428,43 @@ function getRenderingCode(): string {
             const roomHeight = room.roomHeight || defaultHeight;
             const roomElevation = room.elevation || 0;
 
+            // Calculate position at WALL CENTER (walls are inset by wallThickness/2 from room edge)
             let holeX, holeZ;
             if (isVertical) {
-              holeX = wall.direction === 'left' ? room.x : room.x + room.width;
+              // Vertical walls: position at wall center in X, along wall in Z
+              holeX = wall.direction === 'left' 
+                ? room.x + wallThickness / 2 
+                : room.x + room.width - wallThickness / 2;
               holeZ = room.z + positionFraction * room.height;
             } else {
+              // Horizontal walls: position along wall in X, at wall center in Z
               holeX = room.x + positionFraction * room.width;
-              holeZ = wall.direction === 'top' ? room.z : room.z + room.height;
+              holeZ = wall.direction === 'top' 
+                ? room.z + wallThickness / 2 
+                : room.z + room.height - wallThickness / 2;
             }
 
             if (isDoor) {
               // Door rendering
+              // Note: Unlike the viewer which uses CSG to cut holes in walls,
+              // we render doors as boxes that protrude through walls since
+              // CSG is complex in headless Puppeteer. The door must be thick
+              // enough to be visible on both sides of the wall.
+              
               let doorWidth = conn.width !== undefined ? conn.width :
                 conn.doorType === 'double-door' ? DOUBLE_DOOR_WIDTH : DOOR_DIMS.WIDTH;
               const doorHeight = conn.height || DOOR_DIMS.HEIGHT;
 
+              // Make door thick enough to protrude through wall on both sides
+              // Without CSG, we need doors to extend beyond the wall surface
+              const doorThickness = wallThickness * 2.5;  // ~0.5m at standard wall thickness
+              
+              // Create door geometry oriented appropriately for wall direction
               const doorPanelGeom = new THREE.BoxGeometry(
-                doorWidth,
+                isVertical ? doorThickness : doorWidth,
                 doorHeight,
-                DOOR_DIMS.PANEL_THICKNESS
+                isVertical ? doorWidth : doorThickness
               );
-              doorPanelGeom.translate(doorWidth / 2, 0, 0);
 
               const doorMat = new THREE.MeshStandardMaterial({
                 color: themeColors.DOOR,
@@ -453,57 +474,26 @@ function getRenderingCode(): string {
 
               const doorMesh = new THREE.Mesh(doorPanelGeom, doorMat);
               doorMesh.name = 'door-' + conn.fromRoom + '-' + conn.toRoom;
-
-              // Calculate hinge position
-              const swingRight = conn.swing !== 'left';
-              let hingeSideSign = 0;
-              switch (wall.direction) {
-                case 'top': hingeSideSign = swingRight ? 1 : -1; break;
-                case 'bottom': hingeSideSign = swingRight ? -1 : 1; break;
-                case 'left': hingeSideSign = swingRight ? -1 : 1; break;
-                case 'right': hingeSideSign = swingRight ? 1 : -1; break;
-              }
-
-              let hingeX = holeX;
-              let hingeZ = holeZ;
-              if (isVertical) {
-                hingeZ = holeZ + hingeSideSign * (doorWidth / 2);
-              } else {
-                hingeX = holeX + hingeSideSign * (doorWidth / 2);
-              }
-
-              doorMesh.position.set(hingeX, roomElevation + doorHeight / 2, hingeZ);
-
-              // Calculate rotation
-              let baseAngle = 0;
-              if (!isVertical) {
-                baseAngle = hingeSideSign === 1 ? Math.PI : 0;
-              } else {
-                baseAngle = hingeSideSign === 1 ? Math.PI / 2 : -Math.PI / 2;
-              }
-
-              const opensIn = conn.opensInto ? conn.opensInto === room.name : true;
-              let wallFactor = 1;
-              if (wall.direction === 'bottom' || wall.direction === 'left') {
-                wallFactor = -1;
-              }
-              const openFactor = opensIn ? 1 : -1;
-              const swingDir = hingeSideSign * wallFactor * openFactor;
-              const finalAngle = baseAngle + swingDir * DOOR_DIMS.SWING_ANGLE;
-
-              doorMesh.rotation.y = finalAngle;
+              
+              // Position door centered on wall (it protrudes through)
+              doorMesh.position.set(holeX, roomElevation + doorHeight / 2, holeZ);
+              
               floorGroup.add(doorMesh);
 
             } else if (isWindow) {
               // Window rendering
+              // Like doors, windows protrude through walls since we don't use CSG
               const windowWidth = conn.width || WINDOW_DIMS.WIDTH;
               const windowHeight = conn.height || WINDOW_DIMS.HEIGHT;
               const sillHeight = roomElevation + WINDOW_DIMS.SILL_HEIGHT;
 
+              // Make window thick enough to protrude through wall on both sides
+              const windowThickness = wallThickness * 2;
+              
               const windowGeom = new THREE.BoxGeometry(
-                isVertical ? WINDOW_DIMS.GLASS_THICKNESS : windowWidth,
+                isVertical ? windowThickness : windowWidth,
                 windowHeight,
-                isVertical ? windowWidth : WINDOW_DIMS.GLASS_THICKNESS
+                isVertical ? windowWidth : windowThickness
               );
 
               const windowMat = new THREE.MeshStandardMaterial({
@@ -511,9 +501,10 @@ function getRenderingCode(): string {
                 roughness: 0.0,
                 metalness: 0.9,
                 transparent: true,
-                opacity: 0.3,
+                opacity: 0.5,  // Slightly higher opacity for visibility
               });
 
+              // Position window centered on wall (it protrudes through)
               const windowMesh = new THREE.Mesh(windowGeom, windowMat);
               windowMesh.name = 'window-' + conn.fromRoom + '-' + conn.toRoom;
               windowMesh.position.set(holeX, sillHeight + windowHeight / 2, holeZ);

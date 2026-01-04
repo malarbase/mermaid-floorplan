@@ -126,6 +126,13 @@ Renders floorplan DSL to a PNG image, SVG vector, or 3D PNG.
 }
 ```
 
+**3D Rendering Features:**
+- Floors and walls with room-specific colors/styles
+- **Doors** rendered at connection points between rooms
+- **Windows** rendered at window-type walls and connections
+- Stairs and lifts with proper geometry
+- Support for dark, light, and blueprint themes
+
 **3D Rendering Examples:**
 ```json
 // Isometric 3D view (default orthographic projection)

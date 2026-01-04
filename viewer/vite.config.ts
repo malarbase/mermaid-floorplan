@@ -10,7 +10,11 @@ export default defineConfig({
     emptyOutDir: true,
   },
   server: {
-    open: true
+    open: true,
+    fs: {
+      // Allow serving files from the parent project (for worktrees accessing shared node_modules)
+      allow: ['..', '../..']
+    }
   }
 });
 

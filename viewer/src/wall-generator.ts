@@ -11,10 +11,10 @@ import { calculatePositionWithFallback, type RoomBounds } from 'floorplans-langu
 import type { JsonWall, JsonRoom, JsonConnection, JsonConfig } from 'floorplan-3d-core';
 import { 
   DIMENSIONS, MaterialFactory,
-  type ViewerTheme, type MaterialSet, type MaterialStyle 
+  type ViewerTheme, type MaterialSet, type MaterialStyle,
+  // Connection matching utilities from core
+  findMatchingConnections, shouldRenderConnection,
 } from 'floorplan-3d-core';
-// Browser-specific modules
-import { ConnectionMatcher } from './connection-matcher';
 import { DoorRenderer } from './door-renderer';
 import { 
   analyzeWallOwnership, 
@@ -133,11 +133,10 @@ export class WallGenerator {
       this.addExplicitHole(wall, room, baseGeometry, holes, materials, group, elevation, config);
     }
 
-    // Handle connections (doors between rooms)
-    const connectionMatches = ConnectionMatcher.findMatchingConnections(room, wall, connections);
+    // Handle connections (doors between rooms) - uses shared connection matching from core
+    const connectionMatches = findMatchingConnections(room, wall, connections);
     for (const match of connectionMatches) {
-      const shouldRender = ConnectionMatcher.shouldRenderDoor(match, wall, allRooms);
-      match.shouldRenderDoor = shouldRender;
+      const shouldRender = shouldRenderConnection(match, wall, allRooms);
       this.addConnectionHoleToList(match.connection, room, wall, baseGeometry, holes, shouldRender, materials, group, elevation, allRooms, config);
     }
 
@@ -235,9 +234,10 @@ export class WallGenerator {
   ): void {
     const geometry = this.calculateWallGeometry(wall, room, config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS);
     
-    const connectionMatches = ConnectionMatcher.findMatchingConnections(room, wall, connections);
+    // Uses shared connection matching from core
+    const connectionMatches = findMatchingConnections(room, wall, connections);
     for (const match of connectionMatches) {
-      const shouldRender = ConnectionMatcher.shouldRenderDoor(match, wall, allRooms);
+      const shouldRender = shouldRenderConnection(match, wall, allRooms);
       if (shouldRender) {
         // Only render the door, not the wall hole (wall is rendered by owner)
         this.renderDoorOnly(match.connection, room, wall, geometry, materials, group, elevation, allRooms, config);
