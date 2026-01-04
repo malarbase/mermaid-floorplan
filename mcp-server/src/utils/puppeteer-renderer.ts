@@ -325,6 +325,205 @@ function getRenderingCode(): string {
       return { camera, position, target, fov };
     }
 
+    // Connection rendering functions
+    function findMatchingConnections(room, wall, allConnections) {
+      const matches = [];
+      for (const conn of allConnections) {
+        let isMatch = false;
+        let isFromRoom = false;
+
+        if (conn.fromRoom === room.name && conn.fromWall === wall.direction) {
+          isMatch = true;
+          isFromRoom = true;
+        } else if (conn.toRoom === room.name && conn.toWall === wall.direction) {
+          isMatch = true;
+          isFromRoom = false;
+        }
+
+        if (isMatch) {
+          const otherRoomName = isFromRoom ? conn.toRoom : conn.fromRoom;
+          const otherWallDirection = isFromRoom ? conn.toWall : conn.fromWall;
+          matches.push({ connection: conn, isFromRoom, otherRoomName, otherWallDirection });
+        }
+      }
+      return matches;
+    }
+
+    function shouldRenderConnection(match, currentWall, allRooms) {
+      const { isFromRoom, otherRoomName, otherWallDirection } = match;
+
+      let otherWallType = 'solid';
+      const otherRoom = allRooms.find(r => r.name === otherRoomName);
+
+      if (otherRoom) {
+        const otherWall = otherRoom.walls.find(w => w.direction === otherWallDirection);
+        if (otherWall) {
+          otherWallType = otherWall.type;
+        }
+      } else {
+        if (!isFromRoom) {
+          otherWallType = 'solid';
+        } else {
+          otherWallType = 'open';
+        }
+      }
+
+      const isCurrentOpen = currentWall.type === 'open';
+      const isOtherOpen = otherWallType === 'open';
+
+      if (isCurrentOpen && isOtherOpen) {
+        return isFromRoom;
+      } else if (isCurrentOpen) {
+        return false;
+      } else if (isOtherOpen) {
+        return true;
+      } else {
+        return isFromRoom;
+      }
+    }
+
+    function generateConnections(floor, allConnections, config, floorGroup, themeColors) {
+      const DOOR_DIMS = {
+        WIDTH: 1.0,
+        HEIGHT: 2.1,
+        PANEL_THICKNESS: 0.05,
+        SWING_ANGLE: Math.PI / 4,
+      };
+      const DOUBLE_DOOR_WIDTH = 1.8;
+      const WINDOW_DIMS = {
+        WIDTH: 1.5,
+        HEIGHT: 1.2,
+        SILL_HEIGHT: 0.9,
+        GLASS_THICKNESS: 0.05,
+      };
+
+      const wallThickness = config.wall_thickness || DIMENSIONS.WALL.THICKNESS;
+      const defaultHeight = config.default_height || DIMENSIONS.WALL.HEIGHT;
+
+      floor.rooms.forEach(room => {
+        room.walls.forEach(wall => {
+          const matches = findMatchingConnections(room, wall, allConnections);
+
+          matches.forEach(match => {
+            if (!shouldRenderConnection(match, wall, floor.rooms)) {
+              return;
+            }
+
+            const conn = match.connection;
+            const isDoor = conn.doorType === 'door' || conn.doorType === 'double-door';
+            const isWindow = conn.doorType === 'window';
+
+            if (!isDoor && !isWindow) return;
+
+            // Calculate position
+            const isVertical = wall.direction === 'left' || wall.direction === 'right';
+            const positionPercent = conn.position || 50;
+            const positionFraction = positionPercent / 100;
+
+            const roomHeight = room.roomHeight || defaultHeight;
+            const roomElevation = room.elevation || 0;
+
+            let holeX, holeZ;
+            if (isVertical) {
+              holeX = wall.direction === 'left' ? room.x : room.x + room.width;
+              holeZ = room.z + positionFraction * room.height;
+            } else {
+              holeX = room.x + positionFraction * room.width;
+              holeZ = wall.direction === 'top' ? room.z : room.z + room.height;
+            }
+
+            if (isDoor) {
+              // Door rendering
+              let doorWidth = conn.width !== undefined ? conn.width :
+                conn.doorType === 'double-door' ? DOUBLE_DOOR_WIDTH : DOOR_DIMS.WIDTH;
+              const doorHeight = conn.height || DOOR_DIMS.HEIGHT;
+
+              const doorPanelGeom = new THREE.BoxGeometry(
+                doorWidth,
+                doorHeight,
+                DOOR_DIMS.PANEL_THICKNESS
+              );
+              doorPanelGeom.translate(doorWidth / 2, 0, 0);
+
+              const doorMat = new THREE.MeshStandardMaterial({
+                color: themeColors.DOOR,
+                roughness: 0.7,
+                metalness: 0.0,
+              });
+
+              const doorMesh = new THREE.Mesh(doorPanelGeom, doorMat);
+              doorMesh.name = 'door-' + conn.fromRoom + '-' + conn.toRoom;
+
+              // Calculate hinge position
+              const swingRight = conn.swing !== 'left';
+              let hingeSideSign = 0;
+              switch (wall.direction) {
+                case 'top': hingeSideSign = swingRight ? 1 : -1; break;
+                case 'bottom': hingeSideSign = swingRight ? -1 : 1; break;
+                case 'left': hingeSideSign = swingRight ? -1 : 1; break;
+                case 'right': hingeSideSign = swingRight ? 1 : -1; break;
+              }
+
+              let hingeX = holeX;
+              let hingeZ = holeZ;
+              if (isVertical) {
+                hingeZ = holeZ + hingeSideSign * (doorWidth / 2);
+              } else {
+                hingeX = holeX + hingeSideSign * (doorWidth / 2);
+              }
+
+              doorMesh.position.set(hingeX, roomElevation + doorHeight / 2, hingeZ);
+
+              // Calculate rotation
+              let baseAngle = 0;
+              if (!isVertical) {
+                baseAngle = hingeSideSign === 1 ? Math.PI : 0;
+              } else {
+                baseAngle = hingeSideSign === 1 ? Math.PI / 2 : -Math.PI / 2;
+              }
+
+              const opensIn = conn.opensInto ? conn.opensInto === room.name : true;
+              let wallFactor = 1;
+              if (wall.direction === 'bottom' || wall.direction === 'left') {
+                wallFactor = -1;
+              }
+              const openFactor = opensIn ? 1 : -1;
+              const swingDir = hingeSideSign * wallFactor * openFactor;
+              const finalAngle = baseAngle + swingDir * DOOR_DIMS.SWING_ANGLE;
+
+              doorMesh.rotation.y = finalAngle;
+              floorGroup.add(doorMesh);
+
+            } else if (isWindow) {
+              // Window rendering
+              const windowWidth = conn.width || WINDOW_DIMS.WIDTH;
+              const windowHeight = conn.height || WINDOW_DIMS.HEIGHT;
+              const sillHeight = roomElevation + WINDOW_DIMS.SILL_HEIGHT;
+
+              const windowGeom = new THREE.BoxGeometry(
+                isVertical ? WINDOW_DIMS.GLASS_THICKNESS : windowWidth,
+                windowHeight,
+                isVertical ? windowWidth : WINDOW_DIMS.GLASS_THICKNESS
+              );
+
+              const windowMat = new THREE.MeshStandardMaterial({
+                color: themeColors.WINDOW,
+                roughness: 0.0,
+                metalness: 0.9,
+                transparent: true,
+                opacity: 0.3,
+              });
+
+              const windowMesh = new THREE.Mesh(windowGeom, windowMat);
+              windowMesh.name = 'window-' + conn.fromRoom + '-' + conn.toRoom;
+              windowMesh.position.set(holeX, sillHeight + windowHeight / 2, holeZ);
+              floorGroup.add(windowMesh);
+            }
+          });
+        });
+      });
+    }
+
     // StairGenerator class for proper stair/lift 3D geometry
     class StairGenerator {
       constructor() {
@@ -686,6 +885,11 @@ function getRenderingCode(): string {
             floorGroup.add(wallMesh);
           });
         });
+
+        // Connections (doors and windows)
+        if (jsonData.connections) {
+          generateConnections(floor, jsonData.connections, config, floorGroup, themeColors);
+        }
 
         // Stairs - using StairGenerator for proper geometry
         if (floor.stairs) {
