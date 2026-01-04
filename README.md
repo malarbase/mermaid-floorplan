@@ -411,3 +411,46 @@ The 3D PNG rendering requires Node.js 20+ and headless-gl:
 | Windows | ⚠️ Experimental | Requires Visual C++ Build Tools |
 
 If headless-gl fails to build, see [headless-gl installation guide](https://github.com/stackgl/headless-gl#system-dependencies).
+
+## License
+
+This project uses a dual-licensing structure to reflect different use cases:
+
+### User-Facing Applications (GPL v3)
+The following modules are licensed under **GNU General Public License v3**:
+- **`viewer/`** - Interactive 3D floorplan viewer application
+- **`mcp-server/`** - Model Context Protocol server for Claude integration
+
+These are end-user applications and are GPL-licensed to ensure that any modifications or distributions remain open source.
+
+**Copyright © 2025-2026 Malar Kannan**
+
+### Core Libraries (MIT License)
+The following libraries are licensed under the permissive **MIT License**:
+- **`floorplan-3d-core/`** - Shared 3D rendering primitives
+- **`floorplan-common/`** - Shared utilities and geometry functions
+
+These libraries can be freely used in both open-source and proprietary projects.
+
+**Copyright © 2025-2026 Malar Kannan**
+
+### Language Grammar (MIT License)
+- **`language/`** - Langium-based DSL parser and validator
+
+**Copyright © 2025 Alexander Lang, 2025-2026 Malar Kannan**
+
+### Summary
+
+| Module | License | Copyright |
+|--------|---------|-----------|
+| `viewer/` | GPL-3.0-or-later | Malar Kannan |
+| `mcp-server/` | GPL-3.0-or-later | Malar Kannan |
+| `floorplan-3d-core/` | MIT | Malar Kannan |
+| `floorplan-common/` | MIT | Malar Kannan |
+| `language/` | MIT | Alexander Lang, Malar Kannan |
+
+See the `LICENSE` file in each module directory for full license text.
+
+### Original Project
+
+This project is based on [mermaid-floorplan](https://github.com/langalex/mermaid-floorplan) by Alexander Lang, originally created as a prototype for implementing floorplan charts in mermaid.js. Substantial new functionality and modules have been added by Malar Kannan.
