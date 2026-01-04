@@ -6,8 +6,9 @@ import {
   computeWallSegments,
   analyzeWallOwnership,
   type AdjacentRoomInfo,
-} from '../src/wall-ownership';
-import type { JsonRoom, JsonWall, MaterialStyle } from 'floorplan-3d-core';
+} from '../src/wall-ownership.js';
+import type { JsonRoom, JsonWall } from '../src/types.js';
+import type { MaterialStyle } from '../src/materials.js';
 
 /**
  * Helper to create a room with minimal required fields

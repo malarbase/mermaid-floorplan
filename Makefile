@@ -71,7 +71,7 @@ test: ## Run tests
 # ===============================
 
 langium: ## Generate Langium grammar artifacts
-	yes | npm run langium:generate
+	echo | npm run langium:generate
 
 langium-watch: ## Watch and regenerate Langium artifacts
 	npm run langium:watch

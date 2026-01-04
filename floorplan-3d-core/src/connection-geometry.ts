@@ -83,7 +83,7 @@ export function generateFloorConnections(
  * @param wall - Wall data
  * @param wallThickness - Wall thickness in scene units
  * @param colors - Theme colors
- * @returns Mesh or null if connection type not supported
+ * @returns Object3D (Mesh or Group) or null if connection type not supported
  */
 export function generateConnection(
   connection: JsonConnection,
@@ -92,11 +92,12 @@ export function generateConnection(
   wall: JsonWall,
   wallThickness: number,
   colors: ThemeColors
-): THREE.Mesh | null {
-  const isDoor = connection.doorType === 'door' || connection.doorType === 'double-door';
+): THREE.Object3D | null {
+  const isSingleDoor = connection.doorType === 'door';
+  const isDoubleDoor = connection.doorType === 'double-door';
   const isWindow = connection.doorType === 'window';
 
-  if (!isDoor && !isWindow) {
+  if (!isSingleDoor && !isDoubleDoor && !isWindow) {
     return null; // Unsupported connection type
   }
 
@@ -106,7 +107,17 @@ export function generateConnection(
   // Room elevation
   const roomElevation = sourceRoom.elevation ?? 0;
 
-  if (isDoor) {
+  if (isDoubleDoor) {
+    return renderDoubleDoorGeometry(
+      connection,
+      sourceRoom,
+      wall,
+      position,
+      wallThickness,
+      roomElevation,
+      colors
+    );
+  } else if (isSingleDoor) {
     return renderDoorGeometry(
       connection,
       sourceRoom,
@@ -238,6 +249,156 @@ function renderDoorGeometry(
   // Calculate door rotation (base angle + swing)
   const rotation = calculateDoorRotation(connection, room, wall, hingeSideSign, position.isVertical);
   doorMesh.rotation.y = rotation;
+
+  return doorMesh;
+}
+
+/**
+ * Render double-door geometry with two mirrored panels
+ * 
+ * @param connection - Connection data
+ * @param room - Source room
+ * @param wall - Wall data
+ * @param position - Calculated position
+ * @param wallThickness - Wall thickness
+ * @param roomElevation - Room floor elevation
+ * @param colors - Theme colors
+ * @returns Group containing two door panels
+ */
+function renderDoubleDoorGeometry(
+  connection: JsonConnection,
+  room: JsonRoom,
+  wall: JsonWall,
+  position: { holeX: number; holeZ: number; holeY: number; isVertical: boolean },
+  wallThickness: number,
+  roomElevation: number,
+  colors: ThemeColors
+): THREE.Group {
+  const group = new THREE.Group();
+  group.name = `double-door-${connection.fromRoom}-${connection.toRoom}`;
+
+  // Total door opening width
+  const totalWidth = connection.width ?? DIMENSIONS.DOUBLE_DOOR.WIDTH;
+  // Each panel is half the total width
+  const panelWidth = totalWidth / 2;
+  const doorHeight = connection.height ?? DIMENSIONS.DOOR.HEIGHT;
+
+  // Create material (shared between panels)
+  const material = new THREE.MeshStandardMaterial({
+    color: colors.DOOR,
+    roughness: 0.7,
+    metalness: 0.0,
+  });
+
+  // Determine opensIn direction
+  const opensIn = connection.opensInto ? connection.opensInto === room.name : true;
+
+  // Create left panel (hinged on left side of opening)
+  const leftPanel = createDoubleDoorPanel(
+    panelWidth,
+    doorHeight,
+    material,
+    'left',
+    position,
+    wall,
+    roomElevation,
+    opensIn
+  );
+  leftPanel.name = `double-door-left-${connection.fromRoom}-${connection.toRoom}`;
+  group.add(leftPanel);
+
+  // Create right panel (hinged on right side of opening)
+  const rightPanel = createDoubleDoorPanel(
+    panelWidth,
+    doorHeight,
+    material,
+    'right',
+    position,
+    wall,
+    roomElevation,
+    opensIn
+  );
+  rightPanel.name = `double-door-right-${connection.fromRoom}-${connection.toRoom}`;
+  group.add(rightPanel);
+
+  return group;
+}
+
+/**
+ * Create a single panel of a double door
+ * 
+ * @param panelWidth - Width of this panel
+ * @param doorHeight - Height of the door
+ * @param material - Material to use
+ * @param side - 'left' or 'right' panel
+ * @param position - Center position of the opening
+ * @param wall - Wall data
+ * @param roomElevation - Room floor elevation
+ * @param opensIn - Whether door opens into the source room
+ * @returns Door panel mesh
+ */
+function createDoubleDoorPanel(
+  panelWidth: number,
+  doorHeight: number,
+  material: THREE.Material,
+  side: 'left' | 'right',
+  position: { holeX: number; holeZ: number; isVertical: boolean },
+  wall: JsonWall,
+  roomElevation: number,
+  opensIn: boolean
+): THREE.Mesh {
+  // Create door panel geometry with pivot at edge
+  const doorPanelGeom = new THREE.BoxGeometry(
+    panelWidth,
+    doorHeight,
+    DIMENSIONS.DOOR.PANEL_THICKNESS
+  );
+  // Shift geometry so pivot is at left edge (extending to +x)
+  doorPanelGeom.translate(panelWidth / 2, 0, 0);
+
+  const doorMesh = new THREE.Mesh(doorPanelGeom, material);
+
+  // Calculate hinge position
+  // Left panel hinges at -panelWidth from center
+  // Right panel hinges at +panelWidth from center
+  const hingeSideSign = side === 'left' ? -1 : 1;
+  
+  let hingeX = position.holeX;
+  let hingeZ = position.holeZ;
+
+  if (position.isVertical) {
+    hingeZ = position.holeZ + hingeSideSign * panelWidth;
+  } else {
+    hingeX = position.holeX + hingeSideSign * panelWidth;
+  }
+
+  // Position door at hinge
+  doorMesh.position.set(hingeX, roomElevation + doorHeight / 2, hingeZ);
+
+  // Calculate rotation
+  // Each panel swings in opposite directions (mirrored)
+  let baseAngle = 0;
+
+  if (!position.isVertical) {
+    // Horizontal wall - left panel points to +X, right panel to -X when closed
+    baseAngle = side === 'left' ? 0 : Math.PI;
+  } else {
+    // Vertical wall - left panel points to +Z, right panel to -Z when closed
+    baseAngle = side === 'left' ? -Math.PI / 2 : Math.PI / 2;
+  }
+
+  // Apply swing - panels swing away from each other (mirrored)
+  let wallFactor = 1;
+  if (wall.direction === 'bottom' || wall.direction === 'left') {
+    wallFactor = -1;
+  }
+
+  const openFactor = opensIn ? 1 : -1;
+  // Left panel swings one way, right panel swings the other
+  const swingDir = hingeSideSign * wallFactor * openFactor;
+
+  const finalAngle = baseAngle + swingDir * DIMENSIONS.DOOR.DEFAULT_SWING_ANGLE;
+  doorMesh.rotation.y = finalAngle;
 
   return doorMesh;
 }

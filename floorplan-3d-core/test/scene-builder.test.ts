@@ -473,3 +473,110 @@ describe('error handling', () => {
   });
 });
 
+describe('double-door rendering', () => {
+  test('should render double-door with two separate panels', () => {
+    const data: JsonExport = {
+      floors: [
+        createFloor('ground', 0, [
+          createRoom('living', 0, 0, 10, 8),
+          createRoom('dining', 10, 0, 8, 8),
+        ]),
+      ],
+      connections: [
+        {
+          fromRoom: 'living',
+          fromWall: 'right',
+          toRoom: 'dining',
+          toWall: 'left',
+          doorType: 'double-door',
+          position: 50,
+        },
+      ],
+    };
+
+    const result = buildFloorplanScene(data, { showConnections: true });
+
+    // Find the double-door group in the scene
+    const doubleDoorGroup = result.scene.getObjectByName('double-door-living-dining');
+    expect(doubleDoorGroup).toBeDefined();
+    expect(doubleDoorGroup).toBeInstanceOf(THREE.Group);
+
+    // Should have exactly 2 children (two panels)
+    expect(doubleDoorGroup!.children.length).toBe(2);
+
+    // Check that both panels are meshes
+    const leftPanel = doubleDoorGroup!.children.find(c => c.name.includes('left'));
+    const rightPanel = doubleDoorGroup!.children.find(c => c.name.includes('right'));
+    
+    expect(leftPanel).toBeDefined();
+    expect(leftPanel).toBeInstanceOf(THREE.Mesh);
+    expect(rightPanel).toBeDefined();
+    expect(rightPanel).toBeInstanceOf(THREE.Mesh);
+  });
+
+  test('single door should render as single mesh', () => {
+    const data: JsonExport = {
+      floors: [
+        createFloor('ground', 0, [
+          createRoom('living', 0, 0, 10, 8),
+          createRoom('dining', 10, 0, 8, 8),
+        ]),
+      ],
+      connections: [
+        {
+          fromRoom: 'living',
+          fromWall: 'right',
+          toRoom: 'dining',
+          toWall: 'left',
+          doorType: 'door',
+          position: 50,
+        },
+      ],
+    };
+
+    const result = buildFloorplanScene(data, { showConnections: true });
+
+    // Find the single door mesh in the scene
+    const doorMesh = result.scene.getObjectByName('door-living-dining');
+    expect(doorMesh).toBeDefined();
+    expect(doorMesh).toBeInstanceOf(THREE.Mesh);
+
+    // Should NOT find a double-door group
+    const doubleDoorGroup = result.scene.getObjectByName('double-door-living-dining');
+    expect(doubleDoorGroup).toBeUndefined();
+  });
+
+  test('double-door panels should have mirrored rotations', () => {
+    const data: JsonExport = {
+      floors: [
+        createFloor('ground', 0, [
+          createRoom('living', 0, 0, 10, 8),
+          createRoom('dining', 10, 0, 8, 8),
+        ]),
+      ],
+      connections: [
+        {
+          fromRoom: 'living',
+          fromWall: 'right',
+          toRoom: 'dining',
+          toWall: 'left',
+          doorType: 'double-door',
+          position: 50,
+        },
+      ],
+    };
+
+    const result = buildFloorplanScene(data, { showConnections: true });
+
+    const doubleDoorGroup = result.scene.getObjectByName('double-door-living-dining');
+    expect(doubleDoorGroup).toBeDefined();
+
+    const leftPanel = doubleDoorGroup!.children.find(c => c.name.includes('left')) as THREE.Mesh;
+    const rightPanel = doubleDoorGroup!.children.find(c => c.name.includes('right')) as THREE.Mesh;
+
+    // Panels should have different rotations (mirrored)
+    // The exact values depend on swing direction, but they should differ
+    expect(leftPanel.rotation.y).not.toBe(rightPanel.rotation.y);
+  });
+});
+

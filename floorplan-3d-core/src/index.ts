@@ -115,3 +115,48 @@ export type {
 // Unit normalization
 export { normalizeToMeters } from './unit-normalizer.js';
 
+// Wall ownership (for CSG-based wall rendering)
+export {
+  checkAdjacency,
+  shouldRenderWall,
+  findAdjacentRooms,
+  computeWallSegments,
+  analyzeWallOwnership,
+} from './wall-ownership.js';
+export type {
+  AdjacentRoomInfo,
+  WallSegment,
+  WallOwnershipResult,
+  StyleResolver,
+} from './wall-ownership.js';
+
+// CSG utilities (for material preservation after CSG operations)
+export {
+  FACE_INDICES,
+  normalToMaterialIndex,
+  reassignMaterialsByNormal,
+  getWallFaceMaterialIndex,
+} from './csg-utils.js';
+
+// Unified wall builder (with optional CSG support)
+export {
+  WallBuilder,
+  initCSG,
+  isCsgAvailable,
+} from './wall-builder.js';
+export type {
+  HoleSpec,
+  WallBuilderOptions,
+} from './wall-builder.js';
+
+// Shared geometry utilities (re-exported from floorplan-common)
+export {
+  calculateWallOverlap,
+  calculatePositionOnOverlap,
+  calculatePositionWithFallback,
+} from 'floorplan-common';
+export type {
+  RoomBounds,
+  OverlapResult,
+} from 'floorplan-common';
+

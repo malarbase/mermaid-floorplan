@@ -5,7 +5,8 @@
  * Supports per-face materials for walls shared by multiple rooms.
  */
 
-import type { JsonRoom, JsonWall, MaterialStyle } from 'floorplan-3d-core';
+import type { JsonRoom, JsonWall } from './types.js';
+import type { MaterialStyle } from './materials.js';
 
 /**
  * Information about an adjacent room and its overlap with a wall
@@ -24,7 +25,7 @@ export interface WallSegment {
   startPos: number;      // Start position along wall length
   endPos: number;        // End position along wall length
   ownerStyle: MaterialStyle | undefined;
-  adjacentStyle: MaterialStyle | undefined;  // null for exterior-facing segments
+  adjacentStyle: MaterialStyle | undefined;  // undefined for exterior-facing segments
   hasAdjacentRoom: boolean;
 }
 
@@ -38,12 +39,17 @@ export interface WallOwnershipResult {
 }
 
 /**
+ * Style resolver function type
+ */
+export type StyleResolver = (room: JsonRoom) => MaterialStyle | undefined;
+
+/**
  * Check if a room is adjacent to another room's wall
  * @param room The room that owns the wall
  * @param wall The wall direction to check
  * @param candidate The candidate room to check for adjacency
  * @param tolerance Tolerance for floating point comparisons
- * @returns AdjacentRoomInfo if adjacent, null otherwise
+ * @returns Overlap info if adjacent, null otherwise
  */
 export function checkAdjacency(
   room: JsonRoom,
@@ -195,7 +201,7 @@ export function findAdjacentRooms(
   room: JsonRoom,
   wall: JsonWall,
   allRooms: JsonRoom[],
-  styleResolver: (room: JsonRoom) => MaterialStyle | undefined,
+  styleResolver: StyleResolver,
   tolerance: number = 0.1
 ): AdjacentRoomInfo[] {
   const adjacentRooms: AdjacentRoomInfo[] = [];
@@ -294,7 +300,7 @@ export function analyzeWallOwnership(
   room: JsonRoom,
   wall: JsonWall,
   allRooms: JsonRoom[],
-  styleResolver: (room: JsonRoom) => MaterialStyle | undefined,
+  styleResolver: StyleResolver,
   tolerance: number = 0.1
 ): WallOwnershipResult {
   const ownerStyle = styleResolver(room);

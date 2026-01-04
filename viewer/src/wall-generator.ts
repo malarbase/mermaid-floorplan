@@ -6,21 +6,20 @@
 
 import * as THREE from 'three';
 import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
-import { calculatePositionWithFallback, type RoomBounds } from 'floorplans-language';
 // Import shared types and utilities from floorplan-3d-core
 import type { JsonWall, JsonRoom, JsonConnection, JsonConfig } from 'floorplan-3d-core';
+// Import geometry utilities from core (re-exported from floorplan-common)
+import { calculatePositionWithFallback, type RoomBounds } from 'floorplan-3d-core';
 import { 
   DIMENSIONS, MaterialFactory,
   type ViewerTheme, type MaterialSet, type MaterialStyle,
   // Connection matching utilities from core
   findMatchingConnections, shouldRenderConnection,
+  // Wall ownership and CSG utilities from core
+  analyzeWallOwnership, reassignMaterialsByNormal,
+  type WallSegment,
 } from 'floorplan-3d-core';
 import { DoorRenderer } from './door-renderer';
-import { 
-  analyzeWallOwnership, 
-  WallSegment,
-} from './wall-ownership';
-import { reassignMaterialsByNormal } from './csg-utils';
 
 interface WallGeometry {
   width: number;
