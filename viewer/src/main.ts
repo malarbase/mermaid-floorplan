@@ -176,12 +176,17 @@ class Viewer {
         this.floorManager = new FloorManager({
             getFloors: () => this.floors,
             getFloorplanData: () => this.currentFloorplanData,
-            onVisibilityChange: () => this.annotationManager.updateFloorSummary(),
+            onVisibilityChange: () => {
+                this.annotationManager.updateFloorSummary();
+                // Re-render 2D overlay to reflect floor visibility changes
+                this.overlay2DManager.render();
+            },
         });
         
         this.overlay2DManager = new Overlay2DManager({
             getCurrentTheme: () => this.currentTheme,
             getFloorplanData: () => this.currentFloorplanData,
+            getVisibleFloorIds: () => this.floorManager.getVisibleFloorIds(),
         });
 
         // Window resize
@@ -285,16 +290,17 @@ class Viewer {
     private async setupEditorPanel() {
         // Panel toggle button
         const toggleBtn = document.getElementById('editor-panel-toggle');
-        const panel = document.getElementById('editor-panel');
         
         toggleBtn?.addEventListener('click', () => {
             this.editorPanelOpen = !this.editorPanelOpen;
-            panel?.classList.toggle('open', this.editorPanelOpen);
-            document.body.classList.toggle('editor-open', this.editorPanelOpen);
+            this.updateEditorPanelPosition();
             if (toggleBtn) {
                 toggleBtn.textContent = this.editorPanelOpen ? '◀' : '▶';
             }
         });
+        
+        // Setup resize handle
+        this.setupEditorResize();
         
         // Initialize Monaco editor with default content
         const defaultContent = this.getDefaultFloorplanContent();
@@ -314,6 +320,71 @@ class Viewer {
         
         // Setup chat
         this.setupChat();
+    }
+    
+    private updateEditorPanelPosition() {
+        const panel = document.getElementById('editor-panel');
+        if (!panel) return;
+        
+        const width = panel.offsetWidth;
+        panel.style.transform = this.editorPanelOpen ? 'translateX(0)' : `translateX(-${width}px)`;
+        document.body.classList.toggle('editor-open', this.editorPanelOpen);
+        
+        // Update CSS variable for other elements
+        if (this.editorPanelOpen) {
+            document.documentElement.style.setProperty('--editor-width', `${width}px`);
+        }
+    }
+    
+    private setupEditorResize() {
+        const resizeHandle = document.getElementById('editor-resize-handle');
+        const panel = document.getElementById('editor-panel');
+        
+        if (!resizeHandle || !panel) return;
+        
+        let isResizing = false;
+        let startX = 0;
+        let startWidth = 0;
+        
+        const onMouseDown = (e: MouseEvent) => {
+            isResizing = true;
+            startX = e.clientX;
+            startWidth = panel.offsetWidth;
+            
+            resizeHandle.classList.add('active');
+            panel.classList.add('resizing');
+            document.body.style.cursor = 'ew-resize';
+            document.body.style.userSelect = 'none';
+            
+            e.preventDefault();
+        };
+        
+        const onMouseMove = (e: MouseEvent) => {
+            if (!isResizing) return;
+            
+            const deltaX = e.clientX - startX;
+            const newWidth = Math.max(300, Math.min(startWidth + deltaX, window.innerWidth * 0.8));
+            
+            panel.style.width = `${newWidth}px`;
+            panel.style.transform = this.editorPanelOpen ? 'translateX(0)' : `translateX(-${newWidth}px)`;
+            
+            // Update CSS variable for other elements that depend on editor width
+            document.documentElement.style.setProperty('--editor-width', `${newWidth}px`);
+        };
+        
+        const onMouseUp = () => {
+            if (isResizing) {
+                isResizing = false;
+                resizeHandle.classList.remove('active');
+                panel.classList.remove('resizing');
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+            }
+        };
+        
+        resizeHandle.addEventListener('mousedown', onMouseDown);
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
     }
     
     private getDefaultFloorplanContent(): string {
@@ -888,6 +959,11 @@ floorplan
                         console.error("Parse errors:", result.errors);
                         alert(`Failed to parse floorplan:\n${errorMsg}`);
                         return;
+                    }
+                    
+                    // Update editor with loaded content
+                    if (this.editorInstance) {
+                        this.editorInstance.setValue(content);
                     }
                     
                     // Store validation warnings

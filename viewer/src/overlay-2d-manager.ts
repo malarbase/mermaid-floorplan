@@ -10,6 +10,7 @@ import type { JsonExport } from 'floorplan-3d-core';
 export interface Overlay2DCallbacks {
     getCurrentTheme: () => ViewerTheme;
     getFloorplanData: () => JsonExport | null;
+    getVisibleFloorIds: () => string[];
 }
 
 export class Overlay2DManager {
@@ -124,10 +125,11 @@ export class Overlay2DManager {
         
         try {
             const currentTheme = this.callbacks.getCurrentTheme();
+            const visibleFloorIds = this.callbacks.getVisibleFloorIds();
             
-            // Render 2D SVG with all floors visible
+            // Render 2D SVG with only visible floors
             const renderOptions: RenderOptions = {
-                renderAllFloors: true,
+                visibleFloors: visibleFloorIds,
                 includeStyles: true,
                 theme: currentTheme === 'dark' ? { 
                     floorBackground: '#2d2d2d',
