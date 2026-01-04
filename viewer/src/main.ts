@@ -1,57 +1,48 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { CSS2DRenderer, CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
+import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { Evaluator } from 'three-bvh-csg';
 // Import types and shared code from floorplan-3d-core for consistent rendering
 import type { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from 'floorplan-3d-core';
 import { 
-  DIMENSIONS, COLORS, COLORS_DARK, METERS_TO_UNIT, getThemeColors,
+  DIMENSIONS, COLORS, COLORS_DARK, getThemeColors,
   MaterialFactory, StairGenerator, normalizeToMeters,
-  type LengthUnit, type ViewerTheme, type MaterialStyle
+  type ViewerTheme, type MaterialStyle
 } from 'floorplan-3d-core';
 // Browser-specific modules (CSG, DSL parsing)
 import { WallGenerator, StyleResolver } from './wall-generator';
 import { parseFloorplanDSLWithDocument, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
-// 2D SVG rendering from language package
-import { render as render2D, type RenderOptions } from 'floorplans-language';
 // Editor and chat integration
 import { initializeEditor, type EditorInstance } from './editor';
 import { OpenAIChatService } from './openai-chat';
 // Keyboard navigation
 import { PivotIndicator } from './pivot-indicator';
 import { KeyboardControls } from './keyboard-controls';
-
-// Area unit type
-type AreaUnit = 'sqft' | 'sqm';
-
-// Annotation state
-interface AnnotationState {
-    showArea: boolean;
-    showDimensions: boolean;
-    showFloorSummary: boolean;
-    areaUnit: AreaUnit;
-    lengthUnit: LengthUnit;
-}
-
-// Camera mode
-type CameraMode = 'perspective' | 'orthographic';
+// Extracted managers
+import { CameraManager } from './camera-manager';
+import { AnnotationManager } from './annotation-manager';
+import { FloorManager } from './floor-manager';
+import { Overlay2DManager } from './overlay-2d-manager';
 
 class Viewer {
+    // Core Three.js
     private scene: THREE.Scene;
     private perspectiveCamera: THREE.PerspectiveCamera;
     private orthographicCamera: THREE.OrthographicCamera;
-    private activeCamera: THREE.Camera;
-    private cameraMode: CameraMode = 'perspective';
     private renderer: THREE.WebGLRenderer;
     private labelRenderer: CSS2DRenderer;
     private controls: OrbitControls;
+    
+    // Scene content
     private floors: THREE.Group[] = [];
     private floorHeights: number[] = [];
     private connections: JsonConnection[] = [];
     private config: JsonConfig = {};
     private styles: Map<string, JsonStyle> = new Map();
     private explodedViewFactor: number = 0;
+    
+    // Generators
     private wallGenerator: WallGenerator;
     private stairGenerator: StairGenerator;
     
@@ -62,41 +53,16 @@ class Viewer {
     private lightIntensity: number = 1.0;
     private lightRadius: number = 100;
     
-    // FOV
-    private fov: number = 75;
-    
-    // Annotation state
-    private annotationState: AnnotationState = {
-        showArea: false,
-        showDimensions: false,
-        showFloorSummary: false,
-        areaUnit: 'sqft',
-        lengthUnit: 'ft',
-    };
-    
-    // Annotation objects
-    private areaLabels: CSS2DObject[] = [];
-    private dimensionLabels: CSS2DObject[] = [];
-    private floorSummaryPanel: HTMLElement | null = null;
-    
     // Validation warnings
     private validationWarnings: ParseError[] = [];
     private warningsPanel: HTMLElement | null = null;
     private warningsPanelCollapsed: boolean = true;
     
-    // Current floorplan data (for annotations)
+    // Current floorplan data
     private currentFloorplanData: JsonExport | null = null;
     
     // Theme state
     private currentTheme: ViewerTheme = 'light';
-    
-    // 2D Overlay state
-    private overlayVisible: boolean = false;
-    private overlayOpacity: number = 0.60;
-    private currentLangiumDoc: import('langium').LangiumDocument<import('floorplans-language').Floorplan> | null = null;
-    
-    // Floor visibility state
-    private floorVisibility: Map<string, boolean> = new Map();
     
     // Editor panel state
     private editorInstance: EditorInstance | null = null;
@@ -108,6 +74,12 @@ class Viewer {
     private pivotIndicator: PivotIndicator | null = null;
     private keyboardControls: KeyboardControls | null = null;
     private lastFrameTime: number = 0;
+    
+    // Managers
+    private cameraManager: CameraManager;
+    private annotationManager: AnnotationManager;
+    private floorManager: FloorManager;
+    private overlay2DManager: Overlay2DManager;
 
     constructor() {
         // Init scene
@@ -115,7 +87,8 @@ class Viewer {
         this.scene.background = new THREE.Color(COLORS.BACKGROUND);
 
         // Init perspective camera
-        this.perspectiveCamera = new THREE.PerspectiveCamera(this.fov, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const fov = 75;
+        this.perspectiveCamera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.perspectiveCamera.position.set(20, 20, 20);
 
         // Init orthographic camera
@@ -130,9 +103,6 @@ class Viewer {
             1000
         );
         this.orthographicCamera.position.set(20, 20, 20);
-        
-        // Set active camera
-        this.activeCamera = this.perspectiveCamera;
 
         // Init WebGL renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -149,8 +119,8 @@ class Viewer {
         this.labelRenderer.domElement.style.pointerEvents = 'none';
         document.getElementById('app')?.appendChild(this.labelRenderer.domElement);
 
-        // Init controls
-        this.controls = new OrbitControls(this.activeCamera, this.renderer.domElement);
+        // Init controls (using perspective camera initially)
+        this.controls = new OrbitControls(this.perspectiveCamera, this.renderer.domElement);
         this.controls.enableDamping = true;
         
         // Init pivot indicator
@@ -185,6 +155,35 @@ class Viewer {
         // Init stair generator
         this.stairGenerator = new StairGenerator();
 
+        // Initialize managers
+        this.cameraManager = new CameraManager(
+            this.perspectiveCamera,
+            this.orthographicCamera,
+            this.controls,
+            {
+                getFloors: () => this.floors,
+                getKeyboardControls: () => this.keyboardControls,
+            }
+        );
+        
+        this.annotationManager = new AnnotationManager({
+            getFloors: () => this.floors,
+            getFloorplanData: () => this.currentFloorplanData,
+            getConfig: () => this.config,
+            getFloorVisibility: (id) => this.floorManager.getFloorVisibility(id),
+        });
+        
+        this.floorManager = new FloorManager({
+            getFloors: () => this.floors,
+            getFloorplanData: () => this.currentFloorplanData,
+            onVisibilityChange: () => this.annotationManager.updateFloorSummary(),
+        });
+        
+        this.overlay2DManager = new Overlay2DManager({
+            getCurrentTheme: () => this.currentTheme,
+            getFloorplanData: () => this.currentFloorplanData,
+        });
+
         // Window resize
         window.addEventListener('resize', this.onWindowResize.bind(this));
         
@@ -194,9 +193,9 @@ class Viewer {
             this.perspectiveCamera,
             this.orthographicCamera,
             {
-                onCameraModeToggle: () => this.toggleCameraMode(),
-                onUpdateOrthographicSize: () => this.updateOrthographicSize(),
-                getBoundingBox: () => this.getSceneBoundingBox(),
+                onCameraModeToggle: () => this.cameraManager.toggleCameraMode(),
+                onUpdateOrthographicSize: () => this.cameraManager.updateOrthographicSize(),
+                getBoundingBox: () => this.cameraManager.getSceneBoundingBox(),
                 setHelpOverlayVisible: (visible) => this.setHelpOverlayVisible(visible),
             }
         );
@@ -211,14 +210,8 @@ class Viewer {
         // Create warnings panel
         this.createWarningsPanel();
         
-        // Create floor summary panel
-        this.createFloorSummaryPanel();
-        
         // Initialize editor panel
         this.setupEditorPanel();
-        
-        // Setup 2D overlay drag functionality
-        this.setup2DOverlayDrag();
 
         // Start loop
         this.animate();
@@ -259,62 +252,12 @@ class Viewer {
             this.updateSliderValue('light-intensity-value', this.lightIntensity.toFixed(1));
         });
         
-        // Camera mode toggle
-        const cameraModeBtn = document.getElementById('camera-mode-btn') as HTMLButtonElement;
-        cameraModeBtn?.addEventListener('click', () => this.toggleCameraMode());
-        
-        // FOV slider
-        const fovSlider = document.getElementById('fov-slider') as HTMLInputElement;
-        fovSlider?.addEventListener('input', (e) => {
-            this.fov = parseFloat((e.target as HTMLInputElement).value);
-            this.perspectiveCamera.fov = this.fov;
-            this.perspectiveCamera.updateProjectionMatrix();
-            this.updateSliderValue('fov-value', `${Math.round(this.fov)}°`);
-        });
-        
-        // Isometric button
-        const isometricBtn = document.getElementById('isometric-btn') as HTMLButtonElement;
-        isometricBtn?.addEventListener('click', () => this.setIsometricView());
-        
         // Export buttons
         const exportGlbBtn = document.getElementById('export-glb-btn') as HTMLButtonElement;
         exportGlbBtn?.addEventListener('click', () => this.exportGLTF(true));
         
         const exportGltfBtn = document.getElementById('export-gltf-btn') as HTMLButtonElement;
         exportGltfBtn?.addEventListener('click', () => this.exportGLTF(false));
-        
-        // Annotation toggles
-        const showAreaToggle = document.getElementById('show-area') as HTMLInputElement;
-        showAreaToggle?.addEventListener('change', (e) => {
-            this.annotationState.showArea = (e.target as HTMLInputElement).checked;
-            this.updateAreaAnnotations();
-        });
-        
-        const showDimensionsToggle = document.getElementById('show-dimensions') as HTMLInputElement;
-        showDimensionsToggle?.addEventListener('change', (e) => {
-            this.annotationState.showDimensions = (e.target as HTMLInputElement).checked;
-            this.updateDimensionAnnotations();
-        });
-        
-        const showFloorSummaryToggle = document.getElementById('show-floor-summary') as HTMLInputElement;
-        showFloorSummaryToggle?.addEventListener('change', (e) => {
-            this.annotationState.showFloorSummary = (e.target as HTMLInputElement).checked;
-            this.updateFloorSummary();
-        });
-        
-        // Unit dropdowns
-        const areaUnitSelect = document.getElementById('area-unit') as HTMLSelectElement;
-        areaUnitSelect?.addEventListener('change', (e) => {
-            this.annotationState.areaUnit = (e.target as HTMLSelectElement).value as AreaUnit;
-            this.updateAreaAnnotations();
-            this.updateFloorSummary();
-        });
-        
-        const lengthUnitSelect = document.getElementById('length-unit') as HTMLSelectElement;
-        lengthUnitSelect?.addEventListener('change', (e) => {
-            this.annotationState.lengthUnit = (e.target as HTMLSelectElement).value as LengthUnit;
-            this.updateDimensionAnnotations();
-        });
         
         // Theme toggle
         const themeToggleBtn = document.getElementById('theme-toggle-btn') as HTMLButtonElement;
@@ -330,39 +273,11 @@ class Viewer {
             });
         });
         
-        // 2D Overlay controls
-        const show2dOverlayToggle = document.getElementById('show-2d-overlay') as HTMLInputElement;
-        show2dOverlayToggle?.addEventListener('change', (e) => {
-            this.overlayVisible = (e.target as HTMLInputElement).checked;
-            this.update2DOverlayVisibility();
-        });
-        
-        const overlayOpacitySlider = document.getElementById('overlay-opacity') as HTMLInputElement;
-        overlayOpacitySlider?.addEventListener('input', (e) => {
-            const val = parseInt((e.target as HTMLInputElement).value);
-            this.overlayOpacity = val / 100;
-            this.update2DOverlayOpacity();
-            this.updateSliderValue('overlay-opacity-value', `${val}%`);
-        });
-        
-        // 2D Overlay close button
-        const overlayCloseBtn = document.getElementById('overlay-2d-close');
-        overlayCloseBtn?.addEventListener('click', (e) => {
-            e.stopPropagation(); // Don't trigger drag
-            this.overlayVisible = false;
-            this.update2DOverlayVisibility();
-            // Update the toggle checkbox
-            if (show2dOverlayToggle) {
-                show2dOverlayToggle.checked = false;
-            }
-        });
-        
-        // Floor visibility controls
-        const showAllFloorsBtn = document.getElementById('show-all-floors') as HTMLButtonElement;
-        showAllFloorsBtn?.addEventListener('click', () => this.setAllFloorsVisible(true));
-        
-        const hideAllFloorsBtn = document.getElementById('hide-all-floors') as HTMLButtonElement;
-        hideAllFloorsBtn?.addEventListener('click', () => this.setAllFloorsVisible(false));
+        // Setup manager controls
+        this.cameraManager.setupControls();
+        this.annotationManager.setupControls();
+        this.floorManager.setupControls();
+        this.overlay2DManager.setupControls();
     }
     
     // ==================== Editor Panel Setup ====================
@@ -464,7 +379,7 @@ floorplan
             this.updateWarningsPanel();
             
             // Store Langium document for 2D rendering
-            this.currentLangiumDoc = result.document ?? null;
+            this.overlay2DManager.setLangiumDocument(result.document ?? null);
             
             if (result.data) {
                 this.loadFloorplan(result.data);
@@ -702,6 +617,9 @@ floorplan
 
         // Regenerate materials for all rooms that don't have explicit styles
         this.regenerateMaterialsForTheme();
+        
+        // Update 2D overlay
+        this.overlay2DManager.render();
     }
 
     /**
@@ -798,100 +716,6 @@ floorplan
         }
     }
     
-    private toggleCameraMode() {
-        if (this.cameraMode === 'perspective') {
-            this.cameraMode = 'orthographic';
-            // Copy position and target from perspective camera
-            this.orthographicCamera.position.copy(this.perspectiveCamera.position);
-            this.activeCamera = this.orthographicCamera;
-            this.updateOrthographicSize();
-        } else {
-            this.cameraMode = 'perspective';
-            // Copy position from orthographic camera
-            this.perspectiveCamera.position.copy(this.orthographicCamera.position);
-            this.activeCamera = this.perspectiveCamera;
-        }
-        
-        // Update controls
-        this.controls.object = this.activeCamera;
-        this.controls.update();
-        
-        // Sync with keyboard controls
-        this.keyboardControls?.setOrthographicMode(this.cameraMode === 'orthographic');
-        
-        // Update UI
-        const btn = document.getElementById('camera-mode-btn');
-        if (btn) {
-            btn.textContent = this.cameraMode === 'perspective' ? 'Switch to Orthographic' : 'Switch to Perspective';
-        }
-        
-        // Show/hide FOV slider based on camera mode
-        const fovGroup = document.getElementById('fov-group');
-        if (fovGroup) {
-            fovGroup.style.display = this.cameraMode === 'perspective' ? 'flex' : 'none';
-        }
-    }
-    
-    private updateOrthographicSize() {
-        const aspect = window.innerWidth / window.innerHeight;
-        const distance = this.orthographicCamera.position.distanceTo(this.controls.target);
-        const frustumSize = distance * 0.5;
-        
-        this.orthographicCamera.left = frustumSize * aspect / -2;
-        this.orthographicCamera.right = frustumSize * aspect / 2;
-        this.orthographicCamera.top = frustumSize / 2;
-        this.orthographicCamera.bottom = frustumSize / -2;
-        this.orthographicCamera.updateProjectionMatrix();
-    }
-    
-    private setIsometricView() {
-        // Switch to orthographic if not already
-        if (this.cameraMode !== 'orthographic') {
-            this.toggleCameraMode();
-        }
-        
-        // Isometric angles: 45° azimuth, 35.264° elevation
-        const azimuth = 45 * Math.PI / 180;
-        const elevation = 35.264 * Math.PI / 180;
-        
-        // Calculate camera distance to fit model
-        const boundingBox = new THREE.Box3();
-        this.floors.forEach(floor => {
-            boundingBox.expandByObject(floor);
-        });
-        
-        const center = boundingBox.getCenter(new THREE.Vector3());
-        const size = boundingBox.getSize(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z);
-        const distance = maxDim * 2;
-        
-        // Position camera
-        const x = center.x + distance * Math.cos(elevation) * Math.sin(azimuth);
-        const y = center.y + distance * Math.sin(elevation);
-        const z = center.z + distance * Math.cos(elevation) * Math.cos(azimuth);
-        
-        this.orthographicCamera.position.set(x, y, z);
-        this.controls.target.copy(center);
-        this.updateOrthographicSize();
-        this.controls.update();
-    }
-    
-    /**
-     * Get bounding box of all scene geometry
-     */
-    private getSceneBoundingBox(): THREE.Box3 | null {
-        if (this.floors.length === 0) return null;
-        
-        const boundingBox = new THREE.Box3();
-        this.floors.forEach(floor => {
-            if (floor.visible) {
-                boundingBox.expandByObject(floor);
-            }
-        });
-        
-        return boundingBox.isEmpty() ? null : boundingBox;
-    }
-    
     /**
      * Set keyboard help overlay visibility
      */
@@ -968,7 +792,8 @@ floorplan
         URL.revokeObjectURL(url);
     }
     
-    // Validation warnings panel
+    // ==================== Validation Warnings Panel ====================
+    
     private createWarningsPanel() {
         this.warningsPanel = document.createElement('div');
         this.warningsPanel.id = 'warnings-panel';
@@ -1017,196 +842,9 @@ floorplan
             this.warningsPanel.style.display = this.validationWarnings.length > 0 ? 'block' : 'none';
         }
     }
-    
-    // Floor summary panel
-    private createFloorSummaryPanel() {
-        this.floorSummaryPanel = document.createElement('div');
-        this.floorSummaryPanel.id = 'floor-summary-panel';
-        this.floorSummaryPanel.className = 'floor-summary-panel';
-        this.floorSummaryPanel.style.display = 'none';
-        document.body.appendChild(this.floorSummaryPanel);
-    }
-    
-    private updateFloorSummary() {
-        if (!this.floorSummaryPanel || !this.currentFloorplanData) return;
-        
-        if (!this.annotationState.showFloorSummary) {
-            this.floorSummaryPanel.style.display = 'none';
-            return;
-        }
-        
-        this.floorSummaryPanel.style.display = 'block';
-        
-        const floors = this.currentFloorplanData.floors;
-        // Filter to only visible floors
-        const visibleFloors = floors.filter(floor => this.floorVisibility.get(floor.id) ?? true);
-        
-        let html = '<div class="floor-summary-title">Floor Summary</div>';
-        
-        if (visibleFloors.length === 0) {
-            html += '<div class="no-floors-message">No visible floors</div>';
-        } else {
-            visibleFloors.forEach((floor) => {
-                const roomCount = floor.rooms.length;
-                let totalArea = 0;
-                let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-                
-                floor.rooms.forEach(room => {
-                    totalArea += room.width * room.height;
-                    minX = Math.min(minX, room.x);
-                    maxX = Math.max(maxX, room.x + room.width);
-                    minZ = Math.min(minZ, room.z);
-                    maxZ = Math.max(maxZ, room.z + room.height);
-                });
-                
-                const boundingArea = (maxX - minX) * (maxZ - minZ);
-                const efficiency = boundingArea > 0 ? (totalArea / boundingArea * 100).toFixed(1) : 0;
-                
-                const areaDisplay = this.formatArea(totalArea);
-                
-                html += `
-                    <div class="floor-summary-item">
-                        <div class="floor-name">${floor.id}</div>
-                        <div class="floor-stats">
-                            <span>Rooms: ${roomCount}</span>
-                            <span>Area: ${areaDisplay}</span>
-                            <span>Efficiency: ${efficiency}%</span>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-        
-        this.floorSummaryPanel.innerHTML = html;
-    }
-    
-    private formatArea(areaInMeters: number): string {
-        if (this.annotationState.areaUnit === 'sqm') {
-            return `${areaInMeters.toFixed(1)} sqm`;
-        } else {
-            // Convert to square feet
-            const sqft = areaInMeters * 10.7639;
-            return `${sqft.toFixed(0)} sqft`;
-        }
-    }
-    
-    private formatLength(lengthInMeters: number): string {
-        const unit = this.annotationState.lengthUnit;
-        const converted = lengthInMeters * METERS_TO_UNIT[unit];
-        
-        if (unit === 'ft') {
-            return `${converted.toFixed(1)}ft`;
-        } else if (unit === 'm') {
-            return `${converted.toFixed(2)}m`;
-        } else if (unit === 'cm') {
-            return `${converted.toFixed(0)}cm`;
-        } else if (unit === 'in') {
-            return `${converted.toFixed(1)}in`;
-        } else {
-            return `${converted.toFixed(0)}mm`;
-        }
-    }
-    
-    // Area annotations
-    private updateAreaAnnotations() {
-        // Remove existing labels
-        this.areaLabels.forEach(label => {
-            label.parent?.remove(label);
-            label.element.remove();
-        });
-        this.areaLabels = [];
-        
-        if (!this.annotationState.showArea || !this.currentFloorplanData) return;
-        
-        this.currentFloorplanData.floors.forEach((floor, floorIndex) => {
-            floor.rooms.forEach(room => {
-                const area = room.width * room.height;
-                const areaText = this.formatArea(area);
-                
-                // Create label element
-                const labelDiv = document.createElement('div');
-                labelDiv.className = 'area-label';
-                labelDiv.textContent = areaText;
-                
-                const label = new CSS2DObject(labelDiv);
-                const centerX = room.x + room.width / 2;
-                const centerZ = room.z + room.height / 2;
-                // Use local coordinates (relative to floor group)
-                const y = (room.elevation || 0) + 0.5;
-                
-                label.position.set(centerX, y, centerZ);
-                this.floors[floorIndex]?.add(label);
-                this.areaLabels.push(label);
-            });
-        });
-    }
-    
-    // Dimension annotations
-    private updateDimensionAnnotations() {
-        // Remove existing labels
-        this.dimensionLabels.forEach(label => {
-            label.parent?.remove(label);
-            label.element.remove();
-        });
-        this.dimensionLabels = [];
-        
-        if (!this.annotationState.showDimensions || !this.currentFloorplanData) return;
-        
-        const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-        
-        this.currentFloorplanData.floors.forEach((floor, floorIndex) => {
-            const floorHeight = floor.height ?? globalDefault;
-            
-            floor.rooms.forEach(room => {
-                // Width label (above room, along X axis)
-                const widthText = this.formatLength(room.width);
-                const widthDiv = document.createElement('div');
-                widthDiv.className = 'dimension-label width-label';
-                widthDiv.textContent = `w: ${widthText}`;
-                
-                const widthLabel = new CSS2DObject(widthDiv);
-                // Use local coordinates (relative to floor group)
-                const y = (room.elevation || 0) + 0.3;
-                widthLabel.position.set(room.x + room.width / 2, y, room.z - 0.5);
-                this.floors[floorIndex]?.add(widthLabel);
-                this.dimensionLabels.push(widthLabel);
-                
-                // Depth label (beside room, along Z axis)
-                const depthText = this.formatLength(room.height);
-                const depthDiv = document.createElement('div');
-                depthDiv.className = 'dimension-label depth-label';
-                depthDiv.textContent = `d: ${depthText}`;
-                
-                const depthLabel = new CSS2DObject(depthDiv);
-                depthLabel.position.set(room.x - 0.5, y, room.z + room.height / 2);
-                this.floors[floorIndex]?.add(depthLabel);
-                this.dimensionLabels.push(depthLabel);
-                
-                // Height label (only if non-default)
-                const roomHeight = room.roomHeight ?? floorHeight;
-                if (roomHeight !== floorHeight) {
-                    const heightText = this.formatLength(roomHeight);
-                    const heightDiv = document.createElement('div');
-                    heightDiv.className = 'dimension-label height-label';
-                    heightDiv.textContent = `h: ${heightText}`;
-                    
-                    const heightLabel = new CSS2DObject(heightDiv);
-                    heightLabel.position.set(room.x + room.width / 2, y + roomHeight / 2, room.z + room.height / 2);
-                    this.floors[floorIndex]?.add(heightLabel);
-                    this.dimensionLabels.push(heightLabel);
-                }
-            });
-        });
-    }
 
     private onWindowResize() {
-        const aspect = window.innerWidth / window.innerHeight;
-        
-        this.perspectiveCamera.aspect = aspect;
-        this.perspectiveCamera.updateProjectionMatrix();
-        
-        this.updateOrthographicSize();
-        
+        this.cameraManager.onWindowResize();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
     }
@@ -1224,11 +862,11 @@ floorplan
         
         // Update pivot indicator
         this.pivotIndicator?.update(deltaTime);
-        this.pivotIndicator?.updateSize(this.activeCamera);
+        this.pivotIndicator?.updateSize(this.cameraManager.activeCamera);
         
         this.controls.update();
-        this.renderer.render(this.scene, this.activeCamera);
-        this.labelRenderer.render(this.scene, this.activeCamera);
+        this.renderer.render(this.scene, this.cameraManager.activeCamera);
+        this.labelRenderer.render(this.scene, this.cameraManager.activeCamera);
     }
 
     private onFileLoad(event: Event) {
@@ -1266,7 +904,7 @@ floorplan
                     }
                     
                     // Store Langium document for 2D rendering
-                    this.currentLangiumDoc = result.document ?? null;
+                    this.overlay2DManager.setLangiumDocument(result.document ?? null);
                     
                     if (result.data) {
                         this.loadFloorplan(result.data);
@@ -1283,7 +921,7 @@ floorplan
                     this.validationWarnings = [];
                     this.updateWarningsPanel();
                     // JSON files don't have a Langium document for 2D rendering
-                    this.currentLangiumDoc = null;
+                    this.overlay2DManager.setLangiumDocument(null);
                     this.loadFloorplan(json);
                 } catch (err) {
                     console.error("Failed to parse JSON", err);
@@ -1309,19 +947,7 @@ floorplan
         this.config = normalizedData.config || {};
         
         // Initialize unit settings from config
-        if (this.config.area_unit === 'sqm') {
-            this.annotationState.areaUnit = 'sqm';
-            const areaUnitSelect = document.getElementById('area-unit') as HTMLSelectElement;
-            if (areaUnitSelect) areaUnitSelect.value = 'sqm';
-        }
-        if (this.config.default_unit) {
-            const unit = this.config.default_unit as LengthUnit;
-            if (['m', 'ft', 'cm', 'in', 'mm'].includes(unit)) {
-                this.annotationState.lengthUnit = unit;
-                const lengthUnitSelect = document.getElementById('length-unit') as HTMLSelectElement;
-                if (lengthUnitSelect) lengthUnitSelect.value = unit;
-            }
-        }
+        this.annotationManager.initFromConfig(this.config);
         
         // Apply theme from DSL config (6.7 & 6.8)
         if (this.config.theme === 'dark' || this.config.darkMode === true) {
@@ -1363,15 +989,13 @@ floorplan
         this.setExplodedView(this.explodedViewFactor);
         
         // Update annotations
-        this.updateAreaAnnotations();
-        this.updateDimensionAnnotations();
-        this.updateFloorSummary();
+        this.annotationManager.updateAll();
         
         // Update floor visibility UI
-        this.initFloorVisibility();
+        this.floorManager.initFloorVisibility();
         
         // Update 2D overlay
-        this.render2DOverlay();
+        this.overlay2DManager.render();
     }
 
     /**
@@ -1503,376 +1127,7 @@ floorplan
         });
         
         // Update annotations to match new positions
-        this.updateAreaAnnotations();
-        this.updateDimensionAnnotations();
-        this.updateFloorSummary();
-    }
-    
-    // ==================== 2D Overlay Methods ====================
-    
-    /**
-     * Store the Langium document for 2D rendering
-     */
-    public setLangiumDocument(doc: import('langium').LangiumDocument<import('floorplans-language').Floorplan> | null) {
-        this.currentLangiumDoc = doc;
-        this.render2DOverlay();
-    }
-    
-    /**
-     * Update the 2D overlay visibility
-     */
-    private update2DOverlayVisibility() {
-        const overlay = document.getElementById('overlay-2d');
-        if (overlay) {
-            overlay.classList.toggle('visible', this.overlayVisible);
-            // Apply opacity when becoming visible
-            if (this.overlayVisible) {
-                this.update2DOverlayOpacity();
-            }
-        }
-    }
-    
-    /**
-     * Update the 2D overlay opacity
-     */
-    private update2DOverlayOpacity() {
-        const overlay = document.getElementById('overlay-2d');
-        if (overlay) {
-            overlay.style.opacity = String(this.overlayOpacity);
-        }
-    }
-    
-    /**
-     * Setup drag and resize functionality for the 2D overlay
-     */
-    private setup2DOverlayDrag() {
-        const overlay = document.getElementById('overlay-2d');
-        const header = document.getElementById('overlay-2d-header');
-        const resizeHandle = document.getElementById('overlay-2d-resize');
-        
-        if (!overlay || !header) return;
-        
-        // ===== DRAG FUNCTIONALITY =====
-        let isDragging = false;
-        let dragStartX = 0;
-        let dragStartY = 0;
-        let dragStartLeft = 0;
-        let dragStartBottom = 0;
-        
-        const onDragStart = (e: MouseEvent) => {
-            isDragging = true;
-            overlay.classList.add('dragging');
-            
-            dragStartX = e.clientX;
-            dragStartY = e.clientY;
-            
-            const rect = overlay.getBoundingClientRect();
-            dragStartLeft = rect.left;
-            dragStartBottom = window.innerHeight - rect.bottom;
-            
-            e.preventDefault();
-        };
-        
-        const onDragMove = (e: MouseEvent) => {
-            if (!isDragging) return;
-            
-            const deltaX = e.clientX - dragStartX;
-            const deltaY = e.clientY - dragStartY;
-            
-            let newLeft = dragStartLeft + deltaX;
-            let newBottom = dragStartBottom - deltaY;
-            
-            const rect = overlay.getBoundingClientRect();
-            const maxLeft = window.innerWidth - rect.width - 10;
-            const maxBottom = window.innerHeight - rect.height - 10;
-            
-            newLeft = Math.max(10, Math.min(newLeft, maxLeft));
-            newBottom = Math.max(10, Math.min(newBottom, maxBottom));
-            
-            overlay.style.left = `${newLeft}px`;
-            overlay.style.bottom = `${newBottom}px`;
-            overlay.style.right = 'auto';
-            overlay.style.top = 'auto';
-        };
-        
-        const onDragEnd = () => {
-            if (isDragging) {
-                isDragging = false;
-                overlay.classList.remove('dragging');
-            }
-        };
-        
-        header.addEventListener('mousedown', onDragStart);
-        
-        // ===== RESIZE FUNCTIONALITY =====
-        let isResizing = false;
-        let resizeStartX = 0;
-        let resizeStartY = 0;
-        let resizeStartWidth = 0;
-        let resizeStartHeight = 0;
-        let resizeStartBottom = 0;
-        
-        const onResizeStart = (e: MouseEvent) => {
-            isResizing = true;
-            overlay.classList.add('dragging');
-            
-            resizeStartX = e.clientX;
-            resizeStartY = e.clientY;
-            resizeStartWidth = overlay.offsetWidth;
-            resizeStartHeight = overlay.offsetHeight;
-            
-            // Get current bottom position
-            const rect = overlay.getBoundingClientRect();
-            resizeStartBottom = window.innerHeight - rect.bottom;
-            
-            e.preventDefault();
-            e.stopPropagation();
-        };
-        
-        const onResizeMove = (e: MouseEvent) => {
-            if (!isResizing) return;
-            
-            const deltaX = e.clientX - resizeStartX;
-            const deltaY = e.clientY - resizeStartY;
-            
-            // Calculate new size (resize from bottom-right corner)
-            let newWidth = resizeStartWidth + deltaX;
-            let newHeight = resizeStartHeight + deltaY;
-            
-            // Constrain to min/max sizes
-            newWidth = Math.max(200, Math.min(newWidth, window.innerWidth - 20));
-            newHeight = Math.max(150, Math.min(newHeight, window.innerHeight - 20));
-            
-            // Adjust bottom position so the bottom edge follows the mouse
-            // deltaY positive = mouse moved down = bottom should decrease
-            let newBottom = resizeStartBottom - deltaY;
-            newBottom = Math.max(10, newBottom);
-            
-            overlay.style.width = `${newWidth}px`;
-            overlay.style.height = `${newHeight}px`;
-            overlay.style.bottom = `${newBottom}px`;
-        };
-        
-        const onResizeEnd = () => {
-            if (isResizing) {
-                isResizing = false;
-                overlay.classList.remove('dragging');
-            }
-        };
-        
-        resizeHandle?.addEventListener('mousedown', onResizeStart);
-        
-        // ===== SHARED MOUSE/TOUCH HANDLERS =====
-        document.addEventListener('mousemove', (e) => {
-            onDragMove(e);
-            onResizeMove(e);
-        });
-        
-        document.addEventListener('mouseup', () => {
-            onDragEnd();
-            onResizeEnd();
-        });
-        
-        // Touch events for drag
-        header.addEventListener('touchstart', (e: TouchEvent) => {
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                onDragStart({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => e.preventDefault() } as MouseEvent);
-            }
-        }, { passive: false });
-        
-        // Touch events for resize
-        resizeHandle?.addEventListener('touchstart', (e: TouchEvent) => {
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                onResizeStart({ 
-                    clientX: touch.clientX, 
-                    clientY: touch.clientY, 
-                    preventDefault: () => e.preventDefault(),
-                    stopPropagation: () => e.stopPropagation()
-                } as MouseEvent);
-            }
-        }, { passive: false });
-        
-        document.addEventListener('touchmove', (e: TouchEvent) => {
-            if (e.touches.length === 1) {
-                const touch = e.touches[0];
-                if (isDragging) {
-                    onDragMove({ clientX: touch.clientX, clientY: touch.clientY } as MouseEvent);
-                }
-                if (isResizing) {
-                    onResizeMove({ clientX: touch.clientX, clientY: touch.clientY } as MouseEvent);
-                }
-            }
-        }, { passive: true });
-        
-        document.addEventListener('touchend', () => {
-            onDragEnd();
-            onResizeEnd();
-        });
-    }
-    
-    /**
-     * Render the 2D SVG overlay
-     */
-    private render2DOverlay() {
-        const contentEl = document.getElementById('overlay-2d-content');
-        const emptyEl = document.getElementById('overlay-2d-empty');
-        
-        if (!contentEl) return;
-        
-        // If no Langium document, show empty state
-        if (!this.currentLangiumDoc) {
-            if (emptyEl) {
-                emptyEl.style.display = 'block';
-                emptyEl.textContent = this.currentFloorplanData ? 'JSON files don\'t support 2D overlay' : 'Load a floorplan';
-            }
-            // Clear any existing SVG
-            const existingSvg = contentEl.querySelector('svg');
-            if (existingSvg) {
-                existingSvg.remove();
-            }
-            return;
-        }
-        
-        // Hide empty state
-        if (emptyEl) {
-            emptyEl.style.display = 'none';
-        }
-        
-        try {
-            // Render 2D SVG with all floors visible
-            const renderOptions: RenderOptions = {
-                renderAllFloors: true,
-                includeStyles: true,
-                theme: this.currentTheme === 'dark' ? { 
-                    floorBackground: '#2d2d2d',
-                    floorBorder: '#888',
-                    wallColor: '#ccc',
-                    textColor: '#eee'
-                } : undefined,
-            };
-            
-            const svg = render2D(this.currentLangiumDoc, renderOptions);
-            
-            // Clear existing content and add new SVG
-            const existingSvg = contentEl.querySelector('svg');
-            if (existingSvg) {
-                existingSvg.remove();
-            }
-            
-            // Parse and insert SVG
-            const parser = new DOMParser();
-            const svgDoc = parser.parseFromString(svg, 'image/svg+xml');
-            const svgElement = svgDoc.querySelector('svg');
-            
-            if (svgElement) {
-                // Ensure SVG scales properly
-                svgElement.setAttribute('width', '100%');
-                svgElement.setAttribute('height', '100%');
-                svgElement.style.display = 'block';
-                contentEl.appendChild(svgElement);
-            }
-        } catch (err) {
-            console.error('Failed to render 2D overlay:', err);
-            if (emptyEl) {
-                emptyEl.style.display = 'block';
-                emptyEl.textContent = 'Failed to render 2D';
-            }
-        }
-    }
-    
-    // ==================== Floor Visibility Methods ====================
-    
-    /**
-     * Update the floor list UI based on current floorplan data
-     */
-    private updateFloorListUI() {
-        const floorListEl = document.getElementById('floor-list');
-        if (!floorListEl) return;
-        
-        // Clear existing content
-        floorListEl.innerHTML = '';
-        
-        if (!this.currentFloorplanData || this.currentFloorplanData.floors.length === 0) {
-            floorListEl.innerHTML = '<div class="no-floors-message">Load a floorplan to see floors</div>';
-            return;
-        }
-        
-        // Create checkbox for each floor
-        this.currentFloorplanData.floors.forEach((floor, index) => {
-            const floorId = floor.id;
-            const isVisible = this.floorVisibility.get(floorId) ?? true;
-            
-            const floorItem = document.createElement('div');
-            floorItem.className = 'floor-item';
-            
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.id = `floor-toggle-${index}`;
-            checkbox.checked = isVisible;
-            checkbox.addEventListener('change', () => {
-                this.setFloorVisible(floorId, checkbox.checked);
-            });
-            
-            const label = document.createElement('label');
-            label.htmlFor = `floor-toggle-${index}`;
-            label.textContent = floorId;
-            
-            floorItem.appendChild(checkbox);
-            floorItem.appendChild(label);
-            floorListEl.appendChild(floorItem);
-        });
-    }
-    
-    /**
-     * Set visibility of a specific floor
-     */
-    private setFloorVisible(floorId: string, visible: boolean) {
-        this.floorVisibility.set(floorId, visible);
-        
-        // Find and update the THREE.Group
-        const floorIndex = this.currentFloorplanData?.floors.findIndex(f => f.id === floorId) ?? -1;
-        if (floorIndex >= 0 && this.floors[floorIndex]) {
-            this.floors[floorIndex].visible = visible;
-        }
-        
-        // Update floor summary to only show visible floors
-        this.updateFloorSummary();
-    }
-    
-    /**
-     * Set visibility of all floors
-     */
-    private setAllFloorsVisible(visible: boolean) {
-        if (!this.currentFloorplanData) return;
-        
-        this.currentFloorplanData.floors.forEach((floor, index) => {
-            this.floorVisibility.set(floor.id, visible);
-            if (this.floors[index]) {
-                this.floors[index].visible = visible;
-            }
-        });
-        
-        // Update UI checkboxes
-        this.updateFloorListUI();
-        this.updateFloorSummary();
-    }
-    
-    /**
-     * Initialize floor visibility state when loading a new floorplan
-     */
-    private initFloorVisibility() {
-        this.floorVisibility.clear();
-        
-        if (this.currentFloorplanData) {
-            // All floors visible by default
-            this.currentFloorplanData.floors.forEach(floor => {
-                this.floorVisibility.set(floor.id, true);
-            });
-        }
-        
-        this.updateFloorListUI();
+        this.annotationManager.updateAll();
     }
 }
 

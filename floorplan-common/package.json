@@ -2,6 +2,8 @@
   "name": "floorplan-common",
   "version": "0.1.0",
   "description": "Shared utilities for floorplan packages (geometry, types, constants)",
+  "license": "MIT",
+  "author": "Malar Kannan",
   "type": "module",
   "main": "./out/index.js",
   "types": "./out/index.d.ts",

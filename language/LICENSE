@@ -1,38 +1,7 @@
-# Licensing Structure
-
-This project uses multiple licenses for different components:
-
-## User-Facing Applications (GPL v3)
-The following modules are licensed under the GNU General Public License v3:
-- **viewer/** - Interactive 3D floorplan viewer application
-- **mcp-server/** - Model Context Protocol server for Claude integration
-
-Copyright (C) 2025-2026 Malar Kannan
-
-See the LICENSE file in each directory for the full GPL v3 license text.
-
-## Core Libraries (MIT License)
-The following libraries are licensed under the MIT License:
-- **floorplan-3d-core/** - Shared 3D rendering primitives
-- **floorplan-common/** - Shared utilities and geometry functions
-
-Copyright (c) 2025-2026 Malar Kannan
-
-## Language Grammar (MIT License - Dual Copyright)
-- **language/** - Langium-based DSL parser and validator
+MIT License
 
 Copyright (c) 2025 Alexander Lang
 Copyright (c) 2025-2026 Malar Kannan
-
----
-
-## Original Work Acknowledgment
-
-This project was originally created by Alexander Lang and is based on 
-concepts proposed for mermaid.js floorplan charts. Substantial additions
-and new modules have been contributed by Malar Kannan.
-
-## MIT License (for library components)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
