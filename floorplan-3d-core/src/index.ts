@@ -66,6 +66,16 @@ export {
   roomsShareWall,
 } from './wall-geometry.js';
 export type { WallGeneratorOptions } from './wall-geometry.js';
+export {
+  generateFloorConnections,
+  generateConnection,
+} from './connection-geometry.js';
+export type { ConnectionGeometryOptions } from './connection-geometry.js';
+export {
+  findMatchingConnections,
+  shouldRenderConnection,
+} from './connection-matcher.js';
+export type { ConnectionMatch } from './connection-matcher.js';
 
 // Render context
 export {

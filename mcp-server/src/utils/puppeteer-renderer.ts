@@ -116,6 +116,9 @@ export async function renderWithPuppeteer(
     // Set viewport to match output dimensions
     await page.setViewport({ width, height });
 
+    // Capture browser errors for debugging
+    page.on('pageerror', err => console.error('Browser error:', String(err)));
+
     // Create a minimal HTML page
     const html = createRenderingHTML(width, height);
     await page.setContent(html, { waitUntil: 'domcontentloaded' });
@@ -323,6 +326,193 @@ function getRenderingCode(): string {
       camera.updateProjectionMatrix();
 
       return { camera, position, target, fov };
+    }
+
+    // Connection rendering functions
+    function findMatchingConnections(room, wall, allConnections) {
+      const matches = [];
+      for (const conn of allConnections) {
+        let isMatch = false;
+        let isFromRoom = false;
+
+        if (conn.fromRoom === room.name && conn.fromWall === wall.direction) {
+          isMatch = true;
+          isFromRoom = true;
+        } else if (conn.toRoom === room.name && conn.toWall === wall.direction) {
+          isMatch = true;
+          isFromRoom = false;
+        }
+
+        if (isMatch) {
+          const otherRoomName = isFromRoom ? conn.toRoom : conn.fromRoom;
+          const otherWallDirection = isFromRoom ? conn.toWall : conn.fromWall;
+          matches.push({ connection: conn, isFromRoom, otherRoomName, otherWallDirection });
+        }
+      }
+      return matches;
+    }
+
+    function shouldRenderConnection(match, currentWall, allRooms) {
+      const { isFromRoom, otherRoomName, otherWallDirection } = match;
+
+      let otherWallType = 'solid';
+      const otherRoom = allRooms.find(r => r.name === otherRoomName);
+
+      if (otherRoom) {
+        const otherWall = otherRoom.walls.find(w => w.direction === otherWallDirection);
+        if (otherWall) {
+          otherWallType = otherWall.type;
+        }
+      } else {
+        if (!isFromRoom) {
+          otherWallType = 'solid';
+        } else {
+          otherWallType = 'open';
+        }
+      }
+
+      const isCurrentOpen = currentWall.type === 'open';
+      const isOtherOpen = otherWallType === 'open';
+
+      if (isCurrentOpen && isOtherOpen) {
+        return isFromRoom;
+      } else if (isCurrentOpen) {
+        return false;
+      } else if (isOtherOpen) {
+        return true;
+      } else {
+        return isFromRoom;
+      }
+    }
+
+    function generateConnections(floor, allConnections, config, floorGroup, themeColors) {
+      const DOOR_DIMS = {
+        WIDTH: 1.0,
+        HEIGHT: 2.1,
+        PANEL_THICKNESS: 0.05,
+        SWING_ANGLE: Math.PI / 4,
+      };
+      const DOUBLE_DOOR_WIDTH = 1.8;
+      const WINDOW_DIMS = {
+        WIDTH: 1.5,
+        HEIGHT: 1.2,
+        SILL_HEIGHT: 0.9,
+        GLASS_THICKNESS: 0.05,
+      };
+
+      const wallThickness = config.wall_thickness || DIMENSIONS.WALL.THICKNESS;
+      const defaultHeight = config.default_height || DIMENSIONS.WALL.HEIGHT;
+
+      floor.rooms.forEach(room => {
+        room.walls.forEach(wall => {
+          const matches = findMatchingConnections(room, wall, allConnections);
+
+          matches.forEach(match => {
+            if (!shouldRenderConnection(match, wall, floor.rooms)) {
+              return;
+            }
+
+            const conn = match.connection;
+            const isDoor = conn.doorType === 'door' || conn.doorType === 'double-door';
+            const isWindow = conn.doorType === 'window';
+
+            if (!isDoor && !isWindow) {
+              return;
+            }
+
+            // Calculate position
+            const isVertical = wall.direction === 'left' || wall.direction === 'right';
+            const positionPercent = conn.position || 50;
+            const positionFraction = positionPercent / 100;
+
+            const roomHeight = room.roomHeight || defaultHeight;
+            const roomElevation = room.elevation || 0;
+
+            // Calculate position at WALL CENTER (walls are inset by wallThickness/2 from room edge)
+            let holeX, holeZ;
+            if (isVertical) {
+              // Vertical walls: position at wall center in X, along wall in Z
+              holeX = wall.direction === 'left' 
+                ? room.x + wallThickness / 2 
+                : room.x + room.width - wallThickness / 2;
+              holeZ = room.z + positionFraction * room.height;
+            } else {
+              // Horizontal walls: position along wall in X, at wall center in Z
+              holeX = room.x + positionFraction * room.width;
+              holeZ = wall.direction === 'top' 
+                ? room.z + wallThickness / 2 
+                : room.z + room.height - wallThickness / 2;
+            }
+
+            if (isDoor) {
+              // Door rendering
+              // Note: Unlike the viewer which uses CSG to cut holes in walls,
+              // we render doors as boxes that protrude through walls since
+              // CSG is complex in headless Puppeteer. The door must be thick
+              // enough to be visible on both sides of the wall.
+              
+              let doorWidth = conn.width !== undefined ? conn.width :
+                conn.doorType === 'double-door' ? DOUBLE_DOOR_WIDTH : DOOR_DIMS.WIDTH;
+              const doorHeight = conn.height || DOOR_DIMS.HEIGHT;
+
+              // Make door thick enough to protrude through wall on both sides
+              // Without CSG, we need doors to extend beyond the wall surface
+              const doorThickness = wallThickness * 2.5;  // ~0.5m at standard wall thickness
+              
+              // Create door geometry oriented appropriately for wall direction
+              const doorPanelGeom = new THREE.BoxGeometry(
+                isVertical ? doorThickness : doorWidth,
+                doorHeight,
+                isVertical ? doorWidth : doorThickness
+              );
+
+              const doorMat = new THREE.MeshStandardMaterial({
+                color: themeColors.DOOR,
+                roughness: 0.7,
+                metalness: 0.0,
+              });
+
+              const doorMesh = new THREE.Mesh(doorPanelGeom, doorMat);
+              doorMesh.name = 'door-' + conn.fromRoom + '-' + conn.toRoom;
+              
+              // Position door centered on wall (it protrudes through)
+              doorMesh.position.set(holeX, roomElevation + doorHeight / 2, holeZ);
+              
+              floorGroup.add(doorMesh);
+
+            } else if (isWindow) {
+              // Window rendering
+              // Like doors, windows protrude through walls since we don't use CSG
+              const windowWidth = conn.width || WINDOW_DIMS.WIDTH;
+              const windowHeight = conn.height || WINDOW_DIMS.HEIGHT;
+              const sillHeight = roomElevation + WINDOW_DIMS.SILL_HEIGHT;
+
+              // Make window thick enough to protrude through wall on both sides
+              const windowThickness = wallThickness * 2;
+              
+              const windowGeom = new THREE.BoxGeometry(
+                isVertical ? windowThickness : windowWidth,
+                windowHeight,
+                isVertical ? windowWidth : windowThickness
+              );
+
+              const windowMat = new THREE.MeshStandardMaterial({
+                color: themeColors.WINDOW,
+                roughness: 0.0,
+                metalness: 0.9,
+                transparent: true,
+                opacity: 0.5,  // Slightly higher opacity for visibility
+              });
+
+              // Position window centered on wall (it protrudes through)
+              const windowMesh = new THREE.Mesh(windowGeom, windowMat);
+              windowMesh.name = 'window-' + conn.fromRoom + '-' + conn.toRoom;
+              windowMesh.position.set(holeX, sillHeight + windowHeight / 2, holeZ);
+              floorGroup.add(windowMesh);
+            }
+          });
+        });
+      });
     }
 
     // StairGenerator class for proper stair/lift 3D geometry
@@ -686,6 +876,11 @@ function getRenderingCode(): string {
             floorGroup.add(wallMesh);
           });
         });
+
+        // Connections (doors and windows)
+        if (jsonData.connections) {
+          generateConnections(floor, jsonData.connections, config, floorGroup, themeColors);
+        }
 
         // Stairs - using StairGenerator for proper geometry
         if (floor.stairs) {

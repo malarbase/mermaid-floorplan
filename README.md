@@ -316,7 +316,7 @@ make export FILE=examples/StairsAndLifts.floorplan
 
 ### 3D Rendering (Isometric/Perspective View)
 
-The 3D renderer creates perspective views showing walls, floors, stairs, and lifts in three dimensions.
+The 3D renderer creates perspective views showing walls, floors, **doors**, **windows**, stairs, and lifts in three dimensions. Doors defined via `connect` statements and windows from window-type walls are rendered at their specified positions.
 
 **Export to 3D PNG:**
 ```bash

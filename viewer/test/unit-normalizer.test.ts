@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest';
-import { normalizeToMeters } from '../src/unit-normalizer';
+import { normalizeToMeters } from 'floorplan-3d-core';
 import type { JsonExport, JsonConfig, JsonConnection, JsonRoom, JsonFloor } from 'floorplan-3d-core';
 
 /**

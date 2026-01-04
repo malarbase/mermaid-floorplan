@@ -81,7 +81,7 @@ langium-watch: ## Watch and regenerate Langium artifacts
 # ===============================
 
 FLOORPLAN_FILE ?= trial/TriplexVilla.floorplan
-OUTPUT_DIR ?= trial
+OUTPUT_DIR ?= $(dir $(FLOORPLAN_FILE))
 SCALE ?= 15
 SHOW_AREA ?=
 SHOW_DIMS ?=
@@ -98,8 +98,10 @@ ifneq ($(LENGTH_UNIT),ft)
 ANNOTATION_FLAGS += --length-unit $(LENGTH_UNIT)
 endif
 
-export-images: ## Generate SVG + PNG for all floors
+export-images: ## Generate SVG + PNG for all floors and 3D views
 	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE) $(ANNOTATION_FLAGS)
+	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS)
+	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS) --projection perspective
 
 export-svg: ## Generate SVG only
 	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --svg-only --scale $(SCALE) $(ANNOTATION_FLAGS)
@@ -147,7 +149,7 @@ export-3d: ## Generate 3D PNG (isometric view)
 	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS)
 
 export-3d-perspective: ## Generate 3D PNG (perspective view)
-	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --projection perspective $(3D_FLAGS)
+	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS) --projection perspective
 
 # ===============================
 # 3D Viewer

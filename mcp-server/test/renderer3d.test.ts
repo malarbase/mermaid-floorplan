@@ -115,6 +115,98 @@ const multiFloorFloorplan: JsonExport = {
   styles: [],
 };
 
+// Floorplan with connections (doors and windows between rooms)
+const floorplanWithConnections: JsonExport = {
+  config: {
+    title: 'Connections Test',
+    default_unit: 'm',
+    default_height: 3,
+  },
+  floors: [
+    {
+      id: 'ground',
+      index: 0,
+      name: 'Ground Floor',
+      rooms: [
+        {
+          id: 'living',
+          name: 'LivingRoom',
+          x: 0,
+          z: 0,
+          width: 5,
+          height: 4,
+          walls: [
+            { direction: 'top', type: 'solid' },
+            { direction: 'right', type: 'solid' },
+            { direction: 'bottom', type: 'solid' },
+            { direction: 'left', type: 'window' },
+          ],
+        },
+        {
+          id: 'kitchen',
+          name: 'Kitchen',
+          x: 5,
+          z: 0,
+          width: 4,
+          height: 4,
+          walls: [
+            { direction: 'top', type: 'solid' },
+            { direction: 'right', type: 'solid' },
+            { direction: 'bottom', type: 'solid' },
+            { direction: 'left', type: 'solid' },
+          ],
+        },
+        {
+          id: 'bedroom',
+          name: 'Bedroom',
+          x: 0,
+          z: 4,
+          width: 5,
+          height: 3,
+          walls: [
+            { direction: 'top', type: 'solid' },
+            { direction: 'right', type: 'solid' },
+            { direction: 'bottom', type: 'solid' },
+            { direction: 'left', type: 'solid' },
+          ],
+        },
+      ],
+      stairs: [],
+      lifts: [],
+    },
+  ],
+  connections: [
+    // Door between LivingRoom and Kitchen
+    {
+      fromRoom: 'LivingRoom',
+      fromWall: 'right',
+      toRoom: 'Kitchen',
+      toWall: 'left',
+      doorType: 'door',
+      position: 50,
+    },
+    // Door between LivingRoom and Bedroom
+    {
+      fromRoom: 'LivingRoom',
+      fromWall: 'bottom',
+      toRoom: 'Bedroom',
+      toWall: 'top',
+      doorType: 'door',
+      position: 50,
+    },
+    // Window connection (window type connection)
+    {
+      fromRoom: 'Kitchen',
+      fromWall: 'right',
+      toRoom: 'Kitchen', // External window
+      toWall: 'right',
+      doorType: 'window',
+      position: 50,
+    },
+  ],
+  styles: [],
+};
+
 // Floorplan with custom styles
 const styledFloorplan: JsonExport = {
   config: {
@@ -269,6 +361,55 @@ describe('render3DToPng', () => {
       expect(bounds.size.x).toBeGreaterThan(0);
       expect(bounds.size.z).toBeGreaterThan(0);
       expect(bounds.center).toBeDefined();
+    }, 30000);
+  });
+
+  describe('connection rendering', () => {
+    it('renders doors between rooms', async () => {
+      const result = await render3DToPng(floorplanWithConnections);
+
+      expect(result.pngBuffer).toBeInstanceOf(Buffer);
+      expect(result.pngBuffer.length).toBeGreaterThan(0);
+      expect(result.metadata.floorsRendered).toContain(0);
+      
+      // Verify PNG is valid
+      expect(result.pngBuffer[0]).toBe(0x89);
+      expect(result.pngBuffer[1]).toBe(0x50);
+    }, 30000);
+
+    it('renders connections with isometric projection', async () => {
+      const result = await render3DToPng(floorplanWithConnections, {
+        projection: 'isometric',
+      });
+
+      expect(result.metadata.projection).toBe('isometric');
+      expect(result.pngBuffer.length).toBeGreaterThan(0);
+    }, 30000);
+
+    it('renders connections with perspective projection', async () => {
+      const result = await render3DToPng(floorplanWithConnections, {
+        projection: 'perspective',
+        fov: 60,
+      });
+
+      expect(result.metadata.projection).toBe('perspective');
+      expect(result.pngBuffer.length).toBeGreaterThan(0);
+    }, 30000);
+
+    it('handles empty connections array', async () => {
+      const noConnections: JsonExport = {
+        ...simpleFloorplan,
+        connections: [],
+      };
+
+      const result = await render3DToPng(noConnections);
+      expect(result.pngBuffer.length).toBeGreaterThan(0);
+    }, 30000);
+
+    it('handles missing connections property', async () => {
+      // simpleFloorplan doesn't have connections property
+      const result = await render3DToPng(simpleFloorplan);
+      expect(result.pngBuffer.length).toBeGreaterThan(0);
     }, 30000);
   });
 

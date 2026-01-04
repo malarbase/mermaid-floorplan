@@ -164,32 +164,31 @@ async function main() {
   console.log();
 
   // Render individual floors in 3D
-  if (!options.renderAll) {
-    for (let i = 0; i < floorplan.floors.length; i++) {
-      const floor = floorplan.floors[i];
-      try {
-        const result = await render3DToPng(jsonResult.data, {
-          width: options.width,
-          height: options.height,
-          projection: options.projection,
-          cameraPosition: options.cameraPosition,
-          cameraTarget: options.cameraTarget,
-          fov: options.fov,
-          floorIndex: i,
-          renderAllFloors: false,
-        });
+  for (let i = 0; i < floorplan.floors.length; i++) {
+    const floor = floorplan.floors[i];
+    try {
+      const result = await render3DToPng(jsonResult.data, {
+        width: options.width,
+        height: options.height,
+        projection: options.projection,
+        cameraPosition: options.cameraPosition,
+        cameraTarget: options.cameraTarget,
+        fov: options.fov,
+        floorIndex: i,
+        renderAllFloors: false,
+      });
 
-        const pngPath = path.join(outputDirPath, `${baseName}-${floor.id}-3D.png`);
-        fs.writeFileSync(pngPath, result.pngBuffer);
-        console.log(`  ✓ 3D PNG: ${pngPath} (${floor.rooms.length} rooms)`);
-      } catch (error) {
-        console.error(`  ✗ Failed to render ${floor.id}: ${error instanceof Error ? error.message : error}`);
-      }
+      const filenameSuffix = options.projection === 'perspective' ? '-Perspective' : '';
+      const pngPath = path.join(outputDirPath, `${baseName}-${floor.id}-3D${filenameSuffix}.png`);
+      fs.writeFileSync(pngPath, result.pngBuffer);
+      console.log(`  ✓ 3D PNG: ${pngPath} (${floor.rooms.length} rooms)`);
+    } catch (error) {
+      console.error(`  ✗ Failed to render ${floor.id}: ${error instanceof Error ? error.message : error}`);
     }
   }
 
   // Render all floors in a single 3D image
-  if (options.renderAll || floorplan.floors.length === 1) {
+  if (options.renderAll && floorplan.floors.length > 1) {
     try {
       const result = await render3DToPng(jsonResult.data, {
         width: options.width,
@@ -201,8 +200,9 @@ async function main() {
         renderAllFloors: true,
       });
 
-      const suffix = floorplan.floors.length > 1 ? '-AllFloors-3D.png' : '-3D.png';
-      const pngPath = path.join(outputDirPath, `${baseName}${suffix}`);
+      const filenameSuffix = options.projection === 'perspective' ? '-Perspective' : '';
+      const suffix = '-AllFloors';
+      const pngPath = path.join(outputDirPath, `${baseName}${suffix}-3D${filenameSuffix}.png`);
       fs.writeFileSync(pngPath, result.pngBuffer);
       console.log(`  ✓ 3D PNG: ${pngPath} (${floorplan.floors.length} floor(s))`);
 
