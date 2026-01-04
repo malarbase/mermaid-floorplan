@@ -1,4 +1,4 @@
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Viewer Code Organization
 The 3D viewer SHALL organize its codebase using specialized manager classes to separate concerns and improve maintainability.
@@ -35,8 +35,6 @@ Managers SHALL communicate through callback-based dependency injection rather th
 - **WHEN** manager changes state that affects other managers (e.g., floor visibility)
 - **THEN** manager invokes onVisibilityChange callback
 - **AND** viewer coordinates updates across affected managers
-
-## ADDED Requirements
 
 ### Requirement: Camera Manager
 The viewer SHALL provide a CameraManager class to handle all camera-related operations.
