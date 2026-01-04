@@ -11,6 +11,7 @@ import { DIMENSIONS, getThemeColors, type ViewerTheme } from './constants.js';
 import { MaterialFactory, type MaterialStyle } from './materials.js';
 import { generateFloorSlabs } from './floor-geometry.js';
 import { generateFloorWalls } from './wall-geometry.js';
+import { generateFloorConnections } from './connection-geometry.js';
 import { StairGenerator } from './stair-geometry.js';
 import { computeSceneBounds, setupCamera, type CameraSetupResult } from './camera-utils.js';
 import { setupLighting } from './lighting-utils.js';
@@ -30,6 +31,8 @@ export interface SceneBuildOptions {
   showFloors?: boolean;
   /** Show walls (default: true) */
   showWalls?: boolean;
+  /** Show connections (doors/windows) (default: true) */
+  showConnections?: boolean;
   /** Show stairs (default: true) */
   showStairs?: boolean;
   /** Show lifts (default: true) */
@@ -69,6 +72,7 @@ export function buildFloorplanScene(
     floorSpacing,
     showFloors = true,
     showWalls = true,
+    showConnections = true,
     showStairs = true,
     showLifts = true,
   } = options;
@@ -126,6 +130,21 @@ export function buildFloorplanScene(
         styleMap,
       });
       floorGroup.add(walls);
+    }
+
+    // Generate connections (doors/windows)
+    if (showConnections) {
+      const connections = generateFloorConnections(
+        floor,
+        normalizedData.connections ?? [],
+        {
+          wallThickness,
+          defaultHeight: floor.height ?? defaultHeight,
+          theme,
+          styleMap,
+        }
+      );
+      floorGroup.add(connections);
     }
 
     // Generate stairs
