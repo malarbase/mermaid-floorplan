@@ -9,7 +9,7 @@
 import { EmptyFileSystem, URI, type LangiumDocument } from "langium";
 import type { Floorplan } from "floorplans-language";
 import { createFloorplansServices, convertFloorplanToJson } from "floorplans-language";
-import type { JsonExport } from "./types";
+import type { JsonExport } from "floorplan-3d-core";
 
 // Initialize Langium services with EmptyFileSystem (browser-compatible)
 const services = createFloorplansServices(EmptyFileSystem);

@@ -5,7 +5,7 @@ import {
   reassignMaterialsByNormal,
   getWallFaceMaterialIndex,
   FACE_INDICES,
-} from '../src/csg-utils';
+} from '../src/csg-utils.js';
 
 describe('CSG Utils', () => {
   describe('FACE_INDICES', () => {

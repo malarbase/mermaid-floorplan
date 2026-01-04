@@ -1,0 +1,36 @@
+{
+  "name": "floorplan-common",
+  "version": "0.1.0",
+  "description": "Shared utilities for floorplan packages (geometry, types, constants)",
+  "type": "module",
+  "main": "./out/index.js",
+  "types": "./out/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./out/index.d.ts",
+      "import": "./out/index.js",
+      "default": "./out/index.js"
+    }
+  },
+  "files": [
+    "out"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "shx rm -rf out",
+    "watch": "tsc --watch",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "shx": "~0.4.0",
+    "typescript": "~5.8.3",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [
+    "floorplan",
+    "geometry",
+    "utilities"
+  ]
+}
+

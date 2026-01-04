@@ -3,6 +3,9 @@
  * 
  * After CSG operations, Three.js geometry material groups are destroyed.
  * These utilities help reassign materials based on face normals.
+ * 
+ * Note: CSG operations require the optional `three-bvh-csg` dependency.
+ * These utilities work with any BufferGeometry regardless of how it was created.
  */
 
 import * as THREE from 'three';

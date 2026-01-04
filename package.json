@@ -7,8 +7,8 @@
   "scripts": {
     "clean": "npm run clean --workspaces",
     "dev": "npm run --workspace floorplans-viewer dev",
-    "build": "npm run langium:generate && npm run build --workspaces",
-    "build:all": "npm run langium:generate && npm run build --workspaces",
+    "build": "echo | npm run langium:generate && npm run build --workspaces",
+    "build:all": "echo | npm run langium:generate && npm run build --workspaces",
     "langium:generate": "npm run --workspace language langium:generate",
     "langium:watch": "npm run --workspace language langium:watch",
     "test": "npm run --workspace language test && npm run --workspace mcp-server test"
@@ -25,6 +25,7 @@
     "npm": "10.8.2"
   },
   "workspaces": [
+    "floorplan-common",
     "language",
     "floorplan-3d-core",
     "mcp-server",
