@@ -18,16 +18,16 @@ import {
   // Wall ownership and CSG utilities from core
   analyzeWallOwnership, reassignMaterialsByNormal,
   type WallSegment,
+  // Door rendering from core
+  generateConnection, getThemeColors, type ThemeColors,
+  // Wall segment generation from core
+  calculateWallGeometry as coreCalculateWallGeometry,
+  createWallSegmentGeometry,
+  calculateWallSegmentPosition,
+  type WallGeometry,
 } from 'floorplan-3d-core';
-import { DoorRenderer } from './door-renderer';
 
-interface WallGeometry {
-  width: number;
-  depth: number;
-  posX: number;
-  posZ: number;
-  isVertical: boolean;
-}
+// WallGeometry type is imported from floorplan-3d-core
 
 /**
  * Style resolver function type - used to get style for any room
@@ -36,13 +36,13 @@ export type StyleResolver = (room: JsonRoom) => MaterialStyle | undefined;
 
 export class WallGenerator {
   private csgEvaluator: Evaluator;
-  private doorRenderer: DoorRenderer;
   private styleResolver: StyleResolver | null = null;
   private currentTheme?: ViewerTheme;
+  private themeColors: ThemeColors;
 
   constructor(csgEvaluator: Evaluator) {
     this.csgEvaluator = csgEvaluator;
-    this.doorRenderer = new DoorRenderer();
+    this.themeColors = getThemeColors('light');
   }
 
   /**
@@ -57,6 +57,7 @@ export class WallGenerator {
    */
   setTheme(theme: ViewerTheme): void {
     this.currentTheme = theme;
+    this.themeColors = getThemeColors(theme);
   }
 
   /**
@@ -144,32 +145,9 @@ export class WallGenerator {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue; // Skip tiny segments
 
-      // Calculate segment geometry
-      let segmentWidth: number;
-      let segmentDepth: number;
-      let segmentPosX: number;
-      let segmentPosZ: number;
-
-      if (isVertical) {
-        // Vertical wall (left/right)
-        segmentWidth = wallThickness;
-        segmentDepth = segmentLength;
-        segmentPosX = baseGeometry.posX;
-        // Position along Z axis
-        const wallStartZ = room.z;
-        segmentPosZ = wallStartZ + segment.startPos + segmentLength / 2;
-      } else {
-        // Horizontal wall (top/bottom)
-        segmentWidth = segmentLength;
-        segmentDepth = wallThickness;
-        // Position along X axis
-        const wallStartX = room.x;
-        segmentPosX = wallStartX + segment.startPos + segmentLength / 2;
-        segmentPosZ = baseGeometry.posZ;
-      }
-
-      // Create segment geometry
-      const segmentGeom = new THREE.BoxGeometry(segmentWidth, wallHeight, segmentDepth);
+      // Use core functions for segment geometry and position
+      const segmentGeom = createWallSegmentGeometry(segment, wallThickness, wallHeight, isVertical);
+      const segmentPos = calculateWallSegmentPosition(segment, wall, room, wallThickness);
 
       // Create per-face materials for this segment
       const segmentMaterials = MaterialFactory.createPerFaceWallMaterials(
@@ -181,7 +159,7 @@ export class WallGenerator {
 
       // Create brush for CSG operations
       const segmentBrush = new Brush(segmentGeom, segmentMaterials);
-      segmentBrush.position.set(segmentPosX, elevation + wallHeight / 2, segmentPosZ);
+      segmentBrush.position.set(segmentPos.x, elevation + wallHeight / 2, segmentPos.z);
       segmentBrush.updateMatrixWorld();
 
       // Filter holes that overlap with this segment
@@ -251,20 +229,15 @@ export class WallGenerator {
     connection: JsonConnection,
     room: JsonRoom,
     wall: JsonWall,
-    geometry: WallGeometry,
-    materials: MaterialSet,
+    _geometry: WallGeometry,
+    _materials: MaterialSet,
     group: THREE.Group,
-    elevation: number,
+    _elevation: number,
     allRooms: JsonRoom[],
-    config: JsonConfig
+    _config: JsonConfig
   ): void {
-    const doorHeight = config.door_height ?? DIMENSIONS.DOOR.HEIGHT;
-    const holeY = elevation + doorHeight / 2;
-
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
     const targetRoom = allRooms.find((r) => r.name === connection.toRoom);
-    const percentage = connection.position ?? 50;
-    const ratio = percentage / 100;
 
     const sourceWallDir = connection.fromWall;
     const sourceIsVertical = sourceWallDir === 'left' || sourceWallDir === 'right';
@@ -283,28 +256,18 @@ export class WallGenerator {
       }
     }
 
-    let holeX = 0;
-    let holeZ = 0;
-
-    if (sourceIsVertical) {
-      holeZ = sourceRoom.z + sourceRoom.height * ratio;
-      holeX = sourceWallDir === 'left' ? sourceRoom.x : sourceRoom.x + sourceRoom.width;
-    } else {
-      holeX = sourceRoom.x + sourceRoom.width * ratio;
-      holeZ = sourceWallDir === 'top' ? sourceRoom.z : sourceRoom.z + sourceRoom.height;
-    }
-
-    const doorMesh = this.doorRenderer.renderDoor({
+    // Use core's generateConnection for door rendering
+    const doorMesh = generateConnection(
       connection,
       room,
+      targetRoom,
       wall,
-      holeX,
-      holeZ,
-      holeY,
-      isVertical: geometry.isVertical,
-      material: materials.door,
-    });
-    group.add(doorMesh);
+      DIMENSIONS.WALL.THICKNESS,
+      this.themeColors
+    );
+    if (doorMesh) {
+      group.add(doorMesh);
+    }
   }
 
   /**
@@ -317,7 +280,7 @@ export class WallGenerator {
     geometry: WallGeometry,
     holes: Brush[],
     shouldRenderDoor: boolean,
-    materials: MaterialSet,
+    _materials: MaterialSet,
     group: THREE.Group,
     elevation: number,
     allRooms: JsonRoom[],
@@ -428,17 +391,18 @@ export class WallGenerator {
     // Add door mesh if this wall should render it
     // Skip door mesh for 'opening' type - it's a doorless passage
     if (shouldRenderDoor && connection.doorType !== 'opening') {
-      const doorMesh = this.doorRenderer.renderDoor({
+      // Use core's generateConnection for door rendering
+      const doorMesh = generateConnection(
         connection,
         room,
+        targetRoom,
         wall,
-        holeX,
-        holeZ,
-        holeY,
-        isVertical: geometry.isVertical,
-        material: materials.door,
-      });
-      group.add(doorMesh);
+        wallThickness,
+        this.themeColors
+      );
+      if (doorMesh) {
+        group.add(doorMesh);
+      }
     }
   }
 
@@ -475,50 +439,10 @@ export class WallGenerator {
   }
 
   /**
-   * Calculate wall dimensions and position
+   * Calculate wall dimensions and position (delegates to core)
    */
   private calculateWallGeometry(wall: JsonWall, room: JsonRoom, wallThickness: number): WallGeometry {
-    const centerX = room.x + room.width / 2;
-    const centerZ = room.z + room.height / 2;
-
-    let width = 0;
-    let depth = 0;
-    let posX = 0;
-    let posZ = 0;
-    let isVertical = false;
-
-    switch (wall.direction) {
-      case 'top':
-        width = room.width + wallThickness;
-        depth = wallThickness;
-        posX = centerX;
-        posZ = room.z;
-        isVertical = false;
-        break;
-      case 'bottom':
-        width = room.width + wallThickness;
-        depth = wallThickness;
-        posX = centerX;
-        posZ = room.z + room.height;
-        isVertical = false;
-        break;
-      case 'left':
-        width = wallThickness;
-        depth = room.height + wallThickness;
-        posX = room.x;
-        posZ = centerZ;
-        isVertical = true;
-        break;
-      case 'right':
-        width = wallThickness;
-        depth = room.height + wallThickness;
-        posX = room.x + room.width;
-        posZ = centerZ;
-        isVertical = true;
-        break;
-    }
-
-    return { width, depth, posX, posZ, isVertical };
+    return coreCalculateWallGeometry(wall, room, wallThickness);
   }
 
   /**

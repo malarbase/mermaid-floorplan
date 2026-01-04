@@ -102,6 +102,124 @@ export interface HoleSpec {
 }
 
 /**
+ * Wall geometry specification
+ */
+export interface WallGeometry {
+  width: number;
+  depth: number;
+  posX: number;
+  posZ: number;
+  isVertical: boolean;
+}
+
+/**
+ * Calculate wall geometry (dimensions and position)
+ * 
+ * @param wall - Wall data
+ * @param room - Room data
+ * @param wallThickness - Wall thickness
+ * @returns Wall geometry specification
+ */
+export function calculateWallGeometry(
+  wall: JsonWall,
+  room: JsonRoom,
+  wallThickness: number
+): WallGeometry {
+  const centerX = room.x + room.width / 2;
+  const centerZ = room.z + room.height / 2;
+
+  let width = 0, depth = 0, posX = 0, posZ = 0;
+  let isVertical = false;
+
+  switch (wall.direction) {
+    case 'top':
+      width = room.width + wallThickness;
+      depth = wallThickness;
+      posX = centerX;
+      posZ = room.z;
+      break;
+    case 'bottom':
+      width = room.width + wallThickness;
+      depth = wallThickness;
+      posX = centerX;
+      posZ = room.z + room.height;
+      break;
+    case 'left':
+      width = wallThickness;
+      depth = room.height + wallThickness;
+      posX = room.x;
+      posZ = centerZ;
+      isVertical = true;
+      break;
+    case 'right':
+      width = wallThickness;
+      depth = room.height + wallThickness;
+      posX = room.x + room.width;
+      posZ = centerZ;
+      isVertical = true;
+      break;
+  }
+
+  return { width, depth, posX, posZ, isVertical };
+}
+
+/**
+ * Create geometry for a wall segment
+ * 
+ * @param segment - Wall segment data
+ * @param wallThickness - Wall thickness
+ * @param wallHeight - Wall height
+ * @param isVertical - Whether wall is vertical (left/right)
+ * @returns BoxGeometry for the segment
+ */
+export function createWallSegmentGeometry(
+  segment: WallSegment,
+  wallThickness: number,
+  wallHeight: number,
+  isVertical: boolean
+): THREE.BoxGeometry {
+  const segmentLength = segment.endPos - segment.startPos;
+
+  if (isVertical) {
+    return new THREE.BoxGeometry(wallThickness, wallHeight, segmentLength);
+  } else {
+    return new THREE.BoxGeometry(segmentLength, wallHeight, wallThickness);
+  }
+}
+
+/**
+ * Calculate position for a wall segment
+ * 
+ * @param segment - Wall segment data
+ * @param wall - Wall data
+ * @param room - Room data
+ * @param wallThickness - Wall thickness
+ * @returns Position { x, z } for the segment center
+ */
+export function calculateWallSegmentPosition(
+  segment: WallSegment,
+  wall: JsonWall,
+  room: JsonRoom,
+  wallThickness: number
+): { x: number; z: number } {
+  const segmentLength = segment.endPos - segment.startPos;
+  const baseGeom = calculateWallGeometry(wall, room, wallThickness);
+  const isVertical = wall.direction === 'left' || wall.direction === 'right';
+
+  if (isVertical) {
+    return {
+      x: baseGeom.posX,
+      z: room.z + segment.startPos + segmentLength / 2,
+    };
+  } else {
+    return {
+      x: room.x + segment.startPos + segmentLength / 2,
+      z: baseGeom.posZ,
+    };
+  }
+}
+
+/**
  * Options for wall builder
  */
 export interface WallBuilderOptions {
@@ -202,7 +320,7 @@ export class WallBuilder {
   ): void {
     const { Brush, SUBTRACTION } = getCSG();
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
-    const baseGeometry = this.calculateWallGeometry(wall, room, wallThickness);
+    const baseGeometry = this.getWallGeometry(wall, room, wallThickness);
 
     // Collect all holes
     const holes: CSGBrush[] = [];
@@ -247,8 +365,8 @@ export class WallBuilder {
       if (segmentLength < 0.01) continue;
 
       // Calculate segment geometry
-      const segmentGeom = this.createSegmentGeometry(segment, wall, room, wallThickness, wallHeight, isVertical);
-      const segmentPos = this.calculateSegmentPosition(segment, wall, room, wallThickness, isVertical);
+      const segmentGeom = this.getSegmentGeometry(segment, wall, room, wallThickness, wallHeight, isVertical);
+      const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
 
       // Create per-face materials
       const segmentMaterials = MaterialFactory.createPerFaceWallMaterials(
@@ -291,7 +409,7 @@ export class WallBuilder {
     config: JsonConfig
   ): void {
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
-    const baseGeometry = this.calculateWallGeometry(wall, room, wallThickness);
+    const baseGeometry = this.getWallGeometry(wall, room, wallThickness);
 
     // Handle explicit wall type (window)
     if (wall.type === 'window') {
@@ -320,8 +438,8 @@ export class WallBuilder {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue;
 
-      const segmentGeom = this.createSegmentGeometry(segment, wall, room, wallThickness, wallHeight, isVertical);
-      const segmentPos = this.calculateSegmentPosition(segment, wall, room, wallThickness, isVertical);
+      const segmentGeom = this.getSegmentGeometry(segment, wall, room, wallThickness, wallHeight, isVertical);
+      const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
 
       const segmentMaterial = MaterialFactory.createWallMaterial(segment.ownerStyle, this.theme);
       const wallMesh = new THREE.Mesh(segmentGeom, segmentMaterial);
@@ -364,91 +482,37 @@ export class WallBuilder {
   }
 
   /**
-   * Calculate wall dimensions and position
+   * Calculate wall dimensions and position (delegates to exported function)
    */
-  private calculateWallGeometry(wall: JsonWall, room: JsonRoom, wallThickness: number) {
-    const centerX = room.x + room.width / 2;
-    const centerZ = room.z + room.height / 2;
-
-    let width = 0, depth = 0, posX = 0, posZ = 0;
-    let isVertical = false;
-
-    switch (wall.direction) {
-      case 'top':
-        width = room.width + wallThickness;
-        depth = wallThickness;
-        posX = centerX;
-        posZ = room.z;
-        break;
-      case 'bottom':
-        width = room.width + wallThickness;
-        depth = wallThickness;
-        posX = centerX;
-        posZ = room.z + room.height;
-        break;
-      case 'left':
-        width = wallThickness;
-        depth = room.height + wallThickness;
-        posX = room.x;
-        posZ = centerZ;
-        isVertical = true;
-        break;
-      case 'right':
-        width = wallThickness;
-        depth = room.height + wallThickness;
-        posX = room.x + room.width;
-        posZ = centerZ;
-        isVertical = true;
-        break;
-    }
-
-    return { width, depth, posX, posZ, isVertical };
+  private getWallGeometry(wall: JsonWall, room: JsonRoom, wallThickness: number): WallGeometry {
+    return calculateWallGeometry(wall, room, wallThickness);
   }
 
   /**
-   * Create segment geometry
+   * Create segment geometry (delegates to exported function)
    */
-  private createSegmentGeometry(
+  private getSegmentGeometry(
     segment: WallSegment,
-    wall: JsonWall,
-    room: JsonRoom,
+    _wall: JsonWall,
+    _room: JsonRoom,
     wallThickness: number,
     wallHeight: number,
     isVertical: boolean
   ): THREE.BoxGeometry {
-    const segmentLength = segment.endPos - segment.startPos;
-
-    if (isVertical) {
-      return new THREE.BoxGeometry(wallThickness, wallHeight, segmentLength);
-    } else {
-      return new THREE.BoxGeometry(segmentLength, wallHeight, wallThickness);
-    }
+    return createWallSegmentGeometry(segment, wallThickness, wallHeight, isVertical);
   }
 
   /**
-   * Calculate segment position
+   * Calculate segment position (delegates to exported function)
    */
-  private calculateSegmentPosition(
+  private getSegmentPosition(
     segment: WallSegment,
     wall: JsonWall,
     room: JsonRoom,
     wallThickness: number,
-    isVertical: boolean
+    _isVertical: boolean
   ): { x: number; z: number } {
-    const segmentLength = segment.endPos - segment.startPos;
-    const baseGeom = this.calculateWallGeometry(wall, room, wallThickness);
-
-    if (isVertical) {
-      return {
-        x: baseGeom.posX,
-        z: room.z + segment.startPos + segmentLength / 2,
-      };
-    } else {
-      return {
-        x: room.x + segment.startPos + segmentLength / 2,
-        z: baseGeom.posZ,
-      };
-    }
+    return calculateWallSegmentPosition(segment, wall, room, wallThickness);
   }
 
   /**
@@ -457,7 +521,7 @@ export class WallBuilder {
   private createExplicitHole(
     wall: JsonWall,
     room: JsonRoom,
-    geometry: ReturnType<typeof this.calculateWallGeometry>,
+    geometry: WallGeometry,
     wallThickness: number,
     elevation: number,
     config: JsonConfig
@@ -516,7 +580,7 @@ export class WallBuilder {
   private createWindowGlass(
     wall: JsonWall,
     room: JsonRoom,
-    geometry: ReturnType<typeof this.calculateWallGeometry>,
+    geometry: WallGeometry,
     elevation: number,
     materials: MaterialSet,
     config: JsonConfig
@@ -558,7 +622,7 @@ export class WallBuilder {
     connection: JsonConnection,
     room: JsonRoom,
     wall: JsonWall,
-    geometry: ReturnType<typeof this.calculateWallGeometry>,
+    geometry: WallGeometry,
     wallThickness: number,
     elevation: number,
     allRooms: JsonRoom[],
