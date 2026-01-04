@@ -18,6 +18,9 @@ import { render as render2D, type RenderOptions } from 'floorplans-language';
 // Editor and chat integration
 import { initializeEditor, type EditorInstance } from './editor';
 import { OpenAIChatService } from './openai-chat';
+// Keyboard navigation
+import { PivotIndicator } from './pivot-indicator';
+import { KeyboardControls } from './keyboard-controls';
 
 // Area unit type
 type AreaUnit = 'sqft' | 'sqm';
@@ -100,6 +103,11 @@ class Viewer {
     private chatService: OpenAIChatService = new OpenAIChatService();
     private editorPanelOpen: boolean = false;
     private editorDebounceTimer: number | undefined;
+    
+    // Keyboard navigation
+    private pivotIndicator: PivotIndicator | null = null;
+    private keyboardControls: KeyboardControls | null = null;
+    private lastFrameTime: number = 0;
 
     constructor() {
         // Init scene
@@ -144,6 +152,14 @@ class Viewer {
         // Init controls
         this.controls = new OrbitControls(this.activeCamera, this.renderer.domElement);
         this.controls.enableDamping = true;
+        
+        // Init pivot indicator
+        this.pivotIndicator = new PivotIndicator(this.scene, this.controls);
+        
+        // Wire up controls events to show pivot indicator
+        this.controls.addEventListener('change', () => {
+            this.pivotIndicator?.onCameraActivity();
+        });
 
         // Init lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -172,8 +188,22 @@ class Viewer {
         // Window resize
         window.addEventListener('resize', this.onWindowResize.bind(this));
         
-        // Keyboard shortcuts
-        window.addEventListener('keydown', this.onKeyDown.bind(this));
+        // Initialize keyboard controls
+        this.keyboardControls = new KeyboardControls(
+            this.controls,
+            this.perspectiveCamera,
+            this.orthographicCamera,
+            {
+                onCameraModeToggle: () => this.toggleCameraMode(),
+                onUpdateOrthographicSize: () => this.updateOrthographicSize(),
+                getBoundingBox: () => this.getSceneBoundingBox(),
+                setHelpOverlayVisible: (visible) => this.setHelpOverlayVisible(visible),
+            }
+        );
+        this.keyboardControls.setPivotIndicator(this.pivotIndicator!);
+        
+        // Setup help overlay close button and click-outside-to-close
+        this.setupHelpOverlay();
 
         // UI Controls
         this.setupUIControls();
@@ -786,6 +816,9 @@ floorplan
         this.controls.object = this.activeCamera;
         this.controls.update();
         
+        // Sync with keyboard controls
+        this.keyboardControls?.setOrthographicMode(this.cameraMode === 'orthographic');
+        
         // Update UI
         const btn = document.getElementById('camera-mode-btn');
         if (btn) {
@@ -843,11 +876,56 @@ floorplan
         this.controls.update();
     }
     
-    private onKeyDown(event: KeyboardEvent) {
-        // Numpad 5 toggles camera mode
-        if (event.code === 'Numpad5') {
-            this.toggleCameraMode();
+    /**
+     * Get bounding box of all scene geometry
+     */
+    private getSceneBoundingBox(): THREE.Box3 | null {
+        if (this.floors.length === 0) return null;
+        
+        const boundingBox = new THREE.Box3();
+        this.floors.forEach(floor => {
+            if (floor.visible) {
+                boundingBox.expandByObject(floor);
+            }
+        });
+        
+        return boundingBox.isEmpty() ? null : boundingBox;
+    }
+    
+    /**
+     * Set keyboard help overlay visibility
+     */
+    private setHelpOverlayVisible(visible: boolean): void {
+        const overlay = document.getElementById('keyboard-help-overlay');
+        if (overlay) {
+            overlay.classList.toggle('visible', visible);
         }
+    }
+    
+    /**
+     * Setup help overlay close functionality
+     */
+    private setupHelpOverlay(): void {
+        const overlay = document.getElementById('keyboard-help-overlay');
+        const closeBtn = document.getElementById('keyboard-help-close');
+        const panel = overlay?.querySelector('.keyboard-help-panel');
+        
+        // Close button click
+        closeBtn?.addEventListener('click', () => {
+            this.setHelpOverlayVisible(false);
+        });
+        
+        // Click outside panel to close
+        overlay?.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                this.setHelpOverlayVisible(false);
+            }
+        });
+        
+        // Prevent clicks on panel from closing
+        panel?.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
     }
     
     private async exportGLTF(binary: boolean) {
@@ -1135,6 +1213,19 @@ floorplan
 
     private animate() {
         requestAnimationFrame(this.animate.bind(this));
+        
+        // Calculate delta time
+        const now = performance.now();
+        const deltaTime = this.lastFrameTime ? now - this.lastFrameTime : 16;
+        this.lastFrameTime = now;
+        
+        // Update keyboard controls
+        this.keyboardControls?.update(deltaTime);
+        
+        // Update pivot indicator
+        this.pivotIndicator?.update(deltaTime);
+        this.pivotIndicator?.updateSize(this.activeCamera);
+        
         this.controls.update();
         this.renderer.render(this.scene, this.activeCamera);
         this.labelRenderer.render(this.scene, this.activeCamera);
@@ -1253,6 +1344,9 @@ floorplan
         if (normalizedData.floors.length > 0 && normalizedData.floors[0].rooms.length > 0) {
             const firstRoom = normalizedData.floors[0].rooms[0];
             this.controls.target.set(firstRoom.x + firstRoom.width/2, 0, firstRoom.z + firstRoom.height/2);
+            
+            // Store as default camera state for Home key reset
+            this.keyboardControls?.storeDefaultCameraState();
         }
 
         // Generate floors and track heights
