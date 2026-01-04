@@ -82,6 +82,7 @@ const { scene, bounds, floorsRendered, styleMap } = buildFloorplanScene(jsonData
   floorIndices: [0, 1],  // Which floors to render
   showFloors: true,
   showWalls: true,
+  showConnections: true,  // Doors and windows (default: true)
   showStairs: true,
   showLifts: true,
 });
@@ -120,6 +121,51 @@ const { camera, position, target, fov } = setupCamera(
 - **`floor-geometry.ts`**: Floor slab generation
 - **`wall-geometry.ts`**: Simplified wall geometry (no CSG)
 - **`stair-geometry.ts`**: Stair and lift geometry generation
+- **`connection-geometry.ts`**: Door and window mesh generation
+- **`connection-matcher.ts`**: Connection matching and deduplication
+
+#### Connection Rendering
+
+Generate door and window meshes for floorplans:
+
+```typescript
+import { 
+  generateFloorConnections, 
+  generateConnection,
+  type ConnectionGeometryOptions 
+} from 'floorplan-3d-core';
+
+// Generate all connections for a floor
+const connections = generateFloorConnections(
+  floor,
+  allConnections,
+  {
+    wallThickness: 0.2,
+    defaultHeight: 3.35,
+    theme: 'dark',
+    styleMap: new Map(),
+  }
+);
+scene.add(connections);
+
+// Or generate a single connection
+const doorMesh = generateConnection(
+  connection,
+  sourceRoom,
+  targetRoom,
+  wall,
+  0.2,  // wall thickness
+  themeColors
+);
+if (doorMesh) scene.add(doorMesh);
+```
+
+**Features:**
+- Automatic deduplication (one connection rendered once, even though it references two walls)
+- Door swing animations (hinges and rotation based on `swing` and `opensInto`)
+- Window transparency and sill height positioning
+- Theme-aware colors
+- Custom dimensions via connection properties
 
 ## Camera Modes
 
