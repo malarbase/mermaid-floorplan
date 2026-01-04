@@ -566,6 +566,8 @@
         top: 0;
         left: 0;
         width: 450px;
+        min-width: 300px;
+        max-width: 80vw;
         height: 100vh;
         background: #1e1e1e;
         display: flex;
@@ -574,6 +576,10 @@
         transition: transform 0.3s ease;
         z-index: 200;
         box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+      }
+      
+      #editor-panel.resizing {
+        transition: none;
       }
       
       #editor-panel.open {
@@ -601,6 +607,34 @@
       
       #editor-panel-toggle:hover {
         background: #2d2d2d;
+      }
+      
+      #editor-resize-handle {
+        position: absolute;
+        top: 0;
+        right: -6px;
+        width: 12px;
+        height: 100%;
+        cursor: ew-resize;
+        background: transparent;
+        z-index: 10;
+      }
+      
+      #editor-resize-handle::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 100%;
+        background: transparent;
+        transition: background 0.2s;
+      }
+      
+      #editor-resize-handle:hover::before,
+      #editor-resize-handle.active::before {
+        background: #4a90d9;
       }
       
       #editor-panel-header {
@@ -855,11 +889,11 @@
       
       /* Adjust info panel when editor is open */
       body.editor-open #info {
-        left: 460px;
+        left: calc(var(--editor-width, 450px) + 10px);
       }
       
       body.editor-open #overlay-2d {
-        left: 460px;
+        left: calc(var(--editor-width, 450px) + 10px);
       }
       
       /* Keyboard Shortcuts Help Overlay */
@@ -1022,6 +1056,7 @@
     
     <!-- Editor Panel (collapsible) -->
     <div id="editor-panel">
+      <div id="editor-resize-handle"></div>
       <button id="editor-panel-toggle" title="Toggle Editor">▶</button>
       <div id="editor-panel-header">
         <h3>Floorplan Editor</h3>

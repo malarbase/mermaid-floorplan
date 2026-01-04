@@ -78,10 +78,13 @@ export interface RenderOptions {
   padding?: number;
   /** Scale factor for output dimensions */
   scale?: number;
-  /** Floor index to render (default: 0 for backward compatibility) */
-  floorIndex?: number;
-  /** Render all floors in a single SVG */
-  renderAllFloors?: boolean;
+  /** 
+   * Array of floor IDs to render.
+   * - undefined/empty: renders all floors
+   * - single floor: renders just that floor
+   * - multiple floors: renders in multi-floor layout
+   */
+  visibleFloors?: string[];
   /** Layout for multi-floor rendering: 'stacked' (vertical) or 'sideBySide' (horizontal) */
   multiFloorLayout?: 'stacked' | 'sideBySide';
   /** Show room area inside rooms */
@@ -96,6 +99,19 @@ export interface RenderOptions {
   showDimensions?: boolean;
   /** Types of dimensions to show */
   dimensionTypes?: DimensionType[];
+  
+  // ===== DEPRECATED OPTIONS =====
+  
+  /** 
+   * @deprecated Use `visibleFloors: [floors[index].id]` instead.
+   * Floor index to render (default: 0 for backward compatibility) 
+   */
+  floorIndex?: number;
+  /** 
+   * @deprecated Use `visibleFloors` instead. Omit or pass all floor IDs to render all floors.
+   * Render all floors in a single SVG 
+   */
+  renderAllFloors?: boolean;
 }
 
 const defaultRenderOptions: RenderOptions = {
@@ -103,8 +119,6 @@ const defaultRenderOptions: RenderOptions = {
   includeStyles: true,
   padding: 0,
   scale: 1,
-  floorIndex: 0,
-  renderAllFloors: false,
   multiFloorLayout: 'sideBySide',
   showArea: false,
   areaUnit: 'sqft',
@@ -112,6 +126,9 @@ const defaultRenderOptions: RenderOptions = {
   showFloorSummary: false,
   showDimensions: false,
   dimensionTypes: ['width', 'depth'],
+  // Deprecated defaults (for backward compatibility)
+  floorIndex: 0,
+  renderAllFloors: false,
 };
 
 /**
@@ -154,26 +171,39 @@ export function render(
   // Build style context for the floorplan
   const styleContext = buildStyleContext(floorplan);
 
-  // Render all floors if requested
-  if (opts.renderAllFloors && floorplan.floors.length > 1) {
-    return renderAllFloors(floorplan, opts, variables, styleContext, showLabels);
-  }
-
-  // Render specific floor (default: first floor for backward compatibility)
-  const floorIndex = opts.floorIndex ?? 0;
-  const floor = floorplan.floors[floorIndex];
+  // Determine which floors to render
+  let floorsToRender: Floor[];
   
-  if (!floor) {
+  if (opts.visibleFloors !== undefined) {
+    // New API: filter by visibleFloors (empty array = nothing visible)
+    floorsToRender = floorplan.floors.filter(f => opts.visibleFloors!.includes(f.id));
+  } else if (opts.renderAllFloors) {
+    // Deprecated: renderAllFloors flag - render all floors
+    floorsToRender = floorplan.floors;
+  } else {
+    // Default/Deprecated floorIndex: render single floor (backward compatible)
+    const floorIndex = opts.floorIndex ?? 0;
+    const floor = floorplan.floors[floorIndex];
+    floorsToRender = floor ? [floor] : [];
+  }
+  
+  if (floorsToRender.length === 0) {
     return '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
   }
-
-  return renderFloor(floor, opts, floorplan.connections, variables, styleContext, showLabels);
+  
+  // Single floor vs multi-floor rendering
+  if (floorsToRender.length === 1) {
+    return renderFloor(floorsToRender[0], opts, floorplan.connections, variables, styleContext, showLabels);
+  } else {
+    return renderMultipleFloors(floorsToRender, floorplan, opts, variables, styleContext, showLabels);
+  }
 }
 
 /**
- * Render all floors in a single SVG
+ * Render multiple floors in a single SVG with layout
  */
-function renderAllFloors(
+function renderMultipleFloors(
+  floors: Floor[],
   floorplan: Floorplan,
   options: RenderOptions,
   variables?: Map<string, { width: number; height: number }>,
@@ -187,9 +217,9 @@ function renderAllFloors(
   const labelHeight = 2; // Height reserved for floor labels
   const summaryHeight = opts.showFloorSummary ? 4 : 0; // Height for floor summary panel (3) + gap (1)
   
-  // Resolve positions for all floors first
+  // Resolve positions for the floors to render
   const floorResolutions = new Map<string, PositionResolutionResult>();
-  for (const floor of floorplan.floors) {
+  for (const floor of floors) {
     floorResolutions.set(floor.id, resolveFloorPositions(floor, variables));
   }
   
@@ -202,7 +232,7 @@ function renderAllFloors(
   // Get default unit from config for proper bounds calculation
   const defaultUnit = (resolvedConfig.defaultUnit as LengthUnit) ?? 'ft';
   
-  for (const floor of floorplan.floors) {
+  for (const floor of floors) {
     const resolution = floorResolutions.get(floor.id)!;
     const resolvedPositions = resolution.positions;
     const bounds = calculateFloorBounds(floor, resolvedPositions, variables, defaultUnit);

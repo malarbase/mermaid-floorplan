@@ -97,18 +97,20 @@ function generateSingleDoorPath(
       }
     } else {
       // Door on RIGHT wall - opens leftward into the room on the left
+      // Note: Right wall swing is inverted from left wall to match "facing from inside" perspective
+      // When facing right wall (+X), your right points to min Y (top), left points to max Y (bottom)
       if (effectiveSwing === "left") {
-        // Hinge on bottom of opening, door swings left-up
-        const hingeY = y + doorWidth;
-        const doorEndX = centerX - radius;
-        // Arc from door end back to TOP edge of opening - sweep=1 for convex bulge LEFT
-        return `M ${centerX} ${hingeY} L ${doorEndX} ${hingeY} A ${radius} ${radius} 0 0 1 ${centerX} ${y}`;
-      } else {
         // Hinge on top of opening, door swings left-down
         const hingeY = y;
         const doorEndX = centerX - radius;
         // Arc from door end back to BOTTOM edge of opening - sweep=0 for convex bulge LEFT
         return `M ${centerX} ${hingeY} L ${doorEndX} ${hingeY} A ${radius} ${radius} 0 0 0 ${centerX} ${y + doorWidth}`;
+      } else {
+        // Hinge on bottom of opening, door swings left-up
+        const hingeY = y + doorWidth;
+        const doorEndX = centerX - radius;
+        // Arc from door end back to TOP edge of opening - sweep=1 for convex bulge LEFT
+        return `M ${centerX} ${hingeY} L ${doorEndX} ${hingeY} A ${radius} ${radius} 0 0 1 ${centerX} ${y}`;
       }
     }
   }

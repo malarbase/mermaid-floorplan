@@ -34,6 +34,18 @@ export class FloorManager {
     }
     
     /**
+     * Get list of visible floor IDs
+     */
+    public getVisibleFloorIds(): string[] {
+        const floorplanData = this.callbacks.getFloorplanData();
+        if (!floorplanData) return [];
+        
+        return floorplanData.floors
+            .map(floor => floor.id)
+            .filter(floorId => this.getFloorVisibility(floorId));
+    }
+    
+    /**
      * Update the floor list UI based on current floorplan data
      */
     public updateFloorListUI(): void {
