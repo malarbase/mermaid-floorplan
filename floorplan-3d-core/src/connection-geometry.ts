@@ -12,6 +12,7 @@ import type { ViewerTheme, ThemeColors } from './constants.js';
 import { getThemeColors } from './constants.js';
 import type { MaterialStyle } from './materials.js';
 import { findMatchingConnections, shouldRenderConnection } from './connection-matcher.js';
+import { calculatePositionWithFallback, type RoomBounds } from 'floorplan-common';
 
 export interface ConnectionGeometryOptions {
   wallThickness: number;
@@ -101,8 +102,8 @@ export function generateConnection(
     return null; // Unsupported connection type
   }
 
-  // Calculate position along wall
-  const position = calculateConnectionPosition(sourceRoom, wall, connection);
+  // Calculate position along wall (uses overlap for uneven room segments)
+  const position = calculateConnectionPosition(sourceRoom, targetRoom, wall, connection);
 
   // Room elevation
   const roomElevation = sourceRoom.elevation ?? 0;
@@ -143,13 +144,18 @@ export function generateConnection(
 /**
  * Calculate connection position along the wall
  * 
+ * Uses the shared overlap calculation to position doors correctly when
+ * rooms have uneven common wall segments (partial overlap).
+ * 
  * @param room - Room data
+ * @param targetRoom - Target room (for overlap calculation)
  * @param wall - Wall data
  * @param connection - Connection data
  * @returns Object with holeX, holeZ, holeY, and isVertical
  */
 function calculateConnectionPosition(
   room: JsonRoom,
+  targetRoom: JsonRoom | undefined,
   wall: JsonWall,
   connection: JsonConnection
 ): { holeX: number; holeZ: number; holeY: number; isVertical: boolean } {
@@ -161,19 +167,32 @@ function calculateConnectionPosition(
 
   // Get position percentage (default to 50% = center)
   const positionPercent = connection.position ?? 50;
-  const positionFraction = positionPercent / 100;
 
-  // Calculate base position
+  // Convert 3D room coordinates to RoomBounds (z -> y for shared utility)
+  const sourceBounds: RoomBounds = {
+    x: room.x,
+    y: room.z,  // 3D uses z for depth
+    width: room.width,
+    height: room.height,
+  };
+  const targetBounds: RoomBounds | null = targetRoom ? {
+    x: targetRoom.x,
+    y: targetRoom.z,
+    width: targetRoom.width,
+    height: targetRoom.height,
+  } : null;
+
+  // Calculate position using shared utility (considers overlap for uneven segments)
   let holeX: number;
   let holeZ: number;
 
   if (isVertical) {
     // Vertical wall (left/right)
     holeX = wall.direction === 'left' ? room.x : room.x + room.width;
-    holeZ = room.z + positionFraction * room.height;
+    holeZ = calculatePositionWithFallback(sourceBounds, targetBounds, true, positionPercent);
   } else {
     // Horizontal wall (top/bottom)
-    holeX = room.x + positionFraction * room.width;
+    holeX = calculatePositionWithFallback(sourceBounds, targetBounds, false, positionPercent);
     holeZ = wall.direction === 'top' ? room.z : room.z + room.height;
   }
 

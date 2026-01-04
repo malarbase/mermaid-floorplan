@@ -143,10 +143,15 @@ export {
   WallBuilder,
   initCSG,
   isCsgAvailable,
+  // Segment generation APIs for browser use
+  calculateWallGeometry,
+  createWallSegmentGeometry,
+  calculateWallSegmentPosition,
 } from './wall-builder.js';
 export type {
   HoleSpec,
   WallBuilderOptions,
+  WallGeometry,
 } from './wall-builder.js';
 
 // Shared geometry utilities (re-exported from floorplan-common)
