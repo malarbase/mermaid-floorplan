@@ -286,39 +286,22 @@
       // Sample DSL content
       const sampleDsl = `floorplan
   config {
-    default_height: 2.8
-    wall_thickness: 0.15
+    default_height: 2.8,
+    wall_thickness: 0.15,
     floor_thickness: 0.1
   }
   
   floor GroundFloor {
-    room LivingRoom at (0, 0) size (8 x 6) walls [
-      top: solid, right: solid, bottom: solid, left: solid
-    ]
-    
-    room Kitchen at (8.5, 0) size (5 x 6) walls [
-      top: solid, right: solid, bottom: solid, left: open
-    ]
-    
-    room DiningRoom at (14, 0) size (5 x 6) walls [
-      top: solid, right: solid, bottom: solid, left: solid
-    ]
-    
-    room Bedroom at (0, 7) size (6 x 5) walls [
-      top: solid, right: solid, bottom: solid, left: solid
-    ]
-    
-    room Bathroom at (6.5, 7) size (4 x 5) walls [
-      top: solid, right: solid, bottom: solid, left: solid
-    ]
-    
-    room Office at (11, 7) size (5 x 5) walls [
-      top: solid, right: solid, bottom: solid, left: solid
-    ]
+    room LivingRoom at (0, 0) size (8 x 6) walls [top: solid, right: solid, bottom: solid, left: solid]
+    room Kitchen at (8.5, 0) size (5 x 6) walls [top: solid, right: solid, bottom: solid, left: open]
+    room DiningRoom at (14, 0) size (5 x 6) walls [top: solid, right: solid, bottom: solid, left: solid]
+    room Bedroom at (0, 7) size (6 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+    room Bathroom at (6.5, 7) size (4 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+    room Office at (11, 7) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
   }
   
-  connect LivingRoom.right to Kitchen.left with door
-  connect Kitchen.right to DiningRoom.left with door
+  connect LivingRoom.right to Kitchen.left door at 50%
+  connect Kitchen.right to DiningRoom.left door at 50%
 `;
       
       // Initialize Langium services
@@ -386,6 +369,8 @@
             dslEditor.setErrorMarkers(errors);
             editorStatus.textContent = `${errors.length} error(s)`;
             editorStatus.className = 'editor-status error';
+            // Set error state (3D view keeps last valid geometry)
+            editor3d.setErrorState(true);
             return;
           }
           
@@ -396,6 +381,8 @@
             showError(conversionResult.errors[0].message);
             editorStatus.textContent = 'Conversion error';
             editorStatus.className = 'editor-status error';
+            // Set error state (3D view keeps last valid geometry)
+            editor3d.setErrorState(true);
             return;
           }
           
@@ -409,7 +396,7 @@
             editorSync.updateEntityLocations(entityLocations);
           }
           
-          // Clear errors
+          // Clear errors (loadFloorplan already clears error state)
           hideError();
           dslEditor.clearErrorMarkers();
           editorStatus.textContent = 'Ready';
@@ -419,6 +406,8 @@
           showError(err.message);
           editorStatus.textContent = 'Parse error';
           editorStatus.className = 'editor-status error';
+          // Set error state (3D view keeps last valid geometry)
+          editor3d.setErrorState(true);
         }
       }
       

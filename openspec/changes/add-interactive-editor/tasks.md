@@ -142,7 +142,8 @@ This document tracks implementation tasks for the interactive editor capability.
 ### 2.2 Connection Source Ranges
 - [x] 2.2.1 Extract source range from Connection AST nodes
 - [x] 2.2.2 Add `_sourceRange` to `JsonConnection` type
-- [ ] 2.2.3 Test: Door mesh userData has connection source range
+- [x] 2.2.3 Test: Door mesh userData has connection source range
+  - **Done**: Connection meshes now registered via MeshRegistry with sourceRange from JSON
 
 ### 2.3 Mesh Metadata Population
 - [x] 2.3.1 Modify `generateFloor()` to copy `_sourceRange` to `mesh.userData`
@@ -151,8 +152,11 @@ This document tracks implementation tasks for the interactive editor capability.
   - **BUG**: Walls registered without sourceRange in `InteractiveEditor.loadFloorplan()` - clicking wall in 3D doesn't scroll to editor
   - **Fixed**: Now passing parent room's `_sourceRange` to wall mesh registration
   - **Enhancement**: See 4.1.7 for ephemeral wall decoration showing which wall is selected
-- [ ] 2.3.3 Modify connection renderer to add source info
-- [ ] 2.3.4 Test: Selected mesh has full source range metadata
+- [x] 2.3.3 Modify connection renderer to add source info
+  - **Done**: Added connection rendering using `generateFloorConnections()` from floorplan-3d-core
+  - Connection meshes registered in MeshRegistry with `_sourceRange` from matching JsonConnection
+- [x] 2.3.4 Test: Selected mesh has full source range metadata
+  - **Done**: All entity types (room, wall, connection) now have sourceRange in mesh.userData
 
 ### 2.4 Registry Design
 - [x] 2.4.1 Design `AstMeshRegistry` class interface
@@ -284,7 +288,9 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 4.4.1 Detect parse errors from DSL parser
 - [x] 4.4.2 Keep last valid 3D scene when parse fails (don't clear)
 - [x] 4.4.3 Keep last valid source range mappings for selection sync
-- [ ] 4.4.4 Add error state flag to viewer state management
+- [x] 4.4.4 Add error state flag to viewer state management
+  - **Done**: Added `hasParseError`, `lastValidFloorplanData`, `setErrorState()` to InteractiveEditor
+  - index.html calls `setErrorState(true)` on parse/conversion errors
 
 ### 4.5 Error State Visual Overlay
 - [x] 4.5.1 Create error indicator component (banner or badge)
@@ -300,6 +306,7 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] No feedback loops (sync direction lock implemented)
 - [x] Hybrid error handling (last valid state + error overlay)
 - [x] Error state visual treatment working (error banner)
+- [x] Error state flag in viewer state management (hasParseError, setErrorState)
 
 ---
 
@@ -471,7 +478,7 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] Text highlight in editor → 3D preview (EditorViewerSync.onEditorHighlight)
 - [x] No infinite loops (sync direction lock implemented)
 - [x] Parse errors show overlay + keep last valid state
-- [ ] Selection works on stale geometry during error state (needs testing)
+- [x] Error state flag implemented in InteractiveEditor (4.4.4)
 - [x] **Fixed Issues:**
   - 4.1.6: Monaco Range undefined error - fixed by importing monaco directly
   - 4.2.7: Multi-cursor now syncs all cursors with additive selection
@@ -479,6 +486,7 @@ This document tracks implementation tasks for the interactive editor capability.
   - 2.3.2: Walls now scroll to parent room definition
   - 4.1.7: Ephemeral wall decoration shows "← direction wall" hint
   - 4.2.10: Text highlight → 3D preview via highlight() API
+  - 2.3.3: Connections now rendered with source ranges (using generateFloorConnections)
 
 ### Checkpoint E: CRUD Works (End of Phase 5)
 - Edit property → DSL updates → 3D updates

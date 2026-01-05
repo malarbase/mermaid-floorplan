@@ -17,6 +17,8 @@ import {
   StairGenerator, 
   normalizeToMeters,
   DIMENSIONS,
+  generateFloorConnections,
+  type JsonConnection,
 } from 'floorplan-3d-core';
 import { 
   MeshRegistry, 
@@ -61,6 +63,10 @@ export class InteractiveEditor implements SceneContext {
   protected _floors: THREE.Group[] = [];
   protected currentFloorplanData: JsonExport | null = null;
   
+  // Error state management
+  private _hasParseError: boolean = false;
+  private _lastValidFloorplanData: JsonExport | null = null;
+  
   // Generators (simplified for skeleton)
   protected stairGenerator: StairGenerator;
   
@@ -81,6 +87,12 @@ export class InteractiveEditor implements SceneContext {
   get floors(): readonly THREE.Group[] { return this._floors; }
   get meshRegistry(): MeshRegistry { return this._meshRegistry; }
   get selectionManager(): SelectionManager | null { return this._selectionManager; }
+  
+  /** Whether the current DSL has parse errors (3D view shows stale geometry) */
+  get hasParseError(): boolean { return this._hasParseError; }
+  
+  /** The last successfully parsed floorplan data (used during error state) */
+  get lastValidFloorplanData(): JsonExport | null { return this._lastValidFloorplanData; }
   
   constructor(options: InteractiveEditorOptions = {}) {
     const containerId = options.containerId ?? 'app';
@@ -229,12 +241,27 @@ export class InteractiveEditor implements SceneContext {
   }
   
   /**
+   * Set the error state (called by parent when DSL parse fails).
+   * When in error state, the 3D view shows last valid geometry.
+   * Selection still works on the stale geometry.
+   * 
+   * @param hasError - Whether there are parse errors
+   */
+  public setErrorState(hasError: boolean): void {
+    this._hasParseError = hasError;
+  }
+  
+  /**
    * Load a floorplan from JSON data.
    */
   public loadFloorplan(data: JsonExport): void {
     // Normalize to meters
     const normalizedData = normalizeToMeters(data);
     this.currentFloorplanData = normalizedData;
+    
+    // Store as last valid data (cleared error state)
+    this._lastValidFloorplanData = normalizedData;
+    this._hasParseError = false;
     
     // Clear existing floors
     this._floors.forEach(f => this._scene.remove(f));
@@ -329,6 +356,47 @@ export class InteractiveEditor implements SceneContext {
           }
         });
       });
+      
+      // Generate connections (doors/windows) for this floor
+      const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
+      
+      const connectionsGroup = generateFloorConnections(
+        floorData,
+        normalizedData.connections,
+        {
+          wallThickness,
+          defaultHeight: floorHeight,
+          theme: 'light',
+        }
+      );
+      
+      // Register connection meshes in the registry
+      connectionsGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          // Parse connection info from mesh name (e.g., "door-LivingRoom-Kitchen")
+          const nameParts = child.name.split('-');
+          if (nameParts.length >= 3) {
+            // nameParts[0] is connection type (door, window, double-door)
+            const fromRoom = nameParts[1];
+            const toRoom = nameParts.slice(2).join('-'); // Handle room names with dashes
+            
+            // Find the matching connection to get source range
+            const matchingConnection = normalizedData.connections.find(
+              (conn: JsonConnection) => conn.fromRoom === fromRoom && conn.toRoom === toRoom
+            );
+            
+            this._meshRegistry.register(
+              child,
+              'connection',
+              `${fromRoom}-${toRoom}`,  // Match format used in extractEntityLocations
+              floorData.id,
+              matchingConnection?._sourceRange
+            );
+          }
+        }
+      });
+      
+      floorGroup.add(connectionsGroup);
       
       this._scene.add(floorGroup);
       this._floors.push(floorGroup);
