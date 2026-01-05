@@ -1107,6 +1107,13 @@
               event.property,
               event.newValue
             );
+          } else if (event.entityType === 'wall') {
+            editOp = dslPropertyEditor.generateWallPropertyEdit(
+              sourceText,
+              event.sourceRange,
+              event.property,
+              event.newValue
+            );
           } else if (event.entityType === 'connection') {
             editOp = dslPropertyEditor.generateConnectionPropertyEdit(
               sourceText,
@@ -1657,6 +1664,12 @@
           } else {
             deleteWarning.style.display = 'none';
           }
+        } else if (event.entityType === 'wall') {
+          // Walls can't be deleted, only changed to "open"
+          const match = event.entityId.match(/^(.+)_(top|bottom|left|right)$/);
+          const direction = match ? match[2] : 'wall';
+          deleteMessage.textContent = `This will change the ${direction} wall to "open" (removing the wall). Continue?`;
+          deleteWarning.style.display = 'none';
         } else if (event.entityType === 'connection') {
           deleteMessage.textContent = `Are you sure you want to delete this connection?`;
           deleteWarning.style.display = 'none';
@@ -1700,6 +1713,12 @@
       function executeDelete(event, cascadeConnections) {
         const model = dslEditor.editor.getModel();
         if (!model) return;
+        
+        // Handle wall "deletion" by changing type to "open"
+        if (event.entityType === 'wall') {
+          executeWallToOpen(event);
+          return;
+        }
         
         // Collect all ranges to delete (entity + cascade connections)
         const rangesToDelete = [];
@@ -1752,13 +1771,62 @@
         
         // Clear selection
         if (editor3d.selectionManager) {
-          editor3d.selectionManager.clearSelection();
+          editor3d.selectionManager.deselect();
         }
         
         // Hide properties panel
         propertiesPanel.hide();
         
         console.log(`Deleted ${rangesToDelete.length} entities`);
+      }
+      
+      /**
+       * Change a wall type to "open" (wall "deletion")
+       * Uses DslPropertyEditor for grammar-aware editing
+       */
+      function executeWallToOpen(event) {
+        if (!event.sourceRange) {
+          console.warn('No source range for wall');
+          return;
+        }
+        
+        const model = dslEditor.editor.getModel();
+        if (!model) return;
+        
+        // Use DslPropertyEditor to generate the edit operation
+        const sourceText = dslEditor.getValue();
+        const editOp = dslPropertyEditor.generateWallPropertyEdit(
+          sourceText,
+          event.sourceRange,
+          'type',
+          'open'
+        );
+        
+        if (!editOp) {
+          console.warn('Could not generate wall type edit');
+          return;
+        }
+        
+        // Apply the edit
+        model.pushEditOperations([], [{
+          range: {
+            startLineNumber: editOp.range.startLineNumber,
+            startColumn: editOp.range.startColumn,
+            endLineNumber: editOp.range.endLineNumber,
+            endColumn: editOp.range.endColumn,
+          },
+          text: editOp.text,
+        }], () => null);
+        
+        // Clear selection
+        if (editor3d.selectionManager) {
+          editor3d.selectionManager.deselect();
+        }
+        
+        // Hide properties panel
+        propertiesPanel.hide();
+        
+        console.log(`Changed wall to open: ${event.entityId}`);
       }
       
       // Expose for debugging

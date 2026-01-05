@@ -345,13 +345,16 @@ export class InteractiveEditor implements SceneContext {
             wallMesh.receiveShadow = true;
             floorGroup.add(wallMesh);
             
-            // Register wall as part of the room (use room's source range so clicking scrolls to room definition)
+            // Register wall with its own source range for proper wall editing
+            // (wall._sourceRange points to the specific wall spec like "top: solid")
+            // Type assertion needed as _sourceRange is added by json-converter but not in base type
+            const wallSourceRange = (wall as { _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number } })._sourceRange;
             this._meshRegistry.register(
               wallMesh,
               'wall',
               `${room.name}_${wall.direction}`,
               floorData.id,
-              room._sourceRange
+              wallSourceRange
             );
           }
         });

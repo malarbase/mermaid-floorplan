@@ -499,6 +499,81 @@ export class DslPropertyEditor {
   }
   
   /**
+   * Generate a Monaco edit operation for changing a wall property.
+   * Wall specifications have format: "direction: type [at position%]"
+   * 
+   * @param sourceText - The full DSL document text
+   * @param sourceRange - The wall's source range (0-indexed)
+   * @param property - Property name to edit ('type')
+   * @param newValue - New property value
+   * @returns Edit operation, or null if property not found
+   */
+  generateWallPropertyEdit(
+    sourceText: string,
+    sourceRange: SourceRange,
+    property: string,
+    newValue: unknown
+  ): DslEditOperation | null {
+    const lines = sourceText.split('\n');
+    const entityText = this.extractRangeText(lines, sourceRange);
+    
+    const propertyLocation = this.findPropertyInWallText(entityText, property);
+    if (!propertyLocation) {
+      console.warn(`[DslPropertyEditor] Property '${property}' not found in wall definition`);
+      return null;
+    }
+    
+    const absoluteRange = this.relativeToAbsolute(sourceRange, propertyLocation);
+    const newText = this.formatValue(property, newValue);
+    
+    return {
+      range: {
+        startLineNumber: absoluteRange.startLine + 1,
+        startColumn: absoluteRange.startColumn + 1,
+        endLineNumber: absoluteRange.endLine + 1,
+        endColumn: absoluteRange.endColumn + 1,
+      },
+      text: newText,
+    };
+  }
+  
+  /**
+   * Find a property's location within wall specification text.
+   * Wall format: "direction: type [at position%]"
+   */
+  private findPropertyInWallText(
+    text: string,
+    property: string
+  ): { startLine: number; startColumn: number; endLine: number; endColumn: number } | null {
+    switch (property) {
+      case 'type': {
+        // Wall format: "direction: type" where type is solid|open|door|window
+        // Find the type after the colon
+        const match = text.match(/:\s*(solid|open|door|window)/);
+        if (match && match.index !== undefined) {
+          const typeStart = text.indexOf(match[1], match.index);
+          const typeEnd = typeStart + match[1].length;
+          return this.offsetToLineColumn(text, typeStart, typeEnd);
+        }
+        break;
+      }
+      
+      case 'position': {
+        // Find: at N%
+        const match = text.match(/at\s+(\d+)%/);
+        if (match && match.index !== undefined) {
+          const valueStart = text.indexOf(match[1], match.index);
+          const valueEnd = valueStart + match[1].length;
+          return this.offsetToLineColumn(text, valueStart, valueEnd);
+        }
+        break;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
    * Find a property's location within connection definition text.
    */
   private findPropertyInConnectionText(
