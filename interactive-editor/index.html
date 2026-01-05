@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interactive Floorplan Editor</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        overflow: hidden;
+        background: #1a1a1a;
+      }
+      
+      #app {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+      }
+      
+      .info-panel {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        max-width: 320px;
+        z-index: 100;
+        border: 1px solid #333;
+      }
+      
+      .info-panel h2 {
+        margin-bottom: 12px;
+        font-size: 15px;
+        border-bottom: 1px solid #444;
+        padding-bottom: 8px;
+        color: #4a9eff;
+      }
+      
+      .info-panel h3 {
+        margin-top: 12px;
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      
+      .info-panel p {
+        margin-bottom: 6px;
+        color: #ccc;
+        line-height: 1.4;
+      }
+      
+      .key {
+        display: inline-block;
+        background: #333;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 11px;
+        margin: 0 2px;
+        border: 1px solid #555;
+      }
+      
+      .mode-toggle {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #444;
+      }
+      
+      .mode-toggle label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        cursor: pointer;
+        color: #ccc;
+      }
+      
+      .mode-toggle input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+      
+      .mode-indicator {
+        margin-top: 8px;
+        padding: 6px 10px;
+        background: #2a2a2a;
+        border-radius: 4px;
+        font-size: 12px;
+        color: #4a9eff;
+      }
+      
+      .selection-info {
+        position: absolute;
+        bottom: 16px;
+        left: 16px;
+        background: rgba(0, 0, 0, 0.85);
+        color: white;
+        padding: 12px 16px;
+        border-radius: 8px;
+        font-size: 14px;
+        z-index: 100;
+        border: 1px solid #333;
+        min-width: 200px;
+      }
+      
+      .selection-info.has-selection {
+        border-color: #00ff00;
+        background: rgba(0, 40, 0, 0.85);
+      }
+      
+      .selection-info .count {
+        font-size: 24px;
+        font-weight: bold;
+        color: #00ff00;
+        margin-bottom: 4px;
+      }
+      
+      .selection-info .details {
+        color: #aaa;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    
+    <div class="info-panel">
+      <h2>Interactive Editor (Phase 1)</h2>
+      
+      <h3>Click Selection</h3>
+      <p><span class="key">Click</span> Select room</p>
+      <p><span class="key">Shift+Click</span> Add/remove from selection</p>
+      <p><span class="key">Click empty</span> Deselect all</p>
+      
+      <h3>Marquee Selection</h3>
+      <p><span class="key">Drag</span> Draw selection rectangle</p>
+      <p><span class="key">Shift+Drag</span> Add to existing selection</p>
+      
+      <h3>Keyboard</h3>
+      <p><span class="key">Ctrl/⌘+A</span> Select all</p>
+      <p><span class="key">Esc</span> Deselect all</p>
+      
+      <h3>Camera</h3>
+      <p><span class="key">Alt+Drag</span> Orbit camera</p>
+      <p><span class="key">Right-drag</span> Pan camera</p>
+      <p><span class="key">Scroll</span> Zoom</p>
+      
+      <div class="mode-toggle">
+        <label>
+          <input type="checkbox" id="containment-mode">
+          Containment mode (require full enclosure)
+        </label>
+        <div class="mode-indicator" id="mode-indicator">
+          Mode: Intersection (partial overlap selects)
+        </div>
+      </div>
+    </div>
+    
+    <div id="selection-info" class="selection-info">
+      <div class="details">No selection</div>
+    </div>
+    
+    <script type="module">
+      import { InteractiveEditor } from './src/interactive-editor.ts';
+      
+      // Sample floorplan data with more rooms
+      const sampleFloorplan = {
+        floors: [
+          {
+            id: 'GroundFloor',
+            rooms: [
+              {
+                name: 'LivingRoom',
+                x: 0,
+                z: 0,
+                width: 8,
+                height: 6,
+                walls: [
+                  { direction: 'top', type: 'solid' },
+                  { direction: 'right', type: 'solid' },
+                  { direction: 'bottom', type: 'solid' },
+                  { direction: 'left', type: 'solid' },
+                ],
+              },
+              {
+                name: 'Kitchen',
+                x: 8.5,
+                z: 0,
+                width: 5,
+                height: 6,
+                walls: [
+                  { direction: 'top', type: 'solid' },
+                  { direction: 'right', type: 'solid' },
+                  { direction: 'bottom', type: 'solid' },
+                  { direction: 'left', type: 'open' },
+                ],
+              },
+              {
+                name: 'DiningRoom',
+                x: 14,
+                z: 0,
+                width: 5,
+                height: 6,
+                walls: [
+                  { direction: 'top', type: 'solid' },
+                  { direction: 'right', type: 'solid' },
+                  { direction: 'bottom', type: 'solid' },
+                  { direction: 'left', type: 'solid' },
+                ],
+              },
+              {
+                name: 'Bedroom',
+                x: 0,
+                z: 7,
+                width: 6,
+                height: 5,
+                walls: [
+                  { direction: 'top', type: 'solid' },
+                  { direction: 'right', type: 'solid' },
+                  { direction: 'bottom', type: 'solid' },
+                  { direction: 'left', type: 'solid' },
+                ],
+              },
+              {
+                name: 'Bathroom',
+                x: 6.5,
+                z: 7,
+                width: 4,
+                height: 5,
+                walls: [
+                  { direction: 'top', type: 'solid' },
+                  { direction: 'right', type: 'solid' },
+                  { direction: 'bottom', type: 'solid' },
+                  { direction: 'left', type: 'solid' },
+                ],
+              },
+              {
+                name: 'Office',
+                x: 11,
+                z: 7,
+                width: 5,
+                height: 5,
+                walls: [
+                  { direction: 'top', type: 'solid' },
+                  { direction: 'right', type: 'solid' },
+                  { direction: 'bottom', type: 'solid' },
+                  { direction: 'left', type: 'solid' },
+                ],
+              },
+              {
+                name: 'Garage',
+                x: 16.5,
+                z: 7,
+                width: 6,
+                height: 5,
+                walls: [
+                  { direction: 'top', type: 'solid' },
+                  { direction: 'right', type: 'solid' },
+                  { direction: 'bottom', type: 'solid' },
+                  { direction: 'left', type: 'solid' },
+                ],
+              },
+            ],
+          },
+        ],
+        connections: [],
+        config: {
+          default_height: 2.8,
+          wall_thickness: 0.15,
+          floor_thickness: 0.1,
+        },
+      };
+      
+      // Create editor
+      const editor = new InteractiveEditor({
+        containerId: 'app',
+        initialData: sampleFloorplan,
+        enableSelection: true,
+      });
+      
+      // UI elements
+      const selectionInfo = document.getElementById('selection-info');
+      const containmentCheckbox = document.getElementById('containment-mode');
+      const modeIndicator = document.getElementById('mode-indicator');
+      
+      // Update selection info display
+      function updateSelectionInfo(selection) {
+        const count = selection.size;
+        
+        if (count === 0) {
+          selectionInfo.innerHTML = '<div class="details">No selection</div>';
+          selectionInfo.classList.remove('has-selection');
+        } else {
+          // Group by type
+          const types = new Map();
+          for (const obj of selection) {
+            types.set(obj.entityType, (types.get(obj.entityType) || 0) + 1);
+          }
+          
+          const summary = Array.from(types.entries())
+            .map(([type, cnt]) => `${cnt} ${type}${cnt > 1 ? 's' : ''}`)
+            .join(', ');
+          
+          // List names if small selection
+          let names = '';
+          if (count <= 3) {
+            names = Array.from(selection).map(s => s.entityId).join(', ');
+          }
+          
+          selectionInfo.innerHTML = `
+            <div class="count">${count}</div>
+            <div class="details">${summary}</div>
+            ${names ? `<div class="details" style="margin-top: 4px; color: #00ff00;">${names}</div>` : ''}
+          `;
+          selectionInfo.classList.add('has-selection');
+        }
+      }
+      
+      // Listen to selection changes
+      if (editor.selectionManager) {
+        editor.selectionManager.onSelectionChange((event) => {
+          updateSelectionInfo(event.selection);
+        });
+      }
+      
+      // Mode toggle
+      containmentCheckbox.addEventListener('change', (e) => {
+        const mode = e.target.checked ? 'containment' : 'intersection';
+        editor.setMarqueeMode(mode);
+        updateModeIndicator(mode);
+      });
+      
+      function updateModeIndicator(mode) {
+        if (mode === 'containment') {
+          modeIndicator.textContent = 'Mode: Containment (require full enclosure)';
+          modeIndicator.style.color = '#ff9500';
+        } else {
+          modeIndicator.textContent = 'Mode: Intersection (partial overlap selects)';
+          modeIndicator.style.color = '#4a9eff';
+        }
+      }
+      
+      // Initialize mode from saved preference
+      try {
+        const savedMode = localStorage.getItem('floorplan-marquee-mode');
+        if (savedMode === 'containment') {
+          containmentCheckbox.checked = true;
+          editor.setMarqueeMode('containment');
+          updateModeIndicator('containment');
+        }
+      } catch (e) {}
+      
+      // Expose editor for debugging
+      window.editor = editor;
+      console.log('Interactive Editor initialized. Access via window.editor');
+      console.log('Selection manager:', editor.selectionManager);
+    </script>
+  </body>
+</html>

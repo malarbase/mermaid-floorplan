@@ -1,0 +1,53 @@
+{
+  "name": "interactive-editor",
+  "version": "0.1.0",
+  "description": "Interactive floorplan editor with full editing capabilities",
+  "license": "GPL-3.0-or-later",
+  "author": "Malar Kannan",
+  "type": "module",
+  "main": "./out/index.js",
+  "types": "./out/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./out/index.d.ts",
+      "import": "./out/index.js",
+      "default": "./out/index.js"
+    }
+  },
+  "files": [
+    "out"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "build:tsc": "tsc",
+    "preview": "vite preview",
+    "clean": "shx rm -rf out dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "floorplan-3d-core": "*",
+    "floorplans-language": "*",
+    "viewer-core": "*",
+    "langium": "~4.0.0",
+    "monaco-editor": "^0.52.2",
+    "three": "^0.170.0",
+    "three-bvh-csg": "^0.0.16"
+  },
+  "devDependencies": {
+    "@types/three": "^0.170.0",
+    "shx": "~0.4.0",
+    "typescript": "~5.8.3",
+    "vite": "^5.0.0",
+    "vitest": "^3.0.0"
+  },
+  "keywords": [
+    "floorplan",
+    "editor",
+    "interactive",
+    "three.js",
+    "monaco"
+  ]
+}
+

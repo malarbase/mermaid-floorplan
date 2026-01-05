@@ -162,6 +162,16 @@ viewer-build: ## Build the 3D viewer
 	npm run --workspace floorplans-viewer build
 
 # ===============================
+# Interactive Editor
+# ===============================
+
+editor-dev: ## Start the interactive editor dev server
+	npm run --workspace interactive-editor dev
+
+editor-build: ## Build the interactive editor
+	npm run --workspace interactive-editor build
+
+# ===============================
 # MCP Server
 # ===============================
 

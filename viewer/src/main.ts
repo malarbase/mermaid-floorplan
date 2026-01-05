@@ -10,6 +10,8 @@ import {
   MaterialFactory, StairGenerator, normalizeToMeters,
   type ViewerTheme, type MaterialStyle
 } from 'floorplan-3d-core';
+// Import shared viewer interfaces
+import { MeshRegistry, type SceneContext } from 'viewer-core';
 // Browser-specific modules (CSG, DSL parsing)
 import { WallGenerator, StyleResolver } from './wall-generator';
 import { parseFloorplanDSLWithDocument, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
@@ -25,76 +27,93 @@ import { AnnotationManager } from './annotation-manager';
 import { FloorManager } from './floor-manager';
 import { Overlay2DManager } from './overlay-2d-manager';
 
-class Viewer {
-    // Core Three.js
-    private scene: THREE.Scene;
-    private perspectiveCamera: THREE.PerspectiveCamera;
-    private orthographicCamera: THREE.OrthographicCamera;
-    private renderer: THREE.WebGLRenderer;
-    private labelRenderer: CSS2DRenderer;
-    private controls: OrbitControls;
+class Viewer implements SceneContext {
+    // Core Three.js (protected for subclass access)
+    protected _scene: THREE.Scene;
+    protected _perspectiveCamera: THREE.PerspectiveCamera;
+    protected _orthographicCamera: THREE.OrthographicCamera;
+    protected _renderer: THREE.WebGLRenderer;
+    protected labelRenderer: CSS2DRenderer;
+    protected _controls: OrbitControls;
+    
+    // Entity-mesh registry for selection support
+    protected _meshRegistry: MeshRegistry;
     
     // Scene content
-    private floors: THREE.Group[] = [];
-    private floorHeights: number[] = [];
-    private connections: JsonConnection[] = [];
-    private config: JsonConfig = {};
-    private styles: Map<string, JsonStyle> = new Map();
-    private explodedViewFactor: number = 0;
+    protected _floors: THREE.Group[] = [];
+    protected floorHeights: number[] = [];
+    protected connections: JsonConnection[] = [];
+    protected config: JsonConfig = {};
+    protected styles: Map<string, JsonStyle> = new Map();
+    protected explodedViewFactor: number = 0;
     
     // Generators
-    private wallGenerator: WallGenerator;
-    private stairGenerator: StairGenerator;
+    protected wallGenerator: WallGenerator;
+    protected stairGenerator: StairGenerator;
     
     // Light controls
-    private directionalLight: THREE.DirectionalLight;
-    private lightAzimuth: number = 45; // degrees
-    private lightElevation: number = 60; // degrees
-    private lightIntensity: number = 1.0;
-    private lightRadius: number = 100;
+    protected directionalLight: THREE.DirectionalLight;
+    protected lightAzimuth: number = 45; // degrees
+    protected lightElevation: number = 60; // degrees
+    protected lightIntensity: number = 1.0;
+    protected lightRadius: number = 100;
     
     // Validation warnings
-    private validationWarnings: ParseError[] = [];
-    private warningsPanel: HTMLElement | null = null;
-    private warningsPanelCollapsed: boolean = true;
+    protected validationWarnings: ParseError[] = [];
+    protected warningsPanel: HTMLElement | null = null;
+    protected warningsPanelCollapsed: boolean = true;
     
     // Current floorplan data
-    private currentFloorplanData: JsonExport | null = null;
+    protected currentFloorplanData: JsonExport | null = null;
     
     // Theme state
-    private currentTheme: ViewerTheme = 'light';
+    protected currentTheme: ViewerTheme = 'light';
     
     // Editor panel state
-    private editorInstance: EditorInstance | null = null;
-    private chatService: OpenAIChatService = new OpenAIChatService();
-    private editorPanelOpen: boolean = false;
-    private editorDebounceTimer: number | undefined;
+    protected editorInstance: EditorInstance | null = null;
+    protected chatService: OpenAIChatService = new OpenAIChatService();
+    protected editorPanelOpen: boolean = false;
+    protected editorDebounceTimer: number | undefined;
     
     // Keyboard navigation
-    private pivotIndicator: PivotIndicator | null = null;
-    private keyboardControls: KeyboardControls | null = null;
-    private lastFrameTime: number = 0;
+    protected pivotIndicator: PivotIndicator | null = null;
+    protected keyboardControls: KeyboardControls | null = null;
+    protected lastFrameTime: number = 0;
     
     // Managers
-    private cameraManager: CameraManager;
-    private annotationManager: AnnotationManager;
-    private floorManager: FloorManager;
-    private overlay2DManager: Overlay2DManager;
+    protected cameraManager: CameraManager;
+    protected annotationManager: AnnotationManager;
+    protected floorManager: FloorManager;
+    protected overlay2DManager: Overlay2DManager;
+    
+    // SceneContext interface getters
+    get scene(): THREE.Scene { return this._scene; }
+    get activeCamera(): THREE.Camera { return this.cameraManager.activeCamera; }
+    get perspectiveCamera(): THREE.PerspectiveCamera { return this._perspectiveCamera; }
+    get orthographicCamera(): THREE.OrthographicCamera { return this._orthographicCamera; }
+    get renderer(): THREE.WebGLRenderer { return this._renderer; }
+    get controls(): OrbitControls { return this._controls; }
+    get domElement(): HTMLCanvasElement { return this._renderer.domElement; }
+    get floors(): readonly THREE.Group[] { return this._floors; }
+    get meshRegistry(): MeshRegistry { return this._meshRegistry; }
 
     constructor() {
+        // Init mesh registry for entity-mesh tracking
+        this._meshRegistry = new MeshRegistry();
+        
         // Init scene
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(COLORS.BACKGROUND);
+        this._scene = new THREE.Scene();
+        this._scene.background = new THREE.Color(COLORS.BACKGROUND);
 
         // Init perspective camera
         const fov = 75;
-        this.perspectiveCamera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.perspectiveCamera.position.set(20, 20, 20);
+        this._perspectiveCamera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 1000);
+        this._perspectiveCamera.position.set(20, 20, 20);
 
         // Init orthographic camera
         const aspect = window.innerWidth / window.innerHeight;
         const frustumSize = 30;
-        this.orthographicCamera = new THREE.OrthographicCamera(
+        this._orthographicCamera = new THREE.OrthographicCamera(
             frustumSize * aspect / -2,
             frustumSize * aspect / 2,
             frustumSize / 2,
@@ -102,14 +121,14 @@ class Viewer {
             0.1,
             1000
         );
-        this.orthographicCamera.position.set(20, 20, 20);
+        this._orthographicCamera.position.set(20, 20, 20);
 
         // Init WebGL renderer
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.getElementById('app')?.appendChild(this.renderer.domElement);
+        this._renderer = new THREE.WebGLRenderer({ antialias: true });
+        this._renderer.setSize(window.innerWidth, window.innerHeight);
+        this._renderer.shadowMap.enabled = true;
+        this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        document.getElementById('app')?.appendChild(this._renderer.domElement);
 
         // Init CSS2D renderer for labels
         this.labelRenderer = new CSS2DRenderer();
@@ -120,20 +139,20 @@ class Viewer {
         document.getElementById('app')?.appendChild(this.labelRenderer.domElement);
 
         // Init controls (using perspective camera initially)
-        this.controls = new OrbitControls(this.perspectiveCamera, this.renderer.domElement);
-        this.controls.enableDamping = true;
+        this._controls = new OrbitControls(this._perspectiveCamera, this._renderer.domElement);
+        this._controls.enableDamping = true;
         
         // Init pivot indicator
-        this.pivotIndicator = new PivotIndicator(this.scene, this.controls);
+        this.pivotIndicator = new PivotIndicator(this._scene, this._controls);
         
         // Wire up controls events to show pivot indicator
-        this.controls.addEventListener('change', () => {
+        this._controls.addEventListener('change', () => {
             this.pivotIndicator?.onCameraActivity();
         });
 
         // Init lighting
         const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        this.scene.add(ambientLight);
+        this._scene.add(ambientLight);
 
         this.directionalLight = new THREE.DirectionalLight(0xffffff, this.lightIntensity);
         this.updateLightPosition();
@@ -146,7 +165,7 @@ class Viewer {
         this.directionalLight.shadow.camera.right = 50;
         this.directionalLight.shadow.camera.top = 50;
         this.directionalLight.shadow.camera.bottom = -50;
-        this.scene.add(this.directionalLight);
+        this._scene.add(this.directionalLight);
 
         // Init wall generator with CSG evaluator
         this.wallGenerator = new WallGenerator(new Evaluator());
@@ -157,24 +176,24 @@ class Viewer {
 
         // Initialize managers
         this.cameraManager = new CameraManager(
-            this.perspectiveCamera,
-            this.orthographicCamera,
-            this.controls,
+            this._perspectiveCamera,
+            this._orthographicCamera,
+            this._controls,
             {
-                getFloors: () => this.floors,
+                getFloors: () => this._floors,
                 getKeyboardControls: () => this.keyboardControls,
             }
         );
         
         this.annotationManager = new AnnotationManager({
-            getFloors: () => this.floors,
+            getFloors: () => this._floors,
             getFloorplanData: () => this.currentFloorplanData,
             getConfig: () => this.config,
             getFloorVisibility: (id) => this.floorManager.getFloorVisibility(id),
         });
         
         this.floorManager = new FloorManager({
-            getFloors: () => this.floors,
+            getFloors: () => this._floors,
             getFloorplanData: () => this.currentFloorplanData,
             onVisibilityChange: () => {
                 this.annotationManager.updateFloorSummary();
@@ -194,9 +213,9 @@ class Viewer {
         
         // Initialize keyboard controls
         this.keyboardControls = new KeyboardControls(
-            this.controls,
-            this.perspectiveCamera,
-            this.orthographicCamera,
+            this._controls,
+            this._perspectiveCamera,
+            this._orthographicCamera,
             {
                 onCameraModeToggle: () => this.cameraManager.toggleCameraMode(),
                 onUpdateOrthographicSize: () => this.cameraManager.updateOrthographicSize(),
@@ -681,7 +700,7 @@ floorplan
     
     private applyTheme() {
         const colors = getThemeColors(this.currentTheme);
-        this.scene.background = new THREE.Color(colors.BACKGROUND);
+        this._scene.background = new THREE.Color(colors.BACKGROUND);
 
         // Update wall generator theme
         this.wallGenerator.setTheme(this.currentTheme);
@@ -703,7 +722,7 @@ floorplan
 
         // Traverse all floors and update materials
         this.currentFloorplanData.floors.forEach((floorData, floorIndex) => {
-            const floorGroup = this.floors[floorIndex];
+            const floorGroup = this._floors[floorIndex];
             if (!floorGroup) return;
 
             floorData.rooms.forEach(room => {
@@ -746,7 +765,7 @@ floorplan
         });
 
         // Update door and window materials (they don't have explicit styles)
-        this.floors.forEach(floorGroup => {
+        this._floors.forEach(floorGroup => {
             floorGroup.traverse((child) => {
                 if (child instanceof THREE.Mesh) {
                     const mesh = child as THREE.Mesh;
@@ -829,7 +848,7 @@ floorplan
         try {
             const result = await new Promise<ArrayBuffer | object>((resolve, reject) => {
                 exporter.parse(
-                    this.scene,
+                    this._scene,
                     (gltf) => resolve(gltf),
                     (error) => reject(error),
                     { binary }
@@ -916,7 +935,7 @@ floorplan
 
     private onWindowResize() {
         this.cameraManager.onWindowResize();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this._renderer.setSize(window.innerWidth, window.innerHeight);
         this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
     }
 
@@ -935,9 +954,9 @@ floorplan
         this.pivotIndicator?.update(deltaTime);
         this.pivotIndicator?.updateSize(this.cameraManager.activeCamera);
         
-        this.controls.update();
-        this.renderer.render(this.scene, this.cameraManager.activeCamera);
-        this.labelRenderer.render(this.scene, this.cameraManager.activeCamera);
+        this._controls.update();
+        this._renderer.render(this._scene, this.cameraManager.activeCamera);
+        this.labelRenderer.render(this._scene, this.cameraManager.activeCamera);
     }
 
     private onFileLoad(event: Event) {
@@ -1016,11 +1035,14 @@ floorplan
         this.currentFloorplanData = normalizedData;
         
         // Clear existing
-        this.floors.forEach(f => this.scene.remove(f));
-        this.floors = [];
+        this._floors.forEach(f => this._scene.remove(f));
+        this._floors = [];
         this.floorHeights = [];
         this.connections = normalizedData.connections;
         this.config = normalizedData.config || {};
+        
+        // Clear mesh registry for new floorplan
+        this._meshRegistry.clear();
         
         // Initialize unit settings from config
         this.annotationManager.initFromConfig(this.config);
@@ -1045,7 +1067,7 @@ floorplan
         // Center camera roughly
         if (normalizedData.floors.length > 0 && normalizedData.floors[0].rooms.length > 0) {
             const firstRoom = normalizedData.floors[0].rooms[0];
-            this.controls.target.set(firstRoom.x + firstRoom.width/2, 0, firstRoom.z + firstRoom.height/2);
+            this._controls.target.set(firstRoom.x + firstRoom.width/2, 0, firstRoom.z + firstRoom.height/2);
             
             // Store as default camera state for Home key reset
             this.keyboardControls?.storeDefaultCameraState();
@@ -1058,8 +1080,8 @@ floorplan
             this.floorHeights.push(floorHeight);
             
             const floorGroup = this.generateFloor(floorData);
-            this.scene.add(floorGroup);
-            this.floors.push(floorGroup);
+            this._scene.add(floorGroup);
+            this._floors.push(floorGroup);
         });
 
         this.setExplodedView(this.explodedViewFactor);
@@ -1137,6 +1159,14 @@ floorplan
             // 1. Floor plate
             const floorMesh = this.createFloorMesh(roomWithDefaults, materials.floor);
             group.add(floorMesh);
+            
+            // Register floor mesh in registry for selection support
+            this._meshRegistry.register(
+                floorMesh,
+                'room',
+                room.name,
+                floorData.id
+            );
 
             // 2. Walls with doors, windows, and connections
             // Now uses wall ownership detection to prevent Z-fighting
@@ -1195,7 +1225,7 @@ floorplan
         const defaultHeight = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
 
         let cumulativeY = 0;
-        this.floors.forEach((floorGroup, index) => {
+        this._floors.forEach((floorGroup, index) => {
             floorGroup.position.y = cumulativeY;
             // Use floor-specific height for calculating next floor position
             const floorHeight = this.floorHeights[index] ?? defaultHeight;

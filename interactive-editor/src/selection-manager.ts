@@ -1,0 +1,622 @@
+/**
+ * SelectionManager - Handles click and marquee selection in the 3D scene.
+ * 
+ * Features:
+ * - Click to select single objects
+ * - Shift-click to add to selection
+ * - Marquee (rectangle drag) to select multiple objects
+ * - Alt+drag for camera orbit (prevents selection)
+ * - Small drag detection (< 5px treated as click)
+ * - Intersection vs containment mode toggle
+ */
+import * as THREE from 'three';
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import {
+  BaseSelectionManager,
+  MeshRegistry,
+  type SelectableObject,
+} from 'viewer-core';
+
+/**
+ * Marquee selection mode: intersection selects partially enclosed,
+ * containment requires fully enclosed.
+ */
+export type MarqueeMode = 'intersection' | 'containment';
+
+/**
+ * Configuration for SelectionManager
+ */
+export interface SelectionManagerConfig {
+  /** Minimum drag distance to trigger marquee (default: 5px) */
+  minDragDistance?: number;
+  /** Initial marquee mode (default: 'intersection') */
+  marqueeMode?: MarqueeMode;
+  /** Outline color for selected objects (default: 0x00ff00) */
+  highlightColor?: number;
+  /** Enable hover preview during marquee (default: true) */
+  enableHoverPreview?: boolean;
+}
+
+/**
+ * Screen-space rectangle for marquee selection
+ */
+interface ScreenRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * SelectionManager with visual highlighting and marquee support.
+ */
+export class SelectionManager extends BaseSelectionManager {
+  // Scene references
+  private scene: THREE.Scene;
+  private camera: THREE.Camera;
+  private renderer: THREE.WebGLRenderer;
+  private controls: OrbitControls;
+  private meshRegistry: MeshRegistry;
+  
+  // Configuration
+  private config: Required<SelectionManagerConfig>;
+  
+  // Highlight visuals
+  private outlineMaterial: THREE.LineBasicMaterial;
+  private outlinedObjects = new Map<string, THREE.LineSegments>(); // keyed by mesh uuid
+  
+  // Marquee state
+  private isDragging = false;
+  private dragStartX = 0;
+  private dragStartY = 0;
+  private dragCurrentX = 0;
+  private dragCurrentY = 0;
+  private isAltPressed = false;
+  
+  // Marquee overlay
+  private marqueeOverlay: HTMLDivElement | null = null;
+  
+  // Raycaster for click selection
+  private raycaster = new THREE.Raycaster();
+  private mouse = new THREE.Vector2();
+  
+  // Bound event handlers (for cleanup)
+  private boundMouseDown: (e: MouseEvent) => void;
+  private boundMouseMove: (e: MouseEvent) => void;
+  private boundMouseUp: (e: MouseEvent) => void;
+  private boundKeyDown: (e: KeyboardEvent) => void;
+  private boundKeyUp: (e: KeyboardEvent) => void;
+  
+  constructor(
+    scene: THREE.Scene,
+    camera: THREE.Camera,
+    renderer: THREE.WebGLRenderer,
+    controls: OrbitControls,
+    meshRegistry: MeshRegistry,
+    config: SelectionManagerConfig = {}
+  ) {
+    super();
+    
+    this.scene = scene;
+    this.camera = camera;
+    this.renderer = renderer;
+    this.controls = controls;
+    this.meshRegistry = meshRegistry;
+    
+    // Apply config with defaults
+    this.config = {
+      minDragDistance: config.minDragDistance ?? 5,
+      marqueeMode: config.marqueeMode ?? 'intersection',
+      highlightColor: config.highlightColor ?? 0x00ff00,
+      enableHoverPreview: config.enableHoverPreview ?? true,
+    };
+    
+    // Create highlight material
+    this.outlineMaterial = new THREE.LineBasicMaterial({
+      color: this.config.highlightColor,
+      linewidth: 2,
+    });
+    
+    // Bind event handlers
+    this.boundMouseDown = this.onMouseDown.bind(this);
+    this.boundMouseMove = this.onMouseMove.bind(this);
+    this.boundMouseUp = this.onMouseUp.bind(this);
+    this.boundKeyDown = this.onKeyDown.bind(this);
+    this.boundKeyUp = this.onKeyUp.bind(this);
+    
+    // Setup event listeners
+    this.setupEventListeners();
+    
+    // Create marquee overlay
+    this.createMarqueeOverlay();
+  }
+  
+  /**
+   * Get current marquee mode.
+   */
+  get marqueeMode(): MarqueeMode {
+    return this.config.marqueeMode;
+  }
+  
+  /**
+   * Set marquee mode (intersection or containment).
+   */
+  setMarqueeMode(mode: MarqueeMode): void {
+    this.config.marqueeMode = mode;
+    // Persist preference
+    try {
+      localStorage.setItem('floorplan-marquee-mode', mode);
+    } catch {
+      // Ignore storage errors
+    }
+  }
+  
+  /**
+   * Update camera reference (e.g., when switching between perspective/ortho).
+   */
+  setCamera(camera: THREE.Camera): void {
+    this.camera = camera;
+  }
+  
+  /**
+   * Select all selectable objects in the scene.
+   */
+  override selectAll(): void {
+    const allEntities = this.meshRegistry.getAllEntities();
+    this.selectMultiple(allEntities, false);
+    this.emitChange(allEntities, [], 'keyboard');
+  }
+  
+  /**
+   * Setup event listeners on the renderer's DOM element.
+   */
+  private setupEventListeners(): void {
+    const domElement = this.renderer.domElement;
+    
+    domElement.addEventListener('mousedown', this.boundMouseDown);
+    domElement.addEventListener('mousemove', this.boundMouseMove);
+    domElement.addEventListener('mouseup', this.boundMouseUp);
+    
+    // Global key listeners for modifiers
+    window.addEventListener('keydown', this.boundKeyDown);
+    window.addEventListener('keyup', this.boundKeyUp);
+  }
+  
+  /**
+   * Create the marquee selection overlay element.
+   */
+  private createMarqueeOverlay(): void {
+    this.marqueeOverlay = document.createElement('div');
+    this.marqueeOverlay.style.cssText = `
+      position: absolute;
+      border: 2px dashed #4a9eff;
+      background: rgba(74, 158, 255, 0.1);
+      pointer-events: none;
+      display: none;
+      z-index: 1000;
+    `;
+    
+    // Append to renderer's parent
+    const parent = this.renderer.domElement.parentElement;
+    if (parent) {
+      parent.style.position = 'relative';
+      parent.appendChild(this.marqueeOverlay);
+    }
+  }
+  
+  /**
+   * Handle mouse down event.
+   */
+  private onMouseDown(event: MouseEvent): void {
+    // Only handle left click
+    if (event.button !== 0) return;
+    
+    // Alt+drag is for camera orbit, don't start selection
+    if (this.isAltPressed) return;
+    
+    // Store drag start position
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.dragStartX = event.clientX - rect.left;
+    this.dragStartY = event.clientY - rect.top;
+    this.dragCurrentX = this.dragStartX;
+    this.dragCurrentY = this.dragStartY;
+    this.isDragging = true;
+    
+    // Disable orbit controls during potential selection
+    this.controls.enabled = false;
+  }
+  
+  /**
+   * Handle mouse move event.
+   */
+  private onMouseMove(event: MouseEvent): void {
+    if (!this.isDragging) return;
+    
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.dragCurrentX = event.clientX - rect.left;
+    this.dragCurrentY = event.clientY - rect.top;
+    
+    // Calculate drag distance
+    const dx = this.dragCurrentX - this.dragStartX;
+    const dy = this.dragCurrentY - this.dragStartY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Show marquee if drag exceeds threshold
+    if (distance >= this.config.minDragDistance) {
+      this.updateMarqueeOverlay();
+      
+      // Preview selection during drag
+      if (this.config.enableHoverPreview) {
+        this.previewMarqueeSelection();
+      }
+    }
+  }
+  
+  /**
+   * Handle mouse up event.
+   */
+  private onMouseUp(event: MouseEvent): void {
+    if (!this.isDragging) return;
+    
+    // Re-enable orbit controls
+    this.controls.enabled = true;
+    
+    // Calculate drag distance
+    const dx = this.dragCurrentX - this.dragStartX;
+    const dy = this.dragCurrentY - this.dragStartY;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    
+    // Hide marquee overlay
+    this.hideMarqueeOverlay();
+    
+    // Clear hover previews
+    this.clearHighlight();
+    
+    if (distance < this.config.minDragDistance) {
+      // Treat as click selection
+      this.handleClickSelection(event);
+    } else {
+      // Treat as marquee selection
+      this.handleMarqueeSelection(event.shiftKey);
+    }
+    
+    this.isDragging = false;
+  }
+  
+  /**
+   * Handle keyboard key down.
+   */
+  private onKeyDown(event: KeyboardEvent): void {
+    if (event.key === 'Alt') {
+      this.isAltPressed = true;
+    }
+    
+    // Ctrl/Cmd+A to select all
+    if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
+      event.preventDefault();
+      this.selectAll();
+    }
+    
+    // Escape to deselect
+    if (event.key === 'Escape') {
+      this.deselect();
+    }
+  }
+  
+  /**
+   * Handle keyboard key up.
+   */
+  private onKeyUp(event: KeyboardEvent): void {
+    if (event.key === 'Alt') {
+      this.isAltPressed = false;
+    }
+  }
+  
+  /**
+   * Handle click selection (raycast).
+   */
+  private handleClickSelection(event: MouseEvent): void {
+    // Calculate normalized device coordinates
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    // Perform raycast
+    this.raycaster.setFromCamera(this.mouse, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+    
+    // Find first selectable object
+    for (const intersection of intersects) {
+      const selectable = this.meshRegistry.findSelectableAncestor(intersection.object);
+      if (selectable) {
+        const entity = this.meshRegistry.getEntityForMesh(selectable);
+        if (entity) {
+          if (event.shiftKey) {
+            // Toggle selection with Shift
+            this.toggleSelection(entity);
+            this.emitChange(
+              this.isSelected(entity) ? [entity] : [],
+              this.isSelected(entity) ? [] : [entity],
+              'click'
+            );
+          } else {
+            // Replace selection
+            const previousSelection = Array.from(this.getSelection());
+            this.select(entity, false);
+            this.emitChange([entity], previousSelection.filter(p => !this.isSameEntity(p, entity)), 'click');
+          }
+          return;
+        }
+      }
+    }
+    
+    // Click on empty space - deselect all (unless Shift held)
+    if (!event.shiftKey) {
+      const previousSelection = Array.from(this.getSelection());
+      this.deselect();
+      if (previousSelection.length > 0) {
+        this.emitChange([], previousSelection, 'click');
+      }
+    }
+  }
+  
+  /**
+   * Handle marquee selection.
+   */
+  private handleMarqueeSelection(additive: boolean): void {
+    const marqueeRect = this.getMarqueeRect();
+    const selectedObjects = this.getObjectsInMarquee(marqueeRect);
+    
+    const entities = selectedObjects
+      .map(mesh => this.meshRegistry.getEntityForMesh(mesh))
+      .filter((e): e is SelectableObject => e !== undefined);
+    
+    if (entities.length > 0) {
+      const previousSelection = Array.from(this.getSelection());
+      this.selectMultiple(entities, additive);
+      
+      const added = entities.filter(e => !previousSelection.some(p => this.isSameEntity(p, e)));
+      const removed = additive ? [] : previousSelection.filter(p => !entities.some(e => this.isSameEntity(e, p)));
+      
+      this.emitChange(added, removed, 'marquee');
+    } else if (!additive) {
+      // Empty marquee on non-additive clears selection
+      const previousSelection = Array.from(this.getSelection());
+      this.deselect();
+      if (previousSelection.length > 0) {
+        this.emitChange([], previousSelection, 'marquee');
+      }
+    }
+  }
+  
+  /**
+   * Get the marquee rectangle in screen coordinates.
+   */
+  private getMarqueeRect(): ScreenRect {
+    const x = Math.min(this.dragStartX, this.dragCurrentX);
+    const y = Math.min(this.dragStartY, this.dragCurrentY);
+    const width = Math.abs(this.dragCurrentX - this.dragStartX);
+    const height = Math.abs(this.dragCurrentY - this.dragStartY);
+    
+    return { x, y, width, height };
+  }
+  
+  /**
+   * Update the marquee overlay position and size.
+   */
+  private updateMarqueeOverlay(): void {
+    if (!this.marqueeOverlay) return;
+    
+    const rect = this.getMarqueeRect();
+    
+    this.marqueeOverlay.style.display = 'block';
+    this.marqueeOverlay.style.left = `${rect.x}px`;
+    this.marqueeOverlay.style.top = `${rect.y}px`;
+    this.marqueeOverlay.style.width = `${rect.width}px`;
+    this.marqueeOverlay.style.height = `${rect.height}px`;
+  }
+  
+  /**
+   * Hide the marquee overlay.
+   */
+  private hideMarqueeOverlay(): void {
+    if (this.marqueeOverlay) {
+      this.marqueeOverlay.style.display = 'none';
+    }
+  }
+  
+  /**
+   * Preview which objects would be selected by current marquee.
+   */
+  private previewMarqueeSelection(): void {
+    // Clear existing previews
+    this.clearHighlight();
+    
+    const marqueeRect = this.getMarqueeRect();
+    const objects = this.getObjectsInMarquee(marqueeRect);
+    
+    // Highlight preview objects
+    for (const mesh of objects) {
+      const entity = this.meshRegistry.getEntityForMesh(mesh);
+      if (entity && !this.isSelected(entity)) {
+        this.highlight(entity);
+      }
+    }
+  }
+  
+  /**
+   * Get all selectable objects within the marquee rectangle.
+   */
+  private getObjectsInMarquee(marqueeRect: ScreenRect): THREE.Object3D[] {
+    const result: THREE.Object3D[] = [];
+    const allEntities = this.meshRegistry.getAllEntities();
+    
+    const canvasWidth = this.renderer.domElement.clientWidth;
+    const canvasHeight = this.renderer.domElement.clientHeight;
+    
+    for (const entity of allEntities) {
+      const mesh = entity.mesh;
+      if (!(mesh instanceof THREE.Mesh)) continue;
+      
+      // Get screen-space bounding box
+      const screenBounds = this.projectBoundingBoxToScreen(mesh, canvasWidth, canvasHeight);
+      if (!screenBounds) continue;
+      
+      // Check intersection based on mode
+      const intersects = this.config.marqueeMode === 'intersection'
+        ? this.rectIntersects(marqueeRect, screenBounds)
+        : this.rectContains(marqueeRect, screenBounds);
+      
+      if (intersects) {
+        result.push(mesh);
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * Project a mesh's bounding box to screen space.
+   * Returns null if object is behind camera.
+   */
+  private projectBoundingBoxToScreen(
+    mesh: THREE.Mesh,
+    canvasWidth: number,
+    canvasHeight: number
+  ): ScreenRect | null {
+    // Get world bounding box
+    const box = new THREE.Box3().setFromObject(mesh);
+    
+    // Get all 8 corners
+    const corners = [
+      new THREE.Vector3(box.min.x, box.min.y, box.min.z),
+      new THREE.Vector3(box.min.x, box.min.y, box.max.z),
+      new THREE.Vector3(box.min.x, box.max.y, box.min.z),
+      new THREE.Vector3(box.min.x, box.max.y, box.max.z),
+      new THREE.Vector3(box.max.x, box.min.y, box.min.z),
+      new THREE.Vector3(box.max.x, box.min.y, box.max.z),
+      new THREE.Vector3(box.max.x, box.max.y, box.min.z),
+      new THREE.Vector3(box.max.x, box.max.y, box.max.z),
+    ];
+    
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+    let allBehindCamera = true;
+    
+    for (const corner of corners) {
+      // Project to NDC
+      corner.project(this.camera);
+      
+      // Check if in front of camera (z < 1 in NDC)
+      if (corner.z < 1) {
+        allBehindCamera = false;
+        
+        // Convert NDC to screen coordinates
+        const screenX = (corner.x + 1) / 2 * canvasWidth;
+        const screenY = (-corner.y + 1) / 2 * canvasHeight;
+        
+        minX = Math.min(minX, screenX);
+        minY = Math.min(minY, screenY);
+        maxX = Math.max(maxX, screenX);
+        maxY = Math.max(maxY, screenY);
+      }
+    }
+    
+    if (allBehindCamera) return null;
+    
+    return {
+      x: minX,
+      y: minY,
+      width: maxX - minX,
+      height: maxY - minY,
+    };
+  }
+  
+  /**
+   * Check if two rectangles intersect.
+   */
+  private rectIntersects(a: ScreenRect, b: ScreenRect): boolean {
+    return !(
+      a.x + a.width < b.x ||
+      b.x + b.width < a.x ||
+      a.y + a.height < b.y ||
+      b.y + b.height < a.y
+    );
+  }
+  
+  /**
+   * Check if rectangle a fully contains rectangle b.
+   */
+  private rectContains(a: ScreenRect, b: ScreenRect): boolean {
+    return (
+      a.x <= b.x &&
+      a.y <= b.y &&
+      a.x + a.width >= b.x + b.width &&
+      a.y + a.height >= b.y + b.height
+    );
+  }
+  
+  /**
+   * Apply or remove highlight from an object.
+   */
+  protected override applyHighlight(obj: SelectableObject, highlight: boolean): void {
+    const mesh = obj.mesh;
+    const key = mesh.uuid;
+    
+    if (highlight) {
+      // Create outline if not already present
+      if (mesh instanceof THREE.Mesh && !this.outlinedObjects.has(key)) {
+        const edges = new THREE.EdgesGeometry(mesh.geometry);
+        const outline = new THREE.LineSegments(edges, this.outlineMaterial.clone());
+        
+        // Match transform - need to consider world transform
+        mesh.updateMatrixWorld(true);
+        outline.applyMatrix4(mesh.matrixWorld);
+        
+        this.scene.add(outline);
+        this.outlinedObjects.set(key, outline);
+      }
+    } else {
+      // Remove outline
+      const outline = this.outlinedObjects.get(key);
+      if (outline) {
+        this.scene.remove(outline);
+        outline.geometry.dispose();
+        (outline.material as THREE.Material).dispose();
+        this.outlinedObjects.delete(key);
+      }
+    }
+  }
+  
+  /**
+   * Clean up resources.
+   */
+  dispose(): void {
+    // Remove event listeners
+    const domElement = this.renderer.domElement;
+    domElement.removeEventListener('mousedown', this.boundMouseDown);
+    domElement.removeEventListener('mousemove', this.boundMouseMove);
+    domElement.removeEventListener('mouseup', this.boundMouseUp);
+    window.removeEventListener('keydown', this.boundKeyDown);
+    window.removeEventListener('keyup', this.boundKeyUp);
+    
+    // Clean up outlines
+    for (const [_, outline] of this.outlinedObjects) {
+      this.scene.remove(outline);
+      outline.geometry.dispose();
+      (outline.material as THREE.Material).dispose();
+    }
+    this.outlinedObjects.clear();
+    
+    // Clean up materials
+    this.outlineMaterial.dispose();
+    
+    // Remove marquee overlay
+    if (this.marqueeOverlay && this.marqueeOverlay.parentElement) {
+      this.marqueeOverlay.parentElement.removeChild(this.marqueeOverlay);
+    }
+  }
+}
+
