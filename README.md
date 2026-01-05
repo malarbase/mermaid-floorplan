@@ -4,6 +4,39 @@ Based on the ideas in https://github.com/mermaid-js/mermaid/issues/6134
 
 Demo app: https://langalex.github.io/mermaid-floorplan
 
+## Why mermaid-floorplan?
+
+This project fills a gap in the floor plan tooling landscape by bringing a **text-based, code-like approach** to architectural visualization—similar to how [Mermaid.js](https://mermaid.js.org/) revolutionized diagrams-as-code.
+
+### Compared to GUI Floor Plan Tools
+
+Tools like **Sweet Home 3D**, **Floorplanner**, **RoomSketcher**, and **Planner 5D** offer drag-and-drop interfaces but lack:
+- **Version control** - Floor plans as text can be tracked in Git, diffed, and reviewed
+- **Reproducibility** - Same DSL always produces the same output
+- **AI integration** - MCP server enables Claude/Cursor to read and modify floor plans
+- **Automation** - Generate floor plans programmatically or via scripts
+
+### Compared to Professional CAD/BIM
+
+Tools like **AutoCAD**, **Revit**, and **SketchUp** are powerful but require:
+- Significant learning investment
+- Expensive licenses (in most cases)
+- Manual operation for each change
+
+mermaid-floorplan is ideal for **quick visualization**, **documentation**, and **AI-assisted design iteration**—not production architectural drawings.
+
+### Compared to Other Diagram-as-Code Tools
+
+**Mermaid.js**, **PlantUML**, and **D2** pioneered text-to-diagram workflows, but none support floor plans. This project brings that same philosophy to architectural layouts.
+
+### Best For
+
+- Developers documenting office/building layouts
+- Quick visualization of space planning ideas
+- AI-assisted floor plan generation and iteration
+- Version-controlled architectural documentation
+- Embedding floor plans in Markdown/documentation
+
 ## DSL Syntax
 
 ### Basic Structure

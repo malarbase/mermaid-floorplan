@@ -43,7 +43,7 @@ This document tracks implementation tasks for the interactive editor capability.
 
 ## Phase 1: Three.js Selection (Click & Marquee)
 
-> **Note:** All selection code goes in `interactive-editor/src/`, not `viewer/src/`
+> **Note:** Selection code is initially developed in `interactive-editor/src/`, then moved to `viewer-core/` in Phase 2.4d so both viewer and editor can use it. Selection is a **read-only exploration capability**—it highlights entities but doesn't edit them.
 
 ### 1.1 Core Raycaster Implementation
 - [x] 1.1.1 Create `SelectionManager` class skeleton in `interactive-editor/src/selection-manager.ts`
@@ -342,6 +342,52 @@ viewer-core/src/ui/
 - [ ] 2.4c.16 Test: Interactive-editor has floor visibility controls
 - [ ] 2.4c.17 Test: Dark theme works in both viewer and interactive-editor
 
+### 2.4d Shared Selection & Sync (Move to viewer-core)
+
+**Goal:** Move `SelectionManager` and `EditorViewerSync` from `interactive-editor` to `viewer-core` so both viewer and editor can use them. Selection and sync are **read-only exploration capabilities**—they highlight entities and navigate code, but don't edit anything.
+
+**Architecture:**
+| Component | From | To | Type |
+|-----------|------|------|------|
+| SelectionManager | `interactive-editor/src/` | `viewer-core/src/` | Read-only |
+| EditorViewerSync | `interactive-editor/src/` | `viewer-core/src/` | Read-only |
+| SelectionInfoUI | (new) | `viewer-core/src/ui/` | UI component |
+
+**Tasks:**
+
+- [ ] 2.4d.1 Move `interactive-editor/src/selection-manager.ts` to `viewer-core/src/selection-manager.ts`:
+  - Update imports to use local viewer-core paths
+  - Export from `viewer-core/src/index.ts`
+  - Keep MarqueeMode enum and SelectableObject interface
+- [ ] 2.4d.2 Move `interactive-editor/src/editor-viewer-sync.ts` to `viewer-core/src/editor-viewer-sync.ts`:
+  - Update imports to use local viewer-core paths
+  - Export from `viewer-core/src/index.ts`
+  - Keep SourceRange and EntityLocation interfaces
+- [ ] 2.4d.3 Create `viewer-core/src/ui/selection-info-ui.ts`:
+  - Creates selection info display (#selection-info)
+  - Shows count, entity types, entity names
+  - Updates on selection change
+- [ ] 2.4d.4 Update `interactive-editor` to import from `viewer-core`:
+  - Change imports from local to `viewer-core`
+  - Delete local copies of selection-manager.ts and editor-viewer-sync.ts
+  - Verify editor still works
+- [ ] 2.4d.5 Update `viewer` to use shared selection and sync:
+  - Add monaco-editor as dependency (for EditorViewerSync)
+  - Import SelectionManager and EditorViewerSync from viewer-core
+  - Initialize SelectionManager with scene and meshRegistry
+  - Initialize EditorViewerSync with monaco editor
+  - Add SelectionInfoUI to show selection status
+  - Wire up selection callbacks (read-only, no properties panel)
+- [ ] 2.4d.6 Update `viewer/index.html` to include selection info panel:
+  - Add container for SelectionInfoUI
+  - Style to match viewer's UI theme
+- [ ] 2.4d.7 Test: Viewer click selection works (highlights entity)
+- [ ] 2.4d.8 Test: Viewer marquee selection works (multi-select)
+- [ ] 2.4d.9 Test: Viewer cursor→3D sync works (cursor position highlights entity)
+- [ ] 2.4d.10 Test: Viewer 3D→cursor sync works (click entity scrolls to code)
+- [ ] 2.4d.11 Test: Editor still works after migration (no regression)
+- [ ] 2.4d.12 Test: Editor properties panel still shows on single selection
+
 ### 2.5 Deliverables
 - [x] Source ranges in JSON export
 - [x] Source ranges in mesh userData (via MeshRegistry)
@@ -351,8 +397,11 @@ viewer-core/src/ui/
 - [x] Shared wall ownership working (no duplicate walls)
 - [ ] Shared keyboard controls, camera manager, annotation manager in `viewer-core`
 - [ ] Shared UI components in `viewer-core/src/ui/` for both packages
+- [ ] **Shared SelectionManager and EditorViewerSync in `viewer-core`**
+- [ ] **Viewer gains selection and sync capabilities (read-only exploration)**
 - [ ] Interactive-editor has full viewer UI parity (keyboard nav, annotations, floor controls, 2D overlay)
 - [ ] No viewer functionality regression after UI refactor
+- [ ] Editor-only capabilities (properties panel, CRUD) remain in interactive-editor
 
 ---
 
@@ -402,6 +451,8 @@ viewer-core/src/ui/
 ---
 
 ## Phase 4: Bidirectional Sync Implementation
+
+> **Note:** Sync code is initially developed in `interactive-editor/src/`, then moved to `viewer-core/` in Phase 2.4d so both viewer and editor can use it. Sync is a **read-only navigation capability**—it scrolls/reveals code but doesn't edit it.
 
 ### 4.1 3D to Editor Sync
 - [x] 4.1.1 Create `EditorViewerSync` class in `interactive-editor/src/editor-viewer-sync.ts`

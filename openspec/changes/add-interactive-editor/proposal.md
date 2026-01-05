@@ -14,26 +14,31 @@ This limits productivity and makes the tool less intuitive for non-developers.
 
 ### Core Features
 
-1. **3D Object Selection (Click & Marquee)**
+#### Shared Capabilities (viewer-core) — Available in Both Viewer and Editor
+
+1. **3D Object Selection (Click & Marquee)** — *Read-only exploration*
    - Click on rooms, walls, doors, windows, stairs, lifts to select
    - **Marquee selection**: Drag rectangle to select multiple objects at once
    - **Multi-selection**: Hold Shift to add to selection, Ctrl/Cmd+A to select all
    - Visual highlight (outline/glow) for all selected objects
    - Support for keyboard navigation between elements
 
-2. **AST-to-3D Bidirectional Mapping**
+2. **AST-to-3D Bidirectional Sync** — *Navigate between code and 3D*
    - Source locations preserved from Langium AST to JSON to 3D meshes
    - Click in 3D → cursor jumps to corresponding DSL line
    - Cursor in editor → corresponding 3D object highlights
 
-3. **Full LSP Integration via monaco-languageclient**
-   - Code completion (keywords, room names, style names)
-   - Go-to-definition (click style reference → jump to definition)
-   - Find references
-   - Semantic highlighting
-   - Hover information (room size, computed position)
+3. **Full Viewer Feature Parity**
+   - Keyboard navigation (WASD pan, Q/E vertical, zoom, view presets)
+   - Camera mode switching (perspective/orthographic/isometric)
+   - Annotations (area labels, dimension labels, floor summaries)
+   - 2D SVG overlay for plan view
+   - Floor visibility controls
+   - Light controls, theme switching, exploded view
 
-4. **Properties Panel for CRUD Operations**
+#### Editor-Only Capabilities (interactive-editor) — Extends Viewer
+
+4. **Properties Panel for CRUD Operations** — *Edit mode*
    - Select element → edit properties in form UI
    - **Bulk editing**: Select multiple rooms → change style for all at once
    - Changes apply to DSL editor (Monaco undo support)
@@ -41,13 +46,12 @@ This limits productivity and makes the tool less intuitive for non-developers.
    - **Bulk delete**: Delete multiple selected elements with impact summary
    - Add new rooms/connections through UI
 
-5. **Full Viewer Feature Parity**
-   - Keyboard navigation (WASD pan, Q/E vertical, zoom, view presets)
-   - Camera mode switching (perspective/orthographic/isometric)
-   - Annotations (area labels, dimension labels, floor summaries)
-   - 2D SVG overlay for plan view
-   - Floor visibility controls
-   - Light controls, theme switching, exploded view
+5. **Full LSP Integration via monaco-languageclient**
+   - Code completion (keywords, room names, style names)
+   - Go-to-definition (click style reference → jump to definition)
+   - Find references
+   - Semantic highlighting
+   - Hover information (room size, computed position)
 
 ### Non-Goals (Phase 1)
 
@@ -69,11 +73,13 @@ mermaid-floorplan/
 │       ├── main.ts            # Viewer class (uses viewer-core)
 │       └── ...
 │
-├── viewer-core/               # NEW: Shared abstractions
+├── viewer-core/               # NEW: Shared abstractions (read-only capabilities)
 │   └── src/
 │       ├── scene-context.ts   # Three.js scene, camera, renderer interfaces
 │       ├── mesh-registry.ts   # Map entities ↔ meshes
 │       ├── selection-api.ts   # Selection interface (highlight, callbacks)
+│       ├── selection-manager.ts  # Click/marquee selection (SHARED)
+│       ├── editor-viewer-sync.ts # Bidirectional text↔3D sync (SHARED)
 │       ├── wall-generator.ts  # CSG-based wall generation with ownership
 │       ├── keyboard-controls.ts  # WASD navigation, zoom, view presets
 │       ├── camera-manager.ts  # Perspective/orthographic/isometric switching
@@ -88,26 +94,28 @@ mermaid-floorplan/
 │       │   ├── floor-controls-ui.ts
 │       │   ├── annotation-controls-ui.ts
 │       │   ├── overlay-2d-ui.ts
-│       │   └── keyboard-help-ui.ts
+│       │   ├── keyboard-help-ui.ts
+│       │   └── selection-info-ui.ts  # Selection status display
 │       └── index.ts
 │
-├── interactive-editor/        # NEW: Full editor (extends viewer)
+├── interactive-editor/        # NEW: Full editor (extends viewer with edit capabilities)
 │   └── src/
 │       ├── main.ts            # InteractiveEditor extends Viewer
-│       ├── selection-manager.ts
-│       ├── marquee-selection.ts
-│       ├── branching-history.ts
-│       ├── history-browser.ts
-│       ├── properties-panel.ts
-│       ├── editor-viewer-sync.ts
-│       ├── lsp-worker.ts
+│       ├── properties-panel.ts   # Edit selected entity (EDITOR-ONLY)
+│       ├── dsl-generator.ts      # Generate DSL code (EDITOR-ONLY)
+│       ├── dsl-property-editor.ts # Modify DSL properties (EDITOR-ONLY)
+│       ├── branching-history.ts  # Undo/redo with branches (EDITOR-ONLY)
+│       ├── history-browser.ts    # Time-travel UI (EDITOR-ONLY)
+│       ├── lsp-worker.ts         # Language server worker (EDITOR-ONLY)
 │       └── index.ts
 ```
 
 **Benefits:**
+- **Interactive viewer**: Viewer gains selection and sync—users can explore floorplans by clicking rooms
 - **Embeddable viewer**: Lightweight `viewer` for docs, previews (~500KB)
-- **Full editor opt-in**: Load `interactive-editor` only when needed (+2-3MB)
-- **Clear API boundary**: Viewer exposes scene context, editor extends it
+- **Full editor opt-in**: Load `interactive-editor` only when editing is needed (+2-3MB)
+- **Clear separation**: Read-only exploration (viewer) vs write/edit (editor)
+- **Code reuse**: Selection and sync logic written once, used in both packages
 - **Independent versioning**: Can update editor without breaking viewer embeds
 
 ### Affected Specs
@@ -123,9 +131,9 @@ mermaid-floorplan/
 
 | Package | Changes |
 |---------|---------|
-| `viewer/` | Refactor to use `viewer-core`, keep read-only functionality |
-| NEW: `viewer-core/` | Extract: scene context, mesh registry, selection API, floor renderer |
-| NEW: `interactive-editor/` | All new editor features: selection, sync, properties, history, LSP |
+| `viewer/` | Refactor to use `viewer-core`, gains selection and sync capabilities |
+| NEW: `viewer-core/` | Extract: scene context, mesh registry, selection manager, editor-viewer sync, rendering utilities |
+| NEW: `interactive-editor/` | Editor-only features: properties panel, CRUD operations, history, LSP |
 | `language/` | `json-converter.ts` (source ranges), `floorplans-module.ts` (LSP customization) |
 
 ### Dependencies

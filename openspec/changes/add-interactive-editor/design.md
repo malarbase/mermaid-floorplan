@@ -863,6 +863,102 @@ new KeyboardHelpUI({ container: document.body });
 
 ---
 
+## Shared Selection & Sync Architecture
+
+### Design Principle: Read vs Write Separation
+
+Selection and text↔3D sync are **read-only exploration capabilities** that benefit both viewer and editor. Only the properties panel and CRUD operations are **write capabilities** that belong exclusively to the editor.
+
+| Capability | Type | Package | Notes |
+|------------|------|---------|-------|
+| SelectionManager | Read | `viewer-core` | Click/marquee selection, highlights |
+| EditorViewerSync | Read | `viewer-core` | Cursor↔3D sync, no edits |
+| MeshRegistry | Read | `viewer-core` | Entity↔mesh mapping |
+| PropertiesPanel | Write | `interactive-editor` | Edit selected entity |
+| DslPropertyEditor | Write | `interactive-editor` | Modify DSL code |
+| DslGenerator | Write | `interactive-editor` | Generate new DSL |
+
+### SelectionManager in viewer-core
+
+The `SelectionManager` provides read-only selection:
+- Click to select entity (room, wall, connection)
+- Shift-click to add/remove from selection
+- Marquee drag to select multiple
+- Visual highlight via `EdgesGeometry` + emission
+- Emits `onSelectionChange` callback with selected entities
+
+**Key Design**: SelectionManager has no knowledge of editing. It only:
+1. Tracks which entities are selected
+2. Applies visual highlights
+3. Emits selection events
+
+The editor listens to these events and shows the properties panel.
+
+### EditorViewerSync in viewer-core
+
+The `EditorViewerSync` provides read-only sync:
+- Cursor position in Monaco → highlight entity in 3D
+- Click entity in 3D → scroll Monaco to source line
+- Multi-cursor support for multiple highlights
+
+**Key Design**: EditorViewerSync does not modify the DSL. It only:
+1. Maps cursor positions to entity keys
+2. Maps entity keys to source ranges
+3. Scrolls/reveals without editing
+
+### Viewer Usage Pattern
+
+```typescript
+// viewer/src/main.ts
+import { SelectionManager, EditorViewerSync } from 'viewer-core';
+
+// Viewer uses selection for exploration (read-only)
+this.selectionManager = new SelectionManager(this.scene, this.meshRegistry);
+this.selectionManager.onSelectionChange((event) => {
+  // Show selection info (count, names) - NO properties panel
+  this.updateSelectionInfo(event.selection);
+});
+
+// Viewer uses sync for navigation (read-only)
+this.editorSync = new EditorViewerSync(this.monacoEditor, this.selectionManager);
+// Click in 3D → scroll to DSL line (no editing)
+```
+
+### Editor Usage Pattern
+
+```typescript
+// interactive-editor/src/interactive-editor.ts
+import { SelectionManager, EditorViewerSync } from 'viewer-core';
+import { PropertiesPanel } from './properties-panel.js';
+
+// Editor inherits same selection/sync from viewer-core
+this.selectionManager = new SelectionManager(this.scene, this.meshRegistry);
+this.editorSync = new EditorViewerSync(this.monacoEditor, this.selectionManager);
+
+// Editor ADDS properties panel on top
+this.propertiesPanel = new PropertiesPanel({
+  container: 'properties-panel',
+  onPropertyChange: (event) => {
+    // EDITOR-ONLY: Modify DSL via DslPropertyEditor
+    const edit = this.dslPropertyEditor.generateEdit(event);
+    this.monacoEditor.executeEdits(edit);
+  },
+});
+
+this.selectionManager.onSelectionChange((event) => {
+  // Same selection info as viewer
+  this.updateSelectionInfo(event.selection);
+  // PLUS: Show properties panel (editor-only)
+  if (event.selection.size === 1) {
+    this.propertiesPanel.show(event.selection.values().next().value);
+  } else {
+    this.propertiesPanel.hide();
+  }
+});
+```
+
+---
+
 ## Architecture Decisions
 
 ### Selection Highlighting Strategy
@@ -902,13 +998,13 @@ new KeyboardHelpUI({ container: document.body });
 
 ## File Reference
 
+### viewer-core (Shared Read-Only Capabilities)
+
 | Component | File | Purpose |
 |-----------|------|---------|
-| Selection Manager | `interactive-editor/src/selection-manager.ts` | 3D click/marquee selection |
-| Editor-Viewer Sync | `interactive-editor/src/editor-viewer-sync.ts` | Bidirectional sync |
-| DSL Editor | `interactive-editor/src/dsl-editor.ts` | Monaco setup |
-| Interactive Editor | `interactive-editor/src/interactive-editor.ts` | Main editor class |
-| Base Selection | `viewer-core/src/selection-api.ts` | Selection interfaces |
+| Selection Manager | `viewer-core/src/selection-manager.ts` | 3D click/marquee selection (SHARED) |
+| Editor-Viewer Sync | `viewer-core/src/editor-viewer-sync.ts` | Bidirectional sync (SHARED) |
+| Selection API | `viewer-core/src/selection-api.ts` | Selection interfaces |
 | Mesh Registry | `viewer-core/src/mesh-registry.ts` | Entity-mesh mapping |
 | Wall Generator | `viewer-core/src/wall-generator.ts` | Shared wall rendering with CSG (complete) |
 | Keyboard Controls | `viewer-core/src/keyboard-controls.ts` (planned) | WASD nav, zoom, view presets |
@@ -917,6 +1013,11 @@ new KeyboardHelpUI({ container: document.body });
 | Floor Manager | `viewer-core/src/floor-manager.ts` (planned) | Floor visibility controls |
 | Overlay 2D Manager | `viewer-core/src/overlay-2d-manager.ts` (planned) | 2D SVG overlay |
 | Pivot Indicator | `viewer-core/src/pivot-indicator.ts` (planned) | Visual pivot point |
+
+### viewer-core/ui (Shared UI Components)
+
+| Component | File | Purpose |
+|-----------|------|---------|
 | UI Styles | `viewer-core/src/ui/styles.ts` (planned) | Shared CSS + injectStyles() |
 | Camera Controls UI | `viewer-core/src/ui/camera-controls-ui.ts` (planned) | Camera mode, FOV, isometric |
 | Light Controls UI | `viewer-core/src/ui/light-controls-ui.ts` (planned) | Light azimuth, elevation, intensity |
@@ -924,4 +1025,18 @@ new KeyboardHelpUI({ container: document.body });
 | Annotation Controls UI | `viewer-core/src/ui/annotation-controls-ui.ts` (planned) | Area, dimensions toggles |
 | Overlay 2D UI | `viewer-core/src/ui/overlay-2d-ui.ts` (planned) | 2D mini-map container |
 | Keyboard Help UI | `viewer-core/src/ui/keyboard-help-ui.ts` (planned) | Shortcuts overlay |
+| Selection Info UI | `viewer-core/src/ui/selection-info-ui.ts` (planned) | Selection status display |
+
+### interactive-editor (Editor-Only Write Capabilities)
+
+| Component | File | Purpose |
+|-----------|------|---------|
+| Interactive Editor | `interactive-editor/src/interactive-editor.ts` | Main editor class (extends viewer) |
+| Properties Panel | `interactive-editor/src/properties-panel.ts` | Edit selected entity (EDITOR-ONLY) |
+| DSL Editor | `interactive-editor/src/dsl-editor.ts` | Monaco setup |
+| DSL Generator | `interactive-editor/src/dsl-generator.ts` | Generate new DSL code (EDITOR-ONLY) |
+| DSL Property Editor | `interactive-editor/src/dsl-property-editor.ts` | Modify DSL properties (EDITOR-ONLY) |
+| Branching History | `interactive-editor/src/branching-history.ts` (planned) | Undo/redo with branches |
+| History Browser | `interactive-editor/src/history-browser.ts` (planned) | Time-travel UI |
+| LSP Worker | `interactive-editor/src/lsp-worker.ts` (planned) | Language server worker |
 
