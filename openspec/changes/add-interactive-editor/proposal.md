@@ -41,6 +41,14 @@ This limits productivity and makes the tool less intuitive for non-developers.
    - **Bulk delete**: Delete multiple selected elements with impact summary
    - Add new rooms/connections through UI
 
+5. **Full Viewer Feature Parity**
+   - Keyboard navigation (WASD pan, Q/E vertical, zoom, view presets)
+   - Camera mode switching (perspective/orthographic/isometric)
+   - Annotations (area labels, dimension labels, floor summaries)
+   - 2D SVG overlay for plan view
+   - Floor visibility controls
+   - Light controls, theme switching, exploded view
+
 ### Non-Goals (Phase 1)
 
 - Drag-and-drop room positioning in 3D
@@ -64,9 +72,23 @@ mermaid-floorplan/
 ├── viewer-core/               # NEW: Shared abstractions
 │   └── src/
 │       ├── scene-context.ts   # Three.js scene, camera, renderer interfaces
-│       ├── floor-renderer.ts  # Floor/wall/stair generation
 │       ├── mesh-registry.ts   # Map entities ↔ meshes
 │       ├── selection-api.ts   # Selection interface (highlight, callbacks)
+│       ├── wall-generator.ts  # CSG-based wall generation with ownership
+│       ├── keyboard-controls.ts  # WASD navigation, zoom, view presets
+│       ├── camera-manager.ts  # Perspective/orthographic/isometric switching
+│       ├── annotation-manager.ts # Area labels, dimensions, floor summaries
+│       ├── floor-manager.ts   # Floor visibility controls
+│       ├── overlay-2d-manager.ts # 2D SVG overlay rendering
+│       ├── pivot-indicator.ts # Visual pivot point indicator
+│       ├── ui/                # Shared UI components
+│       │   ├── styles.ts      # Shared CSS as template literal
+│       │   ├── camera-controls-ui.ts
+│       │   ├── light-controls-ui.ts
+│       │   ├── floor-controls-ui.ts
+│       │   ├── annotation-controls-ui.ts
+│       │   ├── overlay-2d-ui.ts
+│       │   └── keyboard-help-ui.ts
 │       └── index.ts
 │
 ├── interactive-editor/        # NEW: Full editor (extends viewer)
@@ -108,10 +130,17 @@ mermaid-floorplan/
 
 ### Dependencies
 
-**viewer-core** (minimal):
+**viewer-core** (shared viewer functionality):
 ```json
 {
-  "three": "^0.170.0"
+  "dependencies": {
+    "floorplan-3d-core": "*",
+    "floorplans-language": "*"
+  },
+  "peerDependencies": {
+    "three": ">=0.150.0",
+    "three-bvh-csg": ">=0.0.16"
+  }
 }
 ```
 

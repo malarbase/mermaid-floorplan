@@ -6,24 +6,32 @@
  * - Editor-3D bidirectional sync
  * - Properties panel for editing
  * - Branching history (undo/redo)
+ * 
+ * Uses shared WallGenerator from viewer-core for proper:
+ * - Wall ownership detection (no duplicate walls)
+ * - CSG operations for door/window cutouts
+ * - Multi-floor elevation stacking
  */
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-import type { JsonExport } from 'floorplan-3d-core';
+import { Evaluator } from 'three-bvh-csg';
+import type { JsonExport, JsonFloor, JsonRoom, JsonStyle, JsonConfig, JsonConnection } from 'floorplan-3d-core';
 import { 
   COLORS,
   MaterialFactory, 
   StairGenerator, 
   normalizeToMeters,
   DIMENSIONS,
-  generateFloorConnections,
-  type JsonConnection,
+  type ViewerTheme,
+  type MaterialStyle,
 } from 'floorplan-3d-core';
 import { 
   MeshRegistry, 
+  WallGenerator,
   type SceneContext,
   type SelectableObject,
+  type StyleResolver,
 } from 'viewer-core';
 import { SelectionManager, type MarqueeMode } from './selection-manager.js';
 
@@ -61,14 +69,23 @@ export class InteractiveEditor implements SceneContext {
   
   // Scene content
   protected _floors: THREE.Group[] = [];
+  protected floorHeights: number[] = [];
   protected currentFloorplanData: JsonExport | null = null;
+  protected connections: JsonConnection[] = [];
+  protected config: JsonConfig = {};
+  protected styles: Map<string, JsonStyle> = new Map();
+  protected explodedViewFactor: number = 0;
   
   // Error state management
   private _hasParseError: boolean = false;
   private _lastValidFloorplanData: JsonExport | null = null;
   
-  // Generators (simplified for skeleton)
+  // Generators
+  protected wallGenerator: WallGenerator;
   protected stairGenerator: StairGenerator;
+  
+  // Theme state
+  protected currentTheme: ViewerTheme = 'light';
   
   // Animation
   private animationFrameId: number | null = null;
@@ -159,7 +176,11 @@ export class InteractiveEditor implements SceneContext {
     directionalLight.shadow.mapSize.height = 4096;
     this._scene.add(directionalLight);
     
-    // Initialize generators
+    // Initialize wall generator with CSG evaluator
+    this.wallGenerator = new WallGenerator(new Evaluator());
+    this.wallGenerator.setTheme(this.currentTheme);
+    
+    // Initialize stair generator
     this.stairGenerator = new StairGenerator();
     
     // Initialize selection manager if enabled
@@ -252,6 +273,28 @@ export class InteractiveEditor implements SceneContext {
   }
   
   /**
+   * Resolve style for a room with fallback chain:
+   * 1. Room's explicit style
+   * 2. Default style from config
+   * 3. undefined (use defaults)
+   */
+  private resolveRoomStyle(room: JsonRoom): MaterialStyle | undefined {
+    // Try room's explicit style first
+    if (room.style && this.styles.has(room.style)) {
+      const style = this.styles.get(room.style)!;
+      return MaterialFactory.jsonStyleToMaterialStyle(style);
+    }
+    
+    // Try default style from config
+    if (this.config.default_style && this.styles.has(this.config.default_style)) {
+      const style = this.styles.get(this.config.default_style)!;
+      return MaterialFactory.jsonStyleToMaterialStyle(style);
+    }
+    
+    return undefined;
+  }
+  
+  /**
    * Load a floorplan from JSON data.
    */
   public loadFloorplan(data: JsonExport): void {
@@ -266,146 +309,26 @@ export class InteractiveEditor implements SceneContext {
     // Clear existing floors
     this._floors.forEach(f => this._scene.remove(f));
     this._floors = [];
+    this.floorHeights = [];
     this._meshRegistry.clear();
     this._selectionManager?.deselect();
     
+    // Store config and connections
+    this.connections = normalizedData.connections;
+    this.config = normalizedData.config || {};
+    
+    // Build style lookup map
+    this.styles.clear();
+    if (normalizedData.styles) {
+      for (const style of normalizedData.styles) {
+        this.styles.set(style.name, style);
+      }
+    }
+    
     // Generate floors
-    const config = normalizedData.config || {};
-    const globalHeight = config.default_height ?? DIMENSIONS.WALL.HEIGHT;
+    const globalHeight = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
     
-    normalizedData.floors.forEach((floorData) => {
-      const floorGroup = new THREE.Group();
-      floorGroup.name = floorData.id;
-      
-      const floorHeight = floorData.height ?? globalHeight;
-      
-      // Generate rooms
-      floorData.rooms.forEach(room => {
-        const roomHeight = room.roomHeight ?? floorHeight;
-        
-        // Create floor plate
-        const floorThickness = config.floor_thickness ?? DIMENSIONS.FLOOR.THICKNESS;
-        const floorGeom = new THREE.BoxGeometry(room.width, floorThickness, room.height);
-        const floorMaterial = MaterialFactory.createFloorMaterial();
-        const floorMesh = new THREE.Mesh(floorGeom, floorMaterial);
-        
-        const centerX = room.x + room.width / 2;
-        const centerZ = room.z + room.height / 2;
-        const elevation = room.elevation || 0;
-        
-        floorMesh.position.set(centerX, elevation, centerZ);
-        floorMesh.receiveShadow = true;
-        floorGroup.add(floorMesh);
-        
-                // Register in mesh registry with entity metadata and source range
-                this._meshRegistry.register(
-                  floorMesh,
-                  'room',
-                  room.name,
-                  floorData.id,
-                  room._sourceRange // Pass source range from JSON for editor sync
-                );
-        
-        // Create walls
-        const wallHeight = roomHeight;
-        const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
-        const wallMaterial = MaterialFactory.createWallMaterial();
-        
-        room.walls.forEach(wall => {
-          if (wall.type === 'open') return;
-          
-          let wallGeom: THREE.BoxGeometry;
-          let wallMesh: THREE.Mesh;
-          
-          switch (wall.direction) {
-            case 'top':
-              wallGeom = new THREE.BoxGeometry(room.width, wallHeight, wallThickness);
-              wallMesh = new THREE.Mesh(wallGeom, wallMaterial.clone());
-              wallMesh.position.set(centerX, elevation + wallHeight / 2, room.z);
-              break;
-            case 'bottom':
-              wallGeom = new THREE.BoxGeometry(room.width, wallHeight, wallThickness);
-              wallMesh = new THREE.Mesh(wallGeom, wallMaterial.clone());
-              wallMesh.position.set(centerX, elevation + wallHeight / 2, room.z + room.height);
-              break;
-            case 'left':
-              wallGeom = new THREE.BoxGeometry(wallThickness, wallHeight, room.height);
-              wallMesh = new THREE.Mesh(wallGeom, wallMaterial.clone());
-              wallMesh.position.set(room.x, elevation + wallHeight / 2, centerZ);
-              break;
-            case 'right':
-              wallGeom = new THREE.BoxGeometry(wallThickness, wallHeight, room.height);
-              wallMesh = new THREE.Mesh(wallGeom, wallMaterial.clone());
-              wallMesh.position.set(room.x + room.width, elevation + wallHeight / 2, centerZ);
-              break;
-          }
-          
-          if (wallMesh!) {
-            wallMesh.castShadow = true;
-            wallMesh.receiveShadow = true;
-            floorGroup.add(wallMesh);
-            
-            // Register wall with its own source range for proper wall editing
-            // (wall._sourceRange points to the specific wall spec like "top: solid")
-            // Type assertion needed as _sourceRange is added by json-converter but not in base type
-            const wallSourceRange = (wall as { _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number } })._sourceRange;
-            this._meshRegistry.register(
-              wallMesh,
-              'wall',
-              `${room.name}_${wall.direction}`,
-              floorData.id,
-              wallSourceRange
-            );
-          }
-        });
-      });
-      
-      // Generate connections (doors/windows) for this floor
-      const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
-      
-      const connectionsGroup = generateFloorConnections(
-        floorData,
-        normalizedData.connections,
-        {
-          wallThickness,
-          defaultHeight: floorHeight,
-          theme: 'light',
-        }
-      );
-      
-      // Register connection meshes in the registry
-      connectionsGroup.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          // Parse connection info from mesh name (e.g., "door-LivingRoom-Kitchen")
-          const nameParts = child.name.split('-');
-          if (nameParts.length >= 3) {
-            // nameParts[0] is connection type (door, window, double-door)
-            const fromRoom = nameParts[1];
-            const toRoom = nameParts.slice(2).join('-'); // Handle room names with dashes
-            
-            // Find the matching connection to get source range
-            const matchingConnection = normalizedData.connections.find(
-              (conn: JsonConnection) => conn.fromRoom === fromRoom && conn.toRoom === toRoom
-            );
-            
-            this._meshRegistry.register(
-              child,
-              'connection',
-              `${fromRoom}-${toRoom}`,  // Match format used in extractEntityLocations
-              floorData.id,
-              matchingConnection?._sourceRange
-            );
-          }
-        }
-      });
-      
-      floorGroup.add(connectionsGroup);
-      
-      this._scene.add(floorGroup);
-      this._floors.push(floorGroup);
-    });
-    
-    // Center camera on first room
+    // Center camera roughly
     if (normalizedData.floors.length > 0 && normalizedData.floors[0].rooms.length > 0) {
       const firstRoom = normalizedData.floors[0].rooms[0];
       this._controls.target.set(
@@ -414,6 +337,167 @@ export class InteractiveEditor implements SceneContext {
         firstRoom.z + firstRoom.height / 2
       );
     }
+    
+    normalizedData.floors.forEach((floorData) => {
+      const floorHeight = floorData.height ?? globalHeight;
+      this.floorHeights.push(floorHeight);
+      
+      const floorGroup = this.generateFloor(floorData);
+      this._scene.add(floorGroup);
+      this._floors.push(floorGroup);
+    });
+    
+    // Apply floor stacking (exploded view at 0 = floors touching)
+    this.setExplodedView(this.explodedViewFactor);
+  }
+  
+  /**
+   * Generate a floor group with all rooms, walls, and connections.
+   * Uses WallGenerator for proper wall ownership detection and CSG operations.
+   */
+  private generateFloor(floorData: JsonFloor): THREE.Group {
+    const group = new THREE.Group();
+    group.name = floorData.id;
+
+    // Height resolution priority: room > floor > config > constant
+    const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
+    const floorDefault = floorData.height ?? globalDefault;
+
+    // Prepare all rooms with defaults for wall ownership detection
+    const allRoomsWithDefaults = floorData.rooms.map(r => ({
+      ...r,
+      roomHeight: r.roomHeight ?? floorDefault
+    }));
+
+    // Set style resolver for wall ownership detection
+    const styleResolver: StyleResolver = (room: JsonRoom) => this.resolveRoomStyle(room);
+    this.wallGenerator.setStyleResolver(styleResolver);
+    
+    floorData.rooms.forEach(room => {
+      // Apply default height to room if not specified
+      const roomWithDefaults = {
+        ...room,
+        roomHeight: room.roomHeight ?? floorDefault
+      };
+
+      // Resolve style for this room
+      const roomStyle = this.resolveRoomStyle(room);
+
+      // Create materials for this room with style and theme
+      const hasExplicitStyle = (room.style && this.styles.has(room.style)) ||
+        (this.config.default_style && this.styles.has(this.config.default_style));
+      const materials = MaterialFactory.createMaterialSet(
+        roomStyle,
+        hasExplicitStyle ? undefined : this.currentTheme
+      );
+
+      // 1. Floor plate
+      const floorMesh = this.createFloorMesh(roomWithDefaults, materials.floor);
+      group.add(floorMesh);
+      
+      // Register floor mesh in registry for selection support
+      this._meshRegistry.register(
+        floorMesh,
+        'room',
+        room.name,
+        floorData.id,
+        room._sourceRange
+      );
+
+      // 2. Walls with doors, windows, and connections
+      // Uses wall ownership detection to prevent Z-fighting
+      roomWithDefaults.walls.forEach(wall => {
+        // Track wall meshes added by WallGenerator
+        const wallMeshesBefore = new Set<THREE.Object3D>();
+        group.traverse(obj => wallMeshesBefore.add(obj));
+        
+        this.wallGenerator.generateWall(
+          wall,
+          roomWithDefaults,
+          allRoomsWithDefaults,
+          this.connections,
+          materials,
+          group,
+          this.config
+        );
+        
+        // Find newly added meshes and register walls
+        group.traverse(obj => {
+          if (!wallMeshesBefore.has(obj) && obj instanceof THREE.Mesh) {
+            // Check if this looks like a wall mesh (not a door/window)
+            // Wall meshes typically have material arrays or standard material
+            const isWallMesh = Array.isArray(obj.material) || 
+              (obj.material instanceof THREE.MeshStandardMaterial && 
+               !obj.material.transparent);
+            
+            if (isWallMesh && !this._meshRegistry.getEntityForMesh(obj)) {
+              // Get wall source range
+              const wallSourceRange = (wall as { _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number } })._sourceRange;
+              this._meshRegistry.register(
+                obj,
+                'wall',
+                `${room.name}_${wall.direction}`,
+                floorData.id,
+                wallSourceRange
+              );
+            }
+          }
+        });
+      });
+    });
+
+    // 3. Stairs
+    if (floorData.stairs) {
+      floorData.stairs.forEach(stair => {
+        const stairGroup = this.stairGenerator.generateStair(stair);
+        group.add(stairGroup);
+      });
+    }
+
+    // 4. Lifts
+    if (floorData.lifts) {
+      floorData.lifts.forEach(lift => {
+        const liftGroup = this.stairGenerator.generateLift(lift, floorDefault);
+        group.add(liftGroup);
+      });
+    }
+
+    return group;
+  }
+  
+  /**
+   * Create a floor mesh for a room
+   */
+  private createFloorMesh(room: JsonRoom, material: THREE.Material): THREE.Mesh {
+    const floorThickness = this.config.floor_thickness ?? DIMENSIONS.FLOOR.THICKNESS;
+    const floorGeom = new THREE.BoxGeometry(room.width, floorThickness, room.height);
+    const centerX = room.x + room.width / 2;
+    const centerZ = room.z + room.height / 2;
+    const elevation = room.elevation || 0;
+    
+    const floorMesh = new THREE.Mesh(floorGeom, material);
+    floorMesh.position.set(centerX, elevation, centerZ);
+    floorMesh.receiveShadow = true;
+    return floorMesh;
+  }
+  
+  /**
+   * Set the exploded view factor.
+   * 0 = floors stacked normally (touching)
+   * 1 = maximum separation between floors
+   */
+  public setExplodedView(factor: number): void {
+    this.explodedViewFactor = factor;
+    const separation = DIMENSIONS.EXPLODED_VIEW.MAX_SEPARATION * factor;
+    const defaultHeight = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
+
+    let cumulativeY = 0;
+    this._floors.forEach((floorGroup, index) => {
+      floorGroup.position.y = cumulativeY;
+      // Use floor-specific height for calculating next floor position
+      const floorHeight = this.floorHeights[index] ?? defaultHeight;
+      cumulativeY += floorHeight + separation;
+    });
   }
   
   /**
@@ -435,6 +519,19 @@ export class InteractiveEditor implements SceneContext {
    */
   public setMarqueeMode(mode: MarqueeMode): void {
     this._selectionManager?.setMarqueeMode(mode);
+  }
+  
+  /**
+   * Set the current theme.
+   */
+  public setTheme(theme: ViewerTheme): void {
+    this.currentTheme = theme;
+    this.wallGenerator.setTheme(theme);
+    
+    // Reload floorplan to apply theme
+    if (this.currentFloorplanData) {
+      this.loadFloorplan(this.currentFloorplanData);
+    }
   }
   
   /**

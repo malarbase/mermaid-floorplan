@@ -474,6 +474,395 @@ This keeps selection (commitment) and highlight (preview) visually distinct.
 
 ---
 
+## Phase 2.4b: Shared Viewer Managers
+
+### Goal
+
+Move viewer's manager classes to `viewer-core` so interactive-editor has full feature parity with viewer, including:
+- Keyboard navigation (WASD, zoom, view presets)
+- Camera mode switching (perspective/orthographic/isometric)
+- Annotations (area labels, dimensions, floor summaries)
+- 2D SVG overlay
+- Floor visibility controls
+- Pivot indicator
+
+### Files to Move to viewer-core
+
+| File | Purpose | Dependencies |
+|------|---------|--------------|
+| `keyboard-controls.ts` | WASD pan, Q/E vertical, +/- zoom, 1/3/7 views, Home reset, F frame | `pivot-indicator.ts` |
+| `camera-manager.ts` | Perspective/orthographic toggle, isometric view, FOV control | `keyboard-controls.ts` |
+| `annotation-manager.ts` | Area labels, dimension labels, floor summary panel | CSS2DObject |
+| `floor-manager.ts` | Floor visibility toggles, show/hide all buttons | Minimal |
+| `overlay-2d-manager.ts` | 2D SVG overlay rendering, drag/resize | `floorplans-language` |
+| `pivot-indicator.ts` | Visual pivot point that shows during camera movement | Minimal |
+| `materials.ts` | BrowserMaterialFactory with async texture loading | `floorplan-3d-core/materials.ts` |
+
+**Note on materials.ts:**
+- `floorplan-3d-core/src/materials.ts` contains the base `MaterialFactory` (headless-compatible)
+- `viewer/src/materials.ts` contains `BrowserMaterialFactory` which extends it with async texture loading
+- Moving `BrowserMaterialFactory` to `viewer-core` allows interactive-editor to share async texture loading
+
+### Implementation Steps
+
+#### 2.4b.1 Move `pivot-indicator.ts` to viewer-core
+- Copy `viewer/src/pivot-indicator.ts` → `viewer-core/src/pivot-indicator.ts`
+- Export from `viewer-core/src/index.ts`
+- Update `viewer` to import from `viewer-core`
+
+#### 2.4b.2 Move `keyboard-controls.ts` to viewer-core
+- Copy `viewer/src/keyboard-controls.ts` → `viewer-core/src/keyboard-controls.ts`
+- Update import for `PivotIndicator` to use local path
+- Export from `viewer-core/src/index.ts`
+- Update `viewer` to import from `viewer-core`
+
+#### 2.4b.3 Move `camera-manager.ts` to viewer-core
+- Copy `viewer/src/camera-manager.ts` → `viewer-core/src/camera-manager.ts`
+- Update import for `KeyboardControls` type
+- Export from `viewer-core/src/index.ts`
+- Update `viewer` to import from `viewer-core`
+
+#### 2.4b.4 Move `floor-manager.ts` to viewer-core
+- Copy `viewer/src/floor-manager.ts` → `viewer-core/src/floor-manager.ts`
+- Export from `viewer-core/src/index.ts`
+- Update `viewer` to import from `viewer-core`
+
+#### 2.4b.5 Move `annotation-manager.ts` to viewer-core
+- Copy `viewer/src/annotation-manager.ts` → `viewer-core/src/annotation-manager.ts`
+- Export from `viewer-core/src/index.ts`
+- Update `viewer` to import from `viewer-core`
+
+#### 2.4b.6 Move `overlay-2d-manager.ts` to viewer-core
+- Add `floorplans-language` as dependency to `viewer-core/package.json`
+- Copy `viewer/src/overlay-2d-manager.ts` → `viewer-core/src/overlay-2d-manager.ts`
+- Export from `viewer-core/src/index.ts`
+- Update `viewer` to import from `viewer-core`
+
+#### 2.4b.7 Update interactive-editor to use managers
+- Add manager instance variables to `InteractiveEditor` class
+- Initialize managers in constructor (similar to viewer's `main.ts`)
+- Wire up manager callbacks to InteractiveEditor methods
+- Update animation loop to call `keyboardControls.update(deltaTime)`
+
+#### 2.4b.8 Update interactive-editor/index.html
+- Add UI controls for keyboard help overlay
+- Add UI controls for camera mode toggle, FOV slider, isometric button
+- Add UI controls for annotations (area labels, dimensions, floor summary)
+- Add UI controls for floor visibility (floor list, show/hide all)
+- Add 2D overlay container with drag/resize handles
+
+### Manager Callback Interfaces
+
+Each manager follows a callback-based pattern for accessing shared state. Here are the interfaces:
+
+```typescript
+// keyboard-controls.ts constructor options
+interface KeyboardControlsOptions {
+  onCameraModeToggle: () => void;           // Toggle perspective/orthographic
+  onUpdateOrthographicSize: () => void;     // Recalculate ortho frustum
+  getBoundingBox: () => THREE.Box3 | null;  // Scene bounds for framing
+  setHelpOverlayVisible: (visible: boolean) => void;
+}
+
+// camera-manager.ts callbacks
+interface CameraManagerCallbacks {
+  getFloors: () => THREE.Group[];
+  getKeyboardControls: () => KeyboardControls | null;
+}
+
+// floor-manager.ts callbacks
+interface FloorManagerCallbacks {
+  getFloors: () => THREE.Group[];
+  getFloorplanData: () => JsonExport | null;
+  onVisibilityChange: () => void;  // Called when any floor visibility changes
+}
+
+// annotation-manager.ts callbacks
+interface AnnotationCallbacks {
+  getFloors: () => THREE.Group[];
+  getFloorplanData: () => JsonExport | null;
+  getConfig: () => JsonConfig;
+  getFloorVisibility: (id: string) => boolean;
+}
+
+// overlay-2d-manager.ts callbacks
+interface Overlay2DCallbacks {
+  getCurrentTheme: () => ViewerTheme;
+  getFloorplanData: () => JsonExport | null;
+  getVisibleFloorIds: () => string[];
+}
+```
+
+### Manager Initialization Pattern
+
+```typescript
+// In InteractiveEditor constructor:
+
+// Initialize pivot indicator first (no dependencies)
+this.pivotIndicator = new PivotIndicator(this._scene, this._controls);
+
+// FloorManager first (minimal deps, needed by others)
+this.floorManager = new FloorManager({
+  getFloors: () => this._floors,
+  getFloorplanData: () => this.currentFloorplanData,
+  onVisibilityChange: () => {
+    this.annotationManager?.updateFloorSummary();
+    this.overlay2DManager?.render();
+  },
+});
+
+// AnnotationManager (depends on floorManager)
+this.annotationManager = new AnnotationManager({
+  getFloors: () => this._floors,
+  getFloorplanData: () => this.currentFloorplanData,
+  getConfig: () => this.currentFloorplanData?.config ?? {},
+  getFloorVisibility: (id) => this.floorManager.getFloorVisibility(id),
+});
+
+// CameraManager (depends on keyboardControls, but we pass getter)
+this.cameraManager = new CameraManager(
+  this._perspectiveCamera,
+  this._orthographicCamera,
+  this._controls,
+  {
+    getFloors: () => this._floors,
+    getKeyboardControls: () => this.keyboardControls,
+  }
+);
+
+// KeyboardControls (depends on cameraManager)
+this.keyboardControls = new KeyboardControls(
+  this._controls,
+  this._perspectiveCamera,
+  this._orthographicCamera,
+  {
+    onCameraModeToggle: () => this.cameraManager.toggleCameraMode(),
+    onUpdateOrthographicSize: () => this.cameraManager.updateOrthographicSize(),
+    getBoundingBox: () => this.cameraManager.getSceneBoundingBox(),
+    setHelpOverlayVisible: (visible) => this.setHelpOverlayVisible(visible),
+  }
+);
+this.keyboardControls.setPivotIndicator(this.pivotIndicator);
+
+// Overlay2DManager (depends on floorManager for visible floors)
+this.overlay2DManager = new Overlay2DManager({
+  getCurrentTheme: () => this.currentTheme,
+  getFloorplanData: () => this.currentFloorplanData,
+  getVisibleFloorIds: () => this.floorManager.getVisibleFloorIds(),
+});
+```
+
+### Manager UI Setup Pattern
+
+Each manager has a `setupControls()` method that binds to DOM elements by ID. Call these after the HTML is loaded:
+
+```typescript
+// After DOM is ready and managers are initialized
+this.cameraManager.setupControls();       // Binds to #camera-mode-btn, #fov-slider, #isometric-btn
+this.floorManager.setupControls();        // Binds to #show-all-floors, #hide-all-floors
+this.annotationManager.setupControls();   // Binds to #show-area, #show-dimensions, etc.
+this.overlay2DManager.setupControls();    // Binds to #show-2d-overlay, #overlay-opacity, etc.
+// KeyboardControls binds listeners in constructor (no setupControls needed)
+```
+
+### Animation Loop Update
+
+```typescript
+private animate(): void {
+  this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+  
+  // Calculate delta time
+  const now = performance.now();
+  const deltaTime = this.lastFrameTime ? now - this.lastFrameTime : 16;
+  this.lastFrameTime = now;
+  
+  // Update keyboard controls (WASD movement)
+  this.keyboardControls?.update(deltaTime);
+  
+  // Update pivot indicator (fade in/out)
+  this.pivotIndicator?.update(deltaTime);
+  this.pivotIndicator?.updateSize(this.cameraManager?.activeCamera ?? this._activeCamera);
+  
+  this._controls.update();
+  
+  const activeCamera = this.cameraManager?.activeCamera ?? this._activeCamera;
+  this._renderer.render(this._scene, activeCamera);
+  this.labelRenderer.render(this._scene, activeCamera);
+}
+```
+
+### UI Controls Required in index.html
+
+The interactive-editor's `index.html` needs these additional UI controls (can be copied from viewer's `index.html`):
+
+1. **Camera Section**
+   - Camera mode toggle button (perspective/orthographic)
+   - FOV slider (visible only in perspective mode)
+   - Isometric view button
+
+2. **Light Section**
+   - Light azimuth slider
+   - Light elevation slider
+   - Light intensity slider
+
+3. **Annotations Section**
+   - Show area labels toggle
+   - Show dimensions toggle
+   - Show floor summary toggle
+   - Area unit dropdown (sqft/sqm)
+   - Length unit dropdown (m/ft/cm/in/mm)
+
+4. **Floors Section**
+   - Floor list with visibility checkboxes
+   - Show all / Hide all buttons
+
+5. **2D Overlay Section**
+   - Show 2D overlay toggle
+   - Opacity slider
+
+6. **Keyboard Help Overlay**
+   - Full keyboard shortcuts panel (triggered by ? or H key)
+
+---
+
+## Phase 2.4c: Shared UI Components
+
+### Goal
+
+Extract reusable UI components from `viewer/index.html` to `viewer-core` so both viewer and interactive-editor can share the same UI code without duplication. The key constraint is **no viewer functionality regression**.
+
+### Architecture Pattern
+
+UI components are TypeScript classes that:
+1. Create DOM elements programmatically
+2. Use the **same element IDs** as the original HTML
+3. Inject shared CSS via `injectStyles()`
+4. Return typed element references for direct access
+
+This allows existing managers (`CameraManager.setupControls()`, etc.) to work unchanged since they find elements by ID.
+
+### Component Interface Pattern
+
+```typescript
+// Each UI component follows this pattern:
+export interface XxxControlsUIOptions {
+  container: HTMLElement;           // Parent element to append to
+  onSetup?: (elements: XxxElements) => void;  // Optional callback with element refs
+}
+
+export interface XxxElements {
+  someButton: HTMLButtonElement;
+  someSlider: HTMLInputElement;
+  // ... typed element references
+}
+
+export class XxxControlsUI {
+  private elements: XxxElements;
+  
+  constructor(options: XxxControlsUIOptions) {
+    const section = this.createSection();
+    options.container.appendChild(section);
+    this.elements = this.queryElements(section);
+    options.onSetup?.(this.elements);
+  }
+  
+  private createSection(): HTMLElement {
+    const el = document.createElement('div');
+    el.innerHTML = `...`; // HTML with same IDs as viewer/index.html
+    return el;
+  }
+  
+  private queryElements(section: HTMLElement): XxxElements {
+    return {
+      someButton: section.querySelector('#some-button')!,
+      // ...
+    };
+  }
+  
+  public getElements(): XxxElements {
+    return this.elements;
+  }
+}
+```
+
+### Styles Injection
+
+```typescript
+// viewer-core/src/ui/styles.ts
+export const SHARED_STYLES = `
+  .control-section { ... }
+  .section-header { ... }
+  /* All shared CSS */
+  
+  /* Dark theme via body class */
+  body.dark-theme .control-section { ... }
+`;
+
+export function injectStyles(id: string = 'viewer-core-styles'): void {
+  if (document.getElementById(id)) return; // Idempotent
+  const style = document.createElement('style');
+  style.id = id;
+  style.textContent = SHARED_STYLES;
+  document.head.appendChild(style);
+}
+```
+
+### Usage in Viewer (Minimal Changes)
+
+```typescript
+// viewer/src/main.ts
+import { injectStyles, CameraControlsUI, FloorControlsUI } from 'viewer-core/ui';
+
+// Inject shared styles once
+injectStyles();
+
+// Create UI components - they add elements with same IDs
+const controlsContainer = document.getElementById('controls')!;
+new CameraControlsUI({ container: controlsContainer });
+new FloorControlsUI({ container: controlsContainer });
+// ...
+
+// Existing manager code works unchanged!
+this.cameraManager.setupControls(); // Finds #camera-mode-btn, #fov-slider by ID
+```
+
+### Usage in Interactive Editor
+
+```typescript
+// interactive-editor/src/main.ts
+import { injectStyles, CameraControlsUI, KeyboardHelpUI } from 'viewer-core/ui';
+
+injectStyles();
+
+// Only add the controls we want
+const controlsContainer = document.getElementById('viewer-controls')!;
+new CameraControlsUI({ container: controlsContainer });
+
+// Keyboard help available via shared component
+new KeyboardHelpUI({ container: document.body });
+
+// Editor-specific UI (properties panel, etc.) stays in index.html
+```
+
+### Migration Strategy
+
+1. **Phase 1**: Create `styles.ts` with all shared CSS
+2. **Phase 2**: Create one UI component (e.g., `KeyboardHelpUI`)
+3. **Phase 3**: Update viewer to use it, run tests
+4. **Phase 4**: Update interactive-editor to use it
+5. **Repeat** for each component
+6. **Final**: Remove duplicate CSS/HTML from both index.html files
+
+### Benefits
+
+- **No viewer regression**: Same element IDs, managers work identically
+- **Composable**: Each app picks which components to include
+- **Type-safe**: TypeScript interfaces for element access
+- **Testable**: Can unit test UI creation
+- **Single source**: CSS and HTML in one place
+
+---
+
 ## Architecture Decisions
 
 ### Selection Highlighting Strategy
@@ -521,4 +910,18 @@ This keeps selection (commitment) and highlight (preview) visually distinct.
 | Interactive Editor | `interactive-editor/src/interactive-editor.ts` | Main editor class |
 | Base Selection | `viewer-core/src/selection-api.ts` | Selection interfaces |
 | Mesh Registry | `viewer-core/src/mesh-registry.ts` | Entity-mesh mapping |
+| Wall Generator | `viewer-core/src/wall-generator.ts` | Shared wall rendering with CSG (complete) |
+| Keyboard Controls | `viewer-core/src/keyboard-controls.ts` (planned) | WASD nav, zoom, view presets |
+| Camera Manager | `viewer-core/src/camera-manager.ts` (planned) | Camera mode switching |
+| Annotation Manager | `viewer-core/src/annotation-manager.ts` (planned) | Labels and dimensions |
+| Floor Manager | `viewer-core/src/floor-manager.ts` (planned) | Floor visibility controls |
+| Overlay 2D Manager | `viewer-core/src/overlay-2d-manager.ts` (planned) | 2D SVG overlay |
+| Pivot Indicator | `viewer-core/src/pivot-indicator.ts` (planned) | Visual pivot point |
+| UI Styles | `viewer-core/src/ui/styles.ts` (planned) | Shared CSS + injectStyles() |
+| Camera Controls UI | `viewer-core/src/ui/camera-controls-ui.ts` (planned) | Camera mode, FOV, isometric |
+| Light Controls UI | `viewer-core/src/ui/light-controls-ui.ts` (planned) | Light azimuth, elevation, intensity |
+| Floor Controls UI | `viewer-core/src/ui/floor-controls-ui.ts` (planned) | Floor visibility list |
+| Annotation Controls UI | `viewer-core/src/ui/annotation-controls-ui.ts` (planned) | Area, dimensions toggles |
+| Overlay 2D UI | `viewer-core/src/ui/overlay-2d-ui.ts` (planned) | 2D mini-map container |
+| Keyboard Help UI | `viewer-core/src/ui/keyboard-help-ui.ts` (planned) | Shortcuts overlay |
 

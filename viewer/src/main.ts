@@ -10,10 +10,8 @@ import {
   MaterialFactory, StairGenerator, normalizeToMeters,
   type ViewerTheme, type MaterialStyle
 } from 'floorplan-3d-core';
-// Import shared viewer interfaces
-import { MeshRegistry, type SceneContext } from 'viewer-core';
-// Browser-specific modules (CSG, DSL parsing)
-import { WallGenerator, StyleResolver } from './wall-generator';
+// Import shared viewer interfaces and wall generator
+import { MeshRegistry, WallGenerator, type SceneContext, type StyleResolver } from 'viewer-core';
 import { parseFloorplanDSLWithDocument, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
 // Editor and chat integration
 import { initializeEditor, type EditorInstance } from './editor';

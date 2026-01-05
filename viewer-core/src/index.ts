@@ -7,6 +7,7 @@
  * - SceneContext: Interface for Three.js scene, camera, renderer, controls
  * - MeshRegistry: Bidirectional mapping between entities and meshes
  * - SelectionAPI: Interface for selection operations
+ * - WallGenerator: CSG-based wall generation with ownership detection
  * 
  * The viewer package implements these interfaces for read-only visualization.
  * The interactive-editor package extends them for full editing capabilities.
@@ -41,4 +42,12 @@ export type {
   HighlightStyle,
   SelectionAPI,
 } from './selection-api.js';
+
+// Wall generator (CSG-based, browser-only)
+export {
+  WallGenerator,
+} from './wall-generator.js';
+export type {
+  StyleResolver,
+} from './wall-generator.js';
 

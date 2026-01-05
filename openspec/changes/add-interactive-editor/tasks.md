@@ -166,24 +166,193 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 2.4.4 Test: Registry survives loadFloorplan() calls
 
 ### 2.4a Shared Rendering Utilities (from Phase 0.1.5)
-- [ ] 2.4a.1 Extract `WallGenerator` from `viewer/src/wall-generator.ts` to `viewer-core`
-- [ ] 2.4a.2 Update `viewer` to import from `viewer-core` instead of local
-- [ ] 2.4a.3 Update `interactive-editor` to use shared `WallGenerator` for proper mesh generation
-- [ ] 2.4a.4 Ensure door/window CSG cutouts work in both packages
-- [ ] 2.4a.5 Test: Both packages render identical geometry for same floorplan
-- [ ] 2.4a.6 **BUG**: Multi-floor rendering overlaps - InteractiveEditor doesn't compute floor elevations (see design.md)
-  - All floors render at Y=0 instead of stacking based on cumulative heights
-  - Fix requires adopting viewer's floor elevation calculation logic
-- [ ] 2.4a.7 **BUG**: Shared wall selection inconsistency - clicking shared wall assigns to random room (see design.md)
-  - InteractiveEditor creates duplicate wall meshes for adjacent rooms
-  - Raycast hits whichever mesh is "in front" (camera-dependent)
-  - Fix: Adopt viewer's `wall-ownership.ts` which uses deterministic single-owner rendering
+
+**Goal:** Share viewer's advanced rendering capabilities with interactive-editor so both have identical 3D output with proper wall ownership, CSG cutouts, and floor stacking.
+
+**Architecture Decision:** Move `WallGenerator` to `viewer-core` (not `floorplan-3d-core`) because:
+- CSG operations require `three-bvh-csg` which is browser-only
+- `floorplan-3d-core` is headless-compatible (no browser deps)
+- `viewer-core` is browser-only and already depends on Three.js
+
+**Tasks:**
+
+- [x] 2.4a.1 Add dependencies to `viewer-core/package.json`:
+  - Add `three-bvh-csg` as peerDependency (matches viewer/interactive-editor)
+  - Add `floorplan-3d-core` as dependency (for types and wall-ownership)
+- [x] 2.4a.2 Copy `viewer/src/wall-generator.ts` to `viewer-core/src/wall-generator.ts`
+  - Update imports to use `floorplan-3d-core` 
+  - Export from `viewer-core/src/index.ts`
+- [x] 2.4a.3 Update `viewer` to import `WallGenerator` from `viewer-core` instead of local
+  - Delete local `viewer/src/wall-generator.ts`
+  - Update imports in `viewer/src/main.ts`
+- [x] 2.4a.4 Refactor `interactive-editor/src/interactive-editor.ts` to use `WallGenerator`:
+  - Import `WallGenerator` from `viewer-core`
+  - Add CSG evaluator initialization
+  - Replace simplified wall generation with `WallGenerator.generateWall()`
+  - Add `resolveRoomStyle()` method for style resolution
+  - Set up style resolver for wall ownership detection
+- [x] 2.4a.5 **BUG FIX**: Multi-floor rendering overlaps
+  - Add `floorHeights: number[]` tracking to `InteractiveEditor`
+  - Add `setExplodedView(factor)` method (port from viewer)
+  - Calculate cumulative floor elevations in `loadFloorplan()`
+  - Apply floor group Y positions based on cumulative heights
+- [x] 2.4a.6 **BUG FIX**: Shared wall selection inconsistency
+  - `WallGenerator` already uses `analyzeWallOwnership()` from `floorplan-3d-core`
+  - Once we use `WallGenerator`, shared walls only render once (by owner room)
+  - No duplicate meshes = deterministic raycast selection
+- [ ] 2.4a.7 Test: Verify wall ownership works - shared walls only rendered once
+- [ ] 2.4a.8 Test: Verify door/window CSG cutouts render correctly
+- [ ] 2.4a.9 Test: Verify multi-floor stacking with StairsAndLifts.floorplan
+- [ ] 2.4a.10 Test: Both packages render identical geometry for StyledApartment.floorplan
+
+### 2.4b Shared Viewer Managers
+
+**Goal:** Move viewer's manager classes to `viewer-core` so interactive-editor has full feature parity, including keyboard navigation, camera controls, annotations, floor visibility, and 2D overlay.
+
+**Files to Move:**
+| File | Purpose | Dependencies |
+|------|---------|--------------|
+| `pivot-indicator.ts` | Visual pivot point during camera movement | Minimal |
+| `keyboard-controls.ts` | WASD pan, Q/E vertical, +/- zoom, view presets | `pivot-indicator.ts` |
+| `camera-manager.ts` | Perspective/orthographic toggle, isometric, FOV | `keyboard-controls.ts` |
+| `floor-manager.ts` | Floor visibility toggles, show/hide all | Minimal |
+| `annotation-manager.ts` | Area labels, dimensions, floor summary | CSS2DObject |
+| `overlay-2d-manager.ts` | 2D SVG overlay rendering, drag/resize | `floorplans-language` |
+
+**Tasks:**
+
+- [ ] 2.4b.1 Move `viewer/src/pivot-indicator.ts` to `viewer-core/src/pivot-indicator.ts`
+  - Export from `viewer-core/src/index.ts`
+  - Update `viewer` to import from `viewer-core`
+- [ ] 2.4b.2 Move `viewer/src/keyboard-controls.ts` to `viewer-core/src/keyboard-controls.ts`
+  - Update import for `PivotIndicator` to use local path
+  - Export from `viewer-core/src/index.ts`
+  - Update `viewer` to import from `viewer-core`
+- [ ] 2.4b.3 Move `viewer/src/camera-manager.ts` to `viewer-core/src/camera-manager.ts`
+  - Update import for `KeyboardControls` type
+  - Export from `viewer-core/src/index.ts`
+  - Update `viewer` to import from `viewer-core`
+- [ ] 2.4b.4 Move `viewer/src/floor-manager.ts` to `viewer-core/src/floor-manager.ts`
+  - Export from `viewer-core/src/index.ts`
+  - Update `viewer` to import from `viewer-core`
+- [ ] 2.4b.5 Move `viewer/src/annotation-manager.ts` to `viewer-core/src/annotation-manager.ts`
+  - Export from `viewer-core/src/index.ts`
+  - Update `viewer` to import from `viewer-core`
+- [ ] 2.4b.6 Move `viewer/src/overlay-2d-manager.ts` to `viewer-core/src/overlay-2d-manager.ts`
+  - Add `floorplans-language` as dependency to `viewer-core/package.json`
+  - Export from `viewer-core/src/index.ts`
+  - Update `viewer` to import from `viewer-core`
+- [ ] 2.4b.6a Move `viewer/src/materials.ts` to `viewer-core/src/materials.ts`
+  - Contains `BrowserMaterialFactory` with async texture loading (extends `floorplan-3d-core` `MaterialFactory`)
+  - Export from `viewer-core/src/index.ts`
+  - Update `viewer` to import `BrowserMaterialFactory` from `viewer-core`
+- [ ] 2.4b.7 Update `InteractiveEditor` to initialize all managers:
+  - Add manager instance variables (pivotIndicator, keyboardControls, cameraManager, etc.)
+  - Initialize managers in constructor with appropriate callbacks
+  - Update animation loop to call `keyboardControls.update(deltaTime)`
+  - Update pivot indicator size based on active camera
+- [ ] 2.4b.8 Update `interactive-editor/index.html` with UI controls:
+  - Camera controls section (mode toggle, FOV slider, isometric button)
+  - Light controls section (azimuth, elevation, intensity sliders)
+  - Annotation controls (area labels, dimensions, floor summary toggles)
+  - Floor visibility controls (floor list checkboxes, show/hide all)
+  - 2D overlay controls (toggle, opacity slider, drag/resize container)
+  - Keyboard help overlay (triggered by ? or H key)
+- [ ] 2.4b.9 Test: Keyboard controls work (WASD, Q/E, +/-, 1/3/7, Home, F)
+- [ ] 2.4b.10 Test: Camera mode toggle switches between perspective/orthographic
+- [ ] 2.4b.11 Test: Annotations display area labels and dimensions
+- [ ] 2.4b.12 Test: Floor visibility controls hide/show individual floors
+- [ ] 2.4b.13 Test: 2D overlay renders and can be dragged/resized
+
+### 2.4c Shared UI Components
+
+**Goal:** Extract reusable UI components to `viewer-core` so interactive-editor inherits viewer's UI capabilities without code duplication. UI components create DOM elements programmatically while preserving the same element IDs, ensuring existing managers work unchanged.
+
+**Architecture:**
+```
+viewer-core/src/ui/
+├── index.ts                    # Export all UI components
+├── styles.ts                   # Shared CSS as template literal + injectStyles()
+├── control-panel-section.ts    # Collapsible section component
+├── camera-controls-ui.ts       # Camera mode, FOV, isometric buttons
+├── light-controls-ui.ts        # Azimuth, elevation, intensity sliders
+├── floor-controls-ui.ts        # Floor list, show/hide all buttons
+├── annotation-controls-ui.ts   # Area, dimensions, floor summary toggles
+├── overlay-2d-ui.ts            # 2D mini-map container with drag/resize
+├── keyboard-help-ui.ts         # Keyboard shortcuts overlay
+└── slider-control.ts           # Reusable slider with label component
+```
+
+**Tasks:**
+
+- [ ] 2.4c.1 Create `viewer-core/src/ui/styles.ts`:
+  - Export `SHARED_STYLES` constant with CSS from viewer/index.html
+  - Export `injectStyles(id?)` function to inject CSS into document head
+  - Include dark theme support via body.dark-theme selectors
+- [ ] 2.4c.2 Create `viewer-core/src/ui/control-panel-section.ts`:
+  - Collapsible section with header + content
+  - Toggle via click on header
+  - Preserves collapsed state
+- [ ] 2.4c.3 Create `viewer-core/src/ui/slider-control.ts`:
+  - Reusable slider with label, value display, and callbacks
+  - Used by camera, light, and other control UIs
+- [ ] 2.4c.4 Create `viewer-core/src/ui/camera-controls-ui.ts`:
+  - Creates camera mode button (#camera-mode-btn)
+  - Creates FOV slider (#fov-slider, #fov-value)
+  - Creates isometric button (#isometric-btn)
+  - Same element IDs as viewer/index.html
+- [ ] 2.4c.5 Create `viewer-core/src/ui/light-controls-ui.ts`:
+  - Creates azimuth slider (#light-azimuth, #light-azimuth-value)
+  - Creates elevation slider (#light-elevation, #light-elevation-value)
+  - Creates intensity slider (#light-intensity, #light-intensity-value)
+- [ ] 2.4c.6 Create `viewer-core/src/ui/floor-controls-ui.ts`:
+  - Creates floor list container (#floor-list)
+  - Creates show/hide all buttons (#show-all-floors, #hide-all-floors)
+- [ ] 2.4c.7 Create `viewer-core/src/ui/annotation-controls-ui.ts`:
+  - Creates area toggle (#show-area)
+  - Creates dimensions toggle (#show-dimensions)
+  - Creates floor summary toggle (#show-floor-summary)
+  - Creates unit dropdowns (#area-unit, #length-unit)
+- [ ] 2.4c.8 Create `viewer-core/src/ui/overlay-2d-ui.ts`:
+  - Creates 2D overlay container (#overlay-2d)
+  - Creates header with close button (#overlay-2d-header, #overlay-2d-close)
+  - Creates content area (#overlay-2d-content)
+  - Creates resize handle (#overlay-2d-resize)
+- [ ] 2.4c.9 Create `viewer-core/src/ui/keyboard-help-ui.ts`:
+  - Creates keyboard shortcuts overlay (#keyboard-help-overlay)
+  - Creates close button (#keyboard-help-close)
+  - Includes all shortcut sections (Navigation, Camera Views, Focus & Pivot, Help)
+- [ ] 2.4c.10 Create `viewer-core/src/ui/index.ts`:
+  - Export all UI components
+  - Export `injectStyles` function
+  - Export element interface types
+- [ ] 2.4c.11 Update `viewer/index.html` to use shared UI components:
+  - Remove inline CSS that's now in styles.ts
+  - Replace control panel HTML with JS-created components
+  - Verify managers still find elements by ID
+- [ ] 2.4c.12 Update `interactive-editor/index.html` to use shared UI components:
+  - Add camera controls section
+  - Add floor controls section
+  - Add keyboard help overlay
+  - Add 2D overlay container
+  - Keep editor-specific UI (properties panel, selection info)
+- [ ] 2.4c.13 Test: Viewer functionality unchanged after refactor
+- [ ] 2.4c.14 Test: Interactive-editor has camera controls working
+- [ ] 2.4c.15 Test: Interactive-editor has keyboard help overlay
+- [ ] 2.4c.16 Test: Interactive-editor has floor visibility controls
+- [ ] 2.4c.17 Test: Dark theme works in both viewer and interactive-editor
 
 ### 2.5 Deliverables
 - [x] Source ranges in JSON export
 - [x] Source ranges in mesh userData (via MeshRegistry)
 - [x] Working registry with rebuild
-- [ ] Shared `WallGenerator` in `viewer-core` used by both packages
+- [x] Shared `WallGenerator` in `viewer-core` used by both packages
+- [x] Multi-floor elevation stacking working in both packages
+- [x] Shared wall ownership working (no duplicate walls)
+- [ ] Shared keyboard controls, camera manager, annotation manager in `viewer-core`
+- [ ] Shared UI components in `viewer-core/src/ui/` for both packages
+- [ ] Interactive-editor has full viewer UI parity (keyboard nav, annotations, floor controls, 2D overlay)
+- [ ] No viewer functionality regression after UI refactor
 
 ---
 
@@ -468,13 +637,15 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] Selection doesn't conflict with camera orbit
 - [ ] Performance is acceptable (not yet benchmarked)
 
-### Checkpoint B: Mapping Works (End of Phase 2) (Partial ✓)
+### Checkpoint B: Mapping Works (End of Phase 2) ✓
 - [x] JsonSourceRange defined and exported from language and floorplan-3d-core
 - [x] Rooms have `_sourceRange` in JSON output
 - [x] Connections have `_sourceRange` in JSON output
 - [x] MeshRegistry stores and propagates source ranges to mesh.userData
 - [x] Registry tracks all entities with bidirectional lookup
-- [ ] Shared `WallGenerator` produces identical geometry in viewer and editor (deferred to 2.4a)
+- [x] Shared `WallGenerator` in `viewer-core` used by both packages
+- [x] Multi-floor elevation stacking working
+- [x] Shared wall ownership working (no duplicate walls)
 
 ### Checkpoint C: LSP Works (End of Phase 3)
 - Completion shows room/style names

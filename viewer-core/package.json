@@ -24,13 +24,18 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
+  "dependencies": {
+    "floorplan-3d-core": "*"
+  },
   "peerDependencies": {
-    "three": ">=0.150.0"
+    "three": ">=0.150.0",
+    "three-bvh-csg": ">=0.0.16"
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
     "shx": "~0.4.0",
     "three": "^0.170.0",
+    "three-bvh-csg": "^0.0.16",
     "typescript": "~5.8.3",
     "vitest": "^3.0.0"
   },
