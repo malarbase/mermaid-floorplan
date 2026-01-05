@@ -42,6 +42,7 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 12px;
       }
       
       .editor-header h2 {
@@ -50,9 +51,99 @@
         color: #ccc;
       }
       
+      .editor-header-right {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      
       .editor-status {
         font-size: 12px;
         color: #888;
+      }
+      
+      /* Export dropdown */
+      .export-dropdown {
+        position: relative;
+      }
+      
+      .export-btn {
+        background: #3c3c3c;
+        border: 1px solid #555;
+        color: #ccc;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      
+      .export-btn:hover {
+        background: #4a4a4a;
+        border-color: #666;
+      }
+      
+      .export-btn::after {
+        content: '▾';
+        font-size: 10px;
+        margin-left: 2px;
+      }
+      
+      .export-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        margin-top: 4px;
+        background: #2d2d2d;
+        border: 1px solid #555;
+        border-radius: 4px;
+        min-width: 160px;
+        z-index: 300;
+        display: none;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      }
+      
+      .export-menu.visible {
+        display: block;
+      }
+      
+      .export-menu-item {
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #ccc;
+        cursor: pointer;
+        border: none;
+        background: none;
+        width: 100%;
+        text-align: left;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .export-menu-item:hover {
+        background: #3c3c3c;
+      }
+      
+      .export-menu-item:first-child {
+        border-radius: 3px 3px 0 0;
+      }
+      
+      .export-menu-item:last-child {
+        border-radius: 0 0 3px 3px;
+      }
+      
+      .export-menu-item .ext {
+        color: #888;
+        font-size: 11px;
+      }
+      
+      .export-menu-divider {
+        height: 1px;
+        background: #444;
+        margin: 4px 0;
       }
       
       .editor-status.error {
@@ -343,7 +434,27 @@
       <div class="editor-panel">
         <div class="editor-header">
           <h2>Floorplan DSL</h2>
-          <span id="editor-status" class="editor-status">Ready</span>
+          <div class="editor-header-right">
+            <div class="export-dropdown">
+              <button class="export-btn" id="export-btn">Export</button>
+              <div class="export-menu" id="export-menu">
+                <button class="export-menu-item" data-format="dsl">
+                  Floorplan DSL <span class="ext">.floorplan</span>
+                </button>
+                <button class="export-menu-item" data-format="json">
+                  JSON Data <span class="ext">.json</span>
+                </button>
+                <div class="export-menu-divider"></div>
+                <button class="export-menu-item" data-format="glb">
+                  3D Model (Binary) <span class="ext">.glb</span>
+                </button>
+                <button class="export-menu-item" data-format="gltf">
+                  3D Model (Text) <span class="ext">.gltf</span>
+                </button>
+              </div>
+            </div>
+            <span id="editor-status" class="editor-status">Ready</span>
+          </div>
         </div>
         <div id="editor-container"></div>
       </div>
@@ -395,6 +506,7 @@
       import { createDslEditor } from './src/dsl-editor.ts';
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
       import { PropertiesPanel } from './src/properties-panel.ts';
+      import { dslPropertyEditor } from './src/dsl-generator.ts';
       import { EmptyFileSystem } from 'langium';
       import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
       
@@ -696,7 +808,59 @@
         container: 'properties-panel',
         onPropertyChange: (event) => {
           console.log('Property changed:', event);
-          // TODO: Apply change to Monaco editor using DslGenerator
+          
+          // Generate Monaco edit operation
+          const sourceText = dslEditor.getValue();
+          
+          if (!event.sourceRange) {
+            console.warn('Cannot edit: no source range available');
+            return;
+          }
+          
+          let editOp = null;
+          
+          if (event.entityType === 'room') {
+            editOp = dslPropertyEditor.generateRoomPropertyEdit(
+              sourceText,
+              event.sourceRange,
+              event.property,
+              event.newValue
+            );
+          } else if (event.entityType === 'connection') {
+            editOp = dslPropertyEditor.generateConnectionPropertyEdit(
+              sourceText,
+              event.sourceRange,
+              event.property,
+              event.newValue
+            );
+          }
+          
+          if (editOp) {
+            // Apply the edit using Monaco's executeEdits
+            const monacoEditor = dslEditor.editor;
+            const model = monacoEditor.getModel();
+            
+            if (model) {
+              // Use pushEditOperations to support undo
+              model.pushEditOperations(
+                [], // No selections to preserve
+                [{
+                  range: {
+                    startLineNumber: editOp.range.startLineNumber,
+                    startColumn: editOp.range.startColumn,
+                    endLineNumber: editOp.range.endLineNumber,
+                    endColumn: editOp.range.endColumn,
+                  },
+                  text: editOp.text,
+                }],
+                () => null // Don't change cursor position
+              );
+              
+              console.log(`Applied edit: ${event.property} = ${event.newValue}`);
+            }
+          } else {
+            console.warn(`Could not generate edit for ${event.entityType}.${event.property}`);
+          }
         },
       });
       
@@ -804,6 +968,168 @@
       
       // Initial parse
       parseAndUpdate(sampleDsl);
+      
+      // Export functionality
+      const exportBtn = document.getElementById('export-btn');
+      const exportMenu = document.getElementById('export-menu');
+      
+      // Track filename for exports
+      let currentFilename = 'floorplan';
+      
+      // Toggle export menu
+      exportBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        exportMenu.classList.toggle('visible');
+      });
+      
+      // Close menu when clicking outside
+      document.addEventListener('click', () => {
+        exportMenu.classList.remove('visible');
+      });
+      
+      // Handle export menu items
+      exportMenu.addEventListener('click', async (e) => {
+        const item = e.target.closest('.export-menu-item');
+        if (!item) return;
+        
+        const format = item.dataset.format;
+        exportMenu.classList.remove('visible');
+        
+        try {
+          switch (format) {
+            case 'dsl':
+              exportDsl();
+              break;
+            case 'json':
+              exportJson();
+              break;
+            case 'glb':
+              await exportGlb();
+              break;
+            case 'gltf':
+              await exportGltf();
+              break;
+          }
+        } catch (err) {
+          console.error(`Export failed:`, err);
+          alert(`Export failed: ${err.message}`);
+        }
+      });
+      
+      /**
+       * Export DSL file
+       */
+      function exportDsl() {
+        const content = dslEditor.getValue();
+        downloadFile(`${currentFilename}.floorplan`, content, 'text/plain');
+      }
+      
+      /**
+       * Export JSON data
+       */
+      function exportJson() {
+        if (!currentJsonData) {
+          alert('No valid floorplan data to export. Fix parse errors first.');
+          return;
+        }
+        
+        // Create clean JSON without internal source ranges
+        const cleanData = JSON.parse(JSON.stringify(currentJsonData));
+        removeSourceRanges(cleanData);
+        
+        const content = JSON.stringify(cleanData, null, 2);
+        downloadFile(`${currentFilename}.json`, content, 'application/json');
+      }
+      
+      /**
+       * Remove _sourceRange properties from object tree
+       */
+      function removeSourceRanges(obj) {
+        if (Array.isArray(obj)) {
+          obj.forEach(removeSourceRanges);
+        } else if (obj && typeof obj === 'object') {
+          delete obj._sourceRange;
+          Object.values(obj).forEach(removeSourceRanges);
+        }
+      }
+      
+      /**
+       * Export GLB (binary GLTF)
+       */
+      async function exportGlb() {
+        const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js');
+        const exporter = new GLTFExporter();
+        
+        const scene = editor3d.scene;
+        if (!scene) {
+          alert('No 3D scene to export');
+          return;
+        }
+        
+        exporter.parse(
+          scene,
+          (result) => {
+            // result is ArrayBuffer for binary
+            const blob = new Blob([result], { type: 'application/octet-stream' });
+            downloadBlob(`${currentFilename}.glb`, blob);
+          },
+          (error) => {
+            console.error('GLB export error:', error);
+            throw error;
+          },
+          { binary: true }
+        );
+      }
+      
+      /**
+       * Export GLTF (text format)
+       */
+      async function exportGltf() {
+        const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js');
+        const exporter = new GLTFExporter();
+        
+        const scene = editor3d.scene;
+        if (!scene) {
+          alert('No 3D scene to export');
+          return;
+        }
+        
+        exporter.parse(
+          scene,
+          (result) => {
+            // result is JSON object for non-binary
+            const content = JSON.stringify(result, null, 2);
+            downloadFile(`${currentFilename}.gltf`, content, 'model/gltf+json');
+          },
+          (error) => {
+            console.error('GLTF export error:', error);
+            throw error;
+          },
+          { binary: false }
+        );
+      }
+      
+      /**
+       * Download text content as file
+       */
+      function downloadFile(filename, content, mimeType) {
+        const blob = new Blob([content], { type: mimeType });
+        downloadBlob(filename, blob);
+      }
+      
+      /**
+       * Download blob as file
+       */
+      function downloadBlob(filename, blob) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
       
       // Expose for debugging
       window.editor3d = editor3d;

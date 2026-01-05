@@ -267,3 +267,352 @@ export class DslGenerator {
  */
 export const dslGenerator = new DslGenerator();
 
+/**
+ * Property edit operation for Monaco editor.
+ */
+export interface DslEditOperation {
+  /** Range to replace (Monaco 1-indexed) */
+  range: {
+    startLineNumber: number;
+    startColumn: number;
+    endLineNumber: number;
+    endColumn: number;
+  };
+  /** New text to insert */
+  text: string;
+}
+
+/**
+ * Source range (0-indexed, from Langium).
+ */
+interface SourceRange {
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+}
+
+/**
+ * DslPropertyEditor - Generates Monaco edit operations for DSL property changes.
+ * 
+ * Given an entity's source range and the property to change, finds the exact
+ * location in the DSL text and creates a targeted edit operation.
+ */
+export class DslPropertyEditor {
+  /**
+   * Generate a Monaco edit operation for changing a room property.
+   * 
+   * @param sourceText - The full DSL document text
+   * @param sourceRange - The entity's source range (0-indexed)
+   * @param property - Property name to edit
+   * @param newValue - New property value
+   * @returns Edit operation, or null if property not found
+   */
+  generateRoomPropertyEdit(
+    sourceText: string,
+    sourceRange: SourceRange,
+    property: string,
+    newValue: unknown
+  ): DslEditOperation | null {
+    // Get the entity's source text
+    const lines = sourceText.split('\n');
+    const entityText = this.extractRangeText(lines, sourceRange);
+    
+    // Find the property location within the entity text
+    const propertyLocation = this.findPropertyInRoomText(entityText, property);
+    if (!propertyLocation) {
+      console.warn(`[DslPropertyEditor] Property '${property}' not found in room definition`);
+      return null;
+    }
+    
+    // Calculate absolute position in document
+    const absoluteRange = this.relativeToAbsolute(sourceRange, propertyLocation);
+    
+    // Format the new value
+    const newText = this.formatValue(property, newValue);
+    
+    return {
+      range: {
+        startLineNumber: absoluteRange.startLine + 1, // Monaco is 1-indexed
+        startColumn: absoluteRange.startColumn + 1,
+        endLineNumber: absoluteRange.endLine + 1,
+        endColumn: absoluteRange.endColumn + 1,
+      },
+      text: newText,
+    };
+  }
+  
+  /**
+   * Generate a Monaco edit operation for changing a connection property.
+   */
+  generateConnectionPropertyEdit(
+    sourceText: string,
+    sourceRange: SourceRange,
+    property: string,
+    newValue: unknown
+  ): DslEditOperation | null {
+    const lines = sourceText.split('\n');
+    const entityText = this.extractRangeText(lines, sourceRange);
+    
+    const propertyLocation = this.findPropertyInConnectionText(entityText, property);
+    if (!propertyLocation) {
+      console.warn(`[DslPropertyEditor] Property '${property}' not found in connection definition`);
+      return null;
+    }
+    
+    const absoluteRange = this.relativeToAbsolute(sourceRange, propertyLocation);
+    const newText = this.formatValue(property, newValue);
+    
+    return {
+      range: {
+        startLineNumber: absoluteRange.startLine + 1,
+        startColumn: absoluteRange.startColumn + 1,
+        endLineNumber: absoluteRange.endLine + 1,
+        endColumn: absoluteRange.endColumn + 1,
+      },
+      text: newText,
+    };
+  }
+  
+  /**
+   * Extract text from a source range.
+   */
+  private extractRangeText(lines: string[], range: SourceRange): string {
+    if (range.startLine === range.endLine) {
+      return lines[range.startLine]?.substring(range.startColumn, range.endColumn) ?? '';
+    }
+    
+    const result: string[] = [];
+    for (let i = range.startLine; i <= range.endLine; i++) {
+      if (i === range.startLine) {
+        result.push(lines[i]?.substring(range.startColumn) ?? '');
+      } else if (i === range.endLine) {
+        result.push(lines[i]?.substring(0, range.endColumn) ?? '');
+      } else {
+        result.push(lines[i] ?? '');
+      }
+    }
+    return result.join('\n');
+  }
+  
+  /**
+   * Find a property's location within room definition text.
+   * Returns relative offsets within the entity text.
+   */
+  private findPropertyInRoomText(
+    text: string,
+    property: string
+  ): { startLine: number; startColumn: number; endLine: number; endColumn: number } | null {
+    // Room definition: room Name at (x, y) size (w x h) [height H] [elevation E] [style S] walls [...]
+    
+    switch (property) {
+      case 'name': {
+        // Find: room NAME at
+        const match = text.match(/room\s+(\S+)\s+at/);
+        if (match && match.index !== undefined) {
+          const nameStart = match.index + 'room '.length;
+          const nameEnd = nameStart + match[1].length;
+          return this.offsetToLineColumn(text, nameStart, nameEnd);
+        }
+        break;
+      }
+      
+      case 'x': {
+        // Find: at (X, y)
+        const match = text.match(/at\s*\(\s*(-?[\d.]+)\s*,/);
+        if (match && match.index !== undefined) {
+          const valueStart = text.indexOf(match[1], match.index);
+          const valueEnd = valueStart + match[1].length;
+          return this.offsetToLineColumn(text, valueStart, valueEnd);
+        }
+        break;
+      }
+      
+      case 'y': {
+        // Find: at (x, Y)
+        const match = text.match(/at\s*\(\s*-?[\d.]+\s*,\s*(-?[\d.]+)\s*\)/);
+        if (match && match.index !== undefined) {
+          // Find the second number after the comma
+          const afterComma = text.indexOf(',', match.index);
+          const valueMatch = text.substring(afterComma).match(/,\s*(-?[\d.]+)/);
+          if (valueMatch && valueMatch.index !== undefined) {
+            const valueStart = afterComma + valueMatch.index + valueMatch[0].indexOf(valueMatch[1]);
+            const valueEnd = valueStart + valueMatch[1].length;
+            return this.offsetToLineColumn(text, valueStart, valueEnd);
+          }
+        }
+        break;
+      }
+      
+      case 'width': {
+        // Find: size (W x h)
+        const match = text.match(/size\s*\(\s*(-?[\d.]+)\s*x/i);
+        if (match && match.index !== undefined) {
+          const valueStart = text.indexOf(match[1], match.index);
+          const valueEnd = valueStart + match[1].length;
+          return this.offsetToLineColumn(text, valueStart, valueEnd);
+        }
+        break;
+      }
+      
+      case 'height': {
+        // Find: size (w x H) - the second number in size
+        const match = text.match(/size\s*\(\s*-?[\d.]+\s*x\s*(-?[\d.]+)\s*\)/i);
+        if (match && match.index !== undefined) {
+          const afterX = text.indexOf(' x ', match.index);
+          if (afterX !== -1) {
+            const valueMatch = text.substring(afterX).match(/x\s*(-?[\d.]+)/i);
+            if (valueMatch && valueMatch.index !== undefined) {
+              const valueStart = afterX + valueMatch.index + valueMatch[0].indexOf(valueMatch[1]);
+              const valueEnd = valueStart + valueMatch[1].length;
+              return this.offsetToLineColumn(text, valueStart, valueEnd);
+            }
+          }
+        }
+        break;
+      }
+      
+      case 'roomHeight': {
+        // Find: height H (after size but before walls)
+        const match = text.match(/\)\s+height\s+(-?[\d.]+)/i);
+        if (match && match.index !== undefined) {
+          const valueStart = text.indexOf(match[1], match.index);
+          const valueEnd = valueStart + match[1].length;
+          return this.offsetToLineColumn(text, valueStart, valueEnd);
+        }
+        break;
+      }
+      
+      case 'style': {
+        // Find: style STYLENAME
+        const match = text.match(/style\s+(\S+)/);
+        if (match && match.index !== undefined) {
+          const valueStart = text.indexOf(match[1], match.index);
+          const valueEnd = valueStart + match[1].length;
+          return this.offsetToLineColumn(text, valueStart, valueEnd);
+        }
+        break;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Find a property's location within connection definition text.
+   */
+  private findPropertyInConnectionText(
+    text: string,
+    property: string
+  ): { startLine: number; startColumn: number; endLine: number; endColumn: number } | null {
+    // Connection: connect Room1.wall to Room2.wall type [at position%] [width W] [height H]
+    
+    switch (property) {
+      case 'type': {
+        // Find the connection type (door, double-door, window, opening)
+        const match = text.match(/\.(top|bottom|left|right)\s+(door|double-door|window|opening)/);
+        if (match && match.index !== undefined) {
+          const typeStart = text.indexOf(match[2], match.index);
+          const typeEnd = typeStart + match[2].length;
+          return this.offsetToLineColumn(text, typeStart, typeEnd);
+        }
+        break;
+      }
+      
+      case 'position': {
+        // Find: at N%
+        const match = text.match(/at\s+(\d+)%/);
+        if (match && match.index !== undefined) {
+          const valueStart = text.indexOf(match[1], match.index);
+          const valueEnd = valueStart + match[1].length;
+          return this.offsetToLineColumn(text, valueStart, valueEnd);
+        }
+        break;
+      }
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Convert character offsets to line/column positions within text.
+   */
+  private offsetToLineColumn(
+    text: string,
+    startOffset: number,
+    endOffset: number
+  ): { startLine: number; startColumn: number; endLine: number; endColumn: number } {
+    let line = 0;
+    let column = 0;
+    let startLine = 0, startColumn = 0;
+    let endLine = 0, endColumn = 0;
+    
+    for (let i = 0; i < text.length; i++) {
+      if (i === startOffset) {
+        startLine = line;
+        startColumn = column;
+      }
+      if (i === endOffset) {
+        endLine = line;
+        endColumn = column;
+        break;
+      }
+      
+      if (text[i] === '\n') {
+        line++;
+        column = 0;
+      } else {
+        column++;
+      }
+    }
+    
+    // Handle end at text boundary
+    if (endOffset >= text.length) {
+      endLine = line;
+      endColumn = column;
+    }
+    
+    return { startLine, startColumn, endLine, endColumn };
+  }
+  
+  /**
+   * Convert relative position (within entity) to absolute position (in document).
+   */
+  private relativeToAbsolute(
+    entityRange: SourceRange,
+    relativeRange: { startLine: number; startColumn: number; endLine: number; endColumn: number }
+  ): SourceRange {
+    // Add entity's starting position to relative position
+    const startLine = entityRange.startLine + relativeRange.startLine;
+    const endLine = entityRange.startLine + relativeRange.endLine;
+    
+    // For first line, add entity's start column
+    const startColumn = relativeRange.startLine === 0
+      ? entityRange.startColumn + relativeRange.startColumn
+      : relativeRange.startColumn;
+    
+    const endColumn = relativeRange.endLine === 0
+      ? entityRange.startColumn + relativeRange.endColumn
+      : relativeRange.endColumn;
+    
+    return { startLine, startColumn, endLine, endColumn };
+  }
+  
+  /**
+   * Format a value for DSL insertion.
+   */
+  private formatValue(_property: string, value: unknown): string {
+    // Most properties are simple values - convert to string
+    // The _property parameter is available for property-specific formatting if needed
+    if (typeof value === 'number') {
+      return String(value);
+    }
+    return String(value);
+  }
+}
+
+/**
+ * Singleton instance.
+ */
+export const dslPropertyEditor = new DslPropertyEditor();
+
