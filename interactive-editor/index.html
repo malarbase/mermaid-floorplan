@@ -17,37 +17,86 @@
         background: #1a1a1a;
       }
       
-      #app {
+      .container {
+        display: flex;
         width: 100vw;
         height: 100vh;
-        position: relative;
       }
       
+      /* Left panel: Code editor */
+      .editor-panel {
+        width: 40%;
+        min-width: 300px;
+        max-width: 600px;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        border-right: 1px solid #333;
+        background: #1e1e1e;
+      }
+      
+      .editor-header {
+        padding: 12px 16px;
+        background: #252526;
+        border-bottom: 1px solid #333;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      
+      .editor-header h2 {
+        font-size: 14px;
+        font-weight: 500;
+        color: #ccc;
+      }
+      
+      .editor-status {
+        font-size: 12px;
+        color: #888;
+      }
+      
+      .editor-status.error {
+        color: #f44;
+      }
+      
+      .editor-status.success {
+        color: #4a4;
+      }
+      
+      #editor-container {
+        flex: 1;
+        overflow: hidden;
+      }
+      
+      /* Right panel: 3D viewer */
+      .viewer-panel {
+        flex: 1;
+        position: relative;
+        background: #1a1a1a;
+      }
+      
+      #app {
+        width: 100%;
+        height: 100%;
+      }
+      
+      /* Info panel overlay */
       .info-panel {
         position: absolute;
         top: 16px;
-        left: 16px;
+        right: 16px;
         background: rgba(0, 0, 0, 0.85);
         color: white;
         padding: 16px;
         border-radius: 8px;
         font-size: 13px;
-        max-width: 320px;
+        max-width: 280px;
         z-index: 100;
         border: 1px solid #333;
       }
       
-      .info-panel h2 {
-        margin-bottom: 12px;
-        font-size: 15px;
-        border-bottom: 1px solid #444;
-        padding-bottom: 8px;
-        color: #4a9eff;
-      }
-      
       .info-panel h3 {
-        margin-top: 12px;
-        margin-bottom: 6px;
+        margin-bottom: 8px;
         font-size: 12px;
         color: #888;
         text-transform: uppercase;
@@ -55,16 +104,16 @@
       }
       
       .info-panel p {
-        margin-bottom: 6px;
+        margin-bottom: 4px;
         color: #ccc;
-        line-height: 1.4;
+        font-size: 12px;
       }
       
       .key {
         display: inline-block;
         background: #333;
-        padding: 2px 6px;
-        border-radius: 4px;
+        padding: 1px 5px;
+        border-radius: 3px;
         font-family: monospace;
         font-size: 11px;
         margin: 0 2px;
@@ -72,38 +121,40 @@
       }
       
       .mode-toggle {
-        margin-top: 12px;
-        padding-top: 12px;
+        margin-top: 10px;
+        padding-top: 10px;
         border-top: 1px solid #444;
       }
       
       .mode-toggle label {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 6px;
         cursor: pointer;
         color: #ccc;
+        font-size: 12px;
       }
       
       .mode-toggle input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
+        width: 14px;
+        height: 14px;
         cursor: pointer;
       }
       
       .mode-indicator {
-        margin-top: 8px;
-        padding: 6px 10px;
+        margin-top: 6px;
+        padding: 4px 8px;
         background: #2a2a2a;
         border-radius: 4px;
-        font-size: 12px;
+        font-size: 11px;
         color: #4a9eff;
       }
       
+      /* Selection info panel */
       .selection-info {
         position: absolute;
         bottom: 16px;
-        left: 16px;
+        right: 16px;
         background: rgba(0, 0, 0, 0.85);
         color: white;
         padding: 12px 16px;
@@ -111,7 +162,7 @@
         font-size: 14px;
         z-index: 100;
         border: 1px solid #333;
-        min-width: 200px;
+        min-width: 180px;
       }
       
       .selection-info.has-selection {
@@ -120,181 +171,294 @@
       }
       
       .selection-info .count {
-        font-size: 24px;
+        font-size: 20px;
         font-weight: bold;
         color: #00ff00;
-        margin-bottom: 4px;
+        margin-bottom: 2px;
       }
       
       .selection-info .details {
         color: #aaa;
-        font-size: 12px;
+        font-size: 11px;
+      }
+      
+      /* Resizer */
+      .resizer {
+        width: 4px;
+        background: #333;
+        cursor: col-resize;
+        transition: background 0.2s;
+      }
+      
+      .resizer:hover {
+        background: #4a9eff;
+      }
+      
+      /* Error banner */
+      .error-banner {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 8px 16px;
+        background: rgba(244, 67, 54, 0.9);
+        color: white;
+        font-size: 13px;
+        z-index: 200;
+        display: none;
+      }
+      
+      .error-banner.visible {
+        display: block;
       }
     </style>
   </head>
   <body>
-    <div id="app"></div>
-    
-    <div class="info-panel">
-      <h2>Interactive Editor (Phase 1)</h2>
+    <div class="container">
+      <!-- Editor Panel -->
+      <div class="editor-panel">
+        <div class="editor-header">
+          <h2>Floorplan DSL</h2>
+          <span id="editor-status" class="editor-status">Ready</span>
+        </div>
+        <div id="editor-container"></div>
+      </div>
       
-      <h3>Click Selection</h3>
-      <p><span class="key">Click</span> Select room</p>
-      <p><span class="key">Shift+Click</span> Add/remove from selection</p>
-      <p><span class="key">Click empty</span> Deselect all</p>
+      <!-- Resizer -->
+      <div class="resizer" id="resizer"></div>
       
-      <h3>Marquee Selection</h3>
-      <p><span class="key">Drag</span> Draw selection rectangle</p>
-      <p><span class="key">Shift+Drag</span> Add to existing selection</p>
-      
-      <h3>Keyboard</h3>
-      <p><span class="key">Ctrl/⌘+A</span> Select all</p>
-      <p><span class="key">Esc</span> Deselect all</p>
-      
-      <h3>Camera</h3>
-      <p><span class="key">Alt+Drag</span> Orbit camera</p>
-      <p><span class="key">Right-drag</span> Pan camera</p>
-      <p><span class="key">Scroll</span> Zoom</p>
-      
-      <div class="mode-toggle">
-        <label>
-          <input type="checkbox" id="containment-mode">
-          Containment mode (require full enclosure)
-        </label>
-        <div class="mode-indicator" id="mode-indicator">
-          Mode: Intersection (partial overlap selects)
+      <!-- 3D Viewer Panel -->
+      <div class="viewer-panel">
+        <div class="error-banner" id="error-banner"></div>
+        <div id="app"></div>
+        
+        <div class="info-panel">
+          <h3>Selection</h3>
+          <p><span class="key">Click</span> Select</p>
+          <p><span class="key">Shift+Click</span> Add to selection</p>
+          <p><span class="key">Drag</span> Marquee select</p>
+          <p><span class="key">Ctrl/⌘+A</span> Select all</p>
+          <p><span class="key">Esc</span> Deselect</p>
+          
+          <h3>Camera</h3>
+          <p><span class="key">Alt+Drag</span> Orbit</p>
+          <p><span class="key">Right-drag</span> Pan</p>
+          <p><span class="key">Scroll</span> Zoom</p>
+          
+          <div class="mode-toggle">
+            <label>
+              <input type="checkbox" id="containment-mode">
+              Containment mode
+            </label>
+            <div class="mode-indicator" id="mode-indicator">
+              Intersection
+            </div>
+          </div>
+        </div>
+        
+        <div id="selection-info" class="selection-info">
+          <div class="details">No selection</div>
         </div>
       </div>
     </div>
     
-    <div id="selection-info" class="selection-info">
-      <div class="details">No selection</div>
-    </div>
-    
     <script type="module">
       import { InteractiveEditor } from './src/interactive-editor.ts';
+      import { createDslEditor } from './src/dsl-editor.ts';
+      import { EditorViewerSync } from './src/editor-viewer-sync.ts';
+      import { EmptyFileSystem } from 'langium';
+      import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
       
-      // Sample floorplan data with more rooms
-      const sampleFloorplan = {
-        floors: [
-          {
-            id: 'GroundFloor',
-            rooms: [
-              {
-                name: 'LivingRoom',
-                x: 0,
-                z: 0,
-                width: 8,
-                height: 6,
-                walls: [
-                  { direction: 'top', type: 'solid' },
-                  { direction: 'right', type: 'solid' },
-                  { direction: 'bottom', type: 'solid' },
-                  { direction: 'left', type: 'solid' },
-                ],
-              },
-              {
-                name: 'Kitchen',
-                x: 8.5,
-                z: 0,
-                width: 5,
-                height: 6,
-                walls: [
-                  { direction: 'top', type: 'solid' },
-                  { direction: 'right', type: 'solid' },
-                  { direction: 'bottom', type: 'solid' },
-                  { direction: 'left', type: 'open' },
-                ],
-              },
-              {
-                name: 'DiningRoom',
-                x: 14,
-                z: 0,
-                width: 5,
-                height: 6,
-                walls: [
-                  { direction: 'top', type: 'solid' },
-                  { direction: 'right', type: 'solid' },
-                  { direction: 'bottom', type: 'solid' },
-                  { direction: 'left', type: 'solid' },
-                ],
-              },
-              {
-                name: 'Bedroom',
-                x: 0,
-                z: 7,
-                width: 6,
-                height: 5,
-                walls: [
-                  { direction: 'top', type: 'solid' },
-                  { direction: 'right', type: 'solid' },
-                  { direction: 'bottom', type: 'solid' },
-                  { direction: 'left', type: 'solid' },
-                ],
-              },
-              {
-                name: 'Bathroom',
-                x: 6.5,
-                z: 7,
-                width: 4,
-                height: 5,
-                walls: [
-                  { direction: 'top', type: 'solid' },
-                  { direction: 'right', type: 'solid' },
-                  { direction: 'bottom', type: 'solid' },
-                  { direction: 'left', type: 'solid' },
-                ],
-              },
-              {
-                name: 'Office',
-                x: 11,
-                z: 7,
-                width: 5,
-                height: 5,
-                walls: [
-                  { direction: 'top', type: 'solid' },
-                  { direction: 'right', type: 'solid' },
-                  { direction: 'bottom', type: 'solid' },
-                  { direction: 'left', type: 'solid' },
-                ],
-              },
-              {
-                name: 'Garage',
-                x: 16.5,
-                z: 7,
-                width: 6,
-                height: 5,
-                walls: [
-                  { direction: 'top', type: 'solid' },
-                  { direction: 'right', type: 'solid' },
-                  { direction: 'bottom', type: 'solid' },
-                  { direction: 'left', type: 'solid' },
-                ],
-              },
-            ],
-          },
-        ],
-        connections: [],
-        config: {
-          default_height: 2.8,
-          wall_thickness: 0.15,
-          floor_thickness: 0.1,
+      // Sample DSL content
+      const sampleDsl = `floorplan
+  config {
+    default_height: 2.8
+    wall_thickness: 0.15
+    floor_thickness: 0.1
+  }
+  
+  floor GroundFloor {
+    room LivingRoom at (0, 0) size (8 x 6) walls [
+      top: solid, right: solid, bottom: solid, left: solid
+    ]
+    
+    room Kitchen at (8.5, 0) size (5 x 6) walls [
+      top: solid, right: solid, bottom: solid, left: open
+    ]
+    
+    room DiningRoom at (14, 0) size (5 x 6) walls [
+      top: solid, right: solid, bottom: solid, left: solid
+    ]
+    
+    room Bedroom at (0, 7) size (6 x 5) walls [
+      top: solid, right: solid, bottom: solid, left: solid
+    ]
+    
+    room Bathroom at (6.5, 7) size (4 x 5) walls [
+      top: solid, right: solid, bottom: solid, left: solid
+    ]
+    
+    room Office at (11, 7) size (5 x 5) walls [
+      top: solid, right: solid, bottom: solid, left: solid
+    ]
+  }
+  
+  connect LivingRoom.right to Kitchen.left with door
+  connect Kitchen.right to DiningRoom.left with door
+`;
+      
+      // Initialize Langium services
+      const services = createFloorplansServices(EmptyFileSystem);
+      const parser = services.Floorplans.parser.LangiumParser;
+      
+      // State
+      let currentJsonData = null;
+      let editorSync = null;
+      let parseDebounceTimeout = null;
+      
+      // Create DSL editor
+      const dslEditor = createDslEditor({
+        containerId: 'editor-container',
+        initialContent: sampleDsl,
+        theme: 'vs-dark',
+        fontSize: 13,
+        onChange: (content) => {
+          // Debounce parsing
+          if (parseDebounceTimeout) {
+            clearTimeout(parseDebounceTimeout);
+          }
+          parseDebounceTimeout = setTimeout(() => {
+            parseAndUpdate(content);
+          }, 300);
         },
-      };
+      });
       
-      // Create editor
-      const editor = new InteractiveEditor({
+      // Create 3D editor (initially with sample data)
+      const editor3d = new InteractiveEditor({
         containerId: 'app',
-        initialData: sampleFloorplan,
         enableSelection: true,
       });
       
       // UI elements
+      const editorStatus = document.getElementById('editor-status');
+      const errorBanner = document.getElementById('error-banner');
       const selectionInfo = document.getElementById('selection-info');
       const containmentCheckbox = document.getElementById('containment-mode');
       const modeIndicator = document.getElementById('mode-indicator');
       
-      // Update selection info display
+      /**
+       * Parse DSL and update 3D view
+       */
+      async function parseAndUpdate(content) {
+        try {
+          // Parse the DSL
+          const parseResult = parser.parse(content);
+          
+          if (parseResult.lexerErrors.length > 0 || parseResult.parserErrors.length > 0) {
+            const errors = [
+              ...parseResult.lexerErrors.map(e => ({
+                line: e.line ?? 1,
+                column: e.column ?? 1,
+                message: e.message,
+              })),
+              ...parseResult.parserErrors.map(e => ({
+                line: e.token?.startLine ?? 1,
+                column: e.token?.startColumn ?? 1,
+                message: e.message,
+              })),
+            ];
+            
+            showError(errors[0].message);
+            dslEditor.setErrorMarkers(errors);
+            editorStatus.textContent = `${errors.length} error(s)`;
+            editorStatus.className = 'editor-status error';
+            return;
+          }
+          
+          // Convert to JSON
+          const conversionResult = convertFloorplanToJson(parseResult.value);
+          
+          if (conversionResult.errors.length > 0) {
+            showError(conversionResult.errors[0].message);
+            editorStatus.textContent = 'Conversion error';
+            editorStatus.className = 'editor-status error';
+            return;
+          }
+          
+          // Success - update 3D view
+          currentJsonData = conversionResult.data;
+          editor3d.loadFloorplan(currentJsonData);
+          
+          // Update entity locations for sync
+          if (editorSync) {
+            const entityLocations = extractEntityLocations(currentJsonData);
+            editorSync.updateEntityLocations(entityLocations);
+          }
+          
+          // Clear errors
+          hideError();
+          dslEditor.clearErrorMarkers();
+          editorStatus.textContent = 'Ready';
+          editorStatus.className = 'editor-status success';
+          
+        } catch (err) {
+          showError(err.message);
+          editorStatus.textContent = 'Parse error';
+          editorStatus.className = 'editor-status error';
+        }
+      }
+      
+      /**
+       * Extract entity locations from JSON for editor sync
+       */
+      function extractEntityLocations(jsonData) {
+        const locations = [];
+        
+        for (const floor of jsonData.floors) {
+          for (const room of floor.rooms) {
+            if (room._sourceRange) {
+              locations.push({
+                entityType: 'room',
+                entityId: room.name,
+                floorId: floor.id,
+                sourceRange: room._sourceRange,
+              });
+            }
+          }
+        }
+        
+        for (const conn of jsonData.connections) {
+          if (conn._sourceRange) {
+            locations.push({
+              entityType: 'connection',
+              entityId: `${conn.fromRoom}-${conn.toRoom}`,
+              floorId: jsonData.floors[0]?.id ?? 'default',
+              sourceRange: conn._sourceRange,
+            });
+          }
+        }
+        
+        return locations;
+      }
+      
+      /**
+       * Show error in banner
+       */
+      function showError(message) {
+        errorBanner.textContent = message;
+        errorBanner.classList.add('visible');
+      }
+      
+      /**
+       * Hide error banner
+       */
+      function hideError() {
+        errorBanner.classList.remove('visible');
+      }
+      
+      /**
+       * Update selection info display
+       */
       function updateSelectionInfo(selection) {
         const count = selection.size;
         
@@ -302,7 +466,6 @@
           selectionInfo.innerHTML = '<div class="details">No selection</div>';
           selectionInfo.classList.remove('has-selection');
         } else {
-          // Group by type
           const types = new Map();
           for (const obj of selection) {
             types.set(obj.entityType, (types.get(obj.entityType) || 0) + 1);
@@ -312,7 +475,6 @@
             .map(([type, cnt]) => `${cnt} ${type}${cnt > 1 ? 's' : ''}`)
             .join(', ');
           
-          // List names if small selection
           let names = '';
           if (count <= 3) {
             names = Array.from(selection).map(s => s.entityId).join(', ');
@@ -327,44 +489,94 @@
         }
       }
       
-      // Listen to selection changes
-      if (editor.selectionManager) {
-        editor.selectionManager.onSelectionChange((event) => {
+      // Setup selection manager listeners
+      if (editor3d.selectionManager) {
+        editor3d.selectionManager.onSelectionChange((event) => {
           updateSelectionInfo(event.selection);
+        });
+        
+        // Setup bidirectional sync
+        editorSync = new EditorViewerSync(
+          dslEditor.editor,
+          editor3d.selectionManager,
+          { debug: false }
+        );
+        
+        // Handle editor cursor → 3D selection
+        editorSync.onEditorSelect((entityKey) => {
+          // Parse the key: floorId:entityType:entityId
+          const parts = entityKey.split(':');
+          if (parts.length !== 3) return;
+          
+          const [floorId, entityType, entityId] = parts;
+          
+          // Find the entity in the registry and select it
+          const registry = editor3d.meshRegistry;
+          const entities = registry.getAllEntities();
+          
+          for (const entity of entities) {
+            if (entity.floorId === floorId && 
+                entity.entityType === entityType && 
+                entity.entityId === entityId) {
+              editor3d.selectionManager.select(entity, false);
+              break;
+            }
+          }
         });
       }
       
       // Mode toggle
       containmentCheckbox.addEventListener('change', (e) => {
         const mode = e.target.checked ? 'containment' : 'intersection';
-        editor.setMarqueeMode(mode);
-        updateModeIndicator(mode);
+        editor3d.setMarqueeMode(mode);
+        modeIndicator.textContent = mode === 'containment' ? 'Containment' : 'Intersection';
+        modeIndicator.style.color = mode === 'containment' ? '#ff9500' : '#4a9eff';
       });
-      
-      function updateModeIndicator(mode) {
-        if (mode === 'containment') {
-          modeIndicator.textContent = 'Mode: Containment (require full enclosure)';
-          modeIndicator.style.color = '#ff9500';
-        } else {
-          modeIndicator.textContent = 'Mode: Intersection (partial overlap selects)';
-          modeIndicator.style.color = '#4a9eff';
-        }
-      }
       
       // Initialize mode from saved preference
       try {
         const savedMode = localStorage.getItem('floorplan-marquee-mode');
         if (savedMode === 'containment') {
           containmentCheckbox.checked = true;
-          editor.setMarqueeMode('containment');
-          updateModeIndicator('containment');
+          editor3d.setMarqueeMode('containment');
+          modeIndicator.textContent = 'Containment';
+          modeIndicator.style.color = '#ff9500';
         }
       } catch (e) {}
       
-      // Expose editor for debugging
-      window.editor = editor;
-      console.log('Interactive Editor initialized. Access via window.editor');
-      console.log('Selection manager:', editor.selectionManager);
+      // Resizer functionality
+      const resizer = document.getElementById('resizer');
+      const editorPanel = document.querySelector('.editor-panel');
+      let isResizing = false;
+      
+      resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        document.body.style.cursor = 'col-resize';
+        e.preventDefault();
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const newWidth = e.clientX;
+        if (newWidth >= 200 && newWidth <= 800) {
+          editorPanel.style.width = `${newWidth}px`;
+        }
+      });
+      
+      document.addEventListener('mouseup', () => {
+        isResizing = false;
+        document.body.style.cursor = '';
+      });
+      
+      // Initial parse
+      parseAndUpdate(sampleDsl);
+      
+      // Expose for debugging
+      window.editor3d = editor3d;
+      window.dslEditor = dslEditor;
+      window.editorSync = editorSync;
+      console.log('Interactive Editor with DSL sync initialized');
+      console.log('Access: window.editor3d, window.dslEditor, window.editorSync');
     </script>
   </body>
 </html>

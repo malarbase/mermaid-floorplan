@@ -64,6 +64,7 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 1.3.3 Test: Selected room has visible green outline
 - [ ] 1.3.4 Handle: Multi-material meshes (per-face walls)
 - [x] 1.3.5 Handle: Multiple highlights for multi-selection
+- [ ] 1.3.6 **BUG**: Room floor highlight not visible - EdgesGeometry on thin horizontal floor plates produces nearly invisible outline (see design.md for fix options: emission change, overlay plane, or hybrid approach)
 
 ### 1.4 Marquee Selection - Rectangle Drawing
 - [x] 1.4.1 ~~Create `MarqueeSelection` class~~ (integrated into SelectionManager)
@@ -145,7 +146,10 @@ This document tracks implementation tasks for the interactive editor capability.
 ### 2.3 Mesh Metadata Population
 - [x] 2.3.1 Modify `generateFloor()` to copy `_sourceRange` to `mesh.userData`
   - Note: Implemented via MeshRegistry.register() which populates mesh.userData.sourceRange
-- [ ] 2.3.2 Modify wall generator to add source info
+- [ ] 2.3.2 Modify wall generator to add source info (see design.md for fix)
+  - **BUG**: Walls registered without sourceRange in `InteractiveEditor.loadFloorplan()` - clicking wall in 3D doesn't scroll to editor
+  - **Fix**: Pass parent room's `_sourceRange` to wall mesh registration
+  - **Enhancement**: See 4.1.7 for ephemeral wall decoration showing which wall is selected
 - [ ] 2.3.3 Modify connection renderer to add source info
 - [ ] 2.3.4 Test: Selected mesh has full source range metadata
 
@@ -219,46 +223,52 @@ This document tracks implementation tasks for the interactive editor capability.
 ## Phase 4: Bidirectional Sync Implementation
 
 ### 4.1 3D to Editor Sync
-- [ ] 4.1.1 Create `EditorViewerSync` class in `interactive-editor/src/editor-viewer-sync.ts`
-- [ ] 4.1.2 On SelectionManager selection event, get source range
-- [ ] 4.1.3 Convert source range to Monaco Range
-- [ ] 4.1.4 Call `editor.setSelection()` and `editor.revealLineInCenter()`
+- [x] 4.1.1 Create `EditorViewerSync` class in `interactive-editor/src/editor-viewer-sync.ts`
+- [x] 4.1.2 On SelectionManager selection event, get source range
+- [x] 4.1.3 Convert source range to Monaco Range
+- [x] 4.1.4 Call `editor.setSelection()` and `editor.revealLineInCenter()`
 - [ ] 4.1.5 Test: Click room → editor scrolls to room definition
+- [ ] 4.1.6 **BUG**: Fix Monaco Range error - import monaco directly instead of using `window.monaco` in `sourceRangeToMonaco()` (see design.md for fix details)
+- [ ] 4.1.7 **ENHANCEMENT**: Show ephemeral editor decoration for wall selection (see design.md)
+  - When wall selected in 3D (e.g., "Kitchen_top"), scroll to parent room
+  - Display inline decoration showing "← top wall" near the room definition
+  - Auto-dismiss decoration after 2-3 seconds or on next selection
 
 ### 4.2 Editor to 3D Sync
-- [ ] 4.2.1 Listen to `editor.onDidChangeCursorPosition`
-- [ ] 4.2.2 Implement/export `findNodeAtOffset()` from Langium services
-- [ ] 4.2.3 Find AST node containing cursor offset
-- [ ] 4.2.4 Look up corresponding mesh in registry
-- [ ] 4.2.5 Call `SelectionManager.select()` for that mesh
+- [x] 4.2.1 Listen to `editor.onDidChangeCursorPosition`
+- [x] 4.2.2 Implement entity location lookup via source ranges (alternative to findNodeAtOffset)
+- [x] 4.2.3 Find entity containing cursor offset
+- [x] 4.2.4 Look up corresponding mesh in registry
+- [x] 4.2.5 Call `SelectionManager.select()` for that mesh
 - [ ] 4.2.6 Test: Place cursor in room definition → room highlights in 3D
+- [ ] 4.2.7 **ENHANCEMENT**: Support multi-cursor selection - use `editor.getSelections()` instead of single cursor position (see design.md for implementation details)
 
 ### 4.3 Debouncing & Loop Prevention
-- [ ] 4.3.1 Implement sync direction lock in EditorViewerSync
-- [ ] 4.3.2 Debounce editor cursor changes (100ms)
+- [x] 4.3.1 Implement sync direction lock in EditorViewerSync
+- [x] 4.3.2 Debounce editor cursor changes (100ms)
 - [ ] 4.3.3 Test: No infinite loops when clicking rapidly
 - [ ] 4.3.4 Test: No feedback during typing
 
 ### 4.4 Error State Handling (Hybrid Approach)
-- [ ] 4.4.1 Detect parse errors from DSL parser
-- [ ] 4.4.2 Keep last valid 3D scene when parse fails (don't clear)
-- [ ] 4.4.3 Keep last valid source range mappings for selection sync
+- [x] 4.4.1 Detect parse errors from DSL parser
+- [x] 4.4.2 Keep last valid 3D scene when parse fails (don't clear)
+- [x] 4.4.3 Keep last valid source range mappings for selection sync
 - [ ] 4.4.4 Add error state flag to viewer state management
 
 ### 4.5 Error State Visual Overlay
-- [ ] 4.5.1 Create error indicator component (banner or badge)
-- [ ] 4.5.2 Display error indicator when parse fails
-- [ ] 4.5.3 Show specific error message(s) from parser
+- [x] 4.5.1 Create error indicator component (banner or badge)
+- [x] 4.5.2 Display error indicator when parse fails
+- [x] 4.5.3 Show specific error message(s) from parser
 - [ ] 4.5.4 Add visual treatment to 3D scene in error state (dimming, border)
-- [ ] 4.5.5 Clear error indicator when DSL parses successfully
+- [x] 4.5.5 Clear error indicator when DSL parses successfully
 - [ ] 4.5.6 Test: Error state shows overlay + stale geometry is interactive
 - [ ] 4.5.7 Test: Fixing DSL clears error state and updates 3D
 
 ### 4.6 Deliverables
-- [ ] Bidirectional sync working
-- [ ] No feedback loops
-- [ ] Hybrid error handling (last valid state + error overlay)
-- [ ] Error state visual treatment working
+- [x] Bidirectional sync working (basic implementation)
+- [x] No feedback loops (sync direction lock implemented)
+- [x] Hybrid error handling (last valid state + error overlay)
+- [x] Error state visual treatment working (error banner)
 
 ---
 
@@ -424,12 +434,18 @@ This document tracks implementation tasks for the interactive editor capability.
 - Completion shows room/style names
 - Go-to-definition works
 
-### Checkpoint D: Sync Works (End of Phase 4)
-- Click 3D → editor scrolls
-- Cursor in editor → 3D highlights
-- No infinite loops
-- Parse errors show overlay + keep last valid state
-- Selection works on stale geometry during error state
+### Checkpoint D: Sync Works (End of Phase 4) (Partial ✓)
+- [x] Click 3D → editor scrolls and highlights (EditorViewerSync.scrollEditorToRange)
+- [x] Cursor in editor → 3D highlights (EditorViewerSync.onEditorSelect)
+- [x] No infinite loops (sync direction lock implemented)
+- [x] Parse errors show overlay + keep last valid state
+- [ ] Selection works on stale geometry during error state (needs testing)
+- [ ] **Known Issues (see design.md for detailed fix guidance):**
+  - 4.1.6: Monaco Range undefined error (missing import)
+  - 4.2.7: Multi-cursor only syncs first cursor
+  - 1.3.6: Room floor highlight not visible (thin geometry)
+  - 2.3.2: Walls don't scroll to editor (missing sourceRange)
+  - 4.1.7: Ephemeral wall decoration enhancement (nice-to-have)
 
 ### Checkpoint E: CRUD Works (End of Phase 5)
 - Edit property → DSL updates → 3D updates
