@@ -7,7 +7,7 @@ description: Create a new branch for a change, optionally in a worktree for para
 **Guardrails**
 - Execute immediately when invoked
 - Parse input for resume keywords (`resume`, `continue`, `pick up`, `implement <id>`)
-- Parse for mode keywords: "in a branch" → branch-only, otherwise → worktree (default)
+- Parse for mode keywords: "in a worktree" or "with worktree" → worktree, otherwise → branch-only (default)
 - STOP after scaffolding—do NOT auto-invoke `/openspec-apply`
 
 **Steps**
