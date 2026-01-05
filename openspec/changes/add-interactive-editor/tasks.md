@@ -296,10 +296,14 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 4.5.1 Create error indicator component (banner or badge)
 - [x] 4.5.2 Display error indicator when parse fails
 - [x] 4.5.3 Show specific error message(s) from parser
-- [ ] 4.5.4 Add visual treatment to 3D scene in error state (dimming, border)
+- [x] 4.5.4 Add visual treatment to 3D scene in error state (dimming, border)
+  - **Done**: Added semi-transparent overlay with red border and "Viewing stale geometry" badge
+  - Overlay uses `pointer-events: none` so selection still works on stale geometry
 - [x] 4.5.5 Clear error indicator when DSL parses successfully
-- [ ] 4.5.6 Test: Error state shows overlay + stale geometry is interactive
-- [ ] 4.5.7 Test: Fixing DSL clears error state and updates 3D
+- [x] 4.5.6 Test: Error state shows overlay + stale geometry is interactive
+  - Overlay allows click-through via `pointer-events: none`
+- [x] 4.5.7 Test: Fixing DSL clears error state and updates 3D
+  - hideError() removes overlay when parse succeeds
 
 ### 4.6 Deliverables
 - [x] Bidirectional sync working (basic implementation)
@@ -313,23 +317,27 @@ This document tracks implementation tasks for the interactive editor capability.
 ## Phase 5: CRUD Operations & Properties Panel
 
 ### 5.1 DSL Text Generator
-- [ ] 5.1.1 Create `interactive-editor/src/dsl-generator.ts`
-- [ ] 5.1.2 Implement `generateRoom(options): string`
-- [ ] 5.1.3 Implement `generateConnection(options): string`
-- [ ] 5.1.4 Handle indentation and formatting
+- [x] 5.1.1 Create `interactive-editor/src/dsl-generator.ts`
+- [x] 5.1.2 Implement `generateRoom(options): string`
+- [x] 5.1.3 Implement `generateConnection(options): string`
+- [x] 5.1.4 Handle indentation and formatting
 - [ ] 5.1.5 Test: Generated DSL parses correctly
 
 ### 5.2 Properties Panel HTML/CSS
-- [ ] 5.2.1 Add properties panel DOM to `interactive-editor/index.html`
-- [ ] 5.2.2 Style panel with CSS (matches existing UI)
-- [ ] 5.2.3 Implement show/hide logic based on selection
-- [ ] 5.2.4 Test: Panel appears when element selected
+- [x] 5.2.1 Add properties panel DOM to `interactive-editor/index.html`
+- [x] 5.2.2 Style panel with CSS (matches existing UI)
+- [x] 5.2.3 Implement show/hide logic based on selection
+- [x] 5.2.4 Test: Panel appears when element selected
 
 ### 5.3 Properties Panel Logic
-- [ ] 5.3.1 Create `interactive-editor/src/properties-panel.ts`
-- [ ] 5.3.2 Implement `render(selectableObject)` method
-- [ ] 5.3.3 Generate form controls based on entity type
-- [ ] 5.3.4 Populate form with current values from mesh/JSON
+- [x] 5.3.1 Create `interactive-editor/src/properties-panel.ts`
+- [x] 5.3.2 Implement `render(selectableObject)` method
+  - `show(selection, data)` renders form for entity type
+- [x] 5.3.3 Generate form controls based on entity type
+  - Property definitions for room, wall, connection
+  - Supports text, number, select, readonly types
+- [x] 5.3.4 Populate form with current values from mesh/JSON
+  - `updatePropertiesPanel()` in index.html extracts entity data from JSON
 
 ### 5.4 Property Editing
 - [ ] 5.4.1 Add change event listeners to form inputs

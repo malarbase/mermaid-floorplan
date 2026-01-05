@@ -21,6 +21,20 @@ export type { EditorViewerSyncConfig, EntityLocation } from './editor-viewer-syn
 export { createDslEditor, monaco } from './dsl-editor.js';
 export type { DslEditorConfig, DslEditorInstance } from './dsl-editor.js';
 
+export { DslGenerator, dslGenerator } from './dsl-generator.js';
+export type {
+  RoomGeneratorOptions,
+  ConnectionGeneratorOptions,
+  FloorGeneratorOptions,
+} from './dsl-generator.js';
+
+export { PropertiesPanel } from './properties-panel.js';
+export type {
+  PropertyDef,
+  PropertyChangeEvent,
+  PropertiesPanelConfig,
+} from './properties-panel.js';
+
 // Re-export viewer-core types for convenience
 export type {
   SceneContext,

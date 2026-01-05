@@ -212,6 +212,39 @@
         display: block;
       }
       
+      /* Error state dimming overlay for 3D scene */
+      .error-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.3);
+        pointer-events: none; /* Allow clicks to pass through to 3D scene */
+        z-index: 50;
+        display: none;
+        border: 3px solid rgba(244, 67, 54, 0.6);
+        box-sizing: border-box;
+      }
+      
+      .error-overlay.visible {
+        display: block;
+      }
+      
+      .error-overlay::after {
+        content: 'Viewing stale geometry';
+        position: absolute;
+        bottom: 60px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(244, 67, 54, 0.85);
+        color: white;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      
       /* Wall selection hint decoration */
       .wall-selection-hint {
         color: #4a9eff;
@@ -224,6 +257,83 @@
       .selected-entity-decoration {
         background-color: rgba(0, 255, 0, 0.15);
         border-radius: 2px;
+      }
+      
+      /* Properties Panel */
+      .properties-panel {
+        position: absolute;
+        top: 16px;
+        left: 16px;
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        border-radius: 8px;
+        min-width: 220px;
+        max-width: 280px;
+        z-index: 100;
+        border: 1px solid #333;
+        display: none;
+      }
+      
+      .properties-panel-content {
+        padding: 12px;
+      }
+      
+      .properties-panel-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid #444;
+      }
+      
+      .properties-panel-form {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      
+      .property-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .property-label {
+        flex: 0 0 80px;
+        font-size: 12px;
+        color: #999;
+      }
+      
+      .property-input {
+        flex: 1;
+        background: #333;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 4px 8px;
+        color: #fff;
+        font-size: 12px;
+        min-width: 0;
+      }
+      
+      .property-input:focus {
+        outline: none;
+        border-color: #4a9eff;
+      }
+      
+      .property-value.readonly {
+        flex: 1;
+        color: #888;
+        font-size: 12px;
+      }
+      
+      .properties-panel-note {
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px solid #444;
+        font-size: 11px;
+        color: #666;
+        font-style: italic;
       }
     </style>
   </head>
@@ -244,6 +354,7 @@
       <!-- 3D Viewer Panel -->
       <div class="viewer-panel">
         <div class="error-banner" id="error-banner"></div>
+        <div class="error-overlay" id="error-overlay"></div>
         <div id="app"></div>
         
         <div class="info-panel">
@@ -273,6 +384,9 @@
         <div id="selection-info" class="selection-info">
           <div class="details">No selection</div>
         </div>
+        
+        <!-- Properties Panel (shown when single element selected) -->
+        <div id="properties-panel" class="properties-panel"></div>
       </div>
     </div>
     
@@ -280,6 +394,7 @@
       import { InteractiveEditor } from './src/interactive-editor.ts';
       import { createDslEditor } from './src/dsl-editor.ts';
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
+      import { PropertiesPanel } from './src/properties-panel.ts';
       import { EmptyFileSystem } from 'langium';
       import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
       
@@ -339,6 +454,7 @@
       // UI elements
       const editorStatus = document.getElementById('editor-status');
       const errorBanner = document.getElementById('error-banner');
+      const errorOverlay = document.getElementById('error-overlay');
       const selectionInfo = document.getElementById('selection-info');
       const containmentCheckbox = document.getElementById('containment-mode');
       const modeIndicator = document.getElementById('mode-indicator');
@@ -457,18 +573,20 @@
       }
       
       /**
-       * Show error in banner
+       * Show error in banner and dim 3D scene
        */
       function showError(message) {
         errorBanner.textContent = message;
         errorBanner.classList.add('visible');
+        errorOverlay.classList.add('visible');
       }
       
       /**
-       * Hide error banner
+       * Hide error banner and clear 3D scene dimming
        */
       function hideError() {
         errorBanner.classList.remove('visible');
+        errorOverlay.classList.remove('visible');
       }
       
       /**
@@ -508,6 +626,7 @@
       if (editor3d.selectionManager) {
         editor3d.selectionManager.onSelectionChange((event) => {
           updateSelectionInfo(event.selection);
+          updatePropertiesPanel(event.selection);
         });
         
         // Setup bidirectional sync
@@ -570,6 +689,74 @@
         editorSync.onEditorHighlightClear(() => {
           editor3d.selectionManager.clearHighlight();
         });
+      }
+      
+      // Properties Panel
+      const propertiesPanel = new PropertiesPanel({
+        container: 'properties-panel',
+        onPropertyChange: (event) => {
+          console.log('Property changed:', event);
+          // TODO: Apply change to Monaco editor using DslGenerator
+        },
+      });
+      
+      // Show/hide properties panel based on selection
+      function updatePropertiesPanel(selection) {
+        if (selection.size === 1) {
+          // Single selection - show properties panel
+          const entity = Array.from(selection)[0];
+          
+          // Get entity data from JSON
+          let entityData = {};
+          if (currentJsonData) {
+            if (entity.entityType === 'room') {
+              for (const floor of currentJsonData.floors) {
+                const room = floor.rooms.find(r => r.name === entity.entityId);
+                if (room) {
+                  entityData = {
+                    name: room.name,
+                    x: room.x,
+                    y: room.z, // Note: z is the Y in 2D
+                    width: room.width,
+                    height: room.height,
+                    roomHeight: room.roomHeight,
+                    style: room.style,
+                  };
+                  break;
+                }
+              }
+            } else if (entity.entityType === 'wall') {
+              // Parse wall entity ID (e.g., "Kitchen_top")
+              const match = entity.entityId.match(/^(.+)_(top|bottom|left|right)$/);
+              if (match) {
+                entityData = {
+                  room: match[1],
+                  direction: match[2],
+                  type: 'solid', // Would need to look up actual type
+                };
+              }
+            } else if (entity.entityType === 'connection') {
+              // Parse connection entity ID (e.g., "LivingRoom-Kitchen")
+              const parts = entity.entityId.split('-');
+              if (parts.length >= 2) {
+                const conn = currentJsonData.connections?.find(
+                  c => c.fromRoom === parts[0] && c.toRoom === parts.slice(1).join('-')
+                );
+                entityData = {
+                  fromRoom: parts[0],
+                  toRoom: parts.slice(1).join('-'),
+                  type: conn?.doorType ?? 'door',
+                  position: conn?.position ?? 50,
+                };
+              }
+            }
+          }
+          
+          propertiesPanel.show(entity, entityData);
+        } else {
+          // Multiple or no selection - hide properties panel
+          propertiesPanel.hide();
+        }
       }
       
       // Mode toggle
