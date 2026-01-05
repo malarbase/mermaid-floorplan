@@ -61,6 +61,16 @@ const PROPERTY_DEFINITIONS: Record<string, PropertyDef[]> = {
 };
 
 /**
+ * Delete event emitted when user clicks delete.
+ */
+export interface DeleteEvent {
+  entityType: string;
+  entityId: string;
+  floorId: string;
+  sourceRange?: SourceRange;
+}
+
+/**
  * Configuration for PropertiesPanel.
  */
 export interface PropertiesPanelConfig {
@@ -68,6 +78,8 @@ export interface PropertiesPanelConfig {
   container: string | HTMLElement;
   /** Callback when property changes */
   onPropertyChange?: (event: PropertyChangeEvent) => void;
+  /** Callback when delete is clicked */
+  onDelete?: (event: DeleteEvent) => void;
   /** Custom property definitions (extends defaults) */
   propertyDefs?: Record<string, PropertyDef[]>;
 }
@@ -79,10 +91,12 @@ export class PropertiesPanel {
   private container: HTMLElement;
   private titleEl: HTMLElement;
   private formEl: HTMLElement;
+  private actionsEl: HTMLElement;
   private currentSelection: SelectableObject | null = null;
   private currentData: Record<string, unknown> = {};
   private propertyDefs: Record<string, PropertyDef[]>;
   private onPropertyChange?: (event: PropertyChangeEvent) => void;
+  private onDelete?: (event: DeleteEvent) => void;
 
   constructor(config: PropertiesPanelConfig) {
     // Get container
@@ -97,6 +111,7 @@ export class PropertiesPanel {
     }
 
     this.onPropertyChange = config.onPropertyChange;
+    this.onDelete = config.onDelete;
     this.propertyDefs = { ...PROPERTY_DEFINITIONS, ...config.propertyDefs };
 
     // Create panel structure
@@ -104,11 +119,19 @@ export class PropertiesPanel {
       <div class="properties-panel-content">
         <div class="properties-panel-title">Properties</div>
         <div class="properties-panel-form"></div>
+        <div class="properties-panel-actions">
+          <button class="delete-btn">Delete</button>
+        </div>
       </div>
     `;
 
     this.titleEl = this.container.querySelector('.properties-panel-title')!;
     this.formEl = this.container.querySelector('.properties-panel-form')!;
+    this.actionsEl = this.container.querySelector('.properties-panel-actions')!;
+    
+    // Wire up delete button
+    const deleteBtn = this.actionsEl.querySelector('.delete-btn')!;
+    deleteBtn.addEventListener('click', () => this.handleDelete());
 
     // Initially hidden
     this.hide();
@@ -260,6 +283,20 @@ export class PropertiesPanel {
       property,
       oldValue,
       newValue,
+      sourceRange: this.currentSelection.sourceRange,
+    });
+  }
+  
+  /**
+   * Handle delete button click.
+   */
+  private handleDelete(): void {
+    if (!this.currentSelection || !this.onDelete) return;
+    
+    this.onDelete({
+      entityType: this.currentSelection.entityType,
+      entityId: this.currentSelection.entityId,
+      floorId: this.currentSelection.floorId,
       sourceRange: this.currentSelection.sourceRange,
     });
   }

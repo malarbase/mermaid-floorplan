@@ -321,7 +321,7 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 5.1.2 Implement `generateRoom(options): string`
 - [x] 5.1.3 Implement `generateConnection(options): string`
 - [x] 5.1.4 Handle indentation and formatting
-- [ ] 5.1.5 Test: Generated DSL parses correctly
+- [x] 5.1.5 Test: Generated DSL parses correctly (verified via Add Room feature)
 
 ### 5.2 Properties Panel HTML/CSS
 - [x] 5.2.1 Add properties panel DOM to `interactive-editor/index.html`
@@ -340,33 +340,33 @@ This document tracks implementation tasks for the interactive editor capability.
   - `updatePropertiesPanel()` in index.html extracts entity data from JSON
 
 ### 5.4 Property Editing
-- [ ] 5.4.1 Add change event listeners to form inputs
-- [ ] 5.4.2 Generate Monaco edit operation from property change
-- [ ] 5.4.3 Apply edit to editor using `editor.executeEdits()`
-- [ ] 5.4.4 Test: Change width → DSL updates → 3D updates
+- [x] 5.4.1 Add change event listeners to form inputs (already implemented in properties-panel.ts)
+- [x] 5.4.2 Generate Monaco edit operation from property change (DslPropertyEditor class)
+- [x] 5.4.3 Apply edit to editor using `model.pushEditOperations()`
+- [x] 5.4.4 Test: Change width → DSL updates → 3D updates
 
 ### 5.5 Create Operations
-- [ ] 5.5.1 Add "Add Room" button to UI
-- [ ] 5.5.2 Find insertion point in DSL (after last room in floor)
-- [ ] 5.5.3 Generate default room DSL
-- [ ] 5.5.4 Insert at position and select new room
-- [ ] 5.5.5 Test: New room appears in DSL and 3D
+- [x] 5.5.1 Add "Add Room" button to UI (editor header)
+- [x] 5.5.2 Find insertion point in DSL (after last room in floor)
+- [x] 5.5.3 Generate default room DSL (using DslGenerator.generateRoom())
+- [x] 5.5.4 Insert at position and select new room
+- [x] 5.5.5 Test: New room appears in DSL and 3D
 
 ### 5.6 Delete Operations
-- [ ] 5.6.1 Add "Delete" button to properties panel
-- [ ] 5.6.2 Detect connections referencing the room
-- [ ] 5.6.3 Show confirmation dialog with cascade warning
-- [ ] 5.6.4 Remove room (and connections if confirmed) from DSL
-- [ ] 5.6.5 Test: Delete room with connections shows warning
+- [x] 5.6.1 Add "Delete" button to properties panel (PropertiesPanel class)
+- [x] 5.6.2 Detect connections referencing the room
+- [x] 5.6.3 Show confirmation dialog with cascade warning
+- [x] 5.6.4 Remove room (and connections if confirmed) from DSL
+- [x] 5.6.5 Test: Delete room with connections shows warning
 
 ### 5.7 Export Operations
-- [ ] 5.7.1 Add "Download" / "Export" button to editor toolbar
-- [ ] 5.7.2 Implement DSL download: `editor.getValue()` → `.floorplan` file
-- [ ] 5.7.3 Implement JSON export: parsed JSON with optional source ranges
-- [ ] 5.7.4 Inherit GLB/GLTF export from Viewer base class
-- [ ] 5.7.5 Add export dropdown menu (Floorplan / JSON / GLB / GLTF)
-- [ ] 5.7.6 Track original filename, use as default download name
-- [ ] 5.7.7 Test: Downloaded DSL file parses correctly when re-imported
+- [x] 5.7.1 Add "Download" / "Export" button to editor toolbar (export dropdown)
+- [x] 5.7.2 Implement DSL download: `editor.getValue()` → `.floorplan` file
+- [x] 5.7.3 Implement JSON export: parsed JSON with source ranges stripped
+- [x] 5.7.4 Implement GLB/GLTF export using THREE.GLTFExporter (dynamic import)
+- [x] 5.7.5 Add export dropdown menu (Floorplan / JSON / GLB / GLTF)
+- [x] 5.7.6 Track original filename, use as default download name
+- [x] 5.7.7 Test: Downloaded DSL file parses correctly when re-imported
 
 ### 5.8 Branching History System
 - [ ] 5.8.1 Create `BranchingHistory` class in `interactive-editor/src/branching-history.ts`
@@ -404,12 +404,12 @@ This document tracks implementation tasks for the interactive editor capability.
 - [ ] 5.9.8 Test: Visual staleness indicators update correctly
 
 ### 5.10 Deliverables
-- [ ] Properties panel functional for rooms
-- [ ] Create/delete operations working
-- [ ] Export operations working (DSL, JSON, GLB/GLTF)
-- [ ] Branching history system working (git-like undo tree)
-- [ ] History browser UI for navigating all states
-- [ ] Bulk edits treated as single history nodes
+- [x] Properties panel functional for rooms
+- [x] Create/delete operations working
+- [x] Export operations working (DSL, JSON, GLB/GLTF)
+- [ ] Branching history system working (git-like undo tree) (deferred to 5.8)
+- [ ] History browser UI for navigating all states (deferred to 5.9)
+- [ ] Bulk edits treated as single history nodes (deferred to 5.8)
 
 ---
 
@@ -496,14 +496,14 @@ This document tracks implementation tasks for the interactive editor capability.
   - 4.2.10: Text highlight → 3D preview via highlight() API
   - 2.3.3: Connections now rendered with source ranges (using generateFloorConnections)
 
-### Checkpoint E: CRUD Works (End of Phase 5)
-- Edit property → DSL updates → 3D updates
-- Create and delete operations work
-- Export works: DSL download, JSON export, GLB/GLTF (inherited)
-- Branching history system works (git-like undo tree)
-- Edit after undo creates new branch (old branch preserved)
-- History browser allows navigation to any past state
-- Bulk edits treated as single history node
+### Checkpoint E: CRUD Works (End of Phase 5) (Partial ✓)
+- [x] Edit property → DSL updates → 3D updates (via DslPropertyEditor)
+- [x] Create and delete operations work (Add Room dialog, Delete with cascade)
+- [x] Export works: DSL download, JSON export, GLB/GLTF
+- [ ] Branching history system works (git-like undo tree) (deferred)
+- [ ] Edit after undo creates new branch (old branch preserved) (deferred)
+- [ ] History browser allows navigation to any past state (deferred)
+- [ ] Bulk edits treated as single history node (deferred)
 
 ### Checkpoint F: Ready for Release (End of Phase 6)
 - All features working

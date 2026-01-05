@@ -146,6 +146,146 @@
         margin: 4px 0;
       }
       
+      /* Add Room button */
+      .add-room-btn {
+        background: #2d5a2d;
+        border: 1px solid #4a8a4a;
+        color: #8f8;
+        padding: 4px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+      
+      .add-room-btn:hover {
+        background: #3a6a3a;
+        border-color: #5a9a5a;
+      }
+      
+      .add-room-btn::before {
+        content: '+';
+        font-weight: bold;
+        font-size: 14px;
+      }
+      
+      /* Add room dialog */
+      .dialog-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.6);
+        z-index: 400;
+        display: none;
+        align-items: center;
+        justify-content: center;
+      }
+      
+      .dialog-overlay.visible {
+        display: flex;
+      }
+      
+      .dialog {
+        background: #2d2d2d;
+        border: 1px solid #555;
+        border-radius: 8px;
+        padding: 20px;
+        min-width: 320px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      }
+      
+      .dialog-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 16px;
+      }
+      
+      .dialog-field {
+        margin-bottom: 12px;
+      }
+      
+      .dialog-field label {
+        display: block;
+        font-size: 12px;
+        color: #999;
+        margin-bottom: 4px;
+      }
+      
+      .dialog-field input {
+        width: 100%;
+        background: #1e1e1e;
+        border: 1px solid #555;
+        border-radius: 4px;
+        padding: 8px 10px;
+        color: #fff;
+        font-size: 13px;
+      }
+      
+      .dialog-field input:focus {
+        outline: none;
+        border-color: #4a9eff;
+      }
+      
+      .dialog-row {
+        display: flex;
+        gap: 12px;
+      }
+      
+      .dialog-row .dialog-field {
+        flex: 1;
+      }
+      
+      .dialog-buttons {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 20px;
+      }
+      
+      .dialog-btn {
+        padding: 8px 16px;
+        border-radius: 4px;
+        font-size: 13px;
+        cursor: pointer;
+        border: 1px solid transparent;
+      }
+      
+      .dialog-btn.cancel {
+        background: #3c3c3c;
+        border-color: #555;
+        color: #ccc;
+      }
+      
+      .dialog-btn.cancel:hover {
+        background: #4a4a4a;
+      }
+      
+      .dialog-btn.primary {
+        background: #2d5a2d;
+        border-color: #4a8a4a;
+        color: #8f8;
+      }
+      
+      .dialog-btn.primary:hover {
+        background: #3a6a3a;
+      }
+      
+      .dialog-error {
+        color: #f44;
+        font-size: 12px;
+        margin-top: 8px;
+        display: none;
+      }
+      
+      .dialog-error.visible {
+        display: block;
+      }
+      
       .editor-status.error {
         color: #f44;
       }
@@ -426,6 +566,80 @@
         color: #666;
         font-style: italic;
       }
+      
+      .properties-panel-actions {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid #444;
+        display: flex;
+        justify-content: flex-end;
+      }
+      
+      .delete-btn {
+        background: #5a2d2d;
+        border: 1px solid #8a4a4a;
+        color: #f88;
+        padding: 6px 12px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+      
+      .delete-btn:hover {
+        background: #6a3a3a;
+        border-color: #9a5a5a;
+      }
+      
+      /* Confirm delete dialog */
+      .confirm-dialog {
+        background: #2d2d2d;
+        border: 1px solid #555;
+        border-radius: 8px;
+        padding: 20px;
+        min-width: 320px;
+        max-width: 420px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      }
+      
+      .confirm-dialog-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: #f88;
+        margin-bottom: 12px;
+      }
+      
+      .confirm-dialog-message {
+        font-size: 13px;
+        color: #ccc;
+        margin-bottom: 12px;
+        line-height: 1.5;
+      }
+      
+      .confirm-dialog-warning {
+        background: rgba(244, 136, 136, 0.15);
+        border: 1px solid rgba(244, 136, 136, 0.3);
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 16px;
+      }
+      
+      .confirm-dialog-warning-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #f88;
+        margin-bottom: 6px;
+      }
+      
+      .confirm-dialog-warning-list {
+        font-size: 11px;
+        color: #ccc;
+        margin: 0;
+        padding-left: 16px;
+      }
+      
+      .confirm-dialog-warning-list li {
+        margin-bottom: 2px;
+      }
     </style>
   </head>
   <body>
@@ -435,6 +649,7 @@
         <div class="editor-header">
           <h2>Floorplan DSL</h2>
           <div class="editor-header-right">
+            <button class="add-room-btn" id="add-room-btn">Room</button>
             <div class="export-dropdown">
               <button class="export-btn" id="export-btn">Export</button>
               <div class="export-menu" id="export-menu">
@@ -501,12 +716,64 @@
       </div>
     </div>
     
+    <!-- Delete Confirm Dialog -->
+    <div class="dialog-overlay" id="delete-confirm-dialog">
+      <div class="confirm-dialog">
+        <div class="confirm-dialog-title">Delete <span id="delete-entity-name"></span>?</div>
+        <div class="confirm-dialog-message" id="delete-message"></div>
+        <div class="confirm-dialog-warning" id="delete-warning" style="display: none;">
+          <div class="confirm-dialog-warning-title">⚠️ This will also delete:</div>
+          <ul class="confirm-dialog-warning-list" id="delete-cascade-list"></ul>
+        </div>
+        <div class="dialog-buttons">
+          <button class="dialog-btn cancel" id="delete-cancel">Cancel</button>
+          <button class="dialog-btn primary" id="delete-confirm" style="background: #5a2d2d; border-color: #8a4a4a; color: #f88;">Delete</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Add Room Dialog -->
+    <div class="dialog-overlay" id="add-room-dialog">
+      <div class="dialog">
+        <div class="dialog-title">Add New Room</div>
+        <div class="dialog-field">
+          <label for="room-name">Room Name</label>
+          <input type="text" id="room-name" placeholder="e.g., Bedroom, Office" autocomplete="off">
+        </div>
+        <div class="dialog-row">
+          <div class="dialog-field">
+            <label for="room-x">X Position</label>
+            <input type="number" id="room-x" value="0" step="0.5">
+          </div>
+          <div class="dialog-field">
+            <label for="room-y">Y Position</label>
+            <input type="number" id="room-y" value="0" step="0.5">
+          </div>
+        </div>
+        <div class="dialog-row">
+          <div class="dialog-field">
+            <label for="room-width">Width</label>
+            <input type="number" id="room-width" value="4" step="0.5" min="0.5">
+          </div>
+          <div class="dialog-field">
+            <label for="room-height">Height</label>
+            <input type="number" id="room-height" value="4" step="0.5" min="0.5">
+          </div>
+        </div>
+        <div class="dialog-error" id="add-room-error"></div>
+        <div class="dialog-buttons">
+          <button class="dialog-btn cancel" id="add-room-cancel">Cancel</button>
+          <button class="dialog-btn primary" id="add-room-confirm">Add Room</button>
+        </div>
+      </div>
+    </div>
+    
     <script type="module">
       import { InteractiveEditor } from './src/interactive-editor.ts';
       import { createDslEditor } from './src/dsl-editor.ts';
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
       import { PropertiesPanel } from './src/properties-panel.ts';
-      import { dslPropertyEditor } from './src/dsl-generator.ts';
+      import { dslPropertyEditor, dslGenerator } from './src/dsl-generator.ts';
       import { EmptyFileSystem } from 'langium';
       import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
       
@@ -862,6 +1129,10 @@
             console.warn(`Could not generate edit for ${event.entityType}.${event.property}`);
           }
         },
+        onDelete: (event) => {
+          console.log('Delete requested:', event);
+          showDeleteConfirmation(event);
+        },
       });
       
       // Show/hide properties panel based on selection
@@ -1129,6 +1400,349 @@
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
+      }
+      
+      // Add Room functionality
+      const addRoomBtn = document.getElementById('add-room-btn');
+      const addRoomDialog = document.getElementById('add-room-dialog');
+      const addRoomCancel = document.getElementById('add-room-cancel');
+      const addRoomConfirm = document.getElementById('add-room-confirm');
+      const addRoomError = document.getElementById('add-room-error');
+      const roomNameInput = document.getElementById('room-name');
+      const roomXInput = document.getElementById('room-x');
+      const roomYInput = document.getElementById('room-y');
+      const roomWidthInput = document.getElementById('room-width');
+      const roomHeightInput = document.getElementById('room-height');
+      
+      // Open dialog
+      addRoomBtn.addEventListener('click', () => {
+        // Reset form
+        roomNameInput.value = '';
+        roomXInput.value = '0';
+        roomYInput.value = '0';
+        roomWidthInput.value = '4';
+        roomHeightInput.value = '4';
+        addRoomError.classList.remove('visible');
+        addRoomError.textContent = '';
+        
+        addRoomDialog.classList.add('visible');
+        roomNameInput.focus();
+      });
+      
+      // Close dialog
+      addRoomCancel.addEventListener('click', () => {
+        addRoomDialog.classList.remove('visible');
+      });
+      
+      // Close on overlay click
+      addRoomDialog.addEventListener('click', (e) => {
+        if (e.target === addRoomDialog) {
+          addRoomDialog.classList.remove('visible');
+        }
+      });
+      
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && addRoomDialog.classList.contains('visible')) {
+          addRoomDialog.classList.remove('visible');
+        }
+      });
+      
+      // Confirm add room
+      addRoomConfirm.addEventListener('click', () => {
+        addRoom();
+      });
+      
+      // Enter key in form
+      roomNameInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') addRoom();
+      });
+      
+      /**
+       * Add a new room to the floorplan
+       */
+      function addRoom() {
+        // Validate
+        const name = roomNameInput.value.trim();
+        if (!name) {
+          showAddRoomError('Room name is required');
+          roomNameInput.focus();
+          return;
+        }
+        
+        // Check for valid identifier (no spaces, start with letter)
+        if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) {
+          showAddRoomError('Room name must start with a letter and contain only letters, numbers, and underscores');
+          roomNameInput.focus();
+          return;
+        }
+        
+        // Check for duplicate names
+        if (currentJsonData) {
+          const existingNames = new Set();
+          for (const floor of currentJsonData.floors) {
+            for (const room of floor.rooms) {
+              existingNames.add(room.name);
+            }
+          }
+          if (existingNames.has(name)) {
+            showAddRoomError(`Room '${name}' already exists`);
+            roomNameInput.focus();
+            return;
+          }
+        }
+        
+        const x = parseFloat(roomXInput.value) || 0;
+        const y = parseFloat(roomYInput.value) || 0;
+        const width = parseFloat(roomWidthInput.value) || 4;
+        const height = parseFloat(roomHeightInput.value) || 4;
+        
+        if (width < 0.5 || height < 0.5) {
+          showAddRoomError('Width and height must be at least 0.5');
+          return;
+        }
+        
+        // Generate DSL
+        const roomDsl = dslGenerator.generateRoom({
+          name,
+          x,
+          y,
+          width,
+          height,
+        });
+        
+        // Find insertion point (after last room in first floor)
+        const insertPoint = findRoomInsertionPoint();
+        if (!insertPoint) {
+          showAddRoomError('Could not find floor block to add room');
+          return;
+        }
+        
+        // Insert the room DSL
+        const model = dslEditor.editor.getModel();
+        if (model) {
+          model.pushEditOperations(
+            [],
+            [{
+              range: {
+                startLineNumber: insertPoint.line,
+                startColumn: insertPoint.column,
+                endLineNumber: insertPoint.line,
+                endColumn: insertPoint.column,
+              },
+              text: '\n' + roomDsl,
+            }],
+            () => null
+          );
+        }
+        
+        // Close dialog
+        addRoomDialog.classList.remove('visible');
+      }
+      
+      /**
+       * Find the line/column to insert a new room (after last room in first floor)
+       */
+      function findRoomInsertionPoint() {
+        const content = dslEditor.getValue();
+        const lines = content.split('\n');
+        
+        // Find the last room definition in the first floor
+        let lastRoomLine = -1;
+        let floorStarted = false;
+        let floorIndent = 0;
+        
+        for (let i = 0; i < lines.length; i++) {
+          const line = lines[i];
+          
+          // Check for floor block start
+          if (/^\s*floor\s+\S+/.test(line)) {
+            floorStarted = true;
+            floorIndent = line.match(/^(\s*)/)[1].length;
+          }
+          
+          // Check for room definition
+          if (floorStarted && /^\s*room\s+\S+/.test(line)) {
+            lastRoomLine = i;
+          }
+          
+          // Check for floor block end (closing brace at same indent)
+          if (floorStarted && line.trim() === '}') {
+            const braceIndent = line.match(/^(\s*)/)[1].length;
+            if (braceIndent === floorIndent) {
+              break; // End of first floor
+            }
+          }
+        }
+        
+        if (lastRoomLine === -1) {
+          // No rooms found, try to find after floor { line
+          for (let i = 0; i < lines.length; i++) {
+            if (/^\s*floor\s+\S+.*\{/.test(lines[i])) {
+              return { line: i + 2, column: 1 }; // Line after floor {
+            }
+          }
+          return null;
+        }
+        
+        // Insert after the last room line
+        return { line: lastRoomLine + 2, column: 1 }; // +2 because Monaco is 1-indexed and we want line after
+      }
+      
+      /**
+       * Show error in add room dialog
+       */
+      function showAddRoomError(message) {
+        addRoomError.textContent = message;
+        addRoomError.classList.add('visible');
+      }
+      
+      // Delete functionality
+      const deleteConfirmDialog = document.getElementById('delete-confirm-dialog');
+      const deleteEntityName = document.getElementById('delete-entity-name');
+      const deleteMessage = document.getElementById('delete-message');
+      const deleteWarning = document.getElementById('delete-warning');
+      const deleteCascadeList = document.getElementById('delete-cascade-list');
+      const deleteCancel = document.getElementById('delete-cancel');
+      const deleteConfirmBtn = document.getElementById('delete-confirm');
+      
+      let pendingDeleteEvent = null;
+      let pendingCascadeConnections = [];
+      
+      /**
+       * Show delete confirmation dialog
+       */
+      function showDeleteConfirmation(event) {
+        pendingDeleteEvent = event;
+        pendingCascadeConnections = [];
+        
+        // Set entity name
+        deleteEntityName.textContent = `${event.entityType}: ${event.entityId}`;
+        
+        // Set message based on entity type
+        if (event.entityType === 'room') {
+          deleteMessage.textContent = `Are you sure you want to delete the room "${event.entityId}"?`;
+          
+          // Check for connections that reference this room
+          if (currentJsonData && currentJsonData.connections) {
+            const affectedConnections = currentJsonData.connections.filter(
+              conn => conn.fromRoom === event.entityId || conn.toRoom === event.entityId
+            );
+            
+            if (affectedConnections.length > 0) {
+              pendingCascadeConnections = affectedConnections;
+              deleteCascadeList.innerHTML = affectedConnections.map(
+                conn => `<li>${conn.fromRoom} → ${conn.toRoom} (${conn.doorType})</li>`
+              ).join('');
+              deleteWarning.style.display = 'block';
+            } else {
+              deleteWarning.style.display = 'none';
+            }
+          } else {
+            deleteWarning.style.display = 'none';
+          }
+        } else if (event.entityType === 'connection') {
+          deleteMessage.textContent = `Are you sure you want to delete this connection?`;
+          deleteWarning.style.display = 'none';
+        } else {
+          deleteMessage.textContent = `Are you sure you want to delete "${event.entityId}"?`;
+          deleteWarning.style.display = 'none';
+        }
+        
+        deleteConfirmDialog.classList.add('visible');
+      }
+      
+      // Close delete dialog
+      deleteCancel.addEventListener('click', () => {
+        deleteConfirmDialog.classList.remove('visible');
+        pendingDeleteEvent = null;
+        pendingCascadeConnections = [];
+      });
+      
+      // Close on overlay click
+      deleteConfirmDialog.addEventListener('click', (e) => {
+        if (e.target === deleteConfirmDialog) {
+          deleteConfirmDialog.classList.remove('visible');
+          pendingDeleteEvent = null;
+          pendingCascadeConnections = [];
+        }
+      });
+      
+      // Confirm delete
+      deleteConfirmBtn.addEventListener('click', () => {
+        if (pendingDeleteEvent) {
+          executeDelete(pendingDeleteEvent, pendingCascadeConnections);
+        }
+        deleteConfirmDialog.classList.remove('visible');
+        pendingDeleteEvent = null;
+        pendingCascadeConnections = [];
+      });
+      
+      /**
+       * Execute delete operation
+       */
+      function executeDelete(event, cascadeConnections) {
+        const model = dslEditor.editor.getModel();
+        if (!model) return;
+        
+        // Collect all ranges to delete (entity + cascade connections)
+        const rangesToDelete = [];
+        
+        // Add main entity range
+        if (event.sourceRange) {
+          rangesToDelete.push({
+            range: event.sourceRange,
+            description: `${event.entityType}: ${event.entityId}`,
+          });
+        }
+        
+        // Add cascade connection ranges
+        for (const conn of cascadeConnections) {
+          if (conn._sourceRange) {
+            rangesToDelete.push({
+              range: conn._sourceRange,
+              description: `connection: ${conn.fromRoom} → ${conn.toRoom}`,
+            });
+          }
+        }
+        
+        if (rangesToDelete.length === 0) {
+          console.warn('No source ranges available for deletion');
+          return;
+        }
+        
+        // Sort ranges by position (end to start) to delete from bottom up
+        // This prevents range shifting issues
+        rangesToDelete.sort((a, b) => {
+          if (a.range.endLine !== b.range.endLine) {
+            return b.range.endLine - a.range.endLine;
+          }
+          return b.range.endColumn - a.range.endColumn;
+        });
+        
+        // Build edit operations
+        const edits = rangesToDelete.map(({ range }) => ({
+          range: {
+            startLineNumber: range.startLine + 1,
+            startColumn: range.startColumn + 1,
+            endLineNumber: range.endLine + 1,
+            endColumn: range.endColumn + 2, // +2 to include trailing newline
+          },
+          text: '',
+        }));
+        
+        // Apply all edits
+        model.pushEditOperations([], edits, () => null);
+        
+        // Clear selection
+        if (editor3d.selectionManager) {
+          editor3d.selectionManager.clearSelection();
+        }
+        
+        // Hide properties panel
+        propertiesPanel.hide();
+        
+        console.log(`Deleted ${rangesToDelete.length} entities`);
       }
       
       // Expose for debugging
