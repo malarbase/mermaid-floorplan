@@ -211,6 +211,14 @@
       .error-banner.visible {
         display: block;
       }
+      
+      /* Wall selection hint decoration */
+      .wall-selection-hint {
+        color: #4a9eff;
+        font-style: italic;
+        margin-left: 8px;
+        opacity: 0.9;
+      }
     </style>
   </head>
   <body>
@@ -502,8 +510,8 @@
           { debug: false }
         );
         
-        // Handle editor cursor → 3D selection
-        editorSync.onEditorSelect((entityKey) => {
+        // Handle editor cursor → 3D selection (supports multi-cursor)
+        editorSync.onEditorSelect((entityKey, isAdditive) => {
           // Parse the key: floorId:entityType:entityId
           const parts = entityKey.split(':');
           if (parts.length !== 3) return;
@@ -518,7 +526,8 @@
             if (entity.floorId === floorId && 
                 entity.entityType === entityType && 
                 entity.entityId === entityId) {
-              editor3d.selectionManager.select(entity, false);
+              // Use isAdditive for multi-cursor support
+              editor3d.selectionManager.select(entity, isAdditive);
               break;
             }
           }

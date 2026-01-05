@@ -64,7 +64,8 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 1.3.3 Test: Selected room has visible green outline
 - [ ] 1.3.4 Handle: Multi-material meshes (per-face walls)
 - [x] 1.3.5 Handle: Multiple highlights for multi-selection
-- [ ] 1.3.6 **BUG**: Room floor highlight not visible - EdgesGeometry on thin horizontal floor plates produces nearly invisible outline (see design.md for fix options: emission change, overlay plane, or hybrid approach)
+- [x] 1.3.6 **BUG**: Room floor highlight not visible - EdgesGeometry on thin horizontal floor plates produces nearly invisible outline (see design.md for fix options: emission change, overlay plane, or hybrid approach)
+  - **Fixed**: Added emission-based highlighting for room floors in addition to edge outlines
 
 ### 1.4 Marquee Selection - Rectangle Drawing
 - [x] 1.4.1 ~~Create `MarqueeSelection` class~~ (integrated into SelectionManager)
@@ -146,9 +147,9 @@ This document tracks implementation tasks for the interactive editor capability.
 ### 2.3 Mesh Metadata Population
 - [x] 2.3.1 Modify `generateFloor()` to copy `_sourceRange` to `mesh.userData`
   - Note: Implemented via MeshRegistry.register() which populates mesh.userData.sourceRange
-- [ ] 2.3.2 Modify wall generator to add source info (see design.md for fix)
+- [x] 2.3.2 Modify wall generator to add source info (see design.md for fix)
   - **BUG**: Walls registered without sourceRange in `InteractiveEditor.loadFloorplan()` - clicking wall in 3D doesn't scroll to editor
-  - **Fix**: Pass parent room's `_sourceRange` to wall mesh registration
+  - **Fixed**: Now passing parent room's `_sourceRange` to wall mesh registration
   - **Enhancement**: See 4.1.7 for ephemeral wall decoration showing which wall is selected
 - [ ] 2.3.3 Modify connection renderer to add source info
 - [ ] 2.3.4 Test: Selected mesh has full source range metadata
@@ -227,12 +228,14 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 4.1.2 On SelectionManager selection event, get source range
 - [x] 4.1.3 Convert source range to Monaco Range
 - [x] 4.1.4 Call `editor.setSelection()` and `editor.revealLineInCenter()`
-- [ ] 4.1.5 Test: Click room → editor scrolls to room definition
-- [ ] 4.1.6 **BUG**: Fix Monaco Range error - import monaco directly instead of using `window.monaco` in `sourceRangeToMonaco()` (see design.md for fix details)
-- [ ] 4.1.7 **ENHANCEMENT**: Show ephemeral editor decoration for wall selection (see design.md)
+- [x] 4.1.5 Test: Click room → editor scrolls to room definition
+- [x] 4.1.6 **BUG**: Fix Monaco Range error - import monaco directly instead of using `window.monaco` in `sourceRangeToMonaco()` (see design.md for fix details)
+  - **Fixed**: Changed `import type * as monaco` to `import * as monaco` and removed window lookup
+- [x] 4.1.7 **ENHANCEMENT**: Show ephemeral editor decoration for wall selection (see design.md)
   - When wall selected in 3D (e.g., "Kitchen_top"), scroll to parent room
   - Display inline decoration showing "← top wall" near the room definition
-  - Auto-dismiss decoration after 2-3 seconds or on next selection
+  - Auto-dismiss decoration after 3 seconds or on next selection
+  - **Implemented**: Added showWallDecoration() and clearWallDecoration() methods
 
 ### 4.2 Editor to 3D Sync
 - [x] 4.2.1 Listen to `editor.onDidChangeCursorPosition`
@@ -240,8 +243,9 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 4.2.3 Find entity containing cursor offset
 - [x] 4.2.4 Look up corresponding mesh in registry
 - [x] 4.2.5 Call `SelectionManager.select()` for that mesh
-- [ ] 4.2.6 Test: Place cursor in room definition → room highlights in 3D
-- [ ] 4.2.7 **ENHANCEMENT**: Support multi-cursor selection - use `editor.getSelections()` instead of single cursor position (see design.md for implementation details)
+- [x] 4.2.6 Test: Place cursor in room definition → room highlights in 3D
+- [x] 4.2.7 **ENHANCEMENT**: Support multi-cursor selection - use `editor.getSelections()` instead of single cursor position (see design.md for implementation details)
+  - **Implemented**: Added handleMultipleCursorChanges() method and isAdditive flag to callbacks
 
 ### 4.3 Debouncing & Loop Prevention
 - [x] 4.3.1 Implement sync direction lock in EditorViewerSync
@@ -434,18 +438,18 @@ This document tracks implementation tasks for the interactive editor capability.
 - Completion shows room/style names
 - Go-to-definition works
 
-### Checkpoint D: Sync Works (End of Phase 4) (Partial ✓)
+### Checkpoint D: Sync Works (End of Phase 4) ✓
 - [x] Click 3D → editor scrolls and highlights (EditorViewerSync.scrollEditorToRange)
 - [x] Cursor in editor → 3D highlights (EditorViewerSync.onEditorSelect)
 - [x] No infinite loops (sync direction lock implemented)
 - [x] Parse errors show overlay + keep last valid state
 - [ ] Selection works on stale geometry during error state (needs testing)
-- [ ] **Known Issues (see design.md for detailed fix guidance):**
-  - 4.1.6: Monaco Range undefined error (missing import)
-  - 4.2.7: Multi-cursor only syncs first cursor
-  - 1.3.6: Room floor highlight not visible (thin geometry)
-  - 2.3.2: Walls don't scroll to editor (missing sourceRange)
-  - 4.1.7: Ephemeral wall decoration enhancement (nice-to-have)
+- [x] **Fixed Issues:**
+  - 4.1.6: Monaco Range undefined error - fixed by importing monaco directly
+  - 4.2.7: Multi-cursor now syncs all cursors with additive selection
+  - 1.3.6: Room floor highlight now visible via emission + edges
+  - 2.3.2: Walls now scroll to parent room definition
+  - 4.1.7: Ephemeral wall decoration shows "← direction wall" hint
 
 ### Checkpoint E: CRUD Works (End of Phase 5)
 - Edit property → DSL updates → 3D updates

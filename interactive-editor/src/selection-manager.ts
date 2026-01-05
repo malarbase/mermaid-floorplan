@@ -64,6 +64,7 @@ export class SelectionManager extends BaseSelectionManager {
   // Highlight visuals
   private outlineMaterial: THREE.LineBasicMaterial;
   private outlinedObjects = new Map<string, THREE.LineSegments>(); // keyed by mesh uuid
+  private emissiveObjects = new Map<string, { color: THREE.Color; intensity: number }>(); // Store original emission values
   
   // Marquee state
   private isDragging = false;
@@ -560,10 +561,12 @@ export class SelectionManager extends BaseSelectionManager {
   
   /**
    * Apply or remove highlight from an object.
+   * Uses edge outlines for walls, emission change for floor plates (rooms).
    */
   protected override applyHighlight(obj: SelectableObject, highlight: boolean): void {
     const mesh = obj.mesh;
     const key = mesh.uuid;
+    const isRoom = obj.entityType === 'room';
     
     if (highlight) {
       // Create outline if not already present
@@ -578,6 +581,21 @@ export class SelectionManager extends BaseSelectionManager {
         this.scene.add(outline);
         this.outlinedObjects.set(key, outline);
       }
+      
+      // For rooms (floor plates), also add emission glow since edges are hard to see on flat surfaces
+      if (isRoom && mesh instanceof THREE.Mesh) {
+        const material = mesh.material;
+        if (material instanceof THREE.MeshStandardMaterial && !this.emissiveObjects.has(key)) {
+          // Store original values
+          this.emissiveObjects.set(key, {
+            color: material.emissive.clone(),
+            intensity: material.emissiveIntensity,
+          });
+          // Apply highlight emission
+          material.emissive.setHex(0x00ff00);
+          material.emissiveIntensity = 0.3;
+        }
+      }
     } else {
       // Remove outline
       const outline = this.outlinedObjects.get(key);
@@ -586,6 +604,19 @@ export class SelectionManager extends BaseSelectionManager {
         outline.geometry.dispose();
         (outline.material as THREE.Material).dispose();
         this.outlinedObjects.delete(key);
+      }
+      
+      // Restore original emission for rooms
+      if (mesh instanceof THREE.Mesh) {
+        const original = this.emissiveObjects.get(key);
+        if (original) {
+          const material = mesh.material;
+          if (material instanceof THREE.MeshStandardMaterial) {
+            material.emissive.copy(original.color);
+            material.emissiveIntensity = original.intensity;
+          }
+          this.emissiveObjects.delete(key);
+        }
       }
     }
   }
@@ -609,6 +640,9 @@ export class SelectionManager extends BaseSelectionManager {
       (outline.material as THREE.Material).dispose();
     }
     this.outlinedObjects.clear();
+    
+    // Clean up emissive tracking
+    this.emissiveObjects.clear();
     
     // Clean up materials
     this.outlineMaterial.dispose();

@@ -7,7 +7,7 @@
  * - Debouncing to prevent feedback loops
  * - Error state management
  */
-import type * as monaco from 'monaco-editor';
+import * as monaco from 'monaco-editor';
 import type { SelectableObject, SourceRange } from 'viewer-core';
 import type { SelectionManager } from './selection-manager.js';
 
@@ -53,7 +53,12 @@ export class EditorViewerSync {
   private disposables: monaco.IDisposable[] = [];
   
   // Callback for when user selects entity in editor
-  private onEditorSelectCallback?: (entityKey: string) => void;
+  // isAdditive is true when handling multi-cursor (subsequent entities after first)
+  private onEditorSelectCallback?: (entityKey: string, isAdditive: boolean) => void;
+  
+  // Ephemeral wall decoration
+  private wallDecorationCollection: monaco.editor.IEditorDecorationsCollection | null = null;
+  private wallDecorationTimeout: ReturnType<typeof setTimeout> | null = null;
   
   constructor(
     editor: monaco.editor.IStandaloneCodeEditor,
@@ -89,8 +94,10 @@ export class EditorViewerSync {
   
   /**
    * Set callback for when editor cursor selects an entity.
+   * @param callback - Called with entityKey and isAdditive flag.
+   *                   isAdditive is true for multi-cursor (2nd+ entities).
    */
-  onEditorSelect(callback: (entityKey: string) => void): void {
+  onEditorSelect(callback: (entityKey: string, isAdditive: boolean) => void): void {
     this.onEditorSelectCallback = callback;
   }
   
@@ -106,6 +113,9 @@ export class EditorViewerSync {
       
       this.lockSync('3d-to-editor');
       
+      // Clear any existing wall decoration
+      this.clearWallDecoration();
+      
       const selection = event.selection;
       if (selection.size === 0) {
         // Clear editor selection on deselect
@@ -113,26 +123,86 @@ export class EditorViewerSync {
       }
       
       // Get first selected entity with source range
-      let firstRange: SourceRange | undefined;
+      let firstEntity: SelectableObject | undefined;
       for (const obj of selection) {
         if (obj.sourceRange) {
-          firstRange = obj.sourceRange;
+          firstEntity = obj;
           break;
         }
       }
       
-      if (firstRange) {
-        this.scrollEditorToRange(firstRange);
+      if (firstEntity && firstEntity.sourceRange) {
+        this.scrollEditorToRange(firstEntity.sourceRange);
         this.highlightEditorRanges(Array.from(selection).filter(s => s.sourceRange));
+        
+        // Show ephemeral decoration for wall selection
+        if (firstEntity.entityType === 'wall') {
+          this.showWallDecoration(firstEntity);
+        }
       }
     });
+  }
+  
+  /**
+   * Show ephemeral inline decoration for wall selection.
+   * Parses wall entity ID (e.g., "Kitchen_top") and shows "← top wall" hint.
+   */
+  private showWallDecoration(wallEntity: SelectableObject): void {
+    if (!wallEntity.sourceRange) return;
+    
+    // Parse wall entity ID: "RoomName_direction"
+    const match = wallEntity.entityId.match(/^(.+)_(top|bottom|left|right)$/);
+    if (!match) return;
+    
+    const [, , direction] = match;
+    const monacoRange = this.sourceRangeToMonaco(wallEntity.sourceRange);
+    
+    // Create inline decoration at end of first line of the room definition
+    this.wallDecorationCollection = this.editor.createDecorationsCollection([{
+      range: new monaco.Range(
+        monacoRange.startLineNumber,
+        1,
+        monacoRange.startLineNumber,
+        1000 // End of line
+      ),
+      options: {
+        after: {
+          content: ` ← ${direction} wall`,
+          inlineClassName: 'wall-selection-hint',
+        },
+        isWholeLine: false,
+      },
+    }]);
+    
+    // Auto-dismiss after 3 seconds
+    this.wallDecorationTimeout = setTimeout(() => {
+      this.clearWallDecoration();
+    }, 3000);
+    
+    if (this.config.debug) {
+      console.log(`[EditorViewerSync] Showing wall decoration: ${direction} wall`);
+    }
+  }
+  
+  /**
+   * Clear any active wall decoration.
+   */
+  private clearWallDecoration(): void {
+    if (this.wallDecorationTimeout) {
+      clearTimeout(this.wallDecorationTimeout);
+      this.wallDecorationTimeout = null;
+    }
+    if (this.wallDecorationCollection) {
+      this.wallDecorationCollection.clear();
+      this.wallDecorationCollection = null;
+    }
   }
   
   /**
    * Setup editor cursor → 3D sync.
    */
   private setupCursorSync(): void {
-    const disposable = this.editor.onDidChangeCursorPosition((event) => {
+    const disposable = this.editor.onDidChangeCursorPosition(() => {
       // Skip if sync is coming from 3D
       if (this.syncDirection === '3d-to-editor') {
         return;
@@ -144,7 +214,13 @@ export class EditorViewerSync {
       }
       
       this.cursorDebounceTimeout = setTimeout(() => {
-        this.handleCursorChange(event.position);
+        // Get all selections for multi-cursor support
+        const selections = this.editor.getSelections();
+        if (selections && selections.length > 1) {
+          this.handleMultipleCursorChanges(selections);
+        } else if (selections && selections.length === 1) {
+          this.handleCursorChange(selections[0].getPosition(), false);
+        }
       }, this.config.cursorDebounceMs);
     });
     
@@ -152,20 +228,50 @@ export class EditorViewerSync {
   }
   
   /**
-   * Handle cursor position change in editor.
+   * Handle cursor position change in editor (single cursor).
    */
-  private handleCursorChange(position: monaco.Position): void {
+  private handleCursorChange(position: monaco.Position, isAdditive: boolean): void {
     this.lockSync('editor-to-3d');
     
     // Find entity at cursor position
     const entityKey = this.findEntityAtPosition(position);
     
     if (entityKey && this.onEditorSelectCallback) {
-      this.onEditorSelectCallback(entityKey);
+      this.onEditorSelectCallback(entityKey, isAdditive);
     }
     
     if (this.config.debug) {
-      console.log(`[EditorViewerSync] Cursor at ${position.lineNumber}:${position.column}, entity: ${entityKey || 'none'}`);
+      console.log(`[EditorViewerSync] Cursor at ${position.lineNumber}:${position.column}, entity: ${entityKey || 'none'}, additive: ${isAdditive}`);
+    }
+  }
+  
+  /**
+   * Handle multiple cursor positions (multi-cursor support).
+   */
+  private handleMultipleCursorChanges(selections: readonly monaco.Selection[]): void {
+    this.lockSync('editor-to-3d');
+    
+    // Collect unique entity keys from all cursor positions
+    const entityKeys = new Set<string>();
+    for (const selection of selections) {
+      const entityKey = this.findEntityAtPosition(selection.getPosition());
+      if (entityKey) {
+        entityKeys.add(entityKey);
+      }
+    }
+    
+    if (this.config.debug) {
+      console.log(`[EditorViewerSync] Multi-cursor: ${entityKeys.size} unique entities from ${selections.length} cursors`);
+    }
+    
+    // Emit callbacks for each unique entity
+    // First one replaces selection, rest are additive
+    if (this.onEditorSelectCallback) {
+      let isFirst = true;
+      for (const entityKey of entityKeys) {
+        this.onEditorSelectCallback(entityKey, !isFirst);
+        isFirst = false;
+      }
     }
   }
   
@@ -255,9 +361,6 @@ export class EditorViewerSync {
    * Source ranges are 0-indexed, Monaco is 1-indexed.
    */
   private sourceRangeToMonaco(range: SourceRange): monaco.Range {
-    // Import Monaco's Range constructor dynamically to avoid circular deps
-    const monaco = (window as unknown as { monaco: typeof import('monaco-editor') }).monaco;
-    
     return new monaco.Range(
       range.startLine + 1,     // Monaco is 1-indexed
       range.startColumn + 1,
@@ -288,12 +391,13 @@ export class EditorViewerSync {
   /**
    * Manually select an entity from its key (floorId:entityType:entityId).
    * Used when editor cursor finds an entity.
+   * @param isAdditive - If true, add to existing selection instead of replacing
    */
-  selectEntityByKey(entityKey: string): void {
+  selectEntityByKey(entityKey: string, isAdditive = false): void {
     // This should be called by the consumer to trigger 3D selection
     // The actual mesh lookup happens in the InteractiveEditor
     if (this.onEditorSelectCallback) {
-      this.onEditorSelectCallback(entityKey);
+      this.onEditorSelectCallback(entityKey, isAdditive);
     }
   }
   
@@ -308,6 +412,9 @@ export class EditorViewerSync {
     if (this.cursorDebounceTimeout) {
       clearTimeout(this.cursorDebounceTimeout);
     }
+    
+    // Clear wall decoration
+    this.clearWallDecoration();
     
     // Dispose Monaco listeners
     for (const disposable of this.disposables) {

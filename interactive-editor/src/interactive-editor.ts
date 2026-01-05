@@ -318,12 +318,13 @@ export class InteractiveEditor implements SceneContext {
             wallMesh.receiveShadow = true;
             floorGroup.add(wallMesh);
             
-            // Register wall as part of the room
+            // Register wall as part of the room (use room's source range so clicking scrolls to room definition)
             this._meshRegistry.register(
               wallMesh,
               'wall',
               `${room.name}_${wall.direction}`,
-              floorData.id
+              floorData.id,
+              room._sourceRange
             );
           }
         });
