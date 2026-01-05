@@ -645,13 +645,13 @@
   <body>
     <div class="container">
       <!-- Editor Panel -->
-      <div class="editor-panel">
+      <div class="editor-panel" role="region" aria-label="Code Editor">
         <div class="editor-header">
           <h2>Floorplan DSL</h2>
           <div class="editor-header-right">
-            <button class="add-room-btn" id="add-room-btn">Room</button>
+            <button class="add-room-btn" id="add-room-btn" aria-label="Add new room">Room</button>
             <div class="export-dropdown">
-              <button class="export-btn" id="export-btn">Export</button>
+              <button class="export-btn" id="export-btn" aria-haspopup="menu" aria-expanded="false">Export</button>
               <div class="export-menu" id="export-menu">
                 <button class="export-menu-item" data-format="dsl">
                   Floorplan DSL <span class="ext">.floorplan</span>
@@ -678,10 +678,10 @@
       <div class="resizer" id="resizer"></div>
       
       <!-- 3D Viewer Panel -->
-      <div class="viewer-panel">
-        <div class="error-banner" id="error-banner"></div>
-        <div class="error-overlay" id="error-overlay"></div>
-        <div id="app"></div>
+      <div class="viewer-panel" role="region" aria-label="3D Viewer">
+        <div class="error-banner" id="error-banner" role="alert" aria-live="polite"></div>
+        <div class="error-overlay" id="error-overlay" aria-hidden="true"></div>
+        <div id="app" role="application" aria-label="3D floorplan viewer"></div>
         
         <div class="info-panel">
           <h3>Selection</h3>
@@ -689,6 +689,8 @@
           <p><span class="key">Shift+Click</span> Add to selection</p>
           <p><span class="key">Drag</span> Marquee select</p>
           <p><span class="key">Ctrl/⌘+A</span> Select all</p>
+          <p><span class="key">Tab</span> Cycle selection</p>
+          <p><span class="key">Enter</span> Focus properties</p>
           <p><span class="key">Esc</span> Deselect</p>
           
           <h3>Camera</h3>
@@ -707,12 +709,12 @@
           </div>
         </div>
         
-        <div id="selection-info" class="selection-info">
+        <div id="selection-info" class="selection-info" role="status" aria-live="polite" aria-label="Selection status">
           <div class="details">No selection</div>
         </div>
         
         <!-- Properties Panel (shown when single element selected) -->
-        <div id="properties-panel" class="properties-panel"></div>
+        <div id="properties-panel" class="properties-panel" role="complementary" aria-label="Properties panel"></div>
       </div>
     </div>
     
@@ -1008,6 +1010,18 @@
           updatePropertiesPanel(event.selection);
         });
         
+        // Enter key focuses properties panel
+        editor3d.selectionManager.onEnterPressed(() => {
+          const propertiesPanelEl = document.getElementById('properties-panel');
+          if (propertiesPanelEl && propertiesPanelEl.style.display !== 'none') {
+            // Focus first input in properties panel
+            const firstInput = propertiesPanelEl.querySelector('input, select');
+            if (firstInput instanceof HTMLElement) {
+              firstInput.focus();
+            }
+          }
+        });
+        
         // Setup bidirectional sync
         editorSync = new EditorViewerSync(
           dslEditor.editor,
@@ -1250,12 +1264,14 @@
       // Toggle export menu
       exportBtn.addEventListener('click', (e) => {
         e.stopPropagation();
-        exportMenu.classList.toggle('visible');
+        const isOpen = exportMenu.classList.toggle('visible');
+        exportBtn.setAttribute('aria-expanded', String(isOpen));
       });
       
       // Close menu when clicking outside
       document.addEventListener('click', () => {
         exportMenu.classList.remove('visible');
+        exportBtn.setAttribute('aria-expanded', 'false');
       });
       
       // Handle export menu items

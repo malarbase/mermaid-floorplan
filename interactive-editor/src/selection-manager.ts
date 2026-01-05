@@ -169,6 +169,64 @@ export class SelectionManager extends BaseSelectionManager {
   }
   
   /**
+   * Cycle selection through available entities.
+   * @param reverse - If true, cycle backwards (Shift+Tab)
+   */
+  cycleSelection(reverse = false): void {
+    const allEntities = this.meshRegistry.getAllEntities();
+    if (allEntities.length === 0) return;
+    
+    // Find current selection index
+    let currentIndex = -1;
+    if (this.selection.size === 1) {
+      const currentEntity = Array.from(this.selection)[0];
+      if (currentEntity) {
+        currentIndex = allEntities.findIndex(
+          e => e.entityType === currentEntity.entityType && 
+               e.entityId === currentEntity.entityId &&
+               e.floorId === currentEntity.floorId
+        );
+      }
+    }
+    
+    // Calculate next index
+    let nextIndex: number;
+    if (currentIndex === -1) {
+      // Nothing selected, start from beginning (or end if reverse)
+      nextIndex = reverse ? allEntities.length - 1 : 0;
+    } else {
+      // Move to next/previous
+      nextIndex = reverse 
+        ? (currentIndex - 1 + allEntities.length) % allEntities.length
+        : (currentIndex + 1) % allEntities.length;
+    }
+    
+    // Select the new entity
+    const nextEntity = allEntities[nextIndex];
+    this.select(nextEntity, false);
+    this.emitChange([nextEntity], [], 'keyboard');
+  }
+  
+  // Callback for Enter key press
+  private onEnterPressedCallback?: () => void;
+  
+  /**
+   * Register callback for Enter key press (to focus properties panel).
+   */
+  onEnterPressed(callback: () => void): void {
+    this.onEnterPressedCallback = callback;
+  }
+  
+  /**
+   * Emit Enter key pressed event.
+   */
+  private emitEnterPressed(): void {
+    if (this.onEnterPressedCallback) {
+      this.onEnterPressedCallback();
+    }
+  }
+  
+  /**
    * Setup event listeners on the renderer's DOM element.
    */
   private setupEventListeners(): void {
@@ -301,6 +359,30 @@ export class SelectionManager extends BaseSelectionManager {
     // Escape to deselect
     if (event.key === 'Escape') {
       this.deselect();
+    }
+    
+    // Tab to cycle selection through entities
+    if (event.key === 'Tab') {
+      // Only if focus is not in an input element
+      const activeElement = document.activeElement;
+      const isInInput = activeElement instanceof HTMLInputElement || 
+                        activeElement instanceof HTMLTextAreaElement ||
+                        activeElement instanceof HTMLSelectElement;
+      if (!isInInput) {
+        event.preventDefault();
+        this.cycleSelection(event.shiftKey);
+      }
+    }
+    
+    // Enter to trigger properties panel focus
+    if (event.key === 'Enter') {
+      const activeElement = document.activeElement;
+      const isInInput = activeElement instanceof HTMLInputElement || 
+                        activeElement instanceof HTMLTextAreaElement ||
+                        activeElement instanceof HTMLSelectElement;
+      if (!isInInput && this.selection.size > 0) {
+        this.emitEnterPressed();
+      }
     }
   }
   
