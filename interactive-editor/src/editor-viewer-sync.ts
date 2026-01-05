@@ -52,9 +52,13 @@ export class EditorViewerSync {
   // Disposables for cleanup
   private disposables: monaco.IDisposable[] = [];
   
-  // Callback for when user selects entity in editor
+  // Callback for when user selects entity in editor (cursor position)
   // isAdditive is true when handling multi-cursor (subsequent entities after first)
   private onEditorSelectCallback?: (entityKey: string, isAdditive: boolean) => void;
+  
+  // Callbacks for text highlight → 3D highlight preview
+  private onEditorHighlightCallback?: (entityKeys: string[]) => void;
+  private onEditorHighlightClearCallback?: () => void;
   
   // Ephemeral wall decoration
   private wallDecorationCollection: monaco.editor.IEditorDecorationsCollection | null = null;
@@ -77,6 +81,7 @@ export class EditorViewerSync {
     
     this.setupSelectionSync();
     this.setupCursorSync();
+    this.setupTextHighlightSync();
   }
   
   /**
@@ -102,6 +107,22 @@ export class EditorViewerSync {
    */
   onEditorSelect(callback: (entityKey: string, isAdditive: boolean) => void): void {
     this.onEditorSelectCallback = callback;
+  }
+  
+  /**
+   * Set callback for when text is highlighted in editor (preview mode).
+   * Called with array of entity keys that overlap with highlighted text range.
+   * @param callback - Called with array of entity keys to highlight in 3D
+   */
+  onEditorHighlight(callback: (entityKeys: string[]) => void): void {
+    this.onEditorHighlightCallback = callback;
+  }
+  
+  /**
+   * Set callback to clear 3D highlights when editor text selection is cleared.
+   */
+  onEditorHighlightClear(callback: () => void): void {
+    this.onEditorHighlightClearCallback = callback;
   }
   
   /**
@@ -277,6 +298,121 @@ export class EditorViewerSync {
         isFirst = false;
       }
     }
+  }
+  
+  /**
+   * Setup text highlight → 3D highlight preview sync.
+   * When user highlights text (not just cursor position), preview those entities in 3D.
+   */
+  private setupTextHighlightSync(): void {
+    const disposable = this.editor.onDidChangeCursorSelection(() => {
+      // Skip if sync is coming from 3D
+      if (this.syncDirection === '3d-to-editor') {
+        return;
+      }
+      
+      const selections = this.editor.getSelections();
+      if (!selections) return;
+      
+      // Check if any selection has actual text range (not just cursor)
+      const hasTextHighlight = selections.some(s => !s.isEmpty());
+      
+      if (hasTextHighlight) {
+        // Text is highlighted - show preview in 3D
+        this.handleTextHighlight(selections);
+      } else {
+        // No text selected - clear previews
+        if (this.onEditorHighlightClearCallback) {
+          this.onEditorHighlightClearCallback();
+        }
+      }
+    });
+    
+    this.disposables.push(disposable);
+  }
+  
+  /**
+   * Handle text highlight → find entities in range and preview them in 3D.
+   */
+  private handleTextHighlight(selections: readonly monaco.Selection[]): void {
+    // Collect all entity keys that overlap with any selection range
+    const entityKeys = new Set<string>();
+    
+    for (const selection of selections) {
+      if (selection.isEmpty()) continue;
+      
+      // Find all entities whose ranges overlap with this text selection
+      const entitiesInRange = this.findEntitiesInRange(
+        selection.startLineNumber,
+        selection.startColumn,
+        selection.endLineNumber,
+        selection.endColumn
+      );
+      
+      for (const key of entitiesInRange) {
+        entityKeys.add(key);
+      }
+    }
+    
+    if (this.config.debug) {
+      console.log(`[EditorViewerSync] Text highlight preview: ${entityKeys.size} entities`);
+    }
+    
+    // Emit callback with all entity keys to preview
+    if (this.onEditorHighlightCallback && entityKeys.size > 0) {
+      this.onEditorHighlightCallback(Array.from(entityKeys));
+    } else if (this.onEditorHighlightClearCallback && entityKeys.size === 0) {
+      this.onEditorHighlightClearCallback();
+    }
+  }
+  
+  /**
+   * Find all entities whose source ranges overlap with the given text range.
+   * Returns entity keys (floorId:entityType:entityId).
+   */
+  private findEntitiesInRange(
+    startLine: number,
+    startColumn: number,
+    endLine: number,
+    endColumn: number
+  ): string[] {
+    const result: string[] = [];
+    
+    // Convert Monaco 1-indexed to source range 0-indexed
+    const selStart = { line: startLine - 1, column: startColumn - 1 };
+    const selEnd = { line: endLine - 1, column: endColumn - 1 };
+    
+    for (const [key, entity] of this.entityLocations) {
+      const range = entity.sourceRange;
+      
+      // Check if ranges overlap
+      if (this.rangesOverlap(selStart, selEnd, range)) {
+        result.push(key);
+      }
+    }
+    
+    return result;
+  }
+  
+  /**
+   * Check if two ranges overlap.
+   * Selection is selStart-selEnd (0-indexed), entity range is SourceRange.
+   */
+  private rangesOverlap(
+    selStart: { line: number; column: number },
+    selEnd: { line: number; column: number },
+    range: SourceRange
+  ): boolean {
+    // Selection ends before range starts
+    if (selEnd.line < range.startLine) return false;
+    if (selEnd.line === range.startLine && selEnd.column < range.startColumn) return false;
+    
+    // Selection starts after range ends
+    if (selStart.line > range.endLine) return false;
+    if (selStart.line === range.endLine && selStart.column > range.endColumn) return false;
+    
+    // Ranges overlap
+    return true;
   }
   
   /**

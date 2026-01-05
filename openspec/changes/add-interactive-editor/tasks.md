@@ -260,15 +260,16 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 4.2.9 **BUG**: Wall range inside room range - room selected instead of wall (see design.md)
   - **Fixed**: Updated `findEntityAtPosition()` to return most specific (smallest) matching range
   - **Implemented**: Added `getRangeSize()` helper to calculate range specificity
-- [ ] 4.2.10 **ENHANCEMENT**: Text highlight → 3D highlight preview (see design.md)
-  - Listen to `onDidChangeSelection` for text range selections (not just cursor)
+- [x] 4.2.10 **ENHANCEMENT**: Text highlight → 3D highlight preview (see design.md)
+  - Listen to `onDidChangeCursorSelection` for text range selections (not just cursor)
   - When text range spans entities, HIGHLIGHT (preview) those entities in 3D without selecting
   - Use existing `SelectionManager.highlight()` API for non-destructive preview
   - Clear highlights when text selection is cleared
   - Keep existing cursor position → SELECT behavior unchanged
+  - **Implemented**: Added `setupTextHighlightSync()` with `onEditorHighlight`/`onEditorHighlightClear` callbacks
+  - **Implemented**: Added `findEntitiesInRange()` helper to find overlapping entities
   - Test: Select room definition text → room highlights (green glow) in 3D
   - Test: Clear text selection → highlight clears, cursor selection remains
-  - Test: Copy/paste workflow unaffected - text selection for copy triggers preview
 
 ### 4.3 Debouncing & Loop Prevention
 - [x] 4.3.1 Implement sync direction lock in EditorViewerSync
@@ -467,6 +468,7 @@ This document tracks implementation tasks for the interactive editor capability.
 ### Checkpoint D: Sync Works (End of Phase 4) ✓
 - [x] Click 3D → editor scrolls and highlights (EditorViewerSync.scrollEditorToRange)
 - [x] Cursor in editor → 3D highlights (EditorViewerSync.onEditorSelect)
+- [x] Text highlight in editor → 3D preview (EditorViewerSync.onEditorHighlight)
 - [x] No infinite loops (sync direction lock implemented)
 - [x] Parse errors show overlay + keep last valid state
 - [ ] Selection works on stale geometry during error state (needs testing)
@@ -476,6 +478,7 @@ This document tracks implementation tasks for the interactive editor capability.
   - 1.3.6: Room floor highlight now visible via emission + edges
   - 2.3.2: Walls now scroll to parent room definition
   - 4.1.7: Ephemeral wall decoration shows "← direction wall" hint
+  - 4.2.10: Text highlight → 3D preview via highlight() API
 
 ### Checkpoint E: CRUD Works (End of Phase 5)
 - Edit property → DSL updates → 3D updates

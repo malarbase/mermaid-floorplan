@@ -550,6 +550,37 @@
             }
           }
         });
+        
+        // Handle editor text highlight → 3D preview highlight
+        editorSync.onEditorHighlight((entityKeys) => {
+          // Clear existing highlights first
+          editor3d.selectionManager.clearHighlight();
+          
+          const registry = editor3d.meshRegistry;
+          const entities = registry.getAllEntities();
+          
+          for (const entityKey of entityKeys) {
+            const parts = entityKey.split(':');
+            if (parts.length !== 3) continue;
+            
+            const [floorId, entityType, entityId] = parts;
+            
+            for (const entity of entities) {
+              if (entity.floorId === floorId && 
+                  entity.entityType === entityType && 
+                  entity.entityId === entityId) {
+                // Highlight (preview) without selecting
+                editor3d.selectionManager.highlight(entity);
+                break;
+              }
+            }
+          }
+        });
+        
+        // Handle clear highlight when text selection is cleared
+        editorSync.onEditorHighlightClear(() => {
+          editor3d.selectionManager.clearHighlight();
+        });
       }
       
       // Mode toggle

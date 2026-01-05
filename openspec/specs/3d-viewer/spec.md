@@ -1,3 +1,5 @@
+<!-- PROPRIETARY - See openspec/LICENSE -->
+
 # 3d-viewer Specification
 
 ## Purpose
