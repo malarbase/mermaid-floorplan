@@ -132,27 +132,29 @@ This document tracks implementation tasks for the interactive editor capability.
 ## Phase 2: AST-to-3D Mapping Architecture
 
 ### 2.1 Source Location Extraction
-- [ ] 2.1.1 Define `JsonSourceRange` interface in `language/src/diagrams/floorplans/json-converter.ts`
-- [ ] 2.1.2 Extract `$cstNode.range` from Room AST during conversion
-- [ ] 2.1.3 Add `_sourceRange` to `JsonRoom` type
-- [ ] 2.1.4 Test: JSON output includes line/column info for rooms
+- [x] 2.1.1 Define `JsonSourceRange` interface in `language/src/diagrams/floorplans/json-converter.ts`
+- [x] 2.1.2 Extract `$cstNode.range` from Room AST during conversion
+- [x] 2.1.3 Add `_sourceRange` to `JsonRoom` type
+- [x] 2.1.4 Test: JSON output includes line/column info for rooms
 
 ### 2.2 Connection Source Ranges
-- [ ] 2.2.1 Extract source range from Connection AST nodes
-- [ ] 2.2.2 Add `_sourceRange` to `JsonConnection` type
+- [x] 2.2.1 Extract source range from Connection AST nodes
+- [x] 2.2.2 Add `_sourceRange` to `JsonConnection` type
 - [ ] 2.2.3 Test: Door mesh userData has connection source range
 
 ### 2.3 Mesh Metadata Population
-- [ ] 2.3.1 Modify `generateFloor()` to copy `_sourceRange` to `mesh.userData`
+- [x] 2.3.1 Modify `generateFloor()` to copy `_sourceRange` to `mesh.userData`
+  - Note: Implemented via MeshRegistry.register() which populates mesh.userData.sourceRange
 - [ ] 2.3.2 Modify wall generator to add source info
 - [ ] 2.3.3 Modify connection renderer to add source info
 - [ ] 2.3.4 Test: Selected mesh has full source range metadata
 
 ### 2.4 Registry Design
-- [ ] 2.4.1 Design `AstMeshRegistry` class interface
-- [ ] 2.4.2 Implement: Register mesh → entity mapping
-- [ ] 2.4.3 Implement: Clear and rebuild on reparse
-- [ ] 2.4.4 Test: Registry survives loadFloorplan() calls
+- [x] 2.4.1 Design `AstMeshRegistry` class interface
+  - Note: Implemented as MeshRegistry in viewer-core/src/mesh-registry.ts
+- [x] 2.4.2 Implement: Register mesh → entity mapping
+- [x] 2.4.3 Implement: Clear and rebuild on reparse
+- [x] 2.4.4 Test: Registry survives loadFloorplan() calls
 
 ### 2.4a Shared Rendering Utilities (from Phase 0.1.5)
 - [ ] 2.4a.1 Extract `WallGenerator` from `viewer/src/wall-generator.ts` to `viewer-core`
@@ -162,9 +164,9 @@ This document tracks implementation tasks for the interactive editor capability.
 - [ ] 2.4a.5 Test: Both packages render identical geometry for same floorplan
 
 ### 2.5 Deliverables
-- [ ] Source ranges in JSON export
-- [ ] Source ranges in mesh userData
-- [ ] Working registry with rebuild
+- [x] Source ranges in JSON export
+- [x] Source ranges in mesh userData (via MeshRegistry)
+- [x] Working registry with rebuild
 - [ ] Shared `WallGenerator` in `viewer-core` used by both packages
 
 ---
@@ -410,10 +412,13 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] Selection doesn't conflict with camera orbit
 - [ ] Performance is acceptable (not yet benchmarked)
 
-### Checkpoint B: Mapping Works (End of Phase 2)
-- Mesh userData contains source ranges
-- Registry tracks all entities
-- Shared `WallGenerator` produces identical geometry in viewer and editor
+### Checkpoint B: Mapping Works (End of Phase 2) (Partial ✓)
+- [x] JsonSourceRange defined and exported from language and floorplan-3d-core
+- [x] Rooms have `_sourceRange` in JSON output
+- [x] Connections have `_sourceRange` in JSON output
+- [x] MeshRegistry stores and propagates source ranges to mesh.userData
+- [x] Registry tracks all entities with bidirectional lookup
+- [ ] Shared `WallGenerator` produces identical geometry in viewer and editor (deferred to 2.4a)
 
 ### Checkpoint C: LSP Works (End of Phase 3)
 - Completion shows room/style names

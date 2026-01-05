@@ -270,13 +270,14 @@ export class InteractiveEditor implements SceneContext {
         floorMesh.receiveShadow = true;
         floorGroup.add(floorMesh);
         
-        // Register in mesh registry with entity metadata
-        this._meshRegistry.register(
-          floorMesh,
-          'room',
-          room.name,
-          floorData.id
-        );
+                // Register in mesh registry with entity metadata and source range
+                this._meshRegistry.register(
+                  floorMesh,
+                  'room',
+                  room.name,
+                  floorData.id,
+                  room._sourceRange // Pass source range from JSON for editor sync
+                );
         
         // Create walls
         const wallHeight = roomHeight;

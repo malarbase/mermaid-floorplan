@@ -152,6 +152,7 @@ export {
   type JsonStairSegment,
   type JsonLift,
   type JsonVerticalConnection,
+  type JsonSourceRange,
   type ConversionResult,
   type ConversionError,
 } from "./json-converter.js";
