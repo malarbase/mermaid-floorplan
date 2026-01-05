@@ -112,6 +112,8 @@ export interface JsonWall {
     width?: number;
     height?: number;
     wallHeight?: number;
+    /** Source range for editor sync (wall direction position in DSL) */
+    _sourceRange?: JsonSourceRange;
 }
 
 export interface JsonRoom {
@@ -420,7 +422,9 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                         isPercentage: spec.unit === '%',
                         width: spec.size?.width?.value,
                         height: spec.size?.height?.value,
-                        wallHeight: spec.height
+                        wallHeight: spec.height,
+                        // Extract source range from AST for editor sync
+                        _sourceRange: extractSourceRange(spec.$cstNode)
                     });
                 }
             }

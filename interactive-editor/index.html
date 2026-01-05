@@ -219,6 +219,12 @@
         margin-left: 8px;
         opacity: 0.9;
       }
+      
+      /* Multi-selection highlighting in editor (for 3D multi-select → editor sync) */
+      .selected-entity-decoration {
+        background-color: rgba(0, 255, 0, 0.15);
+        border-radius: 2px;
+      }
     </style>
   </head>
   <body>
@@ -431,6 +437,18 @@
                 floorId: floor.id,
                 sourceRange: room._sourceRange,
               });
+            }
+            
+            // Extract wall locations for wall direction → 3D highlight sync
+            for (const wall of room.walls || []) {
+              if (wall._sourceRange) {
+                locations.push({
+                  entityType: 'wall',
+                  entityId: `${room.name}_${wall.direction}`,
+                  floorId: floor.id,
+                  sourceRange: wall._sourceRange,
+                });
+              }
             }
           }
         }

@@ -167,6 +167,9 @@ This document tracks implementation tasks for the interactive editor capability.
 - [ ] 2.4a.3 Update `interactive-editor` to use shared `WallGenerator` for proper mesh generation
 - [ ] 2.4a.4 Ensure door/window CSG cutouts work in both packages
 - [ ] 2.4a.5 Test: Both packages render identical geometry for same floorplan
+- [ ] 2.4a.6 **BUG**: Multi-floor rendering overlaps - InteractiveEditor doesn't compute floor elevations (see design.md)
+  - All floors render at Y=0 instead of stacking based on cumulative heights
+  - Fix requires adopting viewer's floor elevation calculation logic
 
 ### 2.5 Deliverables
 - [x] Source ranges in JSON export
@@ -246,12 +249,19 @@ This document tracks implementation tasks for the interactive editor capability.
 - [x] 4.2.6 Test: Place cursor in room definition → room highlights in 3D
 - [x] 4.2.7 **ENHANCEMENT**: Support multi-cursor selection - use `editor.getSelections()` instead of single cursor position (see design.md for implementation details)
   - **Implemented**: Added handleMultipleCursorChanges() method and isAdditive flag to callbacks
+- [x] 4.2.8 **ENHANCEMENT**: Select wall direction in editor → highlight wall in 3D (see design.md)
+  - **Implemented**: Extract wall source ranges from grammar (`WallSpecification.$cstNode`)
+  - **Implemented**: Added `_sourceRange` to `JsonWall` interface in json-converter.ts
+  - **Implemented**: Added walls to `extractEntityLocations()` in index.html
 
 ### 4.3 Debouncing & Loop Prevention
 - [x] 4.3.1 Implement sync direction lock in EditorViewerSync
 - [x] 4.3.2 Debounce editor cursor changes (100ms)
 - [ ] 4.3.3 Test: No infinite loops when clicking rapidly
 - [ ] 4.3.4 Test: No feedback during typing
+- [x] 4.3.5 **BUG**: Multi-selection in 3D doesn't highlight all items in editor (see design.md)
+  - **Fixed**: Added CSS for `selected-entity-decoration` class
+  - **Fixed**: Track and clear decoration collection via `multiSelectDecorations` property
 
 ### 4.4 Error State Handling (Hybrid Approach)
 - [x] 4.4.1 Detect parse errors from DSL parser

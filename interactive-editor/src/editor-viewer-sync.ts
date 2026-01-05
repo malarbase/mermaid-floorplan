@@ -60,6 +60,9 @@ export class EditorViewerSync {
   private wallDecorationCollection: monaco.editor.IEditorDecorationsCollection | null = null;
   private wallDecorationTimeout: ReturnType<typeof setTimeout> | null = null;
   
+  // Multi-selection decorations (for 3D multi-select → editor highlighting)
+  private multiSelectDecorations: monaco.editor.IEditorDecorationsCollection | null = null;
+  
   constructor(
     editor: monaco.editor.IStandaloneCodeEditor,
     selectionManager: SelectionManager,
@@ -118,7 +121,8 @@ export class EditorViewerSync {
       
       const selection = event.selection;
       if (selection.size === 0) {
-        // Clear editor selection on deselect
+        // Clear editor decorations on deselect
+        this.clearMultiSelectDecorations();
         return;
       }
       
@@ -327,22 +331,24 @@ export class EditorViewerSync {
    * Highlight multiple ranges in the editor (for multi-selection).
    */
   private highlightEditorRanges(objects: SelectableObject[]): void {
+    // Clear previous multi-select decorations
+    this.clearMultiSelectDecorations();
+    
     const ranges = objects
       .filter(obj => obj.sourceRange)
       .map(obj => this.sourceRangeToMonaco(obj.sourceRange!));
     
     if (ranges.length === 0) return;
     
-    // Use decorations for multi-selection highlighting
-    // For now, just select the first range
     if (ranges.length === 1) {
+      // Single selection - just use setSelection
       this.editor.setSelection(ranges[0]);
     } else {
-      // Multiple selections - use the primary selection for first, decorations for rest
+      // Multiple selections - use primary selection for first, decorations for ALL
       this.editor.setSelection(ranges[0]);
       
-      // Add decorations for additional selections
-      const decorations = ranges.slice(1).map(range => ({
+      // Add decorations for ALL ranges (including first for consistent highlighting)
+      const decorations = ranges.map(range => ({
         range,
         options: {
           className: 'selected-entity-decoration',
@@ -351,8 +357,18 @@ export class EditorViewerSync {
         },
       }));
       
-      // Store decoration IDs for later removal (if needed)
-      this.editor.createDecorationsCollection(decorations);
+      // Track decoration collection for cleanup
+      this.multiSelectDecorations = this.editor.createDecorationsCollection(decorations);
+    }
+  }
+  
+  /**
+   * Clear multi-selection decorations.
+   */
+  private clearMultiSelectDecorations(): void {
+    if (this.multiSelectDecorations) {
+      this.multiSelectDecorations.clear();
+      this.multiSelectDecorations = null;
     }
   }
   
@@ -415,6 +431,9 @@ export class EditorViewerSync {
     
     // Clear wall decoration
     this.clearWallDecoration();
+    
+    // Clear multi-select decorations
+    this.clearMultiSelectDecorations();
     
     // Dispose Monaco listeners
     for (const disposable of this.disposables) {

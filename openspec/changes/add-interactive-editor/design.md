@@ -231,6 +231,109 @@ This will scroll to the parent room definition when clicking any wall.
 
 ---
 
+### 4.3.5: Multi-Selection Not Highlighting All Items in Editor
+
+**Symptom:** When selecting multiple rooms/walls in 3D, only the first item is highlighted in the editor. Additional selections are not visible.
+
+**Root Cause:** Two issues:
+1. CSS class `selected-entity-decoration` used for multi-selection highlighting is not defined
+2. Decoration collection is not tracked/cleared between selections, causing stale decorations
+
+**File:** `interactive-editor/src/editor-viewer-sync.ts` and `interactive-editor/index.html`
+
+**Fix:**
+1. Add CSS styling for `.selected-entity-decoration`:
+   ```css
+   .selected-entity-decoration {
+     background-color: rgba(0, 255, 0, 0.15);
+     border: 1px solid rgba(0, 255, 0, 0.3);
+   }
+   ```
+
+2. Track decoration collection in `EditorViewerSync`:
+   ```typescript
+   private multiSelectDecorations: monaco.editor.IEditorDecorationsCollection | null = null;
+   ```
+
+3. Clear previous decorations in `highlightEditorRanges()`:
+   ```typescript
+   if (this.multiSelectDecorations) {
+     this.multiSelectDecorations.clear();
+     this.multiSelectDecorations = null;
+   }
+   ```
+
+---
+
+### 4.2.8: Select Wall Direction in Editor → Highlight Wall in 3D
+
+**Symptom:** Placing cursor on wall direction text (top/left/bottom/right) in editor doesn't highlight the corresponding wall in 3D.
+
+**Root Cause:** `extractEntityLocations()` only tracks rooms and connections. Walls have no source ranges in JSON and aren't added to entity locations.
+
+**Files:**
+- `language/src/diagrams/floorplans/json-converter.ts` - Add `_sourceRange` to walls
+- `interactive-editor/index.html` - Add walls to `extractEntityLocations()`
+
+**Grammar Insight:** Each `WallSpecification` AST node has `$cstNode` with exact source range:
+```langium
+WallSpecification:
+    direction=WallDirection ':' type=WallType 
+    ('at' position=NUMBER unit=('%')?)?;
+```
+
+**Fix:**
+1. Add `_sourceRange` to `JsonWall` interface:
+   ```typescript
+   export interface JsonWall {
+     direction: "top" | "bottom" | "left" | "right";
+     type: string;
+     // ... existing fields
+     _sourceRange?: JsonSourceRange;
+   }
+   ```
+
+2. Extract source range in json-converter:
+   ```typescript
+   walls.push({
+     direction: spec.direction as JsonWall['direction'],
+     type: spec.type,
+     // ... existing fields
+     _sourceRange: extractSourceRange(spec.$cstNode)
+   });
+   ```
+
+3. Add walls to `extractEntityLocations()`:
+   ```javascript
+   for (const floor of jsonData.floors) {
+     for (const room of floor.rooms) {
+       // ... existing room code
+       for (const wall of room.walls) {
+         if (wall._sourceRange) {
+           locations.push({
+             entityType: 'wall',
+             entityId: `${room.name}_${wall.direction}`,
+             floorId: floor.id,
+             sourceRange: wall._sourceRange,
+           });
+         }
+       }
+     }
+   }
+   ```
+
+---
+
+### 2.4a.6: Multi-Floor Rendering Overlaps (Deferred)
+
+**Symptom:** When loading a floorplan with multiple floors, all floors render at the same Y level, creating an overlapped mess.
+
+**Root Cause:** `InteractiveEditor.loadFloorplan()` doesn't compute floor elevations. Unlike the viewer, it renders all floors at elevation 0.
+
+**Status:** Deferred to task 2.4a (Shared Rendering Utilities). Fix requires adopting viewer's floor elevation calculation which properly stacks floors based on cumulative heights.
+
+---
+
 ## Architecture Decisions
 
 ### Selection Highlighting Strategy
