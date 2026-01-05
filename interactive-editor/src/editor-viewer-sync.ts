@@ -281,21 +281,45 @@ export class EditorViewerSync {
   
   /**
    * Find which entity (if any) contains the given position.
+   * Returns the most specific (smallest range) match to prioritize
+   * walls over their parent rooms.
    */
   private findEntityAtPosition(position: monaco.Position): string | null {
     const line = position.lineNumber - 1; // Monaco is 1-indexed, source ranges are 0-indexed
     const column = position.column - 1;
+    
+    let bestMatch: { key: string; size: number } | null = null;
     
     for (const [key, entity] of this.entityLocations) {
       const range = entity.sourceRange;
       
       // Check if position is within entity range
       if (this.isPositionInRange(line, column, range)) {
-        return key;
+        // Calculate range size (smaller = more specific)
+        const size = this.getRangeSize(range);
+        
+        // Keep the smallest (most specific) match
+        if (bestMatch === null || size < bestMatch.size) {
+          bestMatch = { key, size };
+        }
       }
     }
     
-    return null;
+    return bestMatch?.key ?? null;
+  }
+  
+  /**
+   * Calculate the "size" of a source range for specificity comparison.
+   * Smaller values = more specific matches (walls < rooms).
+   */
+  private getRangeSize(range: SourceRange): number {
+    // Use line count as primary, column span as tiebreaker
+    const lineSpan = range.endLine - range.startLine;
+    const columnSpan = (range.endLine === range.startLine) 
+      ? range.endColumn - range.startColumn 
+      : 1000; // Multi-line ranges use large column value
+    
+    return lineSpan * 10000 + columnSpan;
   }
   
   /**

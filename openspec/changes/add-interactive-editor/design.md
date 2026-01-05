@@ -334,6 +334,146 @@ WallSpecification:
 
 ---
 
+### 2.4a.7: Shared Wall Selection Inconsistency (Deferred)
+
+**Symptom:** When clicking a shared wall in 3D, selection inconsistently assigns to either adjacent room depending on camera angle.
+
+**Root Cause:** InteractiveEditor creates **independent wall meshes** for each room. Shared walls produce **duplicate overlapping meshes** (one from each adjacent room). Raycasting hits whichever mesh happens to be "in front" - this is camera-dependent and inconsistent.
+
+**How Viewer Solves This:** The viewer uses `floorplan-3d-core/src/wall-ownership.ts` with deterministic ownership rules:
+- **Vertical walls** (left/right): Room with smaller X position owns the wall
+- **Horizontal walls** (top/bottom): Room with smaller Z position owns the wall
+- Only the "owner" room creates the mesh, preventing duplicate overlapping meshes
+
+The viewer uses `analyzeWallOwnership()` in `wall-generator.ts` (line 82) to skip walls owned by adjacent rooms:
+```typescript
+const ownership = analyzeWallOwnership(room, wall, allRooms, styleResolver);
+if (!ownership.shouldRender) continue; // Skip - owned by adjacent room
+```
+
+**Resolution:** Fixed when adopting viewer's `WallGenerator` via task 2.4a.3. The `analyzeWallOwnership()` function ensures single-owner wall rendering with no duplicate meshes.
+
+---
+
+### 4.2.9: Wall Range Prioritization Over Room Range
+
+**Symptom:** When cursor is on wall direction text (e.g., `top: solid`), the room gets selected instead of the wall because room's range encompasses wall's range.
+
+**Root Cause:** `findEntityAtPosition()` returned the first matching entity. Since rooms are often iterated before their child walls, and room ranges contain wall ranges, rooms matched first.
+
+**Fix:** Updated `findEntityAtPosition()` to find ALL matching entities and return the **most specific** (smallest range) one. Added `getRangeSize()` helper method.
+
+```typescript
+// New approach: Find smallest matching range
+let bestMatch: { key: string; size: number } | null = null;
+for (const [key, entity] of this.entityLocations) {
+  if (this.isPositionInRange(line, column, range)) {
+    const size = this.getRangeSize(range);
+    if (bestMatch === null || size < bestMatch.size) {
+      bestMatch = { key, size };
+    }
+  }
+}
+return bestMatch?.key ?? null;
+```
+
+---
+
+### 4.2.10: Text Highlight → 3D Highlight Preview (Enhancement)
+
+**Goal:** When user selects a text range in the editor (e.g., highlighting code for copy/paste), preview the contained entities in 3D by highlighting them—without changing the actual selection state.
+
+**UX Rationale:**
+- **Current behavior:** Cursor position triggers 3D selection (solid commitment)
+- **New behavior:** Text highlight triggers 3D preview (ephemeral visual feedback)
+- This mirrors 3D hover behavior: hovering shows preview, clicking commits selection
+- Enables "what would I get?" preview before any action
+- Natural for copy/paste workflows: user sees what entities their selection spans
+
+**Distinction: Cursor vs Text Selection**
+| Action | Editor State | 3D Response |
+|--------|--------------|-------------|
+| Click/arrow keys | Cursor moves, no selection | **Select** entity at cursor |
+| Shift+click/Shift+arrows | Text range selected | **Highlight** (preview) entities in range |
+| Multi-cursor (Cmd+click) | Multiple cursors | **Select** entities at each cursor |
+
+**Implementation Approach:**
+
+**File:** `interactive-editor/src/editor-viewer-sync.ts`
+
+1. **Listen to selection changes** (not just cursor):
+   ```typescript
+   this.editor.onDidChangeSelection((event) => {
+     const selections = this.editor.getSelections();
+     for (const selection of selections) {
+       if (!selection.isEmpty()) {
+         // Text is highlighted - preview mode
+         this.handleTextHighlight(selection);
+       }
+     }
+   });
+   ```
+
+2. **Find entities within text range:**
+   ```typescript
+   private handleTextHighlight(selection: monaco.Selection): void {
+     const entitiesInRange = this.findEntitiesInRange(
+       selection.startLineNumber,
+       selection.startColumn,
+       selection.endLineNumber,
+       selection.endColumn
+     );
+     
+     // Use highlight (preview) instead of select
+     if (this.onEditorHighlightCallback && entitiesInRange.length > 0) {
+       this.onEditorHighlightCallback(entitiesInRange);
+     }
+   }
+   ```
+
+3. **New callback for highlight preview:**
+   ```typescript
+   onEditorHighlight(callback: (entityKeys: string[]) => void): void {
+     this.onEditorHighlightCallback = callback;
+   }
+   ```
+
+4. **Wire up in index.html:**
+   ```javascript
+   editorSync.onEditorHighlight((entityKeys) => {
+     editor3d.selectionManager.clearHighlights();
+     for (const key of entityKeys) {
+       const mesh = editor3d.meshRegistry.getMeshByEntityKey(key);
+       if (mesh) {
+         editor3d.selectionManager.highlight(mesh, true); // Preview highlight
+       }
+     }
+   });
+   ```
+
+5. **Clear highlights when selection cleared:**
+   ```typescript
+   // In onDidChangeSelection handler
+   if (selection.isEmpty()) {
+     if (this.onEditorHighlightClearCallback) {
+       this.onEditorHighlightClearCallback();
+     }
+   }
+   ```
+
+**Visual Distinction:**
+- **Selection:** Green edge outline (EdgesGeometry)
+- **Highlight/Preview:** Emission glow or different color (e.g., blue tint)
+
+This keeps selection (commitment) and highlight (preview) visually distinct.
+
+**Files to modify:**
+- `interactive-editor/src/editor-viewer-sync.ts` - Add highlight detection and callbacks
+- `interactive-editor/src/selection-manager.ts` - Ensure `highlight()` method works independently of `select()`
+- `interactive-editor/index.html` - Wire up highlight callback
+
+---
+
 ## Architecture Decisions
 
 ### Selection Highlighting Strategy

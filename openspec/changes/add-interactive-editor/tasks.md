@@ -170,6 +170,10 @@ This document tracks implementation tasks for the interactive editor capability.
 - [ ] 2.4a.6 **BUG**: Multi-floor rendering overlaps - InteractiveEditor doesn't compute floor elevations (see design.md)
   - All floors render at Y=0 instead of stacking based on cumulative heights
   - Fix requires adopting viewer's floor elevation calculation logic
+- [ ] 2.4a.7 **BUG**: Shared wall selection inconsistency - clicking shared wall assigns to random room (see design.md)
+  - InteractiveEditor creates duplicate wall meshes for adjacent rooms
+  - Raycast hits whichever mesh is "in front" (camera-dependent)
+  - Fix: Adopt viewer's `wall-ownership.ts` which uses deterministic single-owner rendering
 
 ### 2.5 Deliverables
 - [x] Source ranges in JSON export
@@ -253,6 +257,18 @@ This document tracks implementation tasks for the interactive editor capability.
   - **Implemented**: Extract wall source ranges from grammar (`WallSpecification.$cstNode`)
   - **Implemented**: Added `_sourceRange` to `JsonWall` interface in json-converter.ts
   - **Implemented**: Added walls to `extractEntityLocations()` in index.html
+- [x] 4.2.9 **BUG**: Wall range inside room range - room selected instead of wall (see design.md)
+  - **Fixed**: Updated `findEntityAtPosition()` to return most specific (smallest) matching range
+  - **Implemented**: Added `getRangeSize()` helper to calculate range specificity
+- [ ] 4.2.10 **ENHANCEMENT**: Text highlight → 3D highlight preview (see design.md)
+  - Listen to `onDidChangeSelection` for text range selections (not just cursor)
+  - When text range spans entities, HIGHLIGHT (preview) those entities in 3D without selecting
+  - Use existing `SelectionManager.highlight()` API for non-destructive preview
+  - Clear highlights when text selection is cleared
+  - Keep existing cursor position → SELECT behavior unchanged
+  - Test: Select room definition text → room highlights (green glow) in 3D
+  - Test: Clear text selection → highlight clears, cursor selection remains
+  - Test: Copy/paste workflow unaffected - text selection for copy triggers preview
 
 ### 4.3 Debouncing & Loop Prevention
 - [x] 4.3.1 Implement sync direction lock in EditorViewerSync
