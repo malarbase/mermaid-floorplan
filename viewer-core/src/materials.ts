@@ -106,3 +106,4 @@ export class BrowserMaterialFactory extends BaseMaterialFactory {
     textureCache.clear();
   }
 }
+

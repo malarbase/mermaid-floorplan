@@ -2,6 +2,7 @@
  * Wall geometry generation and CSG operations
  * 
  * Supports wall ownership detection and per-face materials for shared walls.
+ * This is the shared WallGenerator used by both viewer and interactive-editor.
  */
 
 import * as THREE from 'three';

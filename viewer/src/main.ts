@@ -1,213 +1,59 @@
-import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { Evaluator } from 'three-bvh-csg';
 // Import types and shared code from floorplan-3d-core for consistent rendering
-import type { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from 'floorplan-3d-core';
+import type { JsonExport } from 'floorplan-3d-core';
+// Import shared viewer interfaces, wall generator, and managers from viewer-core
 import { 
-  DIMENSIONS, COLORS, COLORS_DARK, getThemeColors,
-  MaterialFactory, StairGenerator, normalizeToMeters,
-  type ViewerTheme, type MaterialStyle
-} from 'floorplan-3d-core';
-// Browser-specific modules (CSG, DSL parsing)
-import { WallGenerator, StyleResolver } from './wall-generator';
-import { parseFloorplanDSLWithDocument, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
-// Editor and chat integration
-import { initializeEditor, type EditorInstance } from './editor';
+  BaseViewer,
+  Overlay2DManager,
+  createDslEditor,
+  monaco,
+  injectStyles,
+  parseFloorplanDSLWithDocument,
+  isFloorplanFile,
+  isJsonFile,
+  type DslEditorInstance,
+  type ParseError,
+} from 'viewer-core';
+// Chat integration
 import { OpenAIChatService } from './openai-chat';
-// Keyboard navigation
-import { PivotIndicator } from './pivot-indicator';
-import { KeyboardControls } from './keyboard-controls';
-// Extracted managers
-import { CameraManager } from './camera-manager';
-import { AnnotationManager } from './annotation-manager';
-import { FloorManager } from './floor-manager';
-import { Overlay2DManager } from './overlay-2d-manager';
 
-class Viewer {
-    // Core Three.js
-    private scene: THREE.Scene;
-    private perspectiveCamera: THREE.PerspectiveCamera;
-    private orthographicCamera: THREE.OrthographicCamera;
-    private renderer: THREE.WebGLRenderer;
-    private labelRenderer: CSS2DRenderer;
-    private controls: OrbitControls;
-    
-    // Scene content
-    private floors: THREE.Group[] = [];
-    private floorHeights: number[] = [];
-    private connections: JsonConnection[] = [];
-    private config: JsonConfig = {};
-    private styles: Map<string, JsonStyle> = new Map();
-    private explodedViewFactor: number = 0;
-    
-    // Generators
-    private wallGenerator: WallGenerator;
-    private stairGenerator: StairGenerator;
-    
+// Inject shared styles before anything else
+injectStyles();
+
+class Viewer extends BaseViewer {
     // Light controls
-    private directionalLight: THREE.DirectionalLight;
-    private lightAzimuth: number = 45; // degrees
-    private lightElevation: number = 60; // degrees
-    private lightIntensity: number = 1.0;
-    private lightRadius: number = 100;
+    protected lightAzimuth: number = 45;
+    protected lightElevation: number = 60;
+    protected lightIntensity: number = 1.0;
+    protected lightRadius: number = 100;
     
     // Validation warnings
-    private validationWarnings: ParseError[] = [];
-    private warningsPanel: HTMLElement | null = null;
-    private warningsPanelCollapsed: boolean = true;
-    
-    // Current floorplan data
-    private currentFloorplanData: JsonExport | null = null;
-    
-    // Theme state
-    private currentTheme: ViewerTheme = 'light';
+    protected validationWarnings: ParseError[] = [];
+    protected warningsPanel: HTMLElement | null = null;
+    protected warningsPanelCollapsed: boolean = true;
     
     // Editor panel state
-    private editorInstance: EditorInstance | null = null;
-    private chatService: OpenAIChatService = new OpenAIChatService();
-    private editorPanelOpen: boolean = false;
-    private editorDebounceTimer: number | undefined;
+    protected editorInstance: DslEditorInstance | null = null;
+    protected chatService: OpenAIChatService = new OpenAIChatService();
+    protected editorPanelOpen: boolean = false;
+    protected editorDebounceTimer: number | undefined;
     
-    // Keyboard navigation
-    private pivotIndicator: PivotIndicator | null = null;
-    private keyboardControls: KeyboardControls | null = null;
-    private lastFrameTime: number = 0;
-    
-    // Managers
-    private cameraManager: CameraManager;
-    private annotationManager: AnnotationManager;
-    private floorManager: FloorManager;
-    private overlay2DManager: Overlay2DManager;
+    // 2D Overlay manager
+    protected overlay2DManager: Overlay2DManager;
 
     constructor() {
-        // Init scene
-        this.scene = new THREE.Scene();
-        this.scene.background = new THREE.Color(COLORS.BACKGROUND);
-
-        // Init perspective camera
-        const fov = 75;
-        this.perspectiveCamera = new THREE.PerspectiveCamera(fov, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.perspectiveCamera.position.set(20, 20, 20);
-
-        // Init orthographic camera
-        const aspect = window.innerWidth / window.innerHeight;
-        const frustumSize = 30;
-        this.orthographicCamera = new THREE.OrthographicCamera(
-            frustumSize * aspect / -2,
-            frustumSize * aspect / 2,
-            frustumSize / 2,
-            frustumSize / -2,
-            0.1,
-            1000
-        );
-        this.orthographicCamera.position.set(20, 20, 20);
-
-        // Init WebGL renderer
-        this.renderer = new THREE.WebGLRenderer({ antialias: true });
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.shadowMap.enabled = true;
-        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        document.getElementById('app')?.appendChild(this.renderer.domElement);
-
-        // Init CSS2D renderer for labels
-        this.labelRenderer = new CSS2DRenderer();
-        this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
-        this.labelRenderer.domElement.style.position = 'absolute';
-        this.labelRenderer.domElement.style.top = '0px';
-        this.labelRenderer.domElement.style.pointerEvents = 'none';
-        document.getElementById('app')?.appendChild(this.labelRenderer.domElement);
-
-        // Init controls (using perspective camera initially)
-        this.controls = new OrbitControls(this.perspectiveCamera, this.renderer.domElement);
-        this.controls.enableDamping = true;
-        
-        // Init pivot indicator
-        this.pivotIndicator = new PivotIndicator(this.scene, this.controls);
-        
-        // Wire up controls events to show pivot indicator
-        this.controls.addEventListener('change', () => {
-            this.pivotIndicator?.onCameraActivity();
-        });
-
-        // Init lighting
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        this.scene.add(ambientLight);
-
-        this.directionalLight = new THREE.DirectionalLight(0xffffff, this.lightIntensity);
-        this.updateLightPosition();
-        this.directionalLight.castShadow = true;
-        this.directionalLight.shadow.mapSize.width = 4096;
-        this.directionalLight.shadow.mapSize.height = 4096;
-        this.directionalLight.shadow.camera.near = 0.5;
-        this.directionalLight.shadow.camera.far = 500;
-        this.directionalLight.shadow.camera.left = -50;
-        this.directionalLight.shadow.camera.right = 50;
-        this.directionalLight.shadow.camera.top = 50;
-        this.directionalLight.shadow.camera.bottom = -50;
-        this.scene.add(this.directionalLight);
-
-        // Init wall generator with CSG evaluator
-        this.wallGenerator = new WallGenerator(new Evaluator());
-        this.wallGenerator.setTheme(this.currentTheme);
-
-        // Init stair generator
-        this.stairGenerator = new StairGenerator();
-
-        // Initialize managers
-        this.cameraManager = new CameraManager(
-            this.perspectiveCamera,
-            this.orthographicCamera,
-            this.controls,
-            {
-                getFloors: () => this.floors,
-                getKeyboardControls: () => this.keyboardControls,
-            }
-        );
-        
-        this.annotationManager = new AnnotationManager({
-            getFloors: () => this.floors,
-            getFloorplanData: () => this.currentFloorplanData,
-            getConfig: () => this.config,
-            getFloorVisibility: (id) => this.floorManager.getFloorVisibility(id),
+        super({
+            containerId: 'app',
+            initialTheme: 'light',
+            enableKeyboardControls: true,
         });
         
-        this.floorManager = new FloorManager({
-            getFloors: () => this.floors,
-            getFloorplanData: () => this.currentFloorplanData,
-            onVisibilityChange: () => {
-                this.annotationManager.updateFloorSummary();
-                // Re-render 2D overlay to reflect floor visibility changes
-                this.overlay2DManager.render();
-            },
-        });
-        
+        // Initialize 2D overlay manager
         this.overlay2DManager = new Overlay2DManager({
             getCurrentTheme: () => this.currentTheme,
             getFloorplanData: () => this.currentFloorplanData,
-            getVisibleFloorIds: () => this.floorManager.getVisibleFloorIds(),
+            getVisibleFloorIds: () => this._floorManager.getVisibleFloorIds(),
         });
-
-        // Window resize
-        window.addEventListener('resize', this.onWindowResize.bind(this));
-        
-        // Initialize keyboard controls
-        this.keyboardControls = new KeyboardControls(
-            this.controls,
-            this.perspectiveCamera,
-            this.orthographicCamera,
-            {
-                onCameraModeToggle: () => this.cameraManager.toggleCameraMode(),
-                onUpdateOrthographicSize: () => this.cameraManager.updateOrthographicSize(),
-                getBoundingBox: () => this.cameraManager.getSceneBoundingBox(),
-                setHelpOverlayVisible: (visible) => this.setHelpOverlayVisible(visible),
-            }
-        );
-        this.keyboardControls.setPivotIndicator(this.pivotIndicator!);
-        
-        // Setup help overlay close button and click-outside-to-close
-        this.setupHelpOverlay();
 
         // UI Controls
         this.setupUIControls();
@@ -215,11 +61,28 @@ class Viewer {
         // Create warnings panel
         this.createWarningsPanel();
         
+        // Setup help overlay close button and click-outside-to-close
+        this.setupHelpOverlay();
+        
         // Initialize editor panel
         this.setupEditorPanel();
 
-        // Start loop
-        this.animate();
+        // Start animation loop
+        this.startAnimation();
+    }
+    
+    /**
+     * Override to handle floor visibility changes in 2D overlay.
+     */
+    protected onFloorVisibilityChanged(): void {
+        this.overlay2DManager.render();
+    }
+    
+    /**
+     * Override to update 2D overlay after floorplan loads.
+     */
+    protected onFloorplanLoaded(): void {
+        this.overlay2DManager.render();
     }
     
     private setupUIControls() {
@@ -268,10 +131,15 @@ class Viewer {
         const themeToggleBtn = document.getElementById('theme-toggle-btn') as HTMLButtonElement;
         themeToggleBtn?.addEventListener('click', () => {
             this.toggleTheme();
+            this.updateThemeButton();
+            // Update Monaco editor theme
+            monaco.editor.setTheme(this.currentTheme === 'dark' ? 'vs-dark' : 'vs');
+            // Update 2D overlay for theme change
+            this.overlay2DManager.render();
         });
         
         // Collapsible sections
-        document.querySelectorAll('.section-header').forEach(header => {
+        document.querySelectorAll('.fp-section-header').forEach(header => {
             header.addEventListener('click', () => {
                 const section = header.parentElement;
                 section?.classList.toggle('collapsed');
@@ -279,9 +147,9 @@ class Viewer {
         });
         
         // Setup manager controls
-        this.cameraManager.setupControls();
-        this.annotationManager.setupControls();
-        this.floorManager.setupControls();
+        this._cameraManager.setupControls();
+        this._annotationManager.setupControls();
+        this._floorManager.setupControls();
         this.overlay2DManager.setupControls();
     }
     
@@ -305,11 +173,12 @@ class Viewer {
         // Initialize Monaco editor with default content
         const defaultContent = this.getDefaultFloorplanContent();
         try {
-            this.editorInstance = await initializeEditor('editor-container', defaultContent);
-            
-            // Wire up editor changes to reload floorplan (debounced)
-            this.editorInstance.onDidChangeModelContent(() => {
-                this.scheduleEditorUpdate();
+            this.editorInstance = createDslEditor({
+                containerId: 'editor-container',
+                initialContent: defaultContent,
+                theme: 'vs-dark',
+                fontSize: 13,
+                onChange: () => this.scheduleEditorUpdate(),
             });
             
             // Load the default floorplan
@@ -334,6 +203,9 @@ class Viewer {
         if (this.editorPanelOpen) {
             document.documentElement.style.setProperty('--editor-width', `${width}px`);
         }
+        
+        // Notify 2D overlay manager of editor state change to adjust position
+        this.overlay2DManager.onEditorStateChanged(this.editorPanelOpen, width);
     }
     
     private setupEditorResize() {
@@ -654,121 +526,6 @@ floorplan
             element.textContent = value;
         }
     }
-    
-    private updateLightPosition() {
-        // Convert spherical to cartesian coordinates
-        const azimuthRad = (this.lightAzimuth * Math.PI) / 180;
-        const elevationRad = (this.lightElevation * Math.PI) / 180;
-        
-        const x = this.lightRadius * Math.cos(elevationRad) * Math.sin(azimuthRad);
-        const y = this.lightRadius * Math.sin(elevationRad);
-        const z = this.lightRadius * Math.cos(elevationRad) * Math.cos(azimuthRad);
-        
-        this.directionalLight.position.set(x, y, z);
-    }
-    
-    private toggleTheme() {
-        this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-        this.applyTheme();
-        this.updateThemeButton();
-    }
-    
-    public setTheme(theme: ViewerTheme) {
-        this.currentTheme = theme;
-        this.applyTheme();
-        this.updateThemeButton();
-    }
-    
-    private applyTheme() {
-        const colors = getThemeColors(this.currentTheme);
-        this.scene.background = new THREE.Color(colors.BACKGROUND);
-
-        // Update wall generator theme
-        this.wallGenerator.setTheme(this.currentTheme);
-
-        // Regenerate materials for all rooms that don't have explicit styles
-        this.regenerateMaterialsForTheme();
-        
-        // Update 2D overlay
-        this.overlay2DManager.render();
-    }
-
-    /**
-     * Regenerate materials for rooms without explicit styles when theme changes
-     */
-    private regenerateMaterialsForTheme() {
-        if (!this.currentFloorplanData) return;
-
-        const themeColors = getThemeColors(this.currentTheme);
-
-        // Traverse all floors and update materials
-        this.currentFloorplanData.floors.forEach((floorData, floorIndex) => {
-            const floorGroup = this.floors[floorIndex];
-            if (!floorGroup) return;
-
-            floorData.rooms.forEach(room => {
-                // Check if room has explicit style
-                const hasExplicitStyle = (room.style && this.styles.has(room.style)) ||
-                    (this.config.default_style && this.styles.has(this.config.default_style));
-
-                // Only update materials for rooms without explicit styles
-                if (!hasExplicitStyle) {
-                    // Find and update floor mesh for this room
-                    floorGroup.traverse((child) => {
-                        if (child instanceof THREE.Mesh) {
-                            const mesh = child as THREE.Mesh;
-                            const material = mesh.material;
-
-                            // Update floor materials (single material)
-                            if (material instanceof THREE.MeshStandardMaterial && !Array.isArray(material)) {
-                                // Check if it's a floor mesh (positioned at room elevation)
-                                const elevation = room.elevation || 0;
-                                if (Math.abs(mesh.position.y - elevation) < 0.1) {
-                                    material.color.setHex(themeColors.FLOOR);
-                                    material.needsUpdate = true;
-                                }
-                            }
-
-                            // Update wall materials (material arrays for per-face materials)
-                            if (Array.isArray(material)) {
-                                material.forEach(mat => {
-                                    if (mat instanceof THREE.MeshStandardMaterial) {
-                                        // Update wall colors
-                                        mat.color.setHex(themeColors.WALL);
-                                        mat.needsUpdate = true;
-                                    }
-                                });
-                            }
-                        }
-                    });
-                }
-            });
-        });
-
-        // Update door and window materials (they don't have explicit styles)
-        this.floors.forEach(floorGroup => {
-            floorGroup.traverse((child) => {
-                if (child instanceof THREE.Mesh) {
-                    const mesh = child as THREE.Mesh;
-                    const material = mesh.material;
-
-                    if (material instanceof THREE.MeshStandardMaterial) {
-                        // Window materials are transparent
-                        if (material.transparent && material.opacity < 1.0) {
-                            material.color.setHex(themeColors.WINDOW);
-                            material.needsUpdate = true;
-                        }
-                        // Door materials (identified by their color range)
-                        else if (material.color.getHex() === COLORS.DOOR ||
-                                 material.color.getHex() === COLORS_DARK.DOOR) {
-                            material.color.setHex(themeColors.DOOR);
-                            material.needsUpdate = true;
-                        }
-                    }
-                }
-            });
-        });
-    }
 
     private updateThemeButton() {
         const btn = document.getElementById('theme-toggle-btn');
@@ -788,22 +545,12 @@ floorplan
     }
     
     /**
-     * Set keyboard help overlay visibility
-     */
-    private setHelpOverlayVisible(visible: boolean): void {
-        const overlay = document.getElementById('keyboard-help-overlay');
-        if (overlay) {
-            overlay.classList.toggle('visible', visible);
-        }
-    }
-    
-    /**
      * Setup help overlay close functionality
      */
     private setupHelpOverlay(): void {
         const overlay = document.getElementById('keyboard-help-overlay');
         const closeBtn = document.getElementById('keyboard-help-close');
-        const panel = overlay?.querySelector('.keyboard-help-panel');
+        const panel = overlay?.querySelector('.fp-keyboard-help-panel');
         
         // Close button click
         closeBtn?.addEventListener('click', () => {
@@ -829,7 +576,7 @@ floorplan
         try {
             const result = await new Promise<ArrayBuffer | object>((resolve, reject) => {
                 exporter.parse(
-                    this.scene,
+                    this._scene,
                     (gltf) => resolve(gltf),
                     (error) => reject(error),
                     { binary }
@@ -868,13 +615,13 @@ floorplan
     private createWarningsPanel() {
         this.warningsPanel = document.createElement('div');
         this.warningsPanel.id = 'warnings-panel';
-        this.warningsPanel.className = 'warnings-panel collapsed';
+        this.warningsPanel.className = 'fp-warnings-panel collapsed';
         this.warningsPanel.innerHTML = `
-            <div class="warnings-header">
-                <span class="warnings-badge">⚠️ <span id="warning-count">0</span> warnings</span>
-                <button id="toggle-warnings" class="toggle-btn">▼</button>
+            <div class="fp-warnings-header">
+                <span class="fp-warnings-badge">⚠️ <span id="warning-count">0</span> warnings</span>
+                <button id="toggle-warnings" class="fp-warnings-toggle">▼</button>
             </div>
-            <div class="warnings-list" id="warnings-list"></div>
+            <div class="fp-warnings-list" id="warnings-list"></div>
         `;
         document.body.appendChild(this.warningsPanel);
         
@@ -899,12 +646,27 @@ floorplan
         
         if (listEl) {
             if (this.validationWarnings.length === 0) {
-                listEl.innerHTML = '<div class="no-warnings">No warnings</div>';
+                listEl.innerHTML = '<div class="fp-no-warnings">No warnings</div>';
             } else {
-                listEl.innerHTML = this.validationWarnings.map(w => {
-                    const lineInfo = w.line ? `<span class="line-number">line ${w.line}:</span> ` : '';
-                    return `<div class="warning-item">${lineInfo}${w.message}</div>`;
+                listEl.innerHTML = this.validationWarnings.map((w, index) => {
+                    const lineInfo = w.line ? `<span class="fp-warning-line">line ${w.line}:</span> ` : '';
+                    return `<div class="fp-warning-item" data-index="${index}" style="cursor: pointer;">${lineInfo}${w.message}</div>`;
                 }).join('');
+                
+                // Add click handlers for navigation to editor
+                listEl.querySelectorAll('.fp-warning-item').forEach((item) => {
+                    item.addEventListener('click', () => {
+                        const index = parseInt(item.getAttribute('data-index') || '0', 10);
+                        const warning = this.validationWarnings[index];
+                        if (warning.line && this.editorInstance) {
+                            // Open editor panel if not already open
+                            if (!this.editorPanelOpen) {
+                                document.getElementById('editor-panel-toggle')?.click();
+                            }
+                            this.editorInstance.goToLine(warning.line, warning.column || 1);
+                        }
+                    });
+                });
             }
         }
         
@@ -912,32 +674,6 @@ floorplan
         if (this.warningsPanel) {
             this.warningsPanel.style.display = this.validationWarnings.length > 0 ? 'block' : 'none';
         }
-    }
-
-    private onWindowResize() {
-        this.cameraManager.onWindowResize();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.labelRenderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    private animate() {
-        requestAnimationFrame(this.animate.bind(this));
-        
-        // Calculate delta time
-        const now = performance.now();
-        const deltaTime = this.lastFrameTime ? now - this.lastFrameTime : 16;
-        this.lastFrameTime = now;
-        
-        // Update keyboard controls
-        this.keyboardControls?.update(deltaTime);
-        
-        // Update pivot indicator
-        this.pivotIndicator?.update(deltaTime);
-        this.pivotIndicator?.updateSize(this.cameraManager.activeCamera);
-        
-        this.controls.update();
-        this.renderer.render(this.scene, this.cameraManager.activeCamera);
-        this.labelRenderer.render(this.scene, this.cameraManager.activeCamera);
     }
 
     private onFileLoad(event: Event) {
@@ -1008,202 +744,6 @@ floorplan
             }
         };
         reader.readAsText(file);
-    }
-
-    public loadFloorplan(data: JsonExport) {
-        // Normalize all dimensions to meters for consistent 3D rendering
-        const normalizedData = normalizeToMeters(data);
-        this.currentFloorplanData = normalizedData;
-        
-        // Clear existing
-        this.floors.forEach(f => this.scene.remove(f));
-        this.floors = [];
-        this.floorHeights = [];
-        this.connections = normalizedData.connections;
-        this.config = normalizedData.config || {};
-        
-        // Initialize unit settings from config
-        this.annotationManager.initFromConfig(this.config);
-        
-        // Apply theme from DSL config (6.7 & 6.8)
-        if (this.config.theme === 'dark' || this.config.darkMode === true) {
-            this.setTheme('dark');
-        } else if (this.config.theme === 'blueprint') {
-            this.setTheme('blueprint');
-        } else if (this.config.theme === 'default') {
-            this.setTheme('light');
-        }
-        
-        // Build style lookup map
-        this.styles.clear();
-        if (normalizedData.styles) {
-            for (const style of normalizedData.styles) {
-                this.styles.set(style.name, style);
-            }
-        }
-
-        // Center camera roughly
-        if (normalizedData.floors.length > 0 && normalizedData.floors[0].rooms.length > 0) {
-            const firstRoom = normalizedData.floors[0].rooms[0];
-            this.controls.target.set(firstRoom.x + firstRoom.width/2, 0, firstRoom.z + firstRoom.height/2);
-            
-            // Store as default camera state for Home key reset
-            this.keyboardControls?.storeDefaultCameraState();
-        }
-
-        // Generate floors and track heights
-        const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-        normalizedData.floors.forEach((floorData) => {
-            const floorHeight = floorData.height ?? globalDefault;
-            this.floorHeights.push(floorHeight);
-            
-            const floorGroup = this.generateFloor(floorData);
-            this.scene.add(floorGroup);
-            this.floors.push(floorGroup);
-        });
-
-        this.setExplodedView(this.explodedViewFactor);
-        
-        // Update annotations
-        this.annotationManager.updateAll();
-        
-        // Update floor visibility UI
-        this.floorManager.initFloorVisibility();
-        
-        // Update 2D overlay
-        this.overlay2DManager.render();
-    }
-
-    /**
-     * Resolve style for a room with fallback chain:
-     * 1. Room's explicit style
-     * 2. Default style from config
-     * 3. undefined (use defaults)
-     */
-    private resolveRoomStyle(room: JsonRoom): MaterialStyle | undefined {
-        // Try room's explicit style first
-        if (room.style && this.styles.has(room.style)) {
-            const style = this.styles.get(room.style)!;
-            return MaterialFactory.jsonStyleToMaterialStyle(style);
-        }
-        
-        // Try default style from config
-        if (this.config.default_style && this.styles.has(this.config.default_style)) {
-            const style = this.styles.get(this.config.default_style)!;
-            return MaterialFactory.jsonStyleToMaterialStyle(style);
-        }
-        
-        return undefined;
-    }
-
-    private generateFloor(floorData: JsonFloor): THREE.Group {
-        const group = new THREE.Group();
-        group.name = floorData.id;
-
-        // Height resolution priority: room > floor > config > constant
-        const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-        const floorDefault = floorData.height ?? globalDefault;
-
-        // Prepare all rooms with defaults for wall ownership detection
-        const allRoomsWithDefaults = floorData.rooms.map(r => ({
-            ...r,
-            roomHeight: r.roomHeight ?? floorDefault
-        }));
-
-        // Set style resolver for wall ownership detection
-        // This allows the wall generator to get styles for adjacent rooms
-        const styleResolver: StyleResolver = (room: JsonRoom) => this.resolveRoomStyle(room);
-        this.wallGenerator.setStyleResolver(styleResolver);
-        
-        floorData.rooms.forEach(room => {
-            // Apply default height to room if not specified
-            const roomWithDefaults = {
-                ...room,
-                roomHeight: room.roomHeight ?? floorDefault
-            };
-
-            // Resolve style for this room
-            const roomStyle = this.resolveRoomStyle(room);
-
-            // Create materials for this room with style and theme
-            // Only pass theme if room doesn't have explicit style (so theme colors are used as defaults)
-            const hasExplicitStyle = (room.style && this.styles.has(room.style)) ||
-                (this.config.default_style && this.styles.has(this.config.default_style));
-            const materials = MaterialFactory.createMaterialSet(
-                roomStyle,
-                hasExplicitStyle ? undefined : this.currentTheme
-            );
-
-            // 1. Floor plate
-            const floorMesh = this.createFloorMesh(roomWithDefaults, materials.floor);
-            group.add(floorMesh);
-
-            // 2. Walls with doors, windows, and connections
-            // Now uses wall ownership detection to prevent Z-fighting
-            roomWithDefaults.walls.forEach(wall => {
-                this.wallGenerator.generateWall(
-                    wall,
-                    roomWithDefaults,
-                    allRoomsWithDefaults,
-                    this.connections,
-                    materials,
-                    group,
-                    this.config
-                );
-            });
-        });
-
-        // 3. Stairs
-        if (floorData.stairs) {
-            floorData.stairs.forEach(stair => {
-                const stairGroup = this.stairGenerator.generateStair(stair);
-                group.add(stairGroup);
-            });
-        }
-
-        // 4. Lifts
-        if (floorData.lifts) {
-            floorData.lifts.forEach(lift => {
-                const liftGroup = this.stairGenerator.generateLift(lift, floorDefault);
-                group.add(liftGroup);
-            });
-        }
-
-        return group;
-    }
-
-    /**
-     * Create a floor mesh for a room
-     */
-    private createFloorMesh(room: JsonRoom, material: THREE.Material): THREE.Mesh {
-        const floorThickness = this.config.floor_thickness ?? DIMENSIONS.FLOOR.THICKNESS;
-        const floorGeom = new THREE.BoxGeometry(room.width, floorThickness, room.height);
-        const centerX = room.x + room.width / 2;
-        const centerZ = room.z + room.height / 2;
-        const elevation = room.elevation || 0;
-        
-        const floorMesh = new THREE.Mesh(floorGeom, material);
-        floorMesh.position.set(centerX, elevation, centerZ);
-        floorMesh.receiveShadow = true;
-        return floorMesh;
-    }
-
-
-    private setExplodedView(factor: number) {
-        this.explodedViewFactor = factor;
-        const separation = DIMENSIONS.EXPLODED_VIEW.MAX_SEPARATION * factor;
-        const defaultHeight = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-
-        let cumulativeY = 0;
-        this.floors.forEach((floorGroup, index) => {
-            floorGroup.position.y = cumulativeY;
-            // Use floor-specific height for calculating next floor position
-            const floorHeight = this.floorHeights[index] ?? defaultHeight;
-            cumulativeY += floorHeight + separation;
-        });
-        
-        // Update annotations to match new positions
-        this.annotationManager.updateAll();
     }
 }
 

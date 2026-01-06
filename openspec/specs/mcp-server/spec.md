@@ -1,3 +1,5 @@
+<!-- PROPRIETARY - See openspec/LICENSE -->
+
 # mcp-server Specification
 
 ## Purpose

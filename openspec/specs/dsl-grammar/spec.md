@@ -1,3 +1,5 @@
+<!-- PROPRIETARY - See openspec/LICENSE -->
+
 # dsl-grammar Specification
 
 ## Purpose

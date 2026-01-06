@@ -18,12 +18,14 @@
     "langium": "~4.0.0",
     "monaco-editor": "^0.52.2",
     "three": "^0.170.0",
-    "three-bvh-csg": "^0.0.16"
+    "three-bvh-csg": "^0.0.16",
+    "viewer-core": "*"
   },
   "devDependencies": {
+    "@types/three": "^0.170.0",
     "typescript": "^5.2.2",
     "vite": "^5.0.0",
-    "@types/three": "^0.170.0",
+    "vite-plugin-static-copy": "^3.1.4",
     "vitest": "^3.0.0"
   }
 }

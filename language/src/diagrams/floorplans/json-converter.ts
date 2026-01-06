@@ -4,6 +4,7 @@
  * Used by both the CLI export script and the browser-based viewer.
  */
 
+import type { CstNode } from "langium";
 import type { 
     Floorplan, LENGTH_UNIT, AREA_UNIT,
     StairShape, StairSegment
@@ -28,6 +29,33 @@ import { extractVersionFromAST, CURRENT_VERSION } from "./version-resolver.js";
 // ============================================================================
 // JSON Export Types
 // ============================================================================
+
+/**
+ * Source location range in the DSL file.
+ * Used for bidirectional sync between 3D view and editor.
+ */
+export interface JsonSourceRange {
+    startLine: number;
+    startColumn: number;
+    endLine: number;
+    endColumn: number;
+}
+
+/**
+ * Extract source range from a Langium CstNode.
+ * Returns undefined if the node is not available.
+ */
+function extractSourceRange(cstNode: CstNode | undefined): JsonSourceRange | undefined {
+    if (!cstNode?.range) return undefined;
+    const { range } = cstNode;
+    return {
+        // LSP ranges are 0-based, but we keep them as-is for consistency with Monaco
+        startLine: range.start.line,
+        startColumn: range.start.character,
+        endLine: range.end.line,
+        endColumn: range.end.character,
+    };
+}
 
 export interface JsonConfig {
     wall_thickness?: number;
@@ -84,6 +112,8 @@ export interface JsonWall {
     width?: number;
     height?: number;
     wallHeight?: number;
+    /** Source range for editor sync (wall direction position in DSL) */
+    _sourceRange?: JsonSourceRange;
 }
 
 export interface JsonRoom {
@@ -101,6 +131,8 @@ export interface JsonRoom {
     area?: number;
     /** Room volume (area × roomHeight), computed when roomHeight is specified */
     volume?: number;
+    /** Source location in DSL file (for editor sync) */
+    _sourceRange?: JsonSourceRange;
 }
 
 export interface JsonFloor {
@@ -230,6 +262,8 @@ export interface JsonConnection {
     height?: number;
     /** If true, the opening extends to the ceiling */
     fullHeight?: boolean;
+    /** Source location in DSL file (for editor sync) */
+    _sourceRange?: JsonSourceRange;
 }
 
 export interface JsonExport {
@@ -388,7 +422,9 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                         isPercentage: spec.unit === '%',
                         width: spec.size?.width?.value,
                         height: spec.size?.height?.value,
-                        wallHeight: spec.height
+                        wallHeight: spec.height,
+                        // Extract source range from AST for editor sync
+                        _sourceRange: extractSourceRange(spec.$cstNode)
                     });
                 }
             }
@@ -403,7 +439,9 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                 walls,
                 roomHeight: room.height?.value,
                 elevation: room.elevation ? (room.elevation.negative ? -room.elevation.value : room.elevation.value) : undefined,
-                style: room.styleRef
+                style: room.styleRef,
+                // Extract source range from AST for editor sync
+                _sourceRange: extractSourceRange(room.$cstNode)
             };
             
             // Compute room metrics
@@ -496,7 +534,9 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             doorType: conn.doorType,
             position: conn.position,
             swing: conn.swing,
-            opensInto: conn.opensInto?.name
+            opensInto: conn.opensInto?.name,
+            // Extract source range from AST for editor sync
+            _sourceRange: extractSourceRange(conn.$cstNode)
         };
 
         // Add size if specified

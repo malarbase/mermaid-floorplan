@@ -1,0 +1,46 @@
+SPECIFICATION LICENSE (Proprietary)
+
+© 2026 Malar Kannan. All rights reserved.
+
+SCOPE
+
+This license applies ONLY to specification documents within openspec/:
+- specs/     - Current specifications
+- changes/   - Change proposals and deltas  
+- backlog/   - Planned features and ideas
+
+IMPORTANT: This license covers SPECIFICATION DOCUMENTS ONLY.
+The implementation code is separately licensed under open source terms.
+See the root LICENSE file for code licensing (MIT/GPL v3).
+
+TERMS
+
+1. SPECIFICATION RESTRICTIONS
+   These specification documents may NOT be:
+   - Reproduced or distributed without permission
+   - Used to create independent competing implementations
+   - Used as the basis for derivative specification documents
+
+2. WHAT IS PERMITTED
+   - Reading specifications to understand the project
+   - Contributing to this project under its code licenses
+   - Referencing specifications in discussions and issues
+   - Forking the full project (specs + code together) for contribution
+
+3. COMPATIBILITY WITH CODE LICENSES
+   The implementation code remains fully open source:
+   - Code in viewer/, mcp-server/ → GPL v3
+   - Code in floorplan-3d-core/, floorplan-common/ → MIT
+   - Code in language/ → MIT (dual copyright)
+   
+   You may freely use, modify, and distribute the CODE under those licenses.
+   This spec license does not restrict code usage in any way.
+
+4. RATIONALE
+   Specifications represent significant design investment. This license
+   prevents competitors from copying specs to build competing products
+   while keeping the implementation freely available.
+
+---
+For permission requests, contact the copyright holder.
+

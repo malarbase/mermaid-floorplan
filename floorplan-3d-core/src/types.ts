@@ -3,6 +3,17 @@
  * These types define the intermediate JSON format used between DSL parsing and 3D rendering
  */
 
+/**
+ * Source location range in the DSL file.
+ * Used for bidirectional sync between 3D view and editor.
+ */
+export interface JsonSourceRange {
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+}
+
 export interface JsonConfig {
   // Wall dimensions
   wall_thickness?: number;
@@ -172,6 +183,8 @@ export interface JsonRoom {
   roomHeight?: number;
   elevation?: number;
   style?: string;
+  /** Source location in DSL file (for editor sync) */
+  _sourceRange?: JsonSourceRange;
 }
 
 export interface JsonWall {
@@ -200,6 +213,8 @@ export interface JsonConnection {
   height?: number;
   /** If true, the opening extends to the ceiling */
   fullHeight?: boolean;
+  /** Source location in DSL file (for editor sync) */
+  _sourceRange?: JsonSourceRange;
 }
 
 /**

@@ -20,6 +20,7 @@ export type {
   JsonStairSegment,
   JsonLift,
   JsonVerticalConnection,
+  JsonSourceRange,
   SceneBounds,
   Render3DOptions,
   Render3DResult,

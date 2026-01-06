@@ -146,3 +146,4 @@ export function isFloorplanFile(filename: string): boolean {
 export function isJsonFile(filename: string): boolean {
     return filename.toLowerCase().endsWith('.json');
 }
+

@@ -111,10 +111,18 @@ export class AnnotationManager {
      * Create the floor summary panel element
      */
     private createFloorSummaryPanel(): void {
+        // Check if element already exists (e.g., in interactive-editor HTML)
+        const existing = document.getElementById('floor-summary') || document.getElementById('floor-summary-panel');
+        if (existing) {
+            this.floorSummaryPanel = existing as HTMLElement;
+            // Ensure it has the fp- class for shared styles
+            existing.classList.add('fp-floor-summary-panel');
+            return;
+        }
+        
         this.floorSummaryPanel = document.createElement('div');
         this.floorSummaryPanel.id = 'floor-summary-panel';
-        this.floorSummaryPanel.className = 'floor-summary-panel';
-        this.floorSummaryPanel.style.display = 'none';
+        this.floorSummaryPanel.className = 'fp-floor-summary-panel';
         document.body.appendChild(this.floorSummaryPanel);
     }
     
@@ -127,11 +135,11 @@ export class AnnotationManager {
         if (!this.floorSummaryPanel || !floorplanData) return;
         
         if (!this.state.showFloorSummary) {
-            this.floorSummaryPanel.style.display = 'none';
+            this.floorSummaryPanel.classList.remove('visible');
             return;
         }
         
-        this.floorSummaryPanel.style.display = 'block';
+        this.floorSummaryPanel.classList.add('visible');
         
         const floors = floorplanData.floors;
         // Filter to only visible floors

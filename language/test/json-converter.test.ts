@@ -880,3 +880,73 @@ describe("JSON Converter - Vertical Connections", () => {
   });
 });
 
+describe("JSON Converter - Source Ranges", () => {
+  it("should include source range for rooms", async () => {
+    const input = `floorplan
+  floor f1 {
+    room Kitchen at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }`;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data).toBeDefined();
+    expect(result.data!.floors).toHaveLength(1);
+    
+    const room = result.data!.floors[0].rooms[0];
+    expect(room._sourceRange).toBeDefined();
+    expect(room._sourceRange!.startLine).toBe(2); // 0-indexed line number
+    expect(room._sourceRange!.startColumn).toBeGreaterThanOrEqual(0);
+    expect(room._sourceRange!.endLine).toBeGreaterThanOrEqual(2);
+    expect(room._sourceRange!.endColumn).toBeGreaterThan(0);
+  });
+
+  it("should include source range for connections", async () => {
+    const input = `floorplan
+  floor f1 {
+    room Kitchen at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+    room LivingRoom at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }
+  connect Kitchen.right to LivingRoom.left with door`;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data).toBeDefined();
+    expect(result.data!.connections).toHaveLength(1);
+    
+    const connection = result.data!.connections[0];
+    expect(connection._sourceRange).toBeDefined();
+    expect(connection._sourceRange!.startLine).toBe(5); // 0-indexed line number for connect statement
+    expect(connection._sourceRange!.startColumn).toBeGreaterThanOrEqual(0);
+    expect(connection._sourceRange!.endLine).toBeGreaterThanOrEqual(5);
+    expect(connection._sourceRange!.endColumn).toBeGreaterThan(0);
+  });
+
+  it("should include source ranges for multiple rooms", async () => {
+    const input = `floorplan
+  floor f1 {
+    room R1 at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+    room R2 at (5,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+    room R3 at (0,5) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }`;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+    
+    expect(result.data!.floors[0].rooms).toHaveLength(3);
+    
+    // All rooms should have source ranges
+    for (const room of result.data!.floors[0].rooms) {
+      expect(room._sourceRange).toBeDefined();
+      expect(room._sourceRange!.startLine).toBeGreaterThanOrEqual(0);
+      expect(room._sourceRange!.endLine).toBeGreaterThanOrEqual(room._sourceRange!.startLine);
+    }
+    
+    // Rooms should have different start lines
+    const r1 = result.data!.floors[0].rooms[0];
+    const r2 = result.data!.floors[0].rooms[1];
+    const r3 = result.data!.floors[0].rooms[2];
+    
+    expect(r2._sourceRange!.startLine).toBeGreaterThan(r1._sourceRange!.startLine);
+    expect(r3._sourceRange!.startLine).toBeGreaterThan(r2._sourceRange!.startLine);
+  });
+});
+
