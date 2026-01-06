@@ -381,6 +381,433 @@
         color: #4a9eff;
       }
       
+      /* Control Panel (viewer-style) */
+      #controls {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(30, 30, 30, 0.95);
+        padding: 0;
+        border-radius: 10px;
+        width: 260px;
+        max-height: calc(100vh - 20px);
+        overflow-y: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+        z-index: 100;
+        border: 1px solid #444;
+        font-size: 13px;
+      }
+      
+      .control-section {
+        border-bottom: 1px solid #3c3c3c;
+      }
+      
+      .control-section:last-child {
+        border-bottom: none;
+      }
+      
+      .section-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        cursor: pointer;
+        user-select: none;
+        background: #2a2a2a;
+        font-weight: 600;
+        font-size: 13px;
+        color: #ccc;
+        transition: background 0.2s;
+      }
+      
+      .section-header:hover {
+        background: #333;
+      }
+      
+      .section-header::after {
+        content: '▼';
+        font-size: 10px;
+        transition: transform 0.2s;
+        color: #888;
+      }
+      
+      .control-section.collapsed .section-header::after {
+        transform: rotate(-90deg);
+      }
+      
+      .section-content {
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        background: #252526;
+      }
+      
+      .control-section.collapsed .section-content {
+        display: none;
+      }
+      
+      .control-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      
+      .control-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      
+      #controls label {
+        font-size: 12px;
+        font-weight: 500;
+        color: #aaa;
+      }
+      
+      .slider-value {
+        font-size: 11px;
+        color: #888;
+        min-width: 35px;
+        text-align: right;
+      }
+      
+      #controls input[type="range"] {
+        flex: 1;
+        height: 4px;
+        border-radius: 2px;
+        -webkit-appearance: none;
+        background: #555;
+      }
+      
+      #controls input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: #4a90d9;
+        cursor: pointer;
+        border: 2px solid #1e1e1e;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+      }
+      
+      #controls button {
+        padding: 8px 12px;
+        background: #4a90d9;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      
+      #controls button:hover {
+        background: #5aa0e9;
+      }
+      
+      .btn-secondary {
+        background: #444 !important;
+      }
+      
+      .btn-secondary:hover {
+        background: #555 !important;
+      }
+      
+      .btn-group {
+        display: flex;
+        gap: 8px;
+      }
+      
+      .btn-group button {
+        flex: 1;
+      }
+      
+      .checkbox-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      
+      .checkbox-row input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+      
+      .checkbox-row label {
+        cursor: pointer;
+        flex: 1;
+      }
+      
+      .unit-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      
+      .unit-row select {
+        width: 100px;
+      }
+      
+      #controls select {
+        padding: 6px 8px;
+        border: 1px solid #555;
+        border-radius: 4px;
+        font-size: 12px;
+        background: #333;
+        color: #ccc;
+        cursor: pointer;
+      }
+      
+      /* Floor list */
+      .floor-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      
+      .floor-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 0;
+      }
+      
+      .floor-item input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+      }
+      
+      .floor-item label {
+        cursor: pointer;
+        flex: 1;
+        font-size: 12px;
+        color: #ccc;
+      }
+      
+      .floor-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      
+      .floor-actions button {
+        flex: 1;
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+      
+      .no-floors-message {
+        color: #888;
+        font-size: 11px;
+        font-style: italic;
+      }
+      
+      /* Scrollbar styling for controls */
+      #controls::-webkit-scrollbar {
+        width: 6px;
+      }
+      
+      #controls::-webkit-scrollbar-track {
+        background: #2a2a2a;
+        border-radius: 3px;
+      }
+      
+      #controls::-webkit-scrollbar-thumb {
+        background: #555;
+        border-radius: 3px;
+      }
+      
+      #controls::-webkit-scrollbar-thumb:hover {
+        background: #666;
+      }
+      
+      /* 2D Overlay Mini-map */
+      #overlay-2d {
+        position: absolute;
+        bottom: 80px;
+        left: 10px;
+        width: 280px;
+        height: 220px;
+        background: rgba(30, 30, 30, 0.95);
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        overflow: hidden;
+        z-index: 50;
+        display: none;
+        border: 1px solid #444;
+      }
+      
+      #overlay-2d.visible {
+        display: block;
+      }
+      
+      #overlay-2d-header {
+        background: #2a2a2a;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 600;
+        color: #ccc;
+        border-bottom: 1px solid #3c3c3c;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        cursor: grab;
+        user-select: none;
+      }
+      
+      #overlay-2d-header:active {
+        cursor: grabbing;
+      }
+      
+      #overlay-2d-close {
+        background: none;
+        border: none;
+        font-size: 18px;
+        line-height: 1;
+        color: #888;
+        cursor: pointer;
+        padding: 0 4px;
+        border-radius: 4px;
+        transition: background 0.15s, color 0.15s;
+      }
+      
+      #overlay-2d-close:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+      }
+      
+      #overlay-2d.dragging {
+        opacity: 0.9;
+        transition: none;
+      }
+      
+      #overlay-2d-resize {
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        width: 16px;
+        height: 16px;
+        cursor: nwse-resize;
+        background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.15) 50%);
+        border-radius: 0 0 8px 0;
+      }
+      
+      #overlay-2d-resize:hover {
+        background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.3) 50%);
+      }
+      
+      #overlay-2d-content {
+        width: 100%;
+        height: calc(100% - 32px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 8px;
+      }
+      
+      #overlay-2d-content svg {
+        max-width: 100%;
+        max-height: 100%;
+        width: auto;
+        height: auto;
+      }
+      
+      #overlay-2d-empty {
+        color: #888;
+        font-size: 11px;
+        font-style: italic;
+      }
+      
+      /* Floor Summary Panel */
+      #floor-summary {
+        position: absolute;
+        bottom: 80px;
+        right: 10px;
+        background: rgba(30, 30, 30, 0.95);
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        font-size: 12px;
+        max-width: 300px;
+        display: none;
+        border: 1px solid #444;
+        color: #ccc;
+      }
+      
+      #floor-summary.visible {
+        display: block;
+      }
+      
+      .floor-summary-title {
+        font-weight: 600;
+        font-size: 14px;
+        margin-bottom: 10px;
+        color: #e0e0e0;
+      }
+      
+      .floor-summary-item {
+        padding: 8px 0;
+        border-bottom: 1px solid #3c3c3c;
+      }
+      
+      .floor-summary-item:last-child {
+        border-bottom: none;
+      }
+      
+      .floor-name {
+        font-weight: 500;
+        color: #4a90d9;
+        margin-bottom: 4px;
+      }
+      
+      .floor-stats {
+        display: flex;
+        gap: 12px;
+        color: #888;
+      }
+      
+      /* Annotation Labels (CSS2D) */
+      .area-label {
+        background: rgba(74, 144, 217, 0.9);
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 500;
+        white-space: nowrap;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      }
+      
+      .dimension-label {
+        color: white;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 10px;
+        white-space: nowrap;
+        font-weight: 500;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      }
+      
+      /* Width label - teal */
+      .width-label {
+        background: rgba(0, 150, 136, 0.9);
+      }
+      
+      /* Depth label - orange */
+      .depth-label {
+        background: rgba(255, 152, 0, 0.9);
+      }
+      
+      /* Height label - purple */
+      .height-label {
+        background: rgba(156, 39, 176, 0.9);
+      }
+      
       /* Selection info panel */
       .selection-info {
         position: absolute;
@@ -394,6 +821,11 @@
         z-index: 100;
         border: 1px solid #333;
         min-width: 180px;
+        display: none; /* Hidden by default */
+      }
+      
+      .selection-info.visible {
+        display: block;
       }
       
       .selection-info.has-selection {
@@ -640,6 +1072,116 @@
       .confirm-dialog-warning-list li {
         margin-bottom: 2px;
       }
+      
+      /* Keyboard Help Overlay */
+      #keyboard-help-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0, 0, 0, 0.85);
+        z-index: 500;
+        display: none;
+        justify-content: center;
+        align-items: center;
+      }
+      
+      .keyboard-help-content {
+        background: #2d2d2d;
+        border: 1px solid #555;
+        border-radius: 12px;
+        padding: 24px 32px;
+        max-width: 700px;
+        max-height: 80vh;
+        overflow-y: auto;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+      }
+      
+      .keyboard-help-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid #444;
+      }
+      
+      .keyboard-help-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #fff;
+      }
+      
+      .keyboard-help-close {
+        background: none;
+        border: none;
+        color: #888;
+        font-size: 24px;
+        cursor: pointer;
+        padding: 4px;
+        line-height: 1;
+      }
+      
+      .keyboard-help-close:hover {
+        color: #fff;
+      }
+      
+      .keyboard-help-columns {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 24px;
+      }
+      
+      .keyboard-help-section {
+        margin-bottom: 16px;
+      }
+      
+      .keyboard-help-section-title {
+        font-size: 12px;
+        font-weight: 600;
+        color: #4a9eff;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 10px;
+      }
+      
+      .keyboard-help-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+      }
+      
+      .keyboard-help-row .keys {
+        display: flex;
+        gap: 4px;
+      }
+      
+      .keyboard-help-row .key {
+        display: inline-block;
+        background: #3c3c3c;
+        padding: 3px 8px;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 12px;
+        border: 1px solid #555;
+        color: #fff;
+      }
+      
+      .keyboard-help-row .key-desc {
+        color: #aaa;
+        font-size: 12px;
+      }
+      
+      .keyboard-help-footer {
+        margin-top: 20px;
+        padding-top: 12px;
+        border-top: 1px solid #444;
+        text-align: center;
+        color: #666;
+        font-size: 11px;
+      }
     </style>
   </head>
   <body>
@@ -683,30 +1225,182 @@
         <div class="error-overlay" id="error-overlay" aria-hidden="true"></div>
         <div id="app" role="application" aria-label="3D floorplan viewer"></div>
         
-        <div class="info-panel">
-          <h3>Selection</h3>
-          <p><span class="key">Click</span> Select</p>
-          <p><span class="key">Shift+Click</span> Add to selection</p>
-          <p><span class="key">Drag</span> Marquee select</p>
-          <p><span class="key">Ctrl/⌘+A</span> Select all</p>
-          <p><span class="key">Tab</span> Cycle selection</p>
-          <p><span class="key">Enter</span> Focus properties</p>
-          <p><span class="key">Esc</span> Deselect</p>
-          
-          <h3>Camera</h3>
-          <p><span class="key">Alt+Drag</span> Orbit</p>
-          <p><span class="key">Right-drag</span> Pan</p>
-          <p><span class="key">Scroll</span> Zoom</p>
-          
-          <div class="mode-toggle">
-            <label>
-              <input type="checkbox" id="containment-mode">
-              Containment mode
-            </label>
-            <div class="mode-indicator" id="mode-indicator">
-              Intersection
+        <!-- Control Panel -->
+        <div id="controls">
+          <!-- Camera Section -->
+          <div class="control-section">
+            <div class="section-header">Camera</div>
+            <div class="section-content">
+              <button id="camera-mode-btn">Switch to Orthographic</button>
+              <button id="isometric-btn" class="btn-secondary">Isometric View</button>
+              <div class="control-group" id="fov-group">
+                <div class="control-row">
+                  <label>FOV</label>
+                  <span class="slider-value" id="fov-value">75°</span>
+                </div>
+                <input type="range" id="fov-slider" min="30" max="120" value="75" step="1">
+              </div>
             </div>
           </div>
+          
+          <!-- Lighting Section -->
+          <div class="control-section collapsed">
+            <div class="section-header">Lighting</div>
+            <div class="section-content">
+              <div class="control-group">
+                <div class="control-row">
+                  <label>Azimuth</label>
+                  <span class="slider-value" id="light-azimuth-value">45°</span>
+                </div>
+                <input type="range" id="light-azimuth" min="0" max="360" value="45" step="1">
+              </div>
+              <div class="control-group">
+                <div class="control-row">
+                  <label>Elevation</label>
+                  <span class="slider-value" id="light-elevation-value">60°</span>
+                </div>
+                <input type="range" id="light-elevation" min="0" max="90" value="60" step="1">
+              </div>
+              <div class="control-group">
+                <div class="control-row">
+                  <label>Intensity</label>
+                  <span class="slider-value" id="light-intensity-value">1.0</span>
+                </div>
+                <input type="range" id="light-intensity" min="0" max="2" value="1" step="0.1">
+              </div>
+            </div>
+          </div>
+          
+          <!-- View Section -->
+          <div class="control-section collapsed">
+            <div class="section-header">View</div>
+            <div class="section-content">
+              <div class="control-group">
+                <div class="control-row">
+                  <label>Theme</label>
+                  <button id="theme-toggle-btn" class="btn-secondary" style="padding: 4px 12px; font-size: 11px;">🌙 Dark</button>
+                </div>
+              </div>
+              <div class="control-group">
+                <div class="control-row">
+                  <label>Exploded View</label>
+                  <span class="slider-value" id="exploded-value">0%</span>
+                </div>
+                <input type="range" id="exploded-view" min="0" max="100" value="0" step="1">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Floors Section -->
+          <div class="control-section">
+            <div class="section-header">Floors</div>
+            <div class="section-content">
+              <div id="floor-list" class="floor-list">
+                <div class="no-floors-message">Floors will appear here</div>
+              </div>
+              <div class="floor-actions">
+                <button id="show-all-floors" class="btn-secondary">Show All</button>
+                <button id="hide-all-floors" class="btn-secondary">Hide All</button>
+              </div>
+            </div>
+          </div>
+          
+          <!-- 2D Overlay Section -->
+          <div class="control-section collapsed">
+            <div class="section-header">2D Overlay</div>
+            <div class="section-content">
+              <div class="checkbox-row">
+                <input type="checkbox" id="show-2d-overlay">
+                <label for="show-2d-overlay">Show 2D Mini-map</label>
+              </div>
+              <div class="control-group">
+                <div class="control-row">
+                  <label>Opacity</label>
+                  <span class="slider-value" id="overlay-opacity-value">60%</span>
+                </div>
+                <input type="range" id="overlay-opacity" min="20" max="100" value="60" step="5">
+              </div>
+            </div>
+          </div>
+          
+          <!-- Annotations Section -->
+          <div class="control-section collapsed">
+            <div class="section-header">Annotations</div>
+            <div class="section-content">
+              <div class="checkbox-row">
+                <input type="checkbox" id="show-area">
+                <label for="show-area">Show Room Areas</label>
+              </div>
+              <div class="checkbox-row">
+                <input type="checkbox" id="show-dimensions">
+                <label for="show-dimensions">Show Dimensions</label>
+              </div>
+              <div class="checkbox-row">
+                <input type="checkbox" id="show-floor-summary">
+                <label for="show-floor-summary">Show Floor Summary</label>
+              </div>
+              <div class="unit-row">
+                <label>Area Unit</label>
+                <select id="area-unit">
+                  <option value="sqft">sq ft</option>
+                  <option value="sqm">sq m</option>
+                </select>
+              </div>
+              <div class="unit-row">
+                <label>Length Unit</label>
+                <select id="length-unit">
+                  <option value="ft" selected>feet</option>
+                  <option value="m">meters</option>
+                  <option value="cm">centimeters</option>
+                  <option value="in">inches</option>
+                  <option value="mm">millimeters</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Selection Section -->
+          <div class="control-section">
+            <div class="section-header">Selection</div>
+            <div class="section-content">
+              <div class="checkbox-row">
+                <input type="checkbox" id="selection-enabled" checked>
+                <label for="selection-enabled">Enable Selection Mode</label>
+              </div>
+              <div id="selection-status" style="margin: 8px 0; padding: 6px 10px; background: rgba(0, 255, 0, 0.15); border: 1px solid rgba(0, 255, 0, 0.4); border-radius: 4px; font-size: 11px; color: #0f0;">
+                ✓ Selection Mode Active (press V to toggle)
+              </div>
+              <div class="checkbox-row" style="margin-top: 8px;">
+              <input type="checkbox" id="containment-mode">
+                <label for="containment-mode">Containment mode</label>
+            </div>
+              <div class="control-row" style="margin-top: 8px;">
+                <span style="font-size: 11px; color: #888;">Marquee mode:</span>
+                <span class="slider-value" id="mode-indicator" style="color: #4a9eff;">Intersection</span>
+          </div>
+              <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #444; font-size: 11px; color: #666;">
+                Press <span class="key" style="margin: 0;">H</span> for shortcuts
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- 2D Overlay Mini-map Container -->
+        <div id="overlay-2d">
+          <div id="overlay-2d-header">
+            <span>2D Floor Plan</span>
+            <button id="overlay-2d-close" title="Close">×</button>
+          </div>
+          <div id="overlay-2d-content">
+            <span id="overlay-2d-empty">2D view will appear here</span>
+          </div>
+          <div id="overlay-2d-resize"></div>
+        </div>
+        
+        <!-- Floor Summary Panel -->
+        <div id="floor-summary">
+          <div class="floor-summary-title">Floor Summary</div>
+          <div id="floor-summary-content"></div>
         </div>
         
         <div id="selection-info" class="selection-info" role="status" aria-live="polite" aria-label="Selection status">
@@ -730,6 +1424,101 @@
         <div class="dialog-buttons">
           <button class="dialog-btn cancel" id="delete-cancel">Cancel</button>
           <button class="dialog-btn primary" id="delete-confirm" style="background: #5a2d2d; border-color: #8a4a4a; color: #f88;">Delete</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Keyboard Help Overlay -->
+    <div id="keyboard-help-overlay" role="dialog" aria-label="Keyboard shortcuts" aria-modal="true">
+      <div class="keyboard-help-content">
+        <div class="keyboard-help-header">
+          <h2 class="keyboard-help-title">Keyboard Shortcuts</h2>
+          <button class="keyboard-help-close" aria-label="Close">&times;</button>
+        </div>
+        <div class="keyboard-help-columns">
+          <div>
+            <div class="keyboard-help-section">
+              <div class="keyboard-help-section-title">Navigation</div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span></div>
+                <span class="key-desc">Pan camera</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">Q</span><span class="key">E</span></div>
+                <span class="key-desc">Move down / up</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">+</span><span class="key">-</span></div>
+                <span class="key-desc">Zoom in / out</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">Shift</span></div>
+                <span class="key-desc">Precision mode</span>
+              </div>
+            </div>
+            <div class="keyboard-help-section">
+              <div class="keyboard-help-section-title">Views</div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">1</span></div>
+                <span class="key-desc">Front view</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">3</span></div>
+                <span class="key-desc">Right view</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">7</span></div>
+                <span class="key-desc">Top view</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">5</span></div>
+                <span class="key-desc">Toggle ortho/perspective</span>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="keyboard-help-section">
+              <div class="keyboard-help-section-title">Camera</div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">Home</span></div>
+                <span class="key-desc">Reset camera</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">F</span></div>
+                <span class="key-desc">Frame geometry</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">C</span></div>
+                <span class="key-desc">Center pivot</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">P</span></div>
+                <span class="key-desc">Toggle pivot indicator</span>
+              </div>
+            </div>
+            <div class="keyboard-help-section">
+              <div class="keyboard-help-section-title">Selection</div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">Click</span></div>
+                <span class="key-desc">Select</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">Shift</span><span class="key">Click</span></div>
+                <span class="key-desc">Add to selection</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">⌘/Ctrl</span><span class="key">A</span></div>
+                <span class="key-desc">Select all</span>
+              </div>
+              <div class="keyboard-help-row">
+                <div class="keys"><span class="key">Esc</span></div>
+                <span class="key-desc">Deselect</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="keyboard-help-footer">
+          Press <span class="key" style="background:#333;padding:2px 6px;">H</span> or <span class="key" style="background:#333;padding:2px 6px;">?</span> to toggle this help
         </div>
       </div>
     </div>
@@ -776,7 +1565,8 @@
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
       import { PropertiesPanel } from './src/properties-panel.ts';
       import { dslPropertyEditor, dslGenerator } from './src/dsl-generator.ts';
-      import { EmptyFileSystem } from 'langium';
+      import { Overlay2DManager } from 'viewer-core';
+      import { EmptyFileSystem, URI } from 'langium';
       import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
       
       // Sample DSL content
@@ -804,8 +1594,19 @@
       const services = createFloorplansServices(EmptyFileSystem);
       const parser = services.Floorplans.parser.LangiumParser;
       
+      // Create Langium document for 2D rendering
+      let documentId = 1;
+      async function createLangiumDocument(input) {
+        const uri = URI.parse(`file:///floorplan-${documentId++}.fp`);
+        const document = services.shared.workspace.LangiumDocumentFactory.fromString(input, uri);
+        services.shared.workspace.LangiumDocuments.addDocument(document);
+        await services.shared.workspace.DocumentBuilder.build([document]);
+        return document;
+      }
+      
       // State
       let currentJsonData = null;
+      let currentLangiumDoc = null;
       let editorSync = null;
       let parseDebounceTimeout = null;
       
@@ -831,6 +1632,14 @@
         containerId: 'app',
         enableSelection: true,
       });
+      
+      // Create 2D overlay manager (uses viewer-core shared implementation)
+      const overlay2DManager = new Overlay2DManager({
+        getCurrentTheme: () => 'dark', // Editor always uses dark theme
+        getFloorplanData: () => currentJsonData,
+        getVisibleFloorIds: () => editor3d.floorManager?.getVisibleFloorIds() ?? [],
+      });
+      overlay2DManager.setupControls();
       
       // UI elements
       const editorStatus = document.getElementById('editor-status');
@@ -887,6 +1696,16 @@
           currentJsonData = conversionResult.data;
           editor3d.loadFloorplan(currentJsonData);
           
+          // Create Langium document for 2D overlay rendering
+          try {
+            currentLangiumDoc = await createLangiumDocument(content);
+            overlay2DManager.setLangiumDocument(currentLangiumDoc);
+          } catch (docErr) {
+            console.warn('Failed to create Langium document for 2D overlay:', docErr);
+            currentLangiumDoc = null;
+            overlay2DManager.setLangiumDocument(null);
+          }
+          
           // Update entity locations for sync
           if (editorSync) {
             const entityLocations = extractEntityLocations(currentJsonData);
@@ -907,6 +1726,7 @@
           editor3d.setErrorState(true);
         }
       }
+      
       
       /**
        * Extract entity locations from JSON for editor sync
@@ -979,6 +1799,7 @@
         if (count === 0) {
           selectionInfo.innerHTML = '<div class="details">No selection</div>';
           selectionInfo.classList.remove('has-selection');
+          selectionInfo.classList.remove('visible');
         } else {
           const types = new Map();
           for (const obj of selection) {
@@ -1000,6 +1821,7 @@
             ${names ? `<div class="details" style="margin-top: 4px; color: #00ff00;">${names}</div>` : ''}
           `;
           selectionInfo.classList.add('has-selection');
+          selectionInfo.classList.add('visible');
         }
       }
       
@@ -1223,6 +2045,40 @@
         modeIndicator.style.color = mode === 'containment' ? '#ff9500' : '#4a9eff';
       });
       
+      // Selection mode toggle
+      const selectionEnabledCheckbox = document.getElementById('selection-enabled');
+      const selectionStatus = document.getElementById('selection-status');
+      
+      function updateSelectionModeUI(enabled) {
+        selectionEnabledCheckbox.checked = enabled;
+        if (enabled) {
+          selectionStatus.textContent = '✓ Selection Mode Active (press V to toggle)';
+          selectionStatus.style.background = 'rgba(0, 255, 0, 0.15)';
+          selectionStatus.style.borderColor = 'rgba(0, 255, 0, 0.4)';
+          selectionStatus.style.color = '#0f0';
+        } else {
+          selectionStatus.textContent = '✗ Selection Mode Off (press V to toggle)';
+          selectionStatus.style.background = 'rgba(255, 100, 0, 0.15)';
+          selectionStatus.style.borderColor = 'rgba(255, 100, 0, 0.4)';
+          selectionStatus.style.color = '#f60';
+        }
+      }
+      
+      selectionEnabledCheckbox.addEventListener('change', (e) => {
+        const enabled = e.target.checked;
+        if (editor3d.selectionManager) {
+          editor3d.selectionManager.setEnabled(enabled);
+        }
+        updateSelectionModeUI(enabled);
+      });
+      
+      // Listen for mode changes from keyboard (V key)
+      if (editor3d.selectionManager) {
+        editor3d.selectionManager.onModeChange((enabled) => {
+          updateSelectionModeUI(enabled);
+        });
+      }
+      
       // Initialize mode from saved preference
       try {
         const savedMode = localStorage.getItem('floorplan-marquee-mode');
@@ -1233,6 +2089,299 @@
           modeIndicator.style.color = '#ff9500';
         }
       } catch (e) {}
+      
+      // ========================================
+      // Control Panel Wiring
+      // ========================================
+      
+      // Section collapse/expand
+      document.querySelectorAll('.section-header').forEach(header => {
+        header.addEventListener('click', () => {
+          header.parentElement.classList.toggle('collapsed');
+        });
+      });
+      
+      // Camera controls
+      const cameraModeBtn = document.getElementById('camera-mode-btn');
+      const isometricBtn = document.getElementById('isometric-btn');
+      const fovSlider = document.getElementById('fov-slider');
+      const fovValue = document.getElementById('fov-value');
+      const fovGroup = document.getElementById('fov-group');
+      
+      cameraModeBtn.addEventListener('click', () => {
+        editor3d.cameraManager.toggleCameraMode();
+        const mode = editor3d.cameraManager.getMode();
+        cameraModeBtn.textContent = mode === 'perspective' ? 'Switch to Orthographic' : 'Switch to Perspective';
+        fovGroup.style.display = mode === 'perspective' ? '' : 'none';
+      });
+      
+      isometricBtn.addEventListener('click', () => {
+        editor3d.cameraManager.setIsometricView();
+      });
+      
+      fovSlider.addEventListener('input', () => {
+        const fov = parseInt(fovSlider.value);
+        fovValue.textContent = `${fov}°`;
+        if (editor3d.perspectiveCamera) {
+          editor3d.perspectiveCamera.fov = fov;
+          editor3d.perspectiveCamera.updateProjectionMatrix();
+        }
+      });
+      
+      // Lighting controls
+      const lightAzimuth = document.getElementById('light-azimuth');
+      const lightAzimuthValue = document.getElementById('light-azimuth-value');
+      const lightElevation = document.getElementById('light-elevation');
+      const lightElevationValue = document.getElementById('light-elevation-value');
+      const lightIntensity = document.getElementById('light-intensity');
+      const lightIntensityValue = document.getElementById('light-intensity-value');
+      
+      function updateLightPosition() {
+        const azimuth = parseFloat(lightAzimuth.value) * Math.PI / 180;
+        const elevation = parseFloat(lightElevation.value) * Math.PI / 180;
+        const distance = 20;
+        
+        const x = distance * Math.cos(elevation) * Math.sin(azimuth);
+        const y = distance * Math.sin(elevation);
+        const z = distance * Math.cos(elevation) * Math.cos(azimuth);
+        
+        if (editor3d.directionalLight) {
+          editor3d.directionalLight.position.set(x, y, z);
+        }
+      }
+      
+      lightAzimuth.addEventListener('input', () => {
+        lightAzimuthValue.textContent = `${lightAzimuth.value}°`;
+        updateLightPosition();
+      });
+      
+      lightElevation.addEventListener('input', () => {
+        lightElevationValue.textContent = `${lightElevation.value}°`;
+        updateLightPosition();
+      });
+      
+      lightIntensity.addEventListener('input', () => {
+        const intensity = parseFloat(lightIntensity.value);
+        lightIntensityValue.textContent = intensity.toFixed(1);
+        if (editor3d.directionalLight) {
+          editor3d.directionalLight.intensity = intensity;
+        }
+      });
+      
+      // View controls - Theme toggle
+      const themeToggleBtn = document.getElementById('theme-toggle-btn');
+      let currentTheme = 'dark';
+      
+      themeToggleBtn.addEventListener('click', () => {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+        editor3d.setTheme(currentTheme);
+        themeToggleBtn.textContent = currentTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
+        overlay2DManager.render(); // Re-render 2D overlay with new theme
+      });
+      
+      // Exploded view
+      const explodedView = document.getElementById('exploded-view');
+      const explodedValue = document.getElementById('exploded-value');
+      
+      explodedView.addEventListener('input', () => {
+        const value = parseInt(explodedView.value);
+        explodedValue.textContent = `${value}%`;
+        editor3d.setExplodedView(value / 100);
+      });
+      
+      // Floor visibility controls
+      const floorList = document.getElementById('floor-list');
+      const showAllFloorsBtn = document.getElementById('show-all-floors');
+      const hideAllFloorsBtn = document.getElementById('hide-all-floors');
+      
+      function updateFloorListUI() {
+        const floors = editor3d.floors;
+        const floorManager = editor3d.floorManager;
+        
+        if (!floors || floors.length === 0) {
+          floorList.innerHTML = '<div class="no-floors-message">Floors will appear here</div>';
+          return;
+        }
+        
+        floorList.innerHTML = '';
+        floors.forEach((floor, index) => {
+          const floorId = floor.name || `floor-${index}`;
+          const visible = floorManager ? floorManager.getFloorVisibility(floorId) : true;
+          
+          const item = document.createElement('div');
+          item.className = 'floor-item';
+          
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.id = `floor-toggle-${index}`;
+          checkbox.checked = visible;
+          checkbox.addEventListener('change', () => {
+            if (floorManager) {
+              floorManager.setFloorVisible(floorId, checkbox.checked);
+              overlay2DManager.render(); // Update 2D overlay
+            }
+          });
+          
+          const label = document.createElement('label');
+          label.htmlFor = `floor-toggle-${index}`;
+          label.textContent = floorId;
+          
+          item.appendChild(checkbox);
+          item.appendChild(label);
+          floorList.appendChild(item);
+        });
+      }
+      
+      showAllFloorsBtn.addEventListener('click', () => {
+        if (editor3d.floorManager) {
+          editor3d.floorManager.setAllFloorsVisible(true);
+          updateFloorListUI();
+          overlay2DManager.render(); // Update 2D overlay
+        }
+      });
+      
+      hideAllFloorsBtn.addEventListener('click', () => {
+        if (editor3d.floorManager) {
+          editor3d.floorManager.setAllFloorsVisible(false);
+          updateFloorListUI();
+          overlay2DManager.render(); // Update 2D overlay
+        }
+      });
+      
+      // 2D Overlay controls
+      const show2dOverlay = document.getElementById('show-2d-overlay');
+      const overlayOpacity = document.getElementById('overlay-opacity');
+      const overlayOpacityValue = document.getElementById('overlay-opacity-value');
+      const overlay2d = document.getElementById('overlay-2d');
+      const overlay2dClose = document.getElementById('overlay-2d-close');
+      
+      show2dOverlay.addEventListener('change', () => {
+        overlay2d.classList.toggle('visible', show2dOverlay.checked);
+        if (show2dOverlay.checked) {
+          overlay2DManager.render(); // Render when showing
+        }
+      });
+      
+      overlayOpacity.addEventListener('input', () => {
+        const opacity = parseInt(overlayOpacity.value);
+        overlayOpacityValue.textContent = `${opacity}%`;
+        overlay2d.style.opacity = opacity / 100;
+      });
+      
+      overlay2dClose.addEventListener('click', () => {
+        overlay2d.classList.remove('visible');
+        show2dOverlay.checked = false;
+      });
+      
+      // 2D overlay drag functionality
+      const overlay2dHeader = document.getElementById('overlay-2d-header');
+      let isDraggingOverlay = false;
+      let overlayDragStartX = 0;
+      let overlayDragStartY = 0;
+      let overlayInitialLeft = 0;
+      let overlayInitialBottom = 0;
+      
+      overlay2dHeader.addEventListener('mousedown', (e) => {
+        if (e.target === overlay2dClose) return;
+        isDraggingOverlay = true;
+        overlay2d.classList.add('dragging');
+        overlayDragStartX = e.clientX;
+        overlayDragStartY = e.clientY;
+        const rect = overlay2d.getBoundingClientRect();
+        overlayInitialLeft = rect.left;
+        overlayInitialBottom = window.innerHeight - rect.bottom;
+        e.preventDefault();
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (!isDraggingOverlay) return;
+        const dx = e.clientX - overlayDragStartX;
+        const dy = e.clientY - overlayDragStartY;
+        overlay2d.style.left = `${overlayInitialLeft + dx}px`;
+        overlay2d.style.bottom = `${overlayInitialBottom - dy}px`;
+      });
+      
+      document.addEventListener('mouseup', () => {
+        if (isDraggingOverlay) {
+          isDraggingOverlay = false;
+          overlay2d.classList.remove('dragging');
+        }
+      });
+      
+      // 2D overlay resize functionality
+      const overlay2dResize = document.getElementById('overlay-2d-resize');
+      let isResizingOverlay = false;
+      let overlayResizeStartX = 0;
+      let overlayResizeStartY = 0;
+      let overlayInitialWidth = 0;
+      let overlayInitialHeight = 0;
+      
+      overlay2dResize.addEventListener('mousedown', (e) => {
+        isResizingOverlay = true;
+        overlayResizeStartX = e.clientX;
+        overlayResizeStartY = e.clientY;
+        overlayInitialWidth = overlay2d.offsetWidth;
+        overlayInitialHeight = overlay2d.offsetHeight;
+        e.preventDefault();
+        e.stopPropagation();
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizingOverlay) return;
+        const dx = e.clientX - overlayResizeStartX;
+        const dy = e.clientY - overlayResizeStartY;
+        overlay2d.style.width = `${Math.max(200, overlayInitialWidth + dx)}px`;
+        overlay2d.style.height = `${Math.max(150, overlayInitialHeight + dy)}px`;
+      });
+      
+      document.addEventListener('mouseup', () => {
+        isResizingOverlay = false;
+      });
+      
+      // Annotation controls
+      const showArea = document.getElementById('show-area');
+      const showDimensions = document.getElementById('show-dimensions');
+      const showFloorSummary = document.getElementById('show-floor-summary');
+      const areaUnit = document.getElementById('area-unit');
+      const lengthUnit = document.getElementById('length-unit');
+      const floorSummary = document.getElementById('floor-summary');
+      
+      function updateAnnotations() {
+        if (editor3d.annotationManager) {
+          // Directly update the annotation manager state
+          editor3d.annotationManager.state.showArea = showArea.checked;
+          editor3d.annotationManager.state.showDimensions = showDimensions.checked;
+          editor3d.annotationManager.state.showFloorSummary = showFloorSummary.checked;
+          editor3d.annotationManager.state.areaUnit = areaUnit.value;
+          editor3d.annotationManager.state.lengthUnit = lengthUnit.value;
+          editor3d.annotationManager.updateAll();
+        }
+      }
+      
+      showArea.addEventListener('change', updateAnnotations);
+      showDimensions.addEventListener('change', updateAnnotations);
+      
+      showFloorSummary.addEventListener('change', () => {
+        floorSummary.classList.toggle('visible', showFloorSummary.checked);
+        updateAnnotations();
+      });
+      
+      areaUnit.addEventListener('change', updateAnnotations);
+      lengthUnit.addEventListener('change', updateAnnotations);
+      
+      // Update floor list when floorplan is loaded
+      const originalLoadFloorplan = editor3d.loadFloorplan.bind(editor3d);
+      editor3d.loadFloorplan = function(data) {
+        originalLoadFloorplan(data);
+        setTimeout(() => {
+          updateFloorListUI();
+        }, 100);
+      };
+      
+      // ========================================
+      // End Control Panel Wiring
+      // ========================================
       
       // Resizer functionality
       const resizer = document.getElementById('resizer');
@@ -1828,6 +2977,20 @@
         
         console.log(`Changed wall to open: ${event.entityId}`);
       }
+      
+      // Keyboard help overlay close handlers
+      const keyboardHelpOverlay = document.getElementById('keyboard-help-overlay');
+      const keyboardHelpClose = keyboardHelpOverlay.querySelector('.keyboard-help-close');
+      
+      keyboardHelpClose.addEventListener('click', () => {
+        keyboardHelpOverlay.style.display = 'none';
+      });
+      
+      keyboardHelpOverlay.addEventListener('click', (e) => {
+        if (e.target === keyboardHelpOverlay) {
+          keyboardHelpOverlay.style.display = 'none';
+        }
+      });
       
       // Expose for debugging
       window.editor3d = editor3d;

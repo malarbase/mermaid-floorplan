@@ -894,6 +894,48 @@ The `SelectionManager` provides read-only selection:
 
 The editor listens to these events and shows the properties panel.
 
+### Selection Mode Toggle (Navigation vs Selection)
+
+**Problem**: Selection conflicts with standard 3D navigation:
+- Left-click drag: Normally orbits, but with selection → starts marquee
+- Left-click: Normally part of orbit start, but with selection → selects entity
+- Users must hold Alt to orbit when selection is active
+
+**Solution**: Toggleable selection mode with both UI and keyboard shortcut.
+
+| Mode | Left-click | Left-drag | Alt+drag |
+|------|-----------|-----------|----------|
+| **Navigation** (default in viewer) | Starts orbit | Orbits camera | Orbits camera |
+| **Selection** (default in editor) | Selects entity | Marquee select | Orbits camera |
+
+**Toggle Controls:**
+- **Keyboard shortcut**: `S` key toggles selection mode on/off
+- **UI checkbox**: "Selection Mode" toggle in control panel
+- **Visual indicator**: Mode indicator shows current state
+
+**API:**
+```typescript
+class SelectionManager {
+  // Enable/disable selection mode
+  public setEnabled(enabled: boolean): void;
+  public isEnabled(): boolean;
+  public toggleEnabled(): boolean; // Returns new state
+  
+  // Event for mode changes
+  public onModeChange(callback: (enabled: boolean) => void): void;
+}
+```
+
+**Default States:**
+- **Viewer**: Selection mode OFF by default (navigation-first UX)
+- **Editor**: Selection mode ON by default (editing-first UX)
+
+**Keyboard Shortcut Behavior:**
+- `S` key: Toggle selection mode
+- When toggling OFF: Clears current selection, restores full orbit controls
+- When toggling ON: Shows mode indicator, enables click/marquee selection
+- Shortcut works globally (not just when focused on 3D canvas)
+
 ### EditorViewerSync in viewer-core
 
 The `EditorViewerSync` provides read-only sync:
@@ -1026,6 +1068,7 @@ this.selectionManager.onSelectionChange((event) => {
 | Overlay 2D UI | `viewer-core/src/ui/overlay-2d-ui.ts` (planned) | 2D mini-map container |
 | Keyboard Help UI | `viewer-core/src/ui/keyboard-help-ui.ts` (planned) | Shortcuts overlay |
 | Selection Info UI | `viewer-core/src/ui/selection-info-ui.ts` (planned) | Selection status display |
+| Selection Mode Toggle UI | `viewer-core/src/ui/selection-mode-toggle-ui.ts` (planned) | Toggle checkbox + mode indicator |
 
 ### interactive-editor (Editor-Only Write Capabilities)
 

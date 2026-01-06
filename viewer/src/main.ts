@@ -10,20 +10,23 @@ import {
   MaterialFactory, StairGenerator, normalizeToMeters,
   type ViewerTheme, type MaterialStyle
 } from 'floorplan-3d-core';
-// Import shared viewer interfaces and wall generator
-import { MeshRegistry, WallGenerator, type SceneContext, type StyleResolver } from 'viewer-core';
+// Import shared viewer interfaces, wall generator, and managers from viewer-core
+import { 
+  MeshRegistry, 
+  WallGenerator, 
+  PivotIndicator,
+  KeyboardControls,
+  CameraManager,
+  AnnotationManager,
+  FloorManager,
+  Overlay2DManager,
+  type SceneContext, 
+  type StyleResolver 
+} from 'viewer-core';
 import { parseFloorplanDSLWithDocument, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
 // Editor and chat integration
 import { initializeEditor, type EditorInstance } from './editor';
 import { OpenAIChatService } from './openai-chat';
-// Keyboard navigation
-import { PivotIndicator } from './pivot-indicator';
-import { KeyboardControls } from './keyboard-controls';
-// Extracted managers
-import { CameraManager } from './camera-manager';
-import { AnnotationManager } from './annotation-manager';
-import { FloorManager } from './floor-manager';
-import { Overlay2DManager } from './overlay-2d-manager';
 
 class Viewer implements SceneContext {
     // Core Three.js (protected for subclass access)

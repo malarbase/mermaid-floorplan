@@ -29,11 +29,17 @@ import {
 import { 
   MeshRegistry, 
   WallGenerator,
+  PivotIndicator,
+  KeyboardControls,
+  CameraManager,
+  FloorManager,
+  AnnotationManager,
+  SelectionManager,
   type SceneContext,
   type SelectableObject,
   type StyleResolver,
+  type MarqueeMode,
 } from 'viewer-core';
-import { SelectionManager, type MarqueeMode } from './selection-manager.js';
 
 /**
  * Configuration options for the InteractiveEditor.
@@ -66,6 +72,16 @@ export class InteractiveEditor implements SceneContext {
   
   // Selection manager
   protected _selectionManager: SelectionManager | null = null;
+  
+  // Shared managers from viewer-core
+  protected _pivotIndicator: PivotIndicator;
+  protected _keyboardControls: KeyboardControls;
+  protected _cameraManager: CameraManager;
+  protected _floorManager: FloorManager;
+  protected _annotationManager: AnnotationManager;
+  
+  // Lighting (stored for manager access)
+  protected _directionalLight: THREE.DirectionalLight;
   
   // Scene content
   protected _floors: THREE.Group[] = [];
@@ -169,12 +185,54 @@ export class InteractiveEditor implements SceneContext {
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
     this._scene.add(ambientLight);
     
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    directionalLight.position.set(50, 50, 50);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 4096;
-    directionalLight.shadow.mapSize.height = 4096;
-    this._scene.add(directionalLight);
+    this._directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
+    this._directionalLight.position.set(50, 50, 50);
+    this._directionalLight.castShadow = true;
+    this._directionalLight.shadow.mapSize.width = 4096;
+    this._directionalLight.shadow.mapSize.height = 4096;
+    this._scene.add(this._directionalLight);
+    
+    // Initialize shared managers from viewer-core
+    this._pivotIndicator = new PivotIndicator(this._scene, this._controls);
+    
+    this._keyboardControls = new KeyboardControls(
+      this._controls,
+      this._perspectiveCamera,
+      this._orthographicCamera,
+      {
+        onCameraModeToggle: () => this._cameraManager.toggleCameraMode(),
+        onUpdateOrthographicSize: () => this._cameraManager.updateOrthographicSize(),
+        getBoundingBox: () => this._cameraManager.getSceneBoundingBox(),
+        setHelpOverlayVisible: (visible: boolean) => {
+          const helpOverlay = document.getElementById('keyboard-help-overlay');
+          if (helpOverlay) helpOverlay.style.display = visible ? 'flex' : 'none';
+        },
+      }
+    );
+    this._keyboardControls.setPivotIndicator(this._pivotIndicator);
+    
+    this._cameraManager = new CameraManager(
+      this._perspectiveCamera,
+      this._orthographicCamera,
+      this._controls,
+      {
+        getFloors: () => this._floors,
+        getKeyboardControls: () => this._keyboardControls,
+      }
+    );
+    
+    this._floorManager = new FloorManager({
+      getFloors: () => this._floors,
+      getFloorplanData: () => this.currentFloorplanData,
+      onVisibilityChange: () => this._annotationManager.updateFloorSummary(),
+    });
+    
+    this._annotationManager = new AnnotationManager({
+      getFloors: () => this._floors,
+      getFloorplanData: () => this.currentFloorplanData,
+      getConfig: () => this.config,
+      getFloorVisibility: (id: string) => this._floorManager.getFloorVisibility(id),
+    });
     
     // Initialize wall generator with CSG evaluator
     this.wallGenerator = new WallGenerator(new Evaluator());
@@ -193,6 +251,8 @@ export class InteractiveEditor implements SceneContext {
         this._meshRegistry,
         {
           marqueeMode: options.marqueeMode ?? 'intersection',
+          // Check floor visibility before allowing selection
+          isFloorVisible: (floorId: string) => this._floorManager.getFloorVisibility(floorId),
         }
       );
     }
@@ -235,15 +295,15 @@ export class InteractiveEditor implements SceneContext {
    * Switch between perspective and orthographic camera.
    */
   public setCameraMode(mode: 'perspective' | 'orthographic'): void {
-    if (mode === 'perspective') {
-      this._activeCamera = this._perspectiveCamera;
-      this._controls.object = this._perspectiveCamera;
-    } else {
-      // Copy position and target
-      this._orthographicCamera.position.copy(this._perspectiveCamera.position);
-      this._activeCamera = this._orthographicCamera;
-      this._controls.object = this._orthographicCamera;
+    // Determine if we need to toggle
+    const currentMode = this._cameraManager.getMode();
+    
+    if (currentMode !== mode) {
+      this._cameraManager.toggleCameraMode();
     }
+    
+    // Update internal reference
+    this._activeCamera = this._cameraManager.activeCamera;
     
     // Update selection manager camera reference
     if (this._selectionManager) {
@@ -251,14 +311,29 @@ export class InteractiveEditor implements SceneContext {
     }
   }
   
+  // Track time for delta calculation
+  private lastFrameTime: number = performance.now();
+  
   /**
    * Animation loop.
    */
   private animate(): void {
     this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
+    
+    // Calculate delta time for smooth keyboard controls
+    const now = performance.now();
+    const deltaTime = now - this.lastFrameTime;
+    this.lastFrameTime = now;
+    
+    // Update controls
     this._controls.update();
-    this._renderer.render(this._scene, this._activeCamera);
-    this.labelRenderer.render(this._scene, this._activeCamera);
+    this._keyboardControls.update(deltaTime);
+    this._pivotIndicator.update();
+    
+    // Render using camera manager's active camera (respects camera mode changes)
+    const activeCamera = this._cameraManager.activeCamera;
+    this._renderer.render(this._scene, activeCamera);
+    this.labelRenderer.render(this._scene, activeCamera);
   }
   
   /**
@@ -349,6 +424,10 @@ export class InteractiveEditor implements SceneContext {
     
     // Apply floor stacking (exploded view at 0 = floors touching)
     this.setExplodedView(this.explodedViewFactor);
+    
+    // Update managers with new floors
+    this._floorManager.initFloorVisibility();
+    this._annotationManager.updateAll();
   }
   
   /**
@@ -546,6 +625,10 @@ export class InteractiveEditor implements SceneContext {
     // Dispose selection manager
     this._selectionManager?.dispose();
     
+    // Dispose shared managers
+    this._keyboardControls.dispose();
+    this._pivotIndicator.dispose();
+    
     // Clear scene
     this._floors.forEach(f => this._scene.remove(f));
     this._floors = [];
@@ -557,4 +640,24 @@ export class InteractiveEditor implements SceneContext {
     // Remove event listeners
     window.removeEventListener('resize', this.onWindowResize.bind(this));
   }
+  
+  // === Getters for managers ===
+  
+  /** Get the pivot indicator for camera controls */
+  get pivotIndicator(): PivotIndicator { return this._pivotIndicator; }
+  
+  /** Get the keyboard controls manager */
+  get keyboardControls(): KeyboardControls { return this._keyboardControls; }
+  
+  /** Get the camera manager */
+  get cameraManager(): CameraManager { return this._cameraManager; }
+  
+  /** Get the floor manager */
+  get floorManager(): FloorManager { return this._floorManager; }
+  
+  /** Get the annotation manager */
+  get annotationManager(): AnnotationManager { return this._annotationManager; }
+  
+  /** Get the directional light */
+  get directionalLight(): THREE.DirectionalLight { return this._directionalLight; }
 }

@@ -12,8 +12,9 @@
 export { InteractiveEditor } from './interactive-editor.js';
 export type { InteractiveEditorOptions } from './interactive-editor.js';
 
-export { SelectionManager } from './selection-manager.js';
-export type { MarqueeMode, SelectionManagerConfig } from './selection-manager.js';
+// Re-export SelectionManager from viewer-core
+export { SelectionManager } from 'viewer-core';
+export type { MarqueeMode, SelectionManagerConfig } from 'viewer-core';
 
 export { EditorViewerSync } from './editor-viewer-sync.js';
 export type { EditorViewerSyncConfig, EntityLocation } from './editor-viewer-sync.js';

@@ -2,8 +2,8 @@
  * Camera Manager - Handles camera mode switching, orthographic/perspective, isometric views
  */
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { KeyboardControls } from './keyboard-controls';
+import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+import type { KeyboardControls } from './keyboard-controls.js';
 
 export type CameraMode = 'perspective' | 'orthographic';
 

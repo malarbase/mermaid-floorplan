@@ -8,8 +8,7 @@
  * - Error state management
  */
 import * as monaco from 'monaco-editor';
-import type { SelectableObject, SourceRange } from 'viewer-core';
-import type { SelectionManager } from './selection-manager.js';
+import type { SelectableObject, SourceRange, SelectionManager } from 'viewer-core';
 
 /**
  * Configuration for EditorViewerSync

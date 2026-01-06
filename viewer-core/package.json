@@ -25,7 +25,8 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "floorplan-3d-core": "*"
+    "floorplan-3d-core": "*",
+    "floorplans-language": "*"
   },
   "peerDependencies": {
     "three": ">=0.150.0",
@@ -33,6 +34,7 @@
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
+    "langium": "^4.0.0",
     "shx": "~0.4.0",
     "three": "^0.170.0",
     "three-bvh-csg": "^0.0.16",

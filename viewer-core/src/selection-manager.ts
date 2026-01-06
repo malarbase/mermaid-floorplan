@@ -8,14 +8,13 @@
  * - Alt+drag for camera orbit (prevents selection)
  * - Small drag detection (< 5px treated as click)
  * - Intersection vs containment mode toggle
+ * - Enable/disable toggle for navigation-first UX
  */
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import {
-  BaseSelectionManager,
-  MeshRegistry,
-  type SelectableObject,
-} from 'viewer-core';
+import { BaseSelectionManager } from './selection-api.js';
+import { MeshRegistry } from './mesh-registry.js';
+import type { SelectableObject } from './scene-context.js';
 
 /**
  * Marquee selection mode: intersection selects partially enclosed,
@@ -35,6 +34,10 @@ export interface SelectionManagerConfig {
   highlightColor?: number;
   /** Enable hover preview during marquee (default: true) */
   enableHoverPreview?: boolean;
+  /** Initial enabled state (default: true) */
+  enabled?: boolean;
+  /** Callback to check if a floor is visible (for filtering selections) */
+  isFloorVisible?: (floorId: string) => boolean;
 }
 
 /**
@@ -60,6 +63,9 @@ export class SelectionManager extends BaseSelectionManager {
   
   // Configuration
   private config: Required<SelectionManagerConfig>;
+  
+  // Enabled state
+  private _enabled: boolean;
   
   // Highlight visuals
   private outlineMaterial: THREE.LineBasicMaterial;
@@ -88,6 +94,10 @@ export class SelectionManager extends BaseSelectionManager {
   private boundKeyDown: (e: KeyboardEvent) => void;
   private boundKeyUp: (e: KeyboardEvent) => void;
   
+  // Callbacks
+  private onEnterPressedCallback?: () => void;
+  private onModeChangeCallbacks: ((enabled: boolean) => void)[] = [];
+  
   constructor(
     scene: THREE.Scene,
     camera: THREE.Camera,
@@ -110,7 +120,11 @@ export class SelectionManager extends BaseSelectionManager {
       marqueeMode: config.marqueeMode ?? 'intersection',
       highlightColor: config.highlightColor ?? 0x00ff00,
       enableHoverPreview: config.enableHoverPreview ?? true,
+      enabled: config.enabled ?? true,
+      isFloorVisible: config.isFloorVisible ?? (() => true),
     };
+    
+    this._enabled = this.config.enabled;
     
     // Create highlight material
     this.outlineMaterial = new THREE.LineBasicMaterial({
@@ -130,6 +144,52 @@ export class SelectionManager extends BaseSelectionManager {
     
     // Create marquee overlay
     this.createMarqueeOverlay();
+  }
+  
+  /**
+   * Check if selection mode is enabled.
+   */
+  isEnabled(): boolean {
+    return this._enabled;
+  }
+  
+  /**
+   * Enable or disable selection mode.
+   * When disabled, clears selection and restores full orbit controls.
+   */
+  setEnabled(enabled: boolean): void {
+    if (this._enabled === enabled) return;
+    
+    this._enabled = enabled;
+    
+    if (!enabled) {
+      // Clear selection when disabling
+      this.deselect();
+      this.clearHighlight();
+      
+      // Restore orbit controls
+      this.controls.enabled = true;
+    }
+    
+    // Notify listeners
+    for (const callback of this.onModeChangeCallbacks) {
+      callback(enabled);
+    }
+  }
+  
+  /**
+   * Toggle selection mode.
+   */
+  toggleEnabled(): boolean {
+    this.setEnabled(!this._enabled);
+    return this._enabled;
+  }
+  
+  /**
+   * Register callback for mode changes.
+   */
+  onModeChange(callback: (enabled: boolean) => void): void {
+    this.onModeChangeCallbacks.push(callback);
   }
   
   /**
@@ -163,6 +223,8 @@ export class SelectionManager extends BaseSelectionManager {
    * Select all selectable objects in the scene.
    */
   override selectAll(): void {
+    if (!this._enabled) return;
+    
     const allEntities = this.meshRegistry.getAllEntities();
     this.selectMultiple(allEntities, false);
     this.emitChange(allEntities, [], 'keyboard');
@@ -173,6 +235,8 @@ export class SelectionManager extends BaseSelectionManager {
    * @param reverse - If true, cycle backwards (Shift+Tab)
    */
   cycleSelection(reverse = false): void {
+    if (!this._enabled) return;
+    
     const allEntities = this.meshRegistry.getAllEntities();
     if (allEntities.length === 0) return;
     
@@ -206,9 +270,6 @@ export class SelectionManager extends BaseSelectionManager {
     this.select(nextEntity, false);
     this.emitChange([nextEntity], [], 'keyboard');
   }
-  
-  // Callback for Enter key press
-  private onEnterPressedCallback?: () => void;
   
   /**
    * Register callback for Enter key press (to focus properties panel).
@@ -267,6 +328,9 @@ export class SelectionManager extends BaseSelectionManager {
    * Handle mouse down event.
    */
   private onMouseDown(event: MouseEvent): void {
+    // Skip if disabled
+    if (!this._enabled) return;
+    
     // Only handle left click
     if (event.button !== 0) return;
     
@@ -289,7 +353,7 @@ export class SelectionManager extends BaseSelectionManager {
    * Handle mouse move event.
    */
   private onMouseMove(event: MouseEvent): void {
-    if (!this.isDragging) return;
+    if (!this.isDragging || !this._enabled) return;
     
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.dragCurrentX = event.clientX - rect.left;
@@ -320,6 +384,13 @@ export class SelectionManager extends BaseSelectionManager {
     // Re-enable orbit controls
     this.controls.enabled = true;
     
+    // Skip selection logic if disabled
+    if (!this._enabled) {
+      this.isDragging = false;
+      this.hideMarqueeOverlay();
+      return;
+    }
+    
     // Calculate drag distance
     const dx = this.dragCurrentX - this.dragStartX;
     const dy = this.dragCurrentY - this.dragStartY;
@@ -346,9 +417,23 @@ export class SelectionManager extends BaseSelectionManager {
    * Handle keyboard key down.
    */
   private onKeyDown(event: KeyboardEvent): void {
+    // Skip if typing in input
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+    
     if (event.key === 'Alt') {
       this.isAltPressed = true;
     }
+    
+    // V key toggles selection mode
+    if (event.code === 'KeyV') {
+      this.toggleEnabled();
+    }
+    
+    // Only process selection shortcuts if enabled
+    if (!this._enabled) return;
     
     // Ctrl/Cmd+A to select all
     if ((event.ctrlKey || event.metaKey) && event.key === 'a') {
@@ -363,24 +448,13 @@ export class SelectionManager extends BaseSelectionManager {
     
     // Tab to cycle selection through entities
     if (event.key === 'Tab') {
-      // Only if focus is not in an input element
-      const activeElement = document.activeElement;
-      const isInInput = activeElement instanceof HTMLInputElement || 
-                        activeElement instanceof HTMLTextAreaElement ||
-                        activeElement instanceof HTMLSelectElement;
-      if (!isInInput) {
-        event.preventDefault();
-        this.cycleSelection(event.shiftKey);
-      }
+      event.preventDefault();
+      this.cycleSelection(event.shiftKey);
     }
     
     // Enter to trigger properties panel focus
     if (event.key === 'Enter') {
-      const activeElement = document.activeElement;
-      const isInInput = activeElement instanceof HTMLInputElement || 
-                        activeElement instanceof HTMLTextAreaElement ||
-                        activeElement instanceof HTMLSelectElement;
-      if (!isInInput && this.selection.size > 0) {
+      if (this.selection.size > 0) {
         this.emitEnterPressed();
       }
     }
@@ -408,12 +482,17 @@ export class SelectionManager extends BaseSelectionManager {
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
     
-    // Find first selectable object
+    // Find first selectable object on a visible floor
     for (const intersection of intersects) {
       const selectable = this.meshRegistry.findSelectableAncestor(intersection.object);
       if (selectable) {
         const entity = this.meshRegistry.getEntityForMesh(selectable);
         if (entity) {
+          // Skip entities on hidden floors
+          if (!this.config.isFloorVisible(entity.floorId)) {
+            continue;
+          }
+          
           if (event.shiftKey) {
             // Toggle selection with Shift
             this.toggleSelection(entity);
@@ -452,7 +531,9 @@ export class SelectionManager extends BaseSelectionManager {
     
     const entities = selectedObjects
       .map(mesh => this.meshRegistry.getEntityForMesh(mesh))
-      .filter((e): e is SelectableObject => e !== undefined);
+      .filter((e): e is SelectableObject => e !== undefined)
+      // Filter out entities on hidden floors
+      .filter(e => this.config.isFloorVisible(e.floorId));
     
     if (entities.length > 0) {
       const previousSelection = Array.from(this.getSelection());

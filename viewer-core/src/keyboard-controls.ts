@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { PivotIndicator } from './pivot-indicator';
+import { PivotIndicator } from './pivot-indicator.js';
 
 /**
  * Configuration for keyboard controls
