@@ -4,6 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Interactive Floorplan Editor</title>
+    <!-- Shared styles from viewer-core (loaded synchronously to avoid FOUC) -->
+    <link rel="stylesheet" href="./shared-styles.css">
     <style>
       * {
         margin: 0;
@@ -1635,16 +1637,13 @@
     
     <script type="module">
       import { InteractiveEditor } from './src/interactive-editor.ts';
-      import { createDslEditor, injectStyles } from 'viewer-core';
+      import { createDslEditor } from 'viewer-core';
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
       import { PropertiesPanel } from './src/properties-panel.ts';
       import { dslPropertyEditor, dslGenerator } from './src/dsl-generator.ts';
       import { Overlay2DManager, createValidationWarningsUI, createShortcutInfoUI } from 'viewer-core';
       import { EmptyFileSystem, URI } from 'langium';
       import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
-      
-      // Inject shared styles
-      injectStyles();
       
       // Sample DSL content
       const sampleDsl = `floorplan
