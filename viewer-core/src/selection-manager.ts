@@ -36,8 +36,6 @@ export interface SelectionManagerConfig {
   enableHoverPreview?: boolean;
   /** Initial enabled state (default: true) */
   enabled?: boolean;
-  /** Callback to check if a floor is visible (for filtering selections) */
-  isFloorVisible?: (floorId: string) => boolean;
 }
 
 /**
@@ -121,7 +119,6 @@ export class SelectionManager extends BaseSelectionManager {
       highlightColor: config.highlightColor ?? 0x00ff00,
       enableHoverPreview: config.enableHoverPreview ?? true,
       enabled: config.enabled ?? true,
-      isFloorVisible: config.isFloorVisible ?? (() => true),
     };
     
     this._enabled = this.config.enabled;
@@ -217,6 +214,50 @@ export class SelectionManager extends BaseSelectionManager {
    */
   setCamera(camera: THREE.Camera): void {
     this.camera = camera;
+  }
+  
+  /**
+   * Update method to be called in the animation loop.
+   * Automatically clears selections for objects that become invisible
+   * (e.g., when floor visibility changes).
+   */
+  update(): void {
+    // Quick check: any invisible selections?
+    let hasInvisible = false;
+    for (const entity of this.getSelection()) {
+      if (!this.isObjectVisible(entity.mesh)) {
+        hasInvisible = true;
+        break;
+      }
+    }
+    
+    if (hasInvisible) {
+      this.clearInvisibleSelections();
+    }
+  }
+  
+  /**
+   * Clear selections for objects that are no longer visible.
+   * Called automatically by update() or can be called manually.
+   */
+  clearInvisibleSelections(): void {
+    const invisibleEntities: SelectableObject[] = [];
+    
+    for (const entity of this.selection) {
+      if (!this.isObjectVisible(entity.mesh)) {
+        invisibleEntities.push(entity);
+      }
+    }
+    
+    if (invisibleEntities.length > 0) {
+      for (const entity of invisibleEntities) {
+        // Remove visual highlight
+        this.applyHighlight(entity, false);
+        // Remove from selection set
+        this.selection.delete(entity);
+      }
+      this.emitChange([], invisibleEntities, 'visibility');
+    }
   }
   
   /**
@@ -482,17 +523,17 @@ export class SelectionManager extends BaseSelectionManager {
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
     
-    // Find first selectable object on a visible floor
+    // Find first selectable object that is visible
     for (const intersection of intersects) {
+      // Skip invisible objects (e.g., on hidden floors)
+      if (!this.isObjectVisible(intersection.object)) {
+        continue;
+      }
+      
       const selectable = this.meshRegistry.findSelectableAncestor(intersection.object);
       if (selectable) {
         const entity = this.meshRegistry.getEntityForMesh(selectable);
         if (entity) {
-          // Skip entities on hidden floors
-          if (!this.config.isFloorVisible(entity.floorId)) {
-            continue;
-          }
-          
           if (event.shiftKey) {
             // Toggle selection with Shift
             this.toggleSelection(entity);
@@ -527,13 +568,12 @@ export class SelectionManager extends BaseSelectionManager {
    */
   private handleMarqueeSelection(additive: boolean): void {
     const marqueeRect = this.getMarqueeRect();
+    // getObjectsInMarquee already filters out invisible objects
     const selectedObjects = this.getObjectsInMarquee(marqueeRect);
     
     const entities = selectedObjects
       .map(mesh => this.meshRegistry.getEntityForMesh(mesh))
-      .filter((e): e is SelectableObject => e !== undefined)
-      // Filter out entities on hidden floors
-      .filter(e => this.config.isFloorVisible(e.floorId));
+      .filter((e): e is SelectableObject => e !== undefined);
     
     if (entities.length > 0) {
       const previousSelection = Array.from(this.getSelection());
@@ -610,6 +650,7 @@ export class SelectionManager extends BaseSelectionManager {
   
   /**
    * Get all selectable objects within the marquee rectangle.
+   * Filters out invisible objects (e.g., on hidden floors).
    */
   private getObjectsInMarquee(marqueeRect: ScreenRect): THREE.Object3D[] {
     const result: THREE.Object3D[] = [];
@@ -621,6 +662,9 @@ export class SelectionManager extends BaseSelectionManager {
     for (const entity of allEntities) {
       const mesh = entity.mesh;
       if (!(mesh instanceof THREE.Mesh)) continue;
+      
+      // Skip invisible objects (e.g., on hidden floors)
+      if (!this.isObjectVisible(mesh)) continue;
       
       // Get screen-space bounding box
       const screenBounds = this.projectBoundingBoxToScreen(mesh, canvasWidth, canvasHeight);
@@ -720,6 +764,23 @@ export class SelectionManager extends BaseSelectionManager {
       a.x + a.width >= b.x + b.width &&
       a.y + a.height >= b.y + b.height
     );
+  }
+  
+  /**
+   * Check if an object and all its ancestors are visible.
+   * This is used to filter out objects on hidden floors from selection.
+   * When FloorManager hides a floor, it sets the floor group's visible = false,
+   * which this method checks by walking up the parent chain.
+   */
+  private isObjectVisible(object: THREE.Object3D): boolean {
+    let current: THREE.Object3D | null = object;
+    while (current) {
+      if (!current.visible) {
+        return false;
+      }
+      current = current.parent;
+    }
+    return true;
   }
   
   /**

@@ -242,6 +242,8 @@ export class InteractiveEditor implements SceneContext {
     this.stairGenerator = new StairGenerator();
     
     // Initialize selection manager if enabled
+    // Note: SelectionManager automatically filters out invisible objects (e.g., hidden floors)
+    // by checking the THREE.js visible property in the parent chain
     if (options.enableSelection !== false) {
       this._selectionManager = new SelectionManager(
         this._scene,
@@ -251,8 +253,6 @@ export class InteractiveEditor implements SceneContext {
         this._meshRegistry,
         {
           marqueeMode: options.marqueeMode ?? 'intersection',
-          // Check floor visibility before allowing selection
-          isFloorVisible: (floorId: string) => this._floorManager.getFloorVisibility(floorId),
         }
       );
     }
@@ -325,10 +325,11 @@ export class InteractiveEditor implements SceneContext {
     const deltaTime = now - this.lastFrameTime;
     this.lastFrameTime = now;
     
-    // Update controls
+    // Update controls and managers
     this._controls.update();
     this._keyboardControls.update(deltaTime);
     this._pivotIndicator.update();
+    this._selectionManager?.update();  // Auto-clear invisible selections
     
     // Render using camera manager's active camera (respects camera mode changes)
     const activeCamera = this._cameraManager.activeCamera;

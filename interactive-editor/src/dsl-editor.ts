@@ -43,6 +43,8 @@ export interface DslEditorInstance {
   setSelection(range: monaco.IRange): void;
   /** Reveal a line in the center of the viewport */
   revealLineInCenter(lineNumber: number): void;
+  /** Go to a specific line and column, setting cursor position and revealing the line */
+  goToLine(lineNumber: number, column?: number): void;
   /** Add decorations */
   createDecorationsCollection(decorations: monaco.editor.IModelDeltaDecoration[]): monaco.editor.IEditorDecorationsCollection;
   /** Show error markers */
@@ -159,6 +161,12 @@ export function createDslEditor(config: DslEditorConfig): DslEditorInstance {
     
     revealLineInCenter(lineNumber: number): void {
       editor.revealLineInCenter(lineNumber);
+    },
+    
+    goToLine(lineNumber: number, column: number = 1): void {
+      editor.setPosition({ lineNumber, column });
+      editor.revealLineInCenter(lineNumber);
+      editor.focus();
     },
     
     createDecorationsCollection(decorations: monaco.editor.IModelDeltaDecoration[]): monaco.editor.IEditorDecorationsCollection {

@@ -34,7 +34,8 @@ export type SelectionSource =
   | 'keyboard'     // Keyboard navigation (Tab, Ctrl+A)
   | 'editor'       // Cursor position change in editor
   | 'api'          // Programmatic selection via API
-  | 'deselect';    // Explicit deselect (Escape, click empty)
+  | 'deselect'     // Explicit deselect (Escape, click empty)
+  | 'visibility';  // Auto-cleared due to visibility change (floor hidden)
 
 /**
  * Listener for selection change events.

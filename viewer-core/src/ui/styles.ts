@@ -736,6 +736,103 @@ body.dark-theme .fp-help-footer {
   color: #00ff00;
 }
 
+/* === Validation Warnings Panel === */
+.fp-warnings-panel {
+  position: absolute;
+  top: 10px;
+  left: 220px;
+  background: #fff8e1;
+  border: 1px solid #ffd54f;
+  border-radius: 8px;
+  max-width: 400px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-size: 13px;
+  z-index: 100;
+  display: none;
+}
+
+body.dark-theme .fp-warnings-panel {
+  background: #3d3520;
+  border-color: #6b5c2d;
+}
+
+.fp-warnings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.fp-warnings-badge {
+  font-weight: 600;
+  color: #f57c00;
+}
+
+body.dark-theme .fp-warnings-badge {
+  color: #ffb74d;
+}
+
+.fp-warnings-toggle {
+  background: none;
+  border: none;
+  color: #f57c00;
+  cursor: pointer;
+  padding: 2px 6px;
+  font-size: 10px;
+}
+
+body.dark-theme .fp-warnings-toggle {
+  color: #ffb74d;
+}
+
+.fp-warnings-toggle:hover {
+  background: rgba(255, 152, 0, 0.1);
+  border-radius: 4px;
+}
+
+.fp-warnings-list {
+  padding: 0 14px 14px;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.fp-warnings-panel.collapsed .fp-warnings-list {
+  display: none;
+}
+
+.fp-warning-item {
+  padding: 8px 0;
+  border-bottom: 1px solid #ffe082;
+  color: #5d4037;
+  line-height: 1.4;
+}
+
+body.dark-theme .fp-warning-item {
+  border-bottom-color: #5a4a20;
+  color: #e0d4b8;
+}
+
+.fp-warning-item:last-child {
+  border-bottom: none;
+}
+
+.fp-warning-line {
+  font-weight: 600;
+  color: #f57c00;
+}
+
+body.dark-theme .fp-warning-line {
+  color: #ffb74d;
+}
+
+.fp-no-warnings {
+  color: #888;
+  font-style: italic;
+}
+
 /* === Scrollbar === */
 .fp-control-panel::-webkit-scrollbar {
   width: 6px;

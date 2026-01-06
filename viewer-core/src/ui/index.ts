@@ -73,3 +73,10 @@ export {
   type SelectionModeToggleUIOptions,
 } from './selection-mode-toggle-ui.js';
 
+export {
+  createValidationWarningsUI,
+  type ValidationWarningsUI,
+  type ValidationWarningsUIOptions,
+  type ValidationWarning,
+} from './validation-warnings-ui.js';
+

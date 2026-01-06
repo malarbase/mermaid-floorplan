@@ -1565,7 +1565,7 @@
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
       import { PropertiesPanel } from './src/properties-panel.ts';
       import { dslPropertyEditor, dslGenerator } from './src/dsl-generator.ts';
-      import { Overlay2DManager } from 'viewer-core';
+      import { Overlay2DManager, createValidationWarningsUI } from 'viewer-core';
       import { EmptyFileSystem, URI } from 'langium';
       import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
       
@@ -1641,6 +1641,21 @@
       });
       overlay2DManager.setupControls();
       
+      // Create validation warnings panel (uses viewer-core shared implementation)
+      const validationWarningsUI = createValidationWarningsUI({
+        left: '10px',   // Position left (editor has different layout than viewer)
+        top: '60px',    // Below the viewer panel header
+        startCollapsed: true,
+        onWarningClick: (warning) => {
+          // Navigate to warning line in editor
+          if (warning.line && dslEditor) {
+            dslEditor.goToLine(warning.line, warning.column || 1);
+          }
+        },
+      });
+      // Append to viewer panel (not body, since editor has split layout)
+      document.querySelector('.viewer-panel')?.appendChild(validationWarningsUI.element);
+      
       // UI elements
       const editorStatus = document.getElementById('editor-status');
       const errorBanner = document.getElementById('error-banner');
@@ -1677,6 +1692,8 @@
             editorStatus.className = 'editor-status error';
             // Set error state (3D view keeps last valid geometry)
             editor3d.setErrorState(true);
+            // Clear warnings on parse error
+            validationWarningsUI.clear();
             return;
           }
           
@@ -1689,6 +1706,8 @@
             editorStatus.className = 'editor-status error';
             // Set error state (3D view keeps last valid geometry)
             editor3d.setErrorState(true);
+            // Clear warnings on conversion error
+            validationWarningsUI.clear();
             return;
           }
           
@@ -1696,14 +1715,37 @@
           currentJsonData = conversionResult.data;
           editor3d.loadFloorplan(currentJsonData);
           
-          // Create Langium document for 2D overlay rendering
+          // Create Langium document for 2D overlay rendering and validation
           try {
             currentLangiumDoc = await createLangiumDocument(content);
             overlay2DManager.setLangiumDocument(currentLangiumDoc);
+            
+            // Run validation and collect warnings
+            const validationDiagnostics = await services.Floorplans.validation.DocumentValidator.validateDocument(currentLangiumDoc);
+            const warnings = validationDiagnostics
+              .filter(diag => diag.severity === 2) // severity 2 = Warning
+              .map(diag => ({
+                message: diag.message,
+                line: diag.range ? diag.range.start.line + 1 : undefined,
+                column: diag.range ? diag.range.start.character + 1 : undefined,
+              }));
+            
+            // Update validation warnings panel
+            validationWarningsUI.update(warnings);
+            
+            // Log warnings to console for debugging
+            if (warnings.length > 0) {
+              console.warn('⚠️ Validation warnings:');
+              for (const w of warnings) {
+                const lineInfo = w.line ? ` (line ${w.line})` : '';
+                console.warn(`  ⚠ ${w.message}${lineInfo}`);
+              }
+            }
           } catch (docErr) {
             console.warn('Failed to create Langium document for 2D overlay:', docErr);
             currentLangiumDoc = null;
             overlay2DManager.setLangiumDocument(null);
+            validationWarningsUI.clear();
           }
           
           // Update entity locations for sync
@@ -1724,6 +1766,8 @@
           editorStatus.className = 'editor-status error';
           // Set error state (3D view keeps last valid geometry)
           editor3d.setErrorState(true);
+          // Clear warnings on error
+          validationWarningsUI.clear();
         }
       }
       
