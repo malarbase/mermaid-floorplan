@@ -80,3 +80,10 @@ export {
   type ValidationWarning,
 } from './validation-warnings-ui.js';
 
+export {
+  createShortcutInfoUI,
+  type ShortcutInfoUI,
+  type ShortcutInfoUIOptions,
+  type ShortcutItem,
+} from './shortcut-info-ui.js';
+

@@ -334,6 +334,7 @@ body.dark-theme .fp-floor-item label {
   font-size: 12px;
   max-width: 300px;
   display: none;
+  transition: left 0.3s ease;
 }
 
 body.dark-theme .fp-floor-summary-panel {
@@ -739,8 +740,8 @@ body.dark-theme .fp-help-footer {
 /* === Validation Warnings Panel === */
 .fp-warnings-panel {
   position: absolute;
-  top: 10px;
-  left: 220px;
+  top: 120px;  /* Below shortcut info panel (~100px) + margin */
+  left: 10px;
   background: #fff8e1;
   border: 1px solid #ffd54f;
   border-radius: 8px;
@@ -750,6 +751,7 @@ body.dark-theme .fp-help-footer {
   font-size: 13px;
   z-index: 100;
   display: none;
+  transition: left 0.3s ease;
 }
 
 body.dark-theme .fp-warnings-panel {
@@ -862,6 +864,58 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb {
 
 body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
   background: #666;
+}
+
+/* === Shortcut Info Panel === */
+.fp-shortcut-info {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: rgba(0, 0, 0, 0.75);
+  color: white;
+  padding: 12px 16px;
+  border-radius: 8px;
+  pointer-events: none;
+  font-size: 13px;
+  max-width: 200px;
+  z-index: 50;
+  transition: left 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+/* Note: Shortcut info is ~100px tall, so warnings panel should be below it */
+
+.fp-shortcut-info h3 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.fp-shortcut-info p {
+  margin: 4px 0;
+  line-height: 1.4;
+}
+
+.fp-shortcut-info-hint {
+  margin-top: 8px !important;
+  opacity: 0.6;
+}
+
+/* Shift panels when editor is open */
+body.editor-open .fp-shortcut-info {
+  left: calc(var(--editor-width, 450px) + 10px);
+}
+
+body.editor-open .fp-warnings-panel {
+  left: calc(var(--editor-width, 450px) + 10px);
+}
+
+body.editor-open .fp-overlay-2d {
+  left: calc(var(--editor-width, 450px) + 10px);
+}
+
+body.editor-open .fp-floor-summary-panel {
+  left: calc(var(--editor-width, 450px) + 10px);
 }
 `;
 

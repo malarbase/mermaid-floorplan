@@ -19,8 +19,9 @@ export type { MarqueeMode, SelectionManagerConfig } from 'viewer-core';
 export { EditorViewerSync } from './editor-viewer-sync.js';
 export type { EditorViewerSyncConfig, EntityLocation } from './editor-viewer-sync.js';
 
-export { createDslEditor, monaco } from './dsl-editor.js';
-export type { DslEditorConfig, DslEditorInstance } from './dsl-editor.js';
+// Re-export DSL editor from viewer-core
+export { createDslEditor, monaco } from 'viewer-core';
+export type { DslEditorConfig, DslEditorInstance } from 'viewer-core';
 
 export { DslGenerator, dslGenerator } from './dsl-generator.js';
 export type {

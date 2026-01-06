@@ -20,12 +20,13 @@ import {
   AnnotationManager,
   FloorManager,
   Overlay2DManager,
+  createDslEditor,
+  type DslEditorInstance,
   type SceneContext, 
   type StyleResolver 
 } from 'viewer-core';
 import { parseFloorplanDSLWithDocument, isFloorplanFile, isJsonFile, ParseError } from './dsl-parser';
-// Editor and chat integration
-import { initializeEditor, type EditorInstance } from './editor';
+// Chat integration
 import { OpenAIChatService } from './openai-chat';
 
 class Viewer implements SceneContext {
@@ -71,7 +72,7 @@ class Viewer implements SceneContext {
     protected currentTheme: ViewerTheme = 'light';
     
     // Editor panel state
-    protected editorInstance: EditorInstance | null = null;
+    protected editorInstance: DslEditorInstance | null = null;
     protected chatService: OpenAIChatService = new OpenAIChatService();
     protected editorPanelOpen: boolean = false;
     protected editorDebounceTimer: number | undefined;
@@ -325,11 +326,12 @@ class Viewer implements SceneContext {
         // Initialize Monaco editor with default content
         const defaultContent = this.getDefaultFloorplanContent();
         try {
-            this.editorInstance = await initializeEditor('editor-container', defaultContent);
-            
-            // Wire up editor changes to reload floorplan (debounced)
-            this.editorInstance.onDidChangeModelContent(() => {
-                this.scheduleEditorUpdate();
+            this.editorInstance = createDslEditor({
+                containerId: 'editor-container',
+                initialContent: defaultContent,
+                theme: 'vs-dark',
+                fontSize: 13,
+                onChange: () => this.scheduleEditorUpdate(),
             });
             
             // Load the default floorplan
@@ -921,10 +923,25 @@ floorplan
             if (this.validationWarnings.length === 0) {
                 listEl.innerHTML = '<div class="no-warnings">No warnings</div>';
             } else {
-                listEl.innerHTML = this.validationWarnings.map(w => {
+                listEl.innerHTML = this.validationWarnings.map((w, index) => {
                     const lineInfo = w.line ? `<span class="line-number">line ${w.line}:</span> ` : '';
-                    return `<div class="warning-item">${lineInfo}${w.message}</div>`;
+                    return `<div class="warning-item" data-index="${index}" style="cursor: pointer;">${lineInfo}${w.message}</div>`;
                 }).join('');
+                
+                // Add click handlers for navigation to editor
+                listEl.querySelectorAll('.warning-item').forEach((item) => {
+                    item.addEventListener('click', () => {
+                        const index = parseInt(item.getAttribute('data-index') || '0', 10);
+                        const warning = this.validationWarnings[index];
+                        if (warning.line && this.editorInstance) {
+                            // Open editor panel if not already open
+                            if (!this.editorPanelOpen) {
+                                document.getElementById('editor-panel-toggle')?.click();
+                            }
+                            this.editorInstance.goToLine(warning.line, warning.column || 1);
+                        }
+                    });
+                });
             }
         }
         

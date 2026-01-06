@@ -1,10 +1,13 @@
 /**
  * DSL Editor - Monaco-based editor for floorplan DSL.
  * 
+ * Shared between viewer and interactive-editor packages.
+ * 
  * Provides:
  * - Syntax highlighting via Monarch tokenizer
  * - Basic language configuration (brackets, comments)
- * - Parse-on-change with error reporting
+ * - Error markers and decorations
+ * - Navigation methods (goToLine, setSelection)
  */
 import * as monaco from 'monaco-editor';
 import { monarchConfig } from 'floorplans-language';

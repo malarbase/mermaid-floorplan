@@ -17,37 +17,103 @@
         background: #1a1a1a;
       }
       
-      .container {
-        display: flex;
+      /* Full-screen 3D viewer */
+      #app {
         width: 100vw;
         height: 100vh;
       }
       
-      /* Left panel: Code editor */
-      .editor-panel {
-        width: 40%;
+      /* Editor Panel (collapsible left side) */
+      #editor-panel {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 450px;
         min-width: 300px;
-        max-width: 600px;
-        height: 100%;
+        max-width: 80vw;
+        height: 100vh;
+        background: #1e1e1e;
         display: flex;
         flex-direction: column;
-        border-right: 1px solid #333;
-        background: #1e1e1e;
+        transform: translateX(-450px);
+        transition: transform 0.3s ease;
+        z-index: 200;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
       }
       
-      .editor-header {
+      #editor-panel.resizing {
+        transition: none;
+      }
+      
+      #editor-panel.open {
+        transform: translateX(0);
+      }
+      
+      #editor-panel-toggle {
+        position: absolute;
+        top: 50%;
+        right: -40px;
+        transform: translateY(-50%);
+        width: 40px;
+        height: 80px;
+        background: #1e1e1e;
+        border: none;
+        border-radius: 0 8px 8px 0;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 16px;
+        box-shadow: 4px 0 10px rgba(0, 0, 0, 0.2);
+      }
+      
+      #editor-panel-toggle:hover {
+        background: #2d2d2d;
+      }
+      
+      #editor-resize-handle {
+        position: absolute;
+        top: 0;
+        right: -6px;
+        width: 12px;
+        height: 100%;
+        cursor: ew-resize;
+        background: transparent;
+        z-index: 10;
+      }
+      
+      #editor-resize-handle::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 4px;
+        height: 100%;
+        background: transparent;
+        transition: background 0.2s;
+      }
+      
+      #editor-resize-handle:hover::before,
+      #editor-resize-handle.active::before {
+        background: #4a90d9;
+      }
+      
+      #editor-panel-header {
         padding: 12px 16px;
         background: #252526;
-        border-bottom: 1px solid #333;
+        border-bottom: 1px solid #3c3c3c;
         display: flex;
         justify-content: space-between;
         align-items: center;
         gap: 12px;
+        flex-shrink: 0;
       }
       
-      .editor-header h2 {
+      #editor-panel-header h2 {
         font-size: 14px;
-        font-weight: 500;
+        font-weight: 600;
         color: #ccc;
       }
       
@@ -299,16 +365,14 @@
         overflow: hidden;
       }
       
-      /* Right panel: 3D viewer */
+      /* 3D viewer - now full screen */
       .viewer-panel {
-        flex: 1;
-        position: relative;
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
         background: #1a1a1a;
-      }
-      
-      #app {
-        width: 100%;
-        height: 100%;
       }
       
       /* Info panel overlay */
@@ -640,6 +704,7 @@
         z-index: 50;
         display: none;
         border: 1px solid #444;
+        transition: left 0.3s ease;
       }
       
       #overlay-2d.visible {
@@ -723,11 +788,28 @@
         font-style: italic;
       }
       
-      /* Floor Summary Panel */
+      /* Shift panels when editor is open */
+      body.editor-open #overlay-2d {
+        left: calc(var(--editor-width, 450px) + 10px);
+      }
+      
+      body.editor-open .fp-warnings-panel {
+        left: calc(var(--editor-width, 450px) + 10px);
+      }
+      
+      body.editor-open .fp-shortcut-info {
+        left: calc(var(--editor-width, 450px) + 10px);
+      }
+      
+      body.editor-open #floor-summary {
+        left: calc(var(--editor-width, 450px) + 10px);
+      }
+      
+      /* Floor Summary Panel - positioned at bottom-left to avoid control panel */
       #floor-summary {
         position: absolute;
-        bottom: 80px;
-        right: 10px;
+        bottom: 10px;
+        left: 10px;
         background: rgba(30, 30, 30, 0.95);
         border-radius: 8px;
         padding: 12px 16px;
@@ -737,6 +819,8 @@
         display: none;
         border: 1px solid #444;
         color: #ccc;
+        transition: left 0.3s ease;
+        z-index: 50;
       }
       
       #floor-summary.visible {
@@ -845,21 +929,10 @@
         font-size: 11px;
       }
       
-      /* Resizer */
-      .resizer {
-        width: 4px;
-        background: #333;
-        cursor: col-resize;
-        transition: background 0.2s;
-      }
-      
-      .resizer:hover {
-        background: #4a9eff;
-      }
       
       /* Error banner */
       .error-banner {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         right: 0;
@@ -867,7 +940,7 @@
         background: rgba(244, 67, 54, 0.9);
         color: white;
         font-size: 13px;
-        z-index: 200;
+        z-index: 300;
         display: none;
       }
       
@@ -877,14 +950,14 @@
       
       /* Error state dimming overlay for 3D scene */
       .error-overlay {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.3);
         pointer-events: none; /* Allow clicks to pass through to 3D scene */
-        z-index: 50;
+        z-index: 150;
         display: none;
         border: 3px solid rgba(244, 67, 54, 0.6);
         box-sizing: border-box;
@@ -896,7 +969,7 @@
       
       .error-overlay::after {
         content: 'Viewing stale geometry';
-        position: absolute;
+        position: fixed;
         bottom: 60px;
         left: 50%;
         transform: translateX(-50%);
@@ -1185,47 +1258,48 @@
     </style>
   </head>
   <body>
-    <div class="container">
-      <!-- Editor Panel -->
-      <div class="editor-panel" role="region" aria-label="Code Editor">
-        <div class="editor-header">
-          <h2>Floorplan DSL</h2>
-          <div class="editor-header-right">
-            <button class="add-room-btn" id="add-room-btn" aria-label="Add new room">Room</button>
-            <div class="export-dropdown">
-              <button class="export-btn" id="export-btn" aria-haspopup="menu" aria-expanded="false">Export</button>
-              <div class="export-menu" id="export-menu">
-                <button class="export-menu-item" data-format="dsl">
-                  Floorplan DSL <span class="ext">.floorplan</span>
-                </button>
-                <button class="export-menu-item" data-format="json">
-                  JSON Data <span class="ext">.json</span>
-                </button>
-                <div class="export-menu-divider"></div>
-                <button class="export-menu-item" data-format="glb">
-                  3D Model (Binary) <span class="ext">.glb</span>
-                </button>
-                <button class="export-menu-item" data-format="gltf">
-                  3D Model (Text) <span class="ext">.gltf</span>
-                </button>
-              </div>
+    <!-- 3D Viewer Panel (full screen) -->
+    <div class="viewer-panel" role="region" aria-label="3D Viewer">
+      <div id="app" role="application" aria-label="3D floorplan viewer"></div>
+    </div>
+    
+    <!-- Editor Panel (collapsible overlay) -->
+    <div id="editor-panel" class="open" role="region" aria-label="Code Editor">
+      <div id="editor-resize-handle"></div>
+      <button id="editor-panel-toggle" title="Toggle Editor">◀</button>
+      <div id="editor-panel-header">
+        <h2>Floorplan DSL</h2>
+        <div class="editor-header-right">
+          <button class="add-room-btn" id="add-room-btn" aria-label="Add new room">Room</button>
+          <div class="export-dropdown">
+            <button class="export-btn" id="export-btn" aria-haspopup="menu" aria-expanded="false">Export</button>
+            <div class="export-menu" id="export-menu">
+              <button class="export-menu-item" data-format="dsl">
+                Floorplan DSL <span class="ext">.floorplan</span>
+              </button>
+              <button class="export-menu-item" data-format="json">
+                JSON Data <span class="ext">.json</span>
+              </button>
+              <div class="export-menu-divider"></div>
+              <button class="export-menu-item" data-format="glb">
+                3D Model (Binary) <span class="ext">.glb</span>
+              </button>
+              <button class="export-menu-item" data-format="gltf">
+                3D Model (Text) <span class="ext">.gltf</span>
+              </button>
             </div>
-            <span id="editor-status" class="editor-status">Ready</span>
           </div>
+          <span id="editor-status" class="editor-status">Ready</span>
         </div>
-        <div id="editor-container"></div>
       </div>
-      
-      <!-- Resizer -->
-      <div class="resizer" id="resizer"></div>
-      
-      <!-- 3D Viewer Panel -->
-      <div class="viewer-panel" role="region" aria-label="3D Viewer">
-        <div class="error-banner" id="error-banner" role="alert" aria-live="polite"></div>
-        <div class="error-overlay" id="error-overlay" aria-hidden="true"></div>
-        <div id="app" role="application" aria-label="3D floorplan viewer"></div>
-        
-        <!-- Control Panel -->
+      <div id="editor-container"></div>
+    </div>
+    
+    <!-- Error banners and overlays (positioned over 3D view) -->
+    <div class="error-banner" id="error-banner" role="alert" aria-live="polite"></div>
+    <div class="error-overlay" id="error-overlay" aria-hidden="true"></div>
+    
+    <!-- Control Panel -->
         <div id="controls">
           <!-- Camera Section -->
           <div class="control-section">
@@ -1561,11 +1635,11 @@
     
     <script type="module">
       import { InteractiveEditor } from './src/interactive-editor.ts';
-      import { createDslEditor } from './src/dsl-editor.ts';
+      import { createDslEditor } from 'viewer-core';
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
       import { PropertiesPanel } from './src/properties-panel.ts';
       import { dslPropertyEditor, dslGenerator } from './src/dsl-generator.ts';
-      import { Overlay2DManager, createValidationWarningsUI } from 'viewer-core';
+      import { Overlay2DManager, createValidationWarningsUI, createShortcutInfoUI } from 'viewer-core';
       import { EmptyFileSystem, URI } from 'langium';
       import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
       
@@ -1643,18 +1717,26 @@
       
       // Create validation warnings panel (uses viewer-core shared implementation)
       const validationWarningsUI = createValidationWarningsUI({
-        left: '10px',   // Position left (editor has different layout than viewer)
-        top: '60px',    // Below the viewer panel header
-        startCollapsed: true,
+        position: 'top-left',
         onWarningClick: (warning) => {
-          // Navigate to warning line in editor
+          // Navigate to warning line in editor, open panel if needed
           if (warning.line && dslEditor) {
+            if (!editorPanelOpen) {
+              editorPanelOpen = true;
+              updateEditorPanelPosition();
+            }
             dslEditor.goToLine(warning.line, warning.column || 1);
           }
         },
       });
-      // Append to viewer panel (not body, since editor has split layout)
-      document.querySelector('.viewer-panel')?.appendChild(validationWarningsUI.element);
+      // Append to body (not viewer-panel, since layout is now full-screen with overlay)
+      document.body.appendChild(validationWarningsUI.element);
+      
+      // Create shortcut info panel (uses viewer-core shared implementation)
+      const shortcutInfoUI = createShortcutInfoUI({
+        title: 'Floorplan Editor',
+      });
+      document.body.appendChild(shortcutInfoUI.element);
       
       // UI elements
       const editorStatus = document.getElementById('editor-status');
@@ -1663,6 +1745,67 @@
       const selectionInfo = document.getElementById('selection-info');
       const containmentCheckbox = document.getElementById('containment-mode');
       const modeIndicator = document.getElementById('mode-indicator');
+      
+      // Editor panel toggle and resize
+      const editorPanel = document.getElementById('editor-panel');
+      const editorToggle = document.getElementById('editor-panel-toggle');
+      const editorResizeHandle = document.getElementById('editor-resize-handle');
+      let editorPanelOpen = true;
+      let editorPanelWidth = 450;
+      
+      function updateEditorPanelPosition() {
+        if (!editorPanel) return;
+        editorPanel.style.width = editorPanelWidth + 'px';
+        editorPanel.style.transform = editorPanelOpen 
+          ? 'translateX(0)' 
+          : `translateX(-${editorPanelWidth}px)`;
+        editorToggle.textContent = editorPanelOpen ? '◀' : '▶';
+        
+        // Toggle body class and set CSS variable for dependent elements
+        document.body.classList.toggle('editor-open', editorPanelOpen);
+        if (editorPanelOpen) {
+          document.documentElement.style.setProperty('--editor-width', `${editorPanelWidth}px`);
+        }
+      }
+      
+      editorToggle?.addEventListener('click', () => {
+        editorPanelOpen = !editorPanelOpen;
+        updateEditorPanelPosition();
+      });
+      
+      // Editor resize functionality
+      let isResizing = false;
+      
+      editorResizeHandle?.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        editorPanel.classList.add('resizing');
+        editorResizeHandle.classList.add('active');
+        document.body.style.cursor = 'ew-resize';
+        document.body.style.userSelect = 'none';
+        e.preventDefault();
+      });
+      
+      document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const newWidth = Math.max(300, Math.min(window.innerWidth * 0.8, e.clientX));
+        editorPanelWidth = newWidth;
+        editorPanel.style.width = newWidth + 'px';
+        editorPanel.style.transform = 'translateX(0)';
+        // Update CSS variable for dependent elements
+        document.documentElement.style.setProperty('--editor-width', `${newWidth}px`);
+      });
+      
+      document.addEventListener('mouseup', () => {
+        if (!isResizing) return;
+        isResizing = false;
+        editorPanel.classList.remove('resizing');
+        editorResizeHandle?.classList.remove('active');
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      });
+      
+      // Initialize position
+      updateEditorPanelPosition();
       
       /**
        * Parse DSL and update 3D view
@@ -2426,30 +2569,6 @@
       // ========================================
       // End Control Panel Wiring
       // ========================================
-      
-      // Resizer functionality
-      const resizer = document.getElementById('resizer');
-      const editorPanel = document.querySelector('.editor-panel');
-      let isResizing = false;
-      
-      resizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        document.body.style.cursor = 'col-resize';
-        e.preventDefault();
-      });
-      
-      document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        const newWidth = e.clientX;
-        if (newWidth >= 200 && newWidth <= 800) {
-          editorPanel.style.width = `${newWidth}px`;
-        }
-      });
-      
-      document.addEventListener('mouseup', () => {
-        isResizing = false;
-        document.body.style.cursor = '';
-      });
       
       // Initial parse
       parseAndUpdate(sampleDsl);

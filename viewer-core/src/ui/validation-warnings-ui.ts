@@ -61,7 +61,7 @@ export function createValidationWarningsUI(options: ValidationWarningsUIOptions 
   const container = document.createElement('div');
   container.className = `fp-warnings-panel${collapsed ? ' collapsed' : ''}`;
   container.id = 'warnings-panel';
-  container.style.left = left;
+  // Note: Don't set inline left style - let CSS handle it for editor-open transitions
   container.style.top = top;
   container.setAttribute('role', 'region');
   container.setAttribute('aria-label', 'Validation warnings');

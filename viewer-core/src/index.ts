@@ -128,3 +128,13 @@ export type {
 // UI Components
 export * from './ui/index.js';
 
+// DSL Editor (Monaco-based)
+export {
+  createDslEditor,
+  monaco,
+} from './dsl-editor.js';
+export type {
+  DslEditorConfig,
+  DslEditorInstance,
+} from './dsl-editor.js';
+
