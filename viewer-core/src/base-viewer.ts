@@ -302,6 +302,13 @@ export abstract class BaseViewer implements SceneContext {
     const colors = getThemeColors(this.currentTheme);
     this._scene.background = new THREE.Color(colors.BACKGROUND);
     
+    // Update body class for CSS theme selectors
+    if (this.currentTheme === 'dark') {
+      document.body.classList.add('dark-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
+    }
+    
     // Update wall generator theme
     this.wallGenerator.setTheme(this.currentTheme);
     

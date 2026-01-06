@@ -447,167 +447,13 @@
         color: #4a9eff;
       }
       
-      /* Control Panel (viewer-style) */
+      /* Control Panel - uses fp-* classes from shared-styles.css for theming */
+      /* Only override positioning, not colors (colors come from shared styles) */
       #controls {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: rgba(30, 30, 30, 0.95);
-        padding: 0;
-        border-radius: 10px;
-        width: 260px;
-        max-height: calc(100vh - 20px);
-        overflow-y: auto;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
         z-index: 100;
-        border: 1px solid #444;
-        font-size: 13px;
       }
       
-      .control-section {
-        border-bottom: 1px solid #3c3c3c;
-      }
-      
-      .control-section:last-child {
-        border-bottom: none;
-      }
-      
-      .section-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 12px 16px;
-        cursor: pointer;
-        user-select: none;
-        background: #2a2a2a;
-        font-weight: 600;
-        font-size: 13px;
-        color: #ccc;
-        transition: background 0.2s;
-      }
-      
-      .section-header:hover {
-        background: #333;
-      }
-      
-      .section-header::after {
-        content: '▼';
-        font-size: 10px;
-        transition: transform 0.2s;
-        color: #888;
-      }
-      
-      .control-section.collapsed .section-header::after {
-        transform: rotate(-90deg);
-      }
-      
-      .section-content {
-        padding: 12px 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-        background: #252526;
-      }
-      
-      .control-section.collapsed .section-content {
-        display: none;
-      }
-      
-      .control-group {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-      
-      .control-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-      }
-      
-      #controls label {
-        font-size: 12px;
-        font-weight: 500;
-        color: #aaa;
-      }
-      
-      .slider-value {
-        font-size: 11px;
-        color: #888;
-        min-width: 35px;
-        text-align: right;
-      }
-      
-      #controls input[type="range"] {
-        flex: 1;
-        height: 4px;
-        border-radius: 2px;
-        -webkit-appearance: none;
-        background: #555;
-      }
-      
-      #controls input[type="range"]::-webkit-slider-thumb {
-        -webkit-appearance: none;
-        width: 14px;
-        height: 14px;
-        border-radius: 50%;
-        background: #4a90d9;
-        cursor: pointer;
-        border: 2px solid #1e1e1e;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.4);
-      }
-      
-      #controls button {
-        padding: 8px 12px;
-        background: #4a90d9;
-        color: white;
-        border: none;
-        border-radius: 6px;
-        font-size: 12px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      
-      #controls button:hover {
-        background: #5aa0e9;
-      }
-      
-      .btn-secondary {
-        background: #444 !important;
-      }
-      
-      .btn-secondary:hover {
-        background: #555 !important;
-      }
-      
-      .btn-group {
-        display: flex;
-        gap: 8px;
-      }
-      
-      .btn-group button {
-        flex: 1;
-      }
-      
-      .checkbox-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      
-      .checkbox-row input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        cursor: pointer;
-      }
-      
-      .checkbox-row label {
-        cursor: pointer;
-        flex: 1;
-      }
-      
+      /* Unit row layout */
       .unit-row {
         display: flex;
         align-items: center;
@@ -616,61 +462,6 @@
       
       .unit-row select {
         width: 100px;
-      }
-      
-      #controls select {
-        padding: 6px 8px;
-        border: 1px solid #555;
-        border-radius: 4px;
-        font-size: 12px;
-        background: #333;
-        color: #ccc;
-        cursor: pointer;
-      }
-      
-      /* Floor list */
-      .floor-list {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-      }
-      
-      .floor-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 4px 0;
-      }
-      
-      .floor-item input[type="checkbox"] {
-        width: 16px;
-        height: 16px;
-        cursor: pointer;
-      }
-      
-      .floor-item label {
-        cursor: pointer;
-        flex: 1;
-        font-size: 12px;
-        color: #ccc;
-      }
-      
-      .floor-actions {
-        display: flex;
-        gap: 8px;
-        margin-top: 8px;
-      }
-      
-      .floor-actions button {
-        flex: 1;
-        padding: 6px 8px;
-        font-size: 11px;
-      }
-      
-      .no-floors-message {
-        color: #888;
-        font-size: 11px;
-        font-style: italic;
       }
       
       /* Scrollbar styling for controls */
@@ -1354,7 +1145,7 @@
               <div class="fp-control-group">
                 <div class="fp-control-row">
                   <label class="fp-label">Theme</label>
-                  <button id="theme-toggle-btn" class="fp-btn fp-btn-secondary" style="padding: 4px 12px; font-size: 11px;">🌙 Dark</button>
+                  <button id="theme-toggle-btn" class="fp-btn fp-btn-secondary" style="padding: 4px 12px; font-size: 11px;">☀️ Light</button>
                 </div>
               </div>
               <div class="fp-control-group">
@@ -1637,7 +1428,7 @@
     
     <script type="module">
       import { InteractiveEditor } from './src/interactive-editor.ts';
-      import { createDslEditor } from 'viewer-core';
+      import { createDslEditor, monaco } from 'viewer-core';
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
       import { PropertiesPanel } from './src/properties-panel.ts';
       import { dslPropertyEditor, dslGenerator } from './src/dsl-generator.ts';
@@ -2365,7 +2156,10 @@
         currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
         document.body.classList.toggle('dark-theme', currentTheme === 'dark');
         editor3d.setTheme(currentTheme);
-        themeToggleBtn.textContent = currentTheme === 'dark' ? '🌙 Dark' : '☀️ Light';
+        // Update Monaco editor theme
+        monaco.editor.setTheme(currentTheme === 'dark' ? 'vs-dark' : 'vs');
+        // Button shows action (what clicking will do), matching viewer behavior
+        themeToggleBtn.textContent = currentTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
         overlay2DManager.render(); // Re-render 2D overlay with new theme
       });
       

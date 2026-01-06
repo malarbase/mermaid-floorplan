@@ -6,6 +6,7 @@ import {
   BaseViewer,
   Overlay2DManager,
   createDslEditor,
+  monaco,
   injectStyles,
   parseFloorplanDSLWithDocument,
   isFloorplanFile,
@@ -131,6 +132,8 @@ class Viewer extends BaseViewer {
         themeToggleBtn?.addEventListener('click', () => {
             this.toggleTheme();
             this.updateThemeButton();
+            // Update Monaco editor theme
+            monaco.editor.setTheme(this.currentTheme === 'dark' ? 'vs-dark' : 'vs');
             // Update 2D overlay for theme change
             this.overlay2DManager.render();
         });
