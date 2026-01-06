@@ -1,7 +1,7 @@
 /**
  * InteractiveEditor - Full-featured floorplan editor with selection and editing capabilities.
  * 
- * This extends the read-only viewer with:
+ * This extends BaseViewer with:
  * - Click and marquee selection
  * - Editor-3D bidirectional sync
  * - Properties panel for editing
@@ -13,33 +13,24 @@
  * - Multi-floor elevation stacking
  */
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-import { Evaluator } from 'three-bvh-csg';
-import type { JsonExport, JsonFloor, JsonRoom, JsonStyle, JsonConfig, JsonConnection } from 'floorplan-3d-core';
+import type { JsonExport, JsonRoom, JsonFloor } from 'floorplan-3d-core';
 import { 
-  COLORS,
   MaterialFactory, 
-  StairGenerator, 
-  normalizeToMeters,
   DIMENSIONS,
   type ViewerTheme,
-  type MaterialStyle,
 } from 'floorplan-3d-core';
 import { 
+  BaseViewer,
   MeshRegistry, 
-  WallGenerator,
-  PivotIndicator,
-  KeyboardControls,
-  CameraManager,
-  FloorManager,
-  AnnotationManager,
   SelectionManager,
+  injectStyles,
   type SceneContext,
   type SelectableObject,
-  type StyleResolver,
   type MarqueeMode,
 } from 'viewer-core';
+
+// Inject shared styles before anything else
+injectStyles();
 
 /**
  * Configuration options for the InteractiveEditor.
@@ -53,71 +44,22 @@ export interface InteractiveEditorOptions {
   enableSelection?: boolean;
   /** Initial marquee mode (default: 'intersection') */
   marqueeMode?: MarqueeMode;
+  /** Initial theme (default: 'dark') */
+  initialTheme?: ViewerTheme;
 }
 
 /**
  * Interactive floorplan editor with selection and editing capabilities.
  */
-export class InteractiveEditor implements SceneContext {
-  // Core Three.js
-  protected _scene: THREE.Scene;
-  protected _perspectiveCamera: THREE.PerspectiveCamera;
-  protected _orthographicCamera: THREE.OrthographicCamera;
-  protected _renderer: THREE.WebGLRenderer;
-  protected labelRenderer: CSS2DRenderer;
-  protected _controls: OrbitControls;
-  
-  // Entity-mesh registry
-  protected _meshRegistry: MeshRegistry;
-  
+export class InteractiveEditor extends BaseViewer implements SceneContext {
   // Selection manager
   protected _selectionManager: SelectionManager | null = null;
-  
-  // Shared managers from viewer-core
-  protected _pivotIndicator: PivotIndicator;
-  protected _keyboardControls: KeyboardControls;
-  protected _cameraManager: CameraManager;
-  protected _floorManager: FloorManager;
-  protected _annotationManager: AnnotationManager;
-  
-  // Lighting (stored for manager access)
-  protected _directionalLight: THREE.DirectionalLight;
-  
-  // Scene content
-  protected _floors: THREE.Group[] = [];
-  protected floorHeights: number[] = [];
-  protected currentFloorplanData: JsonExport | null = null;
-  protected connections: JsonConnection[] = [];
-  protected config: JsonConfig = {};
-  protected styles: Map<string, JsonStyle> = new Map();
-  protected explodedViewFactor: number = 0;
   
   // Error state management
   private _hasParseError: boolean = false;
   private _lastValidFloorplanData: JsonExport | null = null;
   
-  // Generators
-  protected wallGenerator: WallGenerator;
-  protected stairGenerator: StairGenerator;
-  
-  // Theme state
-  protected currentTheme: ViewerTheme = 'light';
-  
-  // Animation
-  private animationFrameId: number | null = null;
-  
-  // Active camera tracking
-  private _activeCamera: THREE.Camera;
-  
-  // SceneContext interface getters
-  get scene(): THREE.Scene { return this._scene; }
-  get activeCamera(): THREE.Camera { return this._activeCamera; }
-  get perspectiveCamera(): THREE.PerspectiveCamera { return this._perspectiveCamera; }
-  get orthographicCamera(): THREE.OrthographicCamera { return this._orthographicCamera; }
-  get renderer(): THREE.WebGLRenderer { return this._renderer; }
-  get controls(): OrbitControls { return this._controls; }
-  get domElement(): HTMLCanvasElement { return this._renderer.domElement; }
-  get floors(): readonly THREE.Group[] { return this._floors; }
+  // SceneContext interface getters (additional ones beyond BaseViewer)
   get meshRegistry(): MeshRegistry { return this._meshRegistry; }
   get selectionManager(): SelectionManager | null { return this._selectionManager; }
   
@@ -128,118 +70,11 @@ export class InteractiveEditor implements SceneContext {
   get lastValidFloorplanData(): JsonExport | null { return this._lastValidFloorplanData; }
   
   constructor(options: InteractiveEditorOptions = {}) {
-    const containerId = options.containerId ?? 'app';
-    const container = document.getElementById(containerId);
-    
-    if (!container) {
-      throw new Error(`Container element '${containerId}' not found`);
-    }
-    
-    // Initialize mesh registry
-    this._meshRegistry = new MeshRegistry();
-    
-    // Initialize scene
-    this._scene = new THREE.Scene();
-    this._scene.background = new THREE.Color(COLORS.BACKGROUND);
-    
-    // Initialize cameras
-    const fov = 75;
-    const aspect = container.clientWidth / container.clientHeight;
-    this._perspectiveCamera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
-    this._perspectiveCamera.position.set(20, 20, 20);
-    
-    const frustumSize = 30;
-    this._orthographicCamera = new THREE.OrthographicCamera(
-      frustumSize * aspect / -2,
-      frustumSize * aspect / 2,
-      frustumSize / 2,
-      frustumSize / -2,
-      0.1,
-      1000
-    );
-    this._orthographicCamera.position.set(20, 20, 20);
-    
-    // Set active camera
-    this._activeCamera = this._perspectiveCamera;
-    
-    // Initialize renderer
-    this._renderer = new THREE.WebGLRenderer({ antialias: true });
-    this._renderer.setSize(container.clientWidth, container.clientHeight);
-    this._renderer.shadowMap.enabled = true;
-    this._renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    container.appendChild(this._renderer.domElement);
-    
-    // Initialize CSS2D renderer for labels
-    this.labelRenderer = new CSS2DRenderer();
-    this.labelRenderer.setSize(container.clientWidth, container.clientHeight);
-    this.labelRenderer.domElement.style.position = 'absolute';
-    this.labelRenderer.domElement.style.top = '0px';
-    this.labelRenderer.domElement.style.pointerEvents = 'none';
-    container.appendChild(this.labelRenderer.domElement);
-    
-    // Initialize controls
-    this._controls = new OrbitControls(this._perspectiveCamera, this._renderer.domElement);
-    this._controls.enableDamping = true;
-    
-    // Initialize lighting
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-    this._scene.add(ambientLight);
-    
-    this._directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    this._directionalLight.position.set(50, 50, 50);
-    this._directionalLight.castShadow = true;
-    this._directionalLight.shadow.mapSize.width = 4096;
-    this._directionalLight.shadow.mapSize.height = 4096;
-    this._scene.add(this._directionalLight);
-    
-    // Initialize shared managers from viewer-core
-    this._pivotIndicator = new PivotIndicator(this._scene, this._controls);
-    
-    this._keyboardControls = new KeyboardControls(
-      this._controls,
-      this._perspectiveCamera,
-      this._orthographicCamera,
-      {
-        onCameraModeToggle: () => this._cameraManager.toggleCameraMode(),
-        onUpdateOrthographicSize: () => this._cameraManager.updateOrthographicSize(),
-        getBoundingBox: () => this._cameraManager.getSceneBoundingBox(),
-        setHelpOverlayVisible: (visible: boolean) => {
-          const helpOverlay = document.getElementById('keyboard-help-overlay');
-          if (helpOverlay) helpOverlay.style.display = visible ? 'flex' : 'none';
-        },
-      }
-    );
-    this._keyboardControls.setPivotIndicator(this._pivotIndicator);
-    
-    this._cameraManager = new CameraManager(
-      this._perspectiveCamera,
-      this._orthographicCamera,
-      this._controls,
-      {
-        getFloors: () => this._floors,
-        getKeyboardControls: () => this._keyboardControls,
-      }
-    );
-    
-    this._floorManager = new FloorManager({
-      getFloors: () => this._floors,
-      getFloorplanData: () => this.currentFloorplanData,
-      onVisibilityChange: () => this._annotationManager.updateFloorSummary(),
+    super({
+      containerId: options.containerId ?? 'app',
+      initialTheme: options.initialTheme ?? 'dark',
+      enableKeyboardControls: true,
     });
-    
-    this._annotationManager = new AnnotationManager({
-      getFloors: () => this._floors,
-      getFloorplanData: () => this.currentFloorplanData,
-      getConfig: () => this.config,
-      getFloorVisibility: (id: string) => this._floorManager.getFloorVisibility(id),
-    });
-    
-    // Initialize wall generator with CSG evaluator
-    this.wallGenerator = new WallGenerator(new Evaluator());
-    this.wallGenerator.setTheme(this.currentTheme);
-    
-    // Initialize stair generator
-    this.stairGenerator = new StairGenerator();
     
     // Initialize selection manager if enabled
     // Note: SelectionManager automatically filters out invisible objects (e.g., hidden floors)
@@ -247,7 +82,7 @@ export class InteractiveEditor implements SceneContext {
     if (options.enableSelection !== false) {
       this._selectionManager = new SelectionManager(
         this._scene,
-        this._activeCamera,
+        this._cameraManager.activeCamera,
         this._renderer,
         this._controls,
         this._meshRegistry,
@@ -257,38 +92,77 @@ export class InteractiveEditor implements SceneContext {
       );
     }
     
-    // Handle window resize
-    window.addEventListener('resize', this.onWindowResize.bind(this));
-    
     // Load initial data if provided
     if (options.initialData) {
       this.loadFloorplan(options.initialData);
     }
     
     // Start animation loop
-    this.animate();
+    this.startAnimation();
   }
   
   /**
-   * Handle window resize.
+   * Setup UI controls - interactive editor has different UI needs than read-only viewer.
+   * Called from BaseViewer constructor, but we handle our own initialization.
    */
-  private onWindowResize(): void {
-    const container = this._renderer.domElement.parentElement;
-    if (!container) return;
+  protected setupUIControls(): void {
+    // Collapsible sections
+    document.querySelectorAll('.fp-section-header').forEach(header => {
+      header.addEventListener('click', () => {
+        const section = header.parentElement;
+        section?.classList.toggle('collapsed');
+      });
+    });
     
-    const width = container.clientWidth;
-    const height = container.clientHeight;
+    // Setup manager controls
+    this._cameraManager.setupControls();
+    this._annotationManager.setupControls();
+    this._floorManager.setupControls();
     
-    this._perspectiveCamera.aspect = width / height;
-    this._perspectiveCamera.updateProjectionMatrix();
+    // Setup help overlay
+    this.setupHelpOverlay();
+  }
+  
+  /**
+   * Setup help overlay close functionality
+   */
+  private setupHelpOverlay(): void {
+    const overlay = document.getElementById('keyboard-help-overlay');
+    const closeBtn = document.getElementById('keyboard-help-close');
+    const panel = overlay?.querySelector('.fp-keyboard-help-panel');
     
-    const frustumSize = 30;
-    this._orthographicCamera.left = frustumSize * (width / height) / -2;
-    this._orthographicCamera.right = frustumSize * (width / height) / 2;
-    this._orthographicCamera.updateProjectionMatrix();
+    // Close button click
+    closeBtn?.addEventListener('click', () => {
+      this.setHelpOverlayVisible(false);
+    });
     
-    this._renderer.setSize(width, height);
-    this.labelRenderer.setSize(width, height);
+    // Click outside panel to close
+    overlay?.addEventListener('click', (e) => {
+      if (e.target === overlay) {
+        this.setHelpOverlayVisible(false);
+      }
+    });
+    
+    // Prevent clicks on panel from closing
+    panel?.addEventListener('click', (e) => {
+      e.stopPropagation();
+    });
+  }
+  
+  /**
+   * Override to handle floorplan loaded event.
+   */
+  protected onFloorplanLoaded(): void {
+    // Store as last valid data (cleared error state)
+    this._lastValidFloorplanData = this.currentFloorplanData;
+    this._hasParseError = false;
+  }
+  
+  /**
+   * Override to clear selection when visibility changes.
+   */
+  protected onFloorVisibilityChanged(): void {
+    // Selection manager auto-clears invisible objects in update(), no need for explicit action here
   }
   
   /**
@@ -302,39 +176,10 @@ export class InteractiveEditor implements SceneContext {
       this._cameraManager.toggleCameraMode();
     }
     
-    // Update internal reference
-    this._activeCamera = this._cameraManager.activeCamera;
-    
     // Update selection manager camera reference
     if (this._selectionManager) {
-      this._selectionManager.setCamera(this._activeCamera);
+      this._selectionManager.setCamera(this._cameraManager.activeCamera);
     }
-  }
-  
-  // Track time for delta calculation
-  private lastFrameTime: number = performance.now();
-  
-  /**
-   * Animation loop.
-   */
-  private animate(): void {
-    this.animationFrameId = requestAnimationFrame(this.animate.bind(this));
-    
-    // Calculate delta time for smooth keyboard controls
-    const now = performance.now();
-    const deltaTime = now - this.lastFrameTime;
-    this.lastFrameTime = now;
-    
-    // Update controls and managers
-    this._controls.update();
-    this._keyboardControls.update(deltaTime);
-    this._pivotIndicator.update();
-    this._selectionManager?.update();  // Auto-clear invisible selections
-    
-    // Render using camera manager's active camera (respects camera mode changes)
-    const activeCamera = this._cameraManager.activeCamera;
-    this._renderer.render(this._scene, activeCamera);
-    this.labelRenderer.render(this._scene, activeCamera);
   }
   
   /**
@@ -349,93 +194,20 @@ export class InteractiveEditor implements SceneContext {
   }
   
   /**
-   * Resolve style for a room with fallback chain:
-   * 1. Room's explicit style
-   * 2. Default style from config
-   * 3. undefined (use defaults)
-   */
-  private resolveRoomStyle(room: JsonRoom): MaterialStyle | undefined {
-    // Try room's explicit style first
-    if (room.style && this.styles.has(room.style)) {
-      const style = this.styles.get(room.style)!;
-      return MaterialFactory.jsonStyleToMaterialStyle(style);
-    }
-    
-    // Try default style from config
-    if (this.config.default_style && this.styles.has(this.config.default_style)) {
-      const style = this.styles.get(this.config.default_style)!;
-      return MaterialFactory.jsonStyleToMaterialStyle(style);
-    }
-    
-    return undefined;
-  }
-  
-  /**
-   * Load a floorplan from JSON data.
+   * Override loadFloorplan to handle selection manager clearing.
    */
   public loadFloorplan(data: JsonExport): void {
-    // Normalize to meters
-    const normalizedData = normalizeToMeters(data);
-    this.currentFloorplanData = normalizedData;
-    
-    // Store as last valid data (cleared error state)
-    this._lastValidFloorplanData = normalizedData;
-    this._hasParseError = false;
-    
-    // Clear existing floors
-    this._floors.forEach(f => this._scene.remove(f));
-    this._floors = [];
-    this.floorHeights = [];
-    this._meshRegistry.clear();
+    // Deselect before clearing the scene
     this._selectionManager?.deselect();
     
-    // Store config and connections
-    this.connections = normalizedData.connections;
-    this.config = normalizedData.config || {};
-    
-    // Build style lookup map
-    this.styles.clear();
-    if (normalizedData.styles) {
-      for (const style of normalizedData.styles) {
-        this.styles.set(style.name, style);
-      }
-    }
-    
-    // Generate floors
-    const globalHeight = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-    
-    // Center camera roughly
-    if (normalizedData.floors.length > 0 && normalizedData.floors[0].rooms.length > 0) {
-      const firstRoom = normalizedData.floors[0].rooms[0];
-      this._controls.target.set(
-        firstRoom.x + firstRoom.width / 2,
-        0,
-        firstRoom.z + firstRoom.height / 2
-      );
-    }
-    
-    normalizedData.floors.forEach((floorData) => {
-      const floorHeight = floorData.height ?? globalHeight;
-      this.floorHeights.push(floorHeight);
-      
-      const floorGroup = this.generateFloor(floorData);
-      this._scene.add(floorGroup);
-      this._floors.push(floorGroup);
-    });
-    
-    // Apply floor stacking (exploded view at 0 = floors touching)
-    this.setExplodedView(this.explodedViewFactor);
-    
-    // Update managers with new floors
-    this._floorManager.initFloorVisibility();
-    this._annotationManager.updateAll();
+    // Call parent implementation
+    super.loadFloorplan(data);
   }
   
   /**
-   * Generate a floor group with all rooms, walls, and connections.
-   * Uses WallGenerator for proper wall ownership detection and CSG operations.
+   * Override generateFloor to register meshes in the mesh registry for selection.
    */
-  private generateFloor(floorData: JsonFloor): THREE.Group {
+  protected generateFloor(floorData: JsonFloor): THREE.Group {
     const group = new THREE.Group();
     group.name = floorData.id;
 
@@ -450,8 +222,7 @@ export class InteractiveEditor implements SceneContext {
     }));
 
     // Set style resolver for wall ownership detection
-    const styleResolver: StyleResolver = (room: JsonRoom) => this.resolveRoomStyle(room);
-    this.wallGenerator.setStyleResolver(styleResolver);
+    this.wallGenerator.setStyleResolver((room: JsonRoom) => this.resolveRoomStyle(room));
     
     floorData.rooms.forEach(room => {
       // Apply default height to room if not specified
@@ -546,41 +317,6 @@ export class InteractiveEditor implements SceneContext {
   }
   
   /**
-   * Create a floor mesh for a room
-   */
-  private createFloorMesh(room: JsonRoom, material: THREE.Material): THREE.Mesh {
-    const floorThickness = this.config.floor_thickness ?? DIMENSIONS.FLOOR.THICKNESS;
-    const floorGeom = new THREE.BoxGeometry(room.width, floorThickness, room.height);
-    const centerX = room.x + room.width / 2;
-    const centerZ = room.z + room.height / 2;
-    const elevation = room.elevation || 0;
-    
-    const floorMesh = new THREE.Mesh(floorGeom, material);
-    floorMesh.position.set(centerX, elevation, centerZ);
-    floorMesh.receiveShadow = true;
-    return floorMesh;
-  }
-  
-  /**
-   * Set the exploded view factor.
-   * 0 = floors stacked normally (touching)
-   * 1 = maximum separation between floors
-   */
-  public setExplodedView(factor: number): void {
-    this.explodedViewFactor = factor;
-    const separation = DIMENSIONS.EXPLODED_VIEW.MAX_SEPARATION * factor;
-    const defaultHeight = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-
-    let cumulativeY = 0;
-    this._floors.forEach((floorGroup, index) => {
-      floorGroup.position.y = cumulativeY;
-      // Use floor-specific height for calculating next floor position
-      const floorHeight = this.floorHeights[index] ?? defaultHeight;
-      cumulativeY += floorHeight + separation;
-    });
-  }
-  
-  /**
    * Get the currently selected objects.
    */
   public getSelection(): ReadonlySet<SelectableObject> {
@@ -602,63 +338,23 @@ export class InteractiveEditor implements SceneContext {
   }
   
   /**
-   * Set the current theme.
+   * Override animation loop to also update selection manager.
    */
-  public setTheme(theme: ViewerTheme): void {
-    this.currentTheme = theme;
-    this.wallGenerator.setTheme(theme);
+  protected animate(): void {
+    super.animate();
     
-    // Reload floorplan to apply theme
-    if (this.currentFloorplanData) {
-      this.loadFloorplan(this.currentFloorplanData);
-    }
+    // Update selection manager (auto-clears invisible selections)
+    this._selectionManager?.update();
   }
   
   /**
    * Clean up resources.
    */
   public dispose(): void {
-    // Stop animation
-    if (this.animationFrameId !== null) {
-      cancelAnimationFrame(this.animationFrameId);
-    }
-    
     // Dispose selection manager
     this._selectionManager?.dispose();
     
-    // Dispose shared managers
-    this._keyboardControls.dispose();
-    this._pivotIndicator.dispose();
-    
-    // Clear scene
-    this._floors.forEach(f => this._scene.remove(f));
-    this._floors = [];
-    this._meshRegistry.clear();
-    
-    // Dispose renderer
-    this._renderer.dispose();
-    
-    // Remove event listeners
-    window.removeEventListener('resize', this.onWindowResize.bind(this));
+    // Call parent dispose (handles managers and scene cleanup)
+    super.dispose();
   }
-  
-  // === Getters for managers ===
-  
-  /** Get the pivot indicator for camera controls */
-  get pivotIndicator(): PivotIndicator { return this._pivotIndicator; }
-  
-  /** Get the keyboard controls manager */
-  get keyboardControls(): KeyboardControls { return this._keyboardControls; }
-  
-  /** Get the camera manager */
-  get cameraManager(): CameraManager { return this._cameraManager; }
-  
-  /** Get the floor manager */
-  get floorManager(): FloorManager { return this._floorManager; }
-  
-  /** Get the annotation manager */
-  get annotationManager(): AnnotationManager { return this._annotationManager; }
-  
-  /** Get the directional light */
-  get directionalLight(): THREE.DirectionalLight { return this._directionalLight; }
 }

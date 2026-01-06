@@ -1257,7 +1257,7 @@
       }
     </style>
   </head>
-  <body>
+  <body class="dark-theme">
     <!-- 3D Viewer Panel (full screen) -->
     <div class="viewer-panel" role="region" aria-label="3D Viewer">
       <div id="app" role="application" aria-label="3D floorplan viewer"></div>
@@ -1300,129 +1300,129 @@
     <div class="error-overlay" id="error-overlay" aria-hidden="true"></div>
     
     <!-- Control Panel -->
-        <div id="controls">
+        <div id="controls" class="fp-control-panel">
           <!-- Camera Section -->
-          <div class="control-section">
-            <div class="section-header">Camera</div>
-            <div class="section-content">
-              <button id="camera-mode-btn">Switch to Orthographic</button>
-              <button id="isometric-btn" class="btn-secondary">Isometric View</button>
-              <div class="control-group" id="fov-group">
-                <div class="control-row">
-                  <label>FOV</label>
-                  <span class="slider-value" id="fov-value">75°</span>
+          <div class="fp-control-section">
+            <div class="fp-section-header">Camera</div>
+            <div class="fp-section-content">
+              <button id="camera-mode-btn" class="fp-btn">Switch to Orthographic</button>
+              <button id="isometric-btn" class="fp-btn fp-btn-secondary">Isometric View</button>
+              <div class="fp-control-group" id="fov-group">
+                <div class="fp-control-row">
+                  <label class="fp-label">FOV</label>
+                  <span class="fp-slider-value" id="fov-value">75°</span>
                 </div>
-                <input type="range" id="fov-slider" min="30" max="120" value="75" step="1">
+                <input type="range" id="fov-slider" class="fp-slider" min="30" max="120" value="75" step="1">
               </div>
             </div>
           </div>
           
           <!-- Lighting Section -->
-          <div class="control-section collapsed">
-            <div class="section-header">Lighting</div>
-            <div class="section-content">
-              <div class="control-group">
-                <div class="control-row">
-                  <label>Azimuth</label>
-                  <span class="slider-value" id="light-azimuth-value">45°</span>
+          <div class="fp-control-section collapsed">
+            <div class="fp-section-header">Lighting</div>
+            <div class="fp-section-content">
+              <div class="fp-control-group">
+                <div class="fp-control-row">
+                  <label class="fp-label">Azimuth</label>
+                  <span class="fp-slider-value" id="light-azimuth-value">45°</span>
                 </div>
-                <input type="range" id="light-azimuth" min="0" max="360" value="45" step="1">
+                <input type="range" id="light-azimuth" class="fp-slider" min="0" max="360" value="45" step="1">
               </div>
-              <div class="control-group">
-                <div class="control-row">
-                  <label>Elevation</label>
-                  <span class="slider-value" id="light-elevation-value">60°</span>
+              <div class="fp-control-group">
+                <div class="fp-control-row">
+                  <label class="fp-label">Elevation</label>
+                  <span class="fp-slider-value" id="light-elevation-value">60°</span>
                 </div>
-                <input type="range" id="light-elevation" min="0" max="90" value="60" step="1">
+                <input type="range" id="light-elevation" class="fp-slider" min="0" max="90" value="60" step="1">
               </div>
-              <div class="control-group">
-                <div class="control-row">
-                  <label>Intensity</label>
-                  <span class="slider-value" id="light-intensity-value">1.0</span>
+              <div class="fp-control-group">
+                <div class="fp-control-row">
+                  <label class="fp-label">Intensity</label>
+                  <span class="fp-slider-value" id="light-intensity-value">1.0</span>
                 </div>
-                <input type="range" id="light-intensity" min="0" max="2" value="1" step="0.1">
+                <input type="range" id="light-intensity" class="fp-slider" min="0" max="2" value="1" step="0.1">
               </div>
             </div>
           </div>
           
           <!-- View Section -->
-          <div class="control-section collapsed">
-            <div class="section-header">View</div>
-            <div class="section-content">
-              <div class="control-group">
-                <div class="control-row">
-                  <label>Theme</label>
-                  <button id="theme-toggle-btn" class="btn-secondary" style="padding: 4px 12px; font-size: 11px;">🌙 Dark</button>
+          <div class="fp-control-section collapsed">
+            <div class="fp-section-header">View</div>
+            <div class="fp-section-content">
+              <div class="fp-control-group">
+                <div class="fp-control-row">
+                  <label class="fp-label">Theme</label>
+                  <button id="theme-toggle-btn" class="fp-btn fp-btn-secondary" style="padding: 4px 12px; font-size: 11px;">🌙 Dark</button>
                 </div>
               </div>
-              <div class="control-group">
-                <div class="control-row">
-                  <label>Exploded View</label>
-                  <span class="slider-value" id="exploded-value">0%</span>
+              <div class="fp-control-group">
+                <div class="fp-control-row">
+                  <label class="fp-label">Exploded View</label>
+                  <span class="fp-slider-value" id="exploded-value">0%</span>
                 </div>
-                <input type="range" id="exploded-view" min="0" max="100" value="0" step="1">
+                <input type="range" id="exploded-view" class="fp-slider" min="0" max="100" value="0" step="1">
               </div>
             </div>
           </div>
           
           <!-- Floors Section -->
-          <div class="control-section">
-            <div class="section-header">Floors</div>
-            <div class="section-content">
-              <div id="floor-list" class="floor-list">
-                <div class="no-floors-message">Floors will appear here</div>
+          <div class="fp-control-section">
+            <div class="fp-section-header">Floors</div>
+            <div class="fp-section-content">
+              <div id="floor-list" class="fp-floor-list">
+                <div class="fp-no-floors">Floors will appear here</div>
               </div>
-              <div class="floor-actions">
-                <button id="show-all-floors" class="btn-secondary">Show All</button>
-                <button id="hide-all-floors" class="btn-secondary">Hide All</button>
+              <div class="fp-floor-actions">
+                <button id="show-all-floors" class="fp-btn fp-btn-secondary">Show All</button>
+                <button id="hide-all-floors" class="fp-btn fp-btn-secondary">Hide All</button>
               </div>
             </div>
           </div>
           
           <!-- 2D Overlay Section -->
-          <div class="control-section collapsed">
-            <div class="section-header">2D Overlay</div>
-            <div class="section-content">
-              <div class="checkbox-row">
+          <div class="fp-control-section collapsed">
+            <div class="fp-section-header">2D Overlay</div>
+            <div class="fp-section-content">
+              <div class="fp-checkbox-row">
                 <input type="checkbox" id="show-2d-overlay">
                 <label for="show-2d-overlay">Show 2D Mini-map</label>
               </div>
-              <div class="control-group">
-                <div class="control-row">
-                  <label>Opacity</label>
-                  <span class="slider-value" id="overlay-opacity-value">60%</span>
+              <div class="fp-control-group">
+                <div class="fp-control-row">
+                  <label class="fp-label">Opacity</label>
+                  <span class="fp-slider-value" id="overlay-opacity-value">60%</span>
                 </div>
-                <input type="range" id="overlay-opacity" min="20" max="100" value="60" step="5">
+                <input type="range" id="overlay-opacity" class="fp-slider" min="20" max="100" value="60" step="5">
               </div>
             </div>
           </div>
           
           <!-- Annotations Section -->
-          <div class="control-section collapsed">
-            <div class="section-header">Annotations</div>
-            <div class="section-content">
-              <div class="checkbox-row">
+          <div class="fp-control-section collapsed">
+            <div class="fp-section-header">Annotations</div>
+            <div class="fp-section-content">
+              <div class="fp-checkbox-row">
                 <input type="checkbox" id="show-area">
                 <label for="show-area">Show Room Areas</label>
               </div>
-              <div class="checkbox-row">
+              <div class="fp-checkbox-row">
                 <input type="checkbox" id="show-dimensions">
                 <label for="show-dimensions">Show Dimensions</label>
               </div>
-              <div class="checkbox-row">
+              <div class="fp-checkbox-row">
                 <input type="checkbox" id="show-floor-summary">
                 <label for="show-floor-summary">Show Floor Summary</label>
               </div>
               <div class="unit-row">
-                <label>Area Unit</label>
-                <select id="area-unit">
+                <label class="fp-label">Area Unit</label>
+                <select id="area-unit" class="fp-select">
                   <option value="sqft">sq ft</option>
                   <option value="sqm">sq m</option>
                 </select>
               </div>
               <div class="unit-row">
-                <label>Length Unit</label>
-                <select id="length-unit">
+                <label class="fp-label">Length Unit</label>
+                <select id="length-unit" class="fp-select">
                   <option value="ft" selected>feet</option>
                   <option value="m">meters</option>
                   <option value="cm">centimeters</option>
@@ -1434,26 +1434,26 @@
           </div>
           
           <!-- Selection Section -->
-          <div class="control-section">
-            <div class="section-header">Selection</div>
-            <div class="section-content">
-              <div class="checkbox-row">
+          <div class="fp-control-section">
+            <div class="fp-section-header">Selection</div>
+            <div class="fp-section-content">
+              <div class="fp-checkbox-row">
                 <input type="checkbox" id="selection-enabled" checked>
                 <label for="selection-enabled">Enable Selection Mode</label>
               </div>
               <div id="selection-status" style="margin: 8px 0; padding: 6px 10px; background: rgba(0, 255, 0, 0.15); border: 1px solid rgba(0, 255, 0, 0.4); border-radius: 4px; font-size: 11px; color: #0f0;">
                 ✓ Selection Mode Active (press V to toggle)
               </div>
-              <div class="checkbox-row" style="margin-top: 8px;">
+              <div class="fp-checkbox-row" style="margin-top: 8px;">
               <input type="checkbox" id="containment-mode">
                 <label for="containment-mode">Containment mode</label>
             </div>
-              <div class="control-row" style="margin-top: 8px;">
+              <div class="fp-control-row" style="margin-top: 8px;">
                 <span style="font-size: 11px; color: #888;">Marquee mode:</span>
-                <span class="slider-value" id="mode-indicator" style="color: #4a9eff;">Intersection</span>
+                <span class="fp-slider-value" id="mode-indicator" style="color: #4a9eff;">Intersection</span>
           </div>
               <div style="margin-top: 12px; padding-top: 8px; border-top: 1px solid #444; font-size: 11px; color: #666;">
-                Press <span class="key" style="margin: 0;">H</span> for shortcuts
+                Press <span class="fp-kbd" style="margin: 0;">H</span> for shortcuts
               </div>
             </div>
           </div>
@@ -1635,13 +1635,16 @@
     
     <script type="module">
       import { InteractiveEditor } from './src/interactive-editor.ts';
-      import { createDslEditor } from 'viewer-core';
+      import { createDslEditor, injectStyles } from 'viewer-core';
       import { EditorViewerSync } from './src/editor-viewer-sync.ts';
       import { PropertiesPanel } from './src/properties-panel.ts';
       import { dslPropertyEditor, dslGenerator } from './src/dsl-generator.ts';
       import { Overlay2DManager, createValidationWarningsUI, createShortcutInfoUI } from 'viewer-core';
       import { EmptyFileSystem, URI } from 'langium';
       import { createFloorplansServices, convertFloorplanToJson } from 'floorplans-language';
+      
+      // Inject shared styles
+      injectStyles();
       
       // Sample DSL content
       const sampleDsl = `floorplan
@@ -2282,7 +2285,7 @@
       // ========================================
       
       // Section collapse/expand
-      document.querySelectorAll('.section-header').forEach(header => {
+      document.querySelectorAll('.fp-section-header').forEach(header => {
         header.addEventListener('click', () => {
           header.parentElement.classList.toggle('collapsed');
         });

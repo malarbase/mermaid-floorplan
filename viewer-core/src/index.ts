@@ -20,6 +20,10 @@
  * The interactive-editor package extends them for full editing capabilities.
  */
 
+// Base viewer class
+export { BaseViewer } from './base-viewer.js';
+export type { BaseViewerOptions } from './base-viewer.js';
+
 // Scene context
 export type {
   SelectableObject,
@@ -137,4 +141,17 @@ export type {
   DslEditorConfig,
   DslEditorInstance,
 } from './dsl-editor.js';
+
+// DSL Parser (browser-compatible)
+export {
+  parseFloorplanDSL,
+  parseFloorplanDSLWithDocument,
+  isFloorplanFile,
+  isJsonFile,
+} from './dsl-parser.js';
+export type {
+  ParseError,
+  ParseResult,
+  ParseResultWithDocument,
+} from './dsl-parser.js';
 
