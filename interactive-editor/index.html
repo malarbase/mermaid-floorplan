@@ -1559,6 +1559,9 @@
         if (editorPanelOpen) {
           document.documentElement.style.setProperty('--editor-width', `${editorPanelWidth}px`);
         }
+        
+        // Notify 2D overlay manager of editor state change to adjust position
+        overlay2DManager.onEditorStateChanged(editorPanelOpen, editorPanelWidth);
       }
       
       editorToggle?.addEventListener('click', () => {

@@ -203,6 +203,9 @@ class Viewer extends BaseViewer {
         if (this.editorPanelOpen) {
             document.documentElement.style.setProperty('--editor-width', `${width}px`);
         }
+        
+        // Notify 2D overlay manager of editor state change to adjust position
+        this.overlay2DManager.onEditorStateChanged(this.editorPanelOpen, width);
     }
     
     private setupEditorResize() {

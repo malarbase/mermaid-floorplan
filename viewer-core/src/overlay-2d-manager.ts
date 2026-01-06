@@ -17,9 +17,52 @@ export class Overlay2DManager {
     private overlayVisible: boolean = false;
     private overlayOpacity: number = 0.60;
     private currentLangiumDoc: LangiumDocument<Floorplan> | null = null;
+    private hasBeenDragged: boolean = false;
     
     constructor(private callbacks: Overlay2DCallbacks) {
         this.setupDrag();
+    }
+    
+    /**
+     * Call this when editor panel opens/closes to adjust overlay position.
+     * Prevents the overlay from being hidden behind the editor panel.
+     */
+    public onEditorStateChanged(editorOpen: boolean, editorWidth: number): void {
+        const overlay = document.getElementById('overlay-2d');
+        if (!overlay || !this.hasBeenDragged) return;
+        
+        const currentLeft = parseFloat(overlay.style.left) || 10;
+        
+        if (editorOpen) {
+            // Ensure overlay doesn't go behind editor
+            const minLeft = editorWidth + 10;
+            if (currentLeft < minLeft) {
+                overlay.style.left = `${minLeft}px`;
+            }
+        }
+    }
+    
+    /**
+     * Reset overlay position to CSS defaults
+     */
+    public resetPosition(): void {
+        const overlay = document.getElementById('overlay-2d');
+        if (overlay) {
+            overlay.style.left = '';
+            overlay.style.bottom = '';
+            overlay.style.right = '';
+            overlay.style.top = '';
+            overlay.style.width = '';
+            overlay.style.height = '';
+            this.hasBeenDragged = false;
+        }
+    }
+    
+    /**
+     * Check if the overlay has been manually dragged
+     */
+    public isDragged(): boolean {
+        return this.hasBeenDragged;
     }
     
     /**
@@ -225,6 +268,7 @@ export class Overlay2DManager {
             if (isDragging) {
                 isDragging = false;
                 overlay.classList.remove('dragging');
+                this.hasBeenDragged = true;
             }
         };
         
@@ -283,6 +327,7 @@ export class Overlay2DManager {
             if (isResizing) {
                 isResizing = false;
                 overlay.classList.remove('dragging');
+                this.hasBeenDragged = true;
             }
         };
         

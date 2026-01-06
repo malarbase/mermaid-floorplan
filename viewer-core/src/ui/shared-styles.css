@@ -397,6 +397,7 @@ body.dark-theme .floor-stats {
   overflow: hidden;
   z-index: 50;
   display: none;
+  transition: left 0.3s ease, bottom 0.3s ease;
 }
 
 .fp-overlay-2d.visible {
