@@ -236,4 +236,3 @@ export function normalizeToMeters(data: JsonExport): JsonExport {
     verticalConnections: data.verticalConnections,
   };
 }
-

@@ -24,25 +24,25 @@ floorplan
   # Ground Floor - Main level
   floor GroundFloor height 10ft {
     # Main lobby area
-    room Lobby at (0, 0) size (20 x 15) walls [top: solid, right: solid, bottom: solid, left: window] label "Main Lobby"
+    room Lobby at (0, 0) size (20 x 25) walls [top: solid, right: solid, bottom: solid, left: window] label "Main Lobby"
     
     # Stair hall (widened to accommodate all circulation elements)
-    room StairHall at (20, 0) size (16 x 15) walls [top: solid, right: solid, bottom: solid, left: open]
+    room StairHall at (20, 0) size (16 x 25) walls [top: solid, right: solid, bottom: solid, left: open]
     
-    # Main straight stair - positioned at bottom of StairHall to fit run length
-    stair MainStair at (20.8, 0) 
+    # Main straight stair - positioned at left side of StairHall
+    stair MainStair at (20.5, 8) 
         shape straight toward top 
         rise 10ft 
         width 4ft 
         riser 7in 
-        tread 10in
+        tread 11in
         handrail (both)
         stringers closed
         label "Main Staircase" 
         style Circulation
     
     # L-shaped service stair - positioned below main stair
-    stair ServiceStair at (25.5, 8) 
+    stair ServiceStair at (30, 9) 
         shape L-shaped from bottom turn left runs 5, 5 
         landing (3ft x 3ft)
         rise 10ft 
@@ -61,22 +61,21 @@ floorplan
   # First Floor - Upper level
   floor FirstFloor height 10ft {
     # Upper lobby
-    room UpperLobby at (0, 0) size (20 x 15) walls [top: solid, right: solid, bottom: solid, left: window] label "Upper Lobby"
+    room UpperLobby at (0, 0) size (20 x 25) walls [top: solid, right: solid, bottom: solid, left: window] label "Upper Lobby"
     
     # Upper stair hall (matching GroundFloor dimensions)
-    room UpperStairHall at (20, 0) size (16 x 15) walls [top: solid, right: solid, bottom: solid, left: open]
+    room UpperStairHall at (20, 0) size (16 x 25) walls [top: solid, right: solid, bottom: solid, left: open]
     
     # Main stair continues - same position as GroundFloor
-    stair MainStair at (20.8, 0) 
+    stair MainStair at (20.5, 8) 
         shape straight toward top 
         rise 10ft 
         width 4ft
-        tread 10in
         stringers closed
         style Circulation
     
     # Service stair continues - same position as GroundFloor
-    stair ServiceStair at (25.5, 8) 
+    stair ServiceStair at (30, 9) 
         shape L-shaped from bottom turn left runs 5, 5 
         rise 10ft 
         width 3ft

@@ -20,8 +20,8 @@ export class StairGenerator {
   public generateStair(stair: JsonStair): THREE.Group {
     const group = new THREE.Group();
     group.name = `stair_${stair.name ?? 'unnamed'}`;
-    group.position.set(stair.x, 0, stair.z);
-
+    
+    // Generate geometry at local origin (0,0,0) first
     switch (stair.shape.type) {
       case 'straight':
         this.generateStraightStair(group, stair);
@@ -35,13 +35,44 @@ export class StairGenerator {
       case 'spiral':
         this.generateSpiralStair(group, stair);
         break;
+      case 'custom':
+        this.generateCustomStair(group, stair);
+        break;
       default:
         // Fallback to straight stair
         this.generateStraightStair(group, stair);
         break;
     }
 
+    // Normalize geometry so the top-left corner (min x, min z) is at (0,0)
+    // This matches the 2D coordinate system where (x,y) is top-left
+    this.normalizeGeometryOrigin(group);
+
+    // Now place the group at the specified position
+    group.position.set(stair.x, 0, stair.z);
+
     return group;
+  }
+
+  private normalizeGeometryOrigin(group: THREE.Group): void {
+    // Compute bounding box of the generated geometry
+    const box = new THREE.Box3().setFromObject(group);
+    
+    // If box is empty (no geometry), do nothing
+    if (box.isEmpty()) return;
+
+    const minX = box.min.x;
+    const minZ = box.min.z;
+    
+    // Shift all children so min is at 0,0
+    // We modify the children's positions directly to keep the group's pivot at the corner
+    const shiftX = -minX;
+    const shiftZ = -minZ;
+    
+    for (const child of group.children) {
+        child.position.x += shiftX;
+        child.position.z += shiftZ;
+    }
   }
 
   public generateLift(lift: JsonLift, floorHeight: number): THREE.Group {
@@ -53,6 +84,10 @@ export class StairGenerator {
     const depth = lift.height; // mapped from height in JSON to depth (Z)
     const wallThickness = 0.2;
 
+    // Offset to align Top-Left (x,z) to Center
+    const offsetX = width / 2;
+    const offsetZ = depth / 2;
+
     // Lift shaft - semi-transparent box
     const geometry = new THREE.BoxGeometry(width, floorHeight, depth);
     const mesh = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({
@@ -62,7 +97,7 @@ export class StairGenerator {
       roughness: MATERIAL_PROPERTIES.LIFT.roughness,
       metalness: MATERIAL_PROPERTIES.LIFT.metalness,
     }));
-    mesh.position.y = floorHeight / 2;
+    mesh.position.set(offsetX, floorHeight / 2, offsetZ);
     group.add(mesh);
 
     // Door indicators
@@ -75,10 +110,16 @@ export class StairGenerator {
       const doorMesh = new THREE.Mesh(doorGeom, new THREE.MeshStandardMaterial({ color: 0x333333 }));
 
       doorMesh.position.y = floorHeight / 2;
-      if (dir === 'top') doorMesh.position.z = -depth / 2;
-      if (dir === 'bottom') doorMesh.position.z = depth / 2;
-      if (dir === 'right') doorMesh.position.x = width / 2;
-      if (dir === 'left') doorMesh.position.x = -width / 2;
+      
+      // Calculate door position relative to centered lift, then apply offset
+      let dx = 0, dz = 0;
+      if (dir === 'top') dz = -depth / 2;
+      if (dir === 'bottom') dz = depth / 2;
+      if (dir === 'right') dx = width / 2;
+      if (dir === 'left') dx = -width / 2;
+      
+      doorMesh.position.x = offsetX + dx;
+      doorMesh.position.z = offsetZ + dz;
 
       group.add(doorMesh);
     });
@@ -211,17 +252,198 @@ export class StairGenerator {
     const entry = stair.shape.entry ?? 'top';
     let rotation = 0;
     switch (entry) {
-      case 'top': rotation = 0; break;
-      case 'bottom': rotation = Math.PI; break;
+      case 'top': rotation = Math.PI; break; // From Top -> Walk South
+      case 'bottom': rotation = 0; break; // From Bottom -> Walk North
+      case 'right': rotation = -Math.PI / 2; break; // From Right -> Walk West
+      case 'left': rotation = Math.PI / 2; break; // From Left -> Walk East
+    }
+    group.rotation.y = rotation;
+  }
+
+  private generateUShapedStair(group: THREE.Group, stair: JsonStair): void {
+    const runs = stair.shape.runs ?? [10, 10];
+    const riserHeight = stair.riser ?? 0.18;
+    const totalSteps = Math.round(stair.rise / riserHeight);
+    const run1Steps = runs[0] || Math.ceil(totalSteps / 2);
+    const run2Steps = runs[1] || Math.floor(totalSteps / 2);
+
+    const treadDepth = stair.tread ?? 0.28;
+    const width = stair.width ?? 1.0;
+    const actualRiser = stair.rise / (run1Steps + run2Steps);
+
+    // Run 1: Up
+    for (let i = 0; i < run1Steps; i++) {
+        this.createStep(group, width, treadDepth, actualRiser, i, 0, 0, 0);
+    }
+
+    const landingY = run1Steps * actualRiser;
+    // Landing position logic
+    const gap = 0.2; 
+    const turn = stair.shape.turn ?? 'left';
+    const direction = turn === 'left' ? 1 : -1; 
+    const offsetRun2 = direction === 1 ? -(width + gap) : (width + gap);
+    
+    const landingWidth = stair.shape.landing ? stair.shape.landing[0] : (width * 2 + gap);
+    const landingDepth = stair.shape.landing ? stair.shape.landing[1] : width;
+    
+    // Landing center
+    // Run 1 center X=0. Run 2 center X=offsetRun2.
+    // We position landing to cover both.
+    const landingCenterX = offsetRun2 / 2;
+    const landingCenterZ = -(run1Steps * treadDepth) - (landingDepth / 2);
+    
+    const landingGeom = new THREE.BoxGeometry(Math.abs(offsetRun2) + width, 0.05, landingDepth);
+    const landing = new THREE.Mesh(landingGeom, this.material);
+    landing.position.set(landingCenterX, landingY, landingCenterZ);
+    group.add(landing);
+    
+    // Run 2
+    const run2Group = new THREE.Group();
+    // Start at edge of landing
+    run2Group.position.set(offsetRun2, landingY, landingCenterZ - landingDepth/2); 
+    run2Group.rotation.y = Math.PI;
+    
+    for (let i = 0; i < run2Steps; i++) {
+        this.createStep(run2Group, width, treadDepth, actualRiser, i, 0, 0, 0);
+    }
+    group.add(run2Group);
+    
+    // Entry Rotation
+    const entry = stair.shape.entry ?? 'top';
+    let rotation = 0;
+    switch (entry) {
+      case 'top': rotation = Math.PI; break;
+      case 'bottom': rotation = 0; break;
       case 'right': rotation = -Math.PI / 2; break;
       case 'left': rotation = Math.PI / 2; break;
     }
     group.rotation.y = rotation;
   }
 
-  private generateUShapedStair(group: THREE.Group, stair: JsonStair): void {
-    // Simplified U-shaped stair - two L-shaped runs
-    this.generateStraightStair(group, stair);
+  private generateCustomStair(group: THREE.Group, stair: JsonStair): void {
+    const shape = stair.shape;
+    if (!shape.segments) return;
+
+    const riserHeight = stair.riser ?? 0.18;
+    const treadDepth = stair.tread ?? 0.28;
+    const defaultWidth = stair.width ?? 1.0;
+
+    let currentPos = new THREE.Vector3(0, 0, 0);
+    let currentRotation = 0;
+    let currentHeight = 0;
+    const forward = new THREE.Vector3(0, 0, -1); // Initial forward direction (-Z)
+
+    // Entry rotation
+    const entry = shape.entry ?? 'top';
+    let entryRotation = 0;
+    switch (entry) {
+        case 'top': entryRotation = Math.PI; break;
+        case 'bottom': entryRotation = 0; break;
+        case 'right': entryRotation = -Math.PI / 2; break;
+        case 'left': entryRotation = Math.PI / 2; break;
+    }
+    group.rotation.y = entryRotation;
+
+    for (const segment of shape.segments) {
+        if (segment.type === 'flight') {
+            const steps = segment.steps ?? 10;
+            const segWidth = segment.width ?? defaultWidth;
+            // Use standard riser height for now as custom stairs can be complex
+            const actualRiser = riserHeight; 
+            
+            for (let i = 0; i < steps; i++) {
+                 // Calculate absolute position for the step center
+                 // Center is currentPos + forward * (i + 0.5) * depth
+                 const stepDist = treadDepth * i + treadDepth/2;
+                 const stepPos = currentPos.clone().add(
+                     forward.clone().multiplyScalar(stepDist)
+                 );
+                 
+                 const stepY = currentHeight + (i + 1) * actualRiser;
+                 
+                 this.createStepAbsolute(group, segWidth, treadDepth, actualRiser, stepPos, currentRotation, stepY);
+            }
+            
+            // Advance currentPos to end of flight
+            currentPos.add(forward.clone().multiplyScalar(steps * treadDepth));
+            currentHeight += steps * actualRiser;
+            
+        } else if (segment.type === 'turn') {
+             const landingW = segment.landing ? segment.landing[0] : defaultWidth;
+             const landingD = segment.landing ? segment.landing[1] : defaultWidth;
+             
+             // Landing center: currentPos + forward * (landingD / 2)
+             const landingPos = currentPos.clone().add(forward.clone().multiplyScalar(landingD / 2));
+             
+             this.createLandingAbsolute(group, landingW, landingD, landingPos, currentRotation, currentHeight);
+             
+             // Advance to end of landing
+             currentPos.add(forward.clone().multiplyScalar(landingD));
+             
+             // Turn
+             const turnAngle = segment.direction === 'left' ? Math.PI / 2 : -Math.PI / 2;
+             currentRotation += turnAngle;
+             forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), turnAngle);
+        }
+    }
+  }
+
+  private createStepAbsolute(
+    group: THREE.Group,
+    width: number,
+    depth: number,
+    height: number,
+    position: THREE.Vector3,
+    rotation: number,
+    yPos: number
+  ): void {
+     const stepGroup = new THREE.Group();
+     stepGroup.position.copy(position);
+     stepGroup.position.y = yPos; 
+     stepGroup.rotation.y = rotation;
+     
+     // Tread (centered at local 0,0,0, which is stepGroup position)
+     const treadGeom = new THREE.BoxGeometry(width, 0.05, depth);
+     const tread = new THREE.Mesh(treadGeom, this.material);
+     tread.position.y = 0; 
+     tread.castShadow = true;
+     tread.receiveShadow = true;
+     stepGroup.add(tread);
+     
+     // Riser
+     if (this.material) { // TODO: Check stringer config properly if available
+        const riserGeom = new THREE.BoxGeometry(width, height, 0.02);
+        const riser = new THREE.Mesh(riserGeom, this.material);
+        // Riser goes down from tread.
+        // Center of riser is height/2 below tread.
+        // And aligned to front edge (local +Z if step grows -Z? No, tread is centered)
+        // Tread Z range: [-d/2, d/2].
+        // Riser should be at front edge? 
+        // If we walk towards -Z (forward), front edge is +Z? No, back edge is +Z.
+        // We step UP onto the tread. Riser is at the "start" of the tread.
+        // If forward is -Z, start is +Z.
+        // So riser at Z = depth/2.
+        riser.position.set(0, -height/2, depth/2);
+        stepGroup.add(riser);
+     }
+     
+     group.add(stepGroup);
+  }
+
+  private createLandingAbsolute(
+    group: THREE.Group,
+    width: number,
+    depth: number,
+    position: THREE.Vector3,
+    rotation: number,
+    yPos: number
+  ): void {
+    const landingGeom = new THREE.BoxGeometry(width, 0.05, depth);
+    const landing = new THREE.Mesh(landingGeom, this.material);
+    landing.position.copy(position);
+    landing.position.y = yPos;
+    landing.rotation.y = rotation;
+    group.add(landing);
   }
 
   private generateSpiralStair(group: THREE.Group, stair: JsonStair): void {

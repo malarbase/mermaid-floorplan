@@ -91,7 +91,7 @@ export function resolveUnit(explicitUnit?: string, configDefault?: string): Leng
 
 export const DIMENSIONS = {
   WALL: {
-    THICKNESS: 0.2,
+    THICKNESS: 0.15,
     HEIGHT: 3.35, // 11 feet (scale: 1 unit ≈ 3.3 feet)
   },
   FLOOR: {
