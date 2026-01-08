@@ -324,9 +324,19 @@ export class StairGenerator {
     const shape = stair.shape;
     if (!shape.segments) return;
 
-    const riserHeight = stair.riser ?? 0.18;
     const treadDepth = stair.tread ?? 0.28;
     const defaultWidth = stair.width ?? 1.0;
+    
+    // Calculate total steps across all flight segments
+    const totalSteps = shape.segments
+      .filter(seg => seg.type === 'flight')
+      .reduce((sum, seg) => sum + (seg.steps ?? 10), 0);
+    
+    // Calculate riser height from total rise / total steps
+    // Use stair.rise if provided, otherwise fall back to riser or default
+    const riserHeight = stair.rise && totalSteps > 0 
+      ? stair.rise / totalSteps 
+      : (stair.riser ?? 0.18);
 
     let currentPos = new THREE.Vector3(0, 0, 0);
     let currentRotation = 0;
@@ -344,7 +354,8 @@ export class StairGenerator {
     }
     group.rotation.y = entryRotation;
 
-    for (const segment of shape.segments) {
+    for (let segIdx = 0; segIdx < shape.segments.length; segIdx++) {
+        const segment = shape.segments[segIdx];
         if (segment.type === 'flight') {
             const steps = segment.steps ?? 10;
             const segWidth = segment.width ?? defaultWidth;
@@ -372,18 +383,38 @@ export class StairGenerator {
              const landingW = segment.landing ? segment.landing[0] : defaultWidth;
              const landingD = segment.landing ? segment.landing[1] : defaultWidth;
              
+             // Look ahead to get next flight width for alignment
+             const nextSegment = segIdx + 1 < shape.segments.length ? shape.segments[segIdx + 1] : null;
+             const nextFlightWidth = (nextSegment && nextSegment.type === 'flight' && nextSegment.width) 
+               ? nextSegment.width 
+               : defaultWidth;
+             
              // Landing center: currentPos + forward * (landingD / 2)
              const landingPos = currentPos.clone().add(forward.clone().multiplyScalar(landingD / 2));
              
              this.createLandingAbsolute(group, landingW, landingD, landingPos, currentRotation, currentHeight);
              
-             // Advance to end of landing
-             currentPos.add(forward.clone().multiplyScalar(landingD));
+             // Advance to center of landing
+             currentPos.add(forward.clone().multiplyScalar(landingD / 2));
              
              // Turn
              const turnAngle = segment.direction === 'left' ? Math.PI / 2 : -Math.PI / 2;
              currentRotation += turnAngle;
              forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), turnAngle);
+             
+             // After turning, shift position to the edge of the landing in the NEW direction
+             // The landing extends landingW/2 in the perpendicular direction (now forward)
+             currentPos.add(forward.clone().multiplyScalar(landingW / 2));
+             
+             // Align next flight's outer edge with landing's outer edge
+             // For right turn: outer edge is on the right (positive perpendicular)
+             // For left turn: outer edge is on the left (negative perpendicular)
+             // Perpendicular to new forward: rotate forward 90° 
+             const perpSign = segment.direction === 'right' ? 1 : -1;
+             const perpendicular = forward.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
+             const widthDiff = (landingW - nextFlightWidth) / 2;
+             // Shift perpendicular to align outer edges
+             currentPos.add(perpendicular.clone().multiplyScalar(widthDiff * perpSign));
         }
     }
   }

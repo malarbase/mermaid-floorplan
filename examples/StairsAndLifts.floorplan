@@ -124,6 +124,10 @@ floorplan
         doors (bottom, left) 
         label "Glass Lift"
   }
+
+  floor Roof {
+    room GrandFoyer at (0, 0) size (36 x 25) walls [top: open, right: open, bottom: open, left: open] label "Grand Foyer Roof"
+  }
   
   # Room connections
   connect Lobby.right to StairHall.left opening at 50%

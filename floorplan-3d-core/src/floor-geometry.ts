@@ -37,7 +37,8 @@ export function generateFloorSlabs(
   const penetrations = options.penetrations || [];
 
   // Use CSG if available and we have penetrations
-  const useCSG = isCsgAvailable() && penetrations.length > 0;
+  const csgAvailable = isCsgAvailable();
+  const useCSG = csgAvailable && penetrations.length > 0;
   let evaluator = null;
   
   if (useCSG) {

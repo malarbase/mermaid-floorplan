@@ -191,8 +191,11 @@ export function buildFloorplanScene(
       for (const stair of floor.stairs) {
         const stairGroup = stairGenerator.generateStair(stair);
         floorGroup.add(stairGroup);
+        // Update world matrix before computing bounding box
+        floorGroup.updateMatrixWorld(true);
         // Track for next floor's holes
-        currentFloorPenetrations.push(new THREE.Box3().setFromObject(stairGroup));
+        const stairBox = new THREE.Box3().setFromObject(stairGroup);
+        currentFloorPenetrations.push(stairBox);
       }
     }
 
