@@ -25,6 +25,8 @@ import {
 } from "./metrics.js";
 import { normalizeConfigKey } from "./styles.js";
 import { extractVersionFromAST, CURRENT_VERSION } from "./version-resolver.js";
+import { convertUnit, type LengthUnit } from "./unit-utils.js";
+import type { ValueWithUnit } from "../../generated/ast.js";
 
 // ============================================================================
 // JSON Export Types
@@ -55,6 +57,22 @@ function extractSourceRange(cstNode: CstNode | undefined): JsonSourceRange | und
         endLine: range.end.line,
         endColumn: range.end.character,
     };
+}
+
+/**
+ * Normalize a ValueWithUnit to the default unit.
+ * This ensures values like "7in" are converted to the default unit (e.g., feet)
+ * before being stored in JSON, so the 3D renderer's unit normalizer can
+ * correctly convert from the default unit to meters.
+ */
+function normalizeValueToDefaultUnit(
+    val: ValueWithUnit | undefined,
+    defaultUnit: LengthUnit
+): number | undefined {
+    if (!val) return undefined;
+    const sourceUnit = (val.unit as LengthUnit) ?? defaultUnit;
+    // Convert from the value's actual unit to the default unit
+    return convertUnit(val.value, sourceUnit, defaultUnit);
 }
 
 export interface JsonConfig {
@@ -470,6 +488,9 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
         }
 
         // Process stairs
+        // Get the default unit for normalizing stair dimension values
+        const defaultUnit: LengthUnit = (jsonExport.config?.default_unit as LengthUnit) ?? 'ft';
+        
         for (const stair of floor.stairs) {
             const stairPos = stair.position 
                 ? { x: stair.position.x.value, y: stair.position.y.value }
@@ -479,13 +500,16 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
                 name: stair.name,
                 x: stairPos.x,
                 z: stairPos.y,
-                shape: convertStairShape(stair.shape, roomBoundsMap, stair.width?.value),
-                rise: stair.rise.value,
-                width: stair.width?.value,
-                riser: stair.riser?.value,
-                tread: stair.tread?.value,
-                nosing: stair.nosing?.value,
-                headroom: stair.headroom?.value,
+                shape: convertStairShape(stair.shape, roomBoundsMap, stair.width?.value, defaultUnit),
+                // Normalize all dimensional values to the default unit
+                // This ensures values like "7in" are correctly converted before
+                // the 3D renderer's unit normalizer assumes all values are in default_unit
+                rise: normalizeValueToDefaultUnit(stair.rise, defaultUnit) ?? stair.rise.value,
+                width: normalizeValueToDefaultUnit(stair.width, defaultUnit),
+                riser: normalizeValueToDefaultUnit(stair.riser, defaultUnit),
+                tread: normalizeValueToDefaultUnit(stair.tread, defaultUnit),
+                nosing: normalizeValueToDefaultUnit(stair.nosing, defaultUnit),
+                headroom: normalizeValueToDefaultUnit(stair.headroom, defaultUnit),
                 handrail: stair.handrail,
                 stringers: stair.stringers,
                 material: stair.material ? convertStairMaterial(stair.material) : undefined,
@@ -637,8 +661,18 @@ function calculateWallAlignedPosition(
 function convertStairShape(
     shape: StairShape,
     roomBoundsMap?: Map<string, RoomBounds>,
-    stairWidth?: number
+    stairWidth?: number,
+    defaultUnit: LengthUnit = 'ft'
 ): JsonStairShape {
+    // Helper to normalize landing dimensions
+    const normalizeLanding = (landing: { width: ValueWithUnit; height: ValueWithUnit } | undefined): [number, number] | undefined => {
+        if (!landing) return undefined;
+        return [
+            normalizeValueToDefaultUnit(landing.width, defaultUnit) ?? landing.width.value,
+            normalizeValueToDefaultUnit(landing.height, defaultUnit) ?? landing.height.value
+        ];
+    };
+
     if (isStraightStair(shape)) {
         return {
             type: 'straight',
@@ -651,9 +685,7 @@ function convertStairShape(
             entry: shape.entry as ViewDirection,
             turn: shape.turn as 'left' | 'right',
             runs: shape.runs.length > 0 ? shape.runs : undefined,
-            landing: shape.landing 
-                ? [shape.landing.width.value, shape.landing.height.value] 
-                : undefined
+            landing: normalizeLanding(shape.landing)
         };
     }
     if (isUShapedStair(shape)) {
@@ -662,9 +694,7 @@ function convertStairShape(
             entry: shape.entry as ViewDirection,
             turn: shape.turn as 'left' | 'right',
             runs: shape.runs.length > 0 ? shape.runs : undefined,
-            landing: shape.landing 
-                ? [shape.landing.width.value, shape.landing.height.value] 
-                : undefined
+            landing: normalizeLanding(shape.landing)
         };
     }
     if (isDoubleLStair(shape)) {
@@ -673,17 +703,15 @@ function convertStairShape(
             entry: shape.entry as ViewDirection,
             turn: shape.turn as 'left' | 'right',
             runs: shape.runs.length > 0 ? shape.runs : undefined,
-            landing: shape.landing 
-                ? [shape.landing.width.value, shape.landing.height.value] 
-                : undefined
+            landing: normalizeLanding(shape.landing)
         };
     }
     if (isSpiralStair(shape)) {
         return {
             type: 'spiral',
             rotation: shape.rotation as 'clockwise' | 'counterclockwise',
-            outerRadius: shape.outerRadius.value,
-            innerRadius: shape.innerRadius?.value
+            outerRadius: normalizeValueToDefaultUnit(shape.outerRadius, defaultUnit) ?? shape.outerRadius.value,
+            innerRadius: normalizeValueToDefaultUnit(shape.innerRadius, defaultUnit)
         };
     }
     if (isCurvedStair(shape)) {
@@ -691,7 +719,7 @@ function convertStairShape(
             type: 'curved',
             entry: shape.entry as ViewDirection,
             arc: shape.arc,
-            radius: shape.radius.value
+            radius: normalizeValueToDefaultUnit(shape.radius, defaultUnit) ?? shape.radius.value
         };
     }
     if (isWinderStair(shape)) {
@@ -707,7 +735,7 @@ function convertStairShape(
         return {
             type: 'custom',
             entry: shape.entry as ViewDirection,
-            segments: shape.segments.map(seg => convertStairSegment(seg, roomBoundsMap, stairWidth))
+            segments: shape.segments.map(seg => convertStairSegment(seg, roomBoundsMap, stairWidth, defaultUnit))
         };
     }
     // Fallback - should not happen
@@ -720,13 +748,15 @@ function convertStairShape(
 function convertStairSegment(
     segment: StairSegment,
     roomBoundsMap?: Map<string, RoomBounds>,
-    stairWidth?: number
+    stairWidth?: number,
+    defaultUnit: LengthUnit = 'ft'
 ): JsonStairSegment {
     if (isFlightSegment(segment)) {
+        const normalizedWidth = normalizeValueToDefaultUnit(segment.width, defaultUnit);
         const result: JsonStairSegment = {
             type: 'flight',
             steps: segment.steps,
-            width: segment.width?.value,
+            width: normalizedWidth,
             wallRef: segment.wallRef 
                 ? { room: segment.wallRef.room, wall: segment.wallRef.wall }
                 : undefined
@@ -737,7 +767,7 @@ function convertStairSegment(
             const alignedPos = calculateWallAlignedPosition(
                 { room: segment.wallRef.room, wall: segment.wallRef.wall },
                 roomBoundsMap,
-                segment.width?.value ?? stairWidth
+                normalizedWidth ?? stairWidth
             );
             if (alignedPos) {
                 result.wallAlignedPosition = alignedPos;
@@ -751,7 +781,10 @@ function convertStairSegment(
             type: 'turn',
             direction: segment.direction as 'left' | 'right',
             landing: segment.landing 
-                ? [segment.landing.width.value, segment.landing.height.value]
+                ? [
+                    normalizeValueToDefaultUnit(segment.landing.width, defaultUnit) ?? segment.landing.width.value,
+                    normalizeValueToDefaultUnit(segment.landing.height, defaultUnit) ?? segment.landing.height.value
+                  ]
                 : undefined,
             winders: segment.winders,
             angle: segment.angle

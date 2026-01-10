@@ -7,11 +7,12 @@
  * (doors/windows clip through).
  * 
  * Usage:
- *   // Initialize CSG (call once at startup)
+ *   // Initialize CSG (call once at startup via csg-manager)
  *   const csgEnabled = await initCSG();
  *   
  *   // Generate walls (uses CSG if available)
- *   const wallGroup = generateWallWithCSG(wall, room, holes, materials);
+ *   const wallBuilder = new WallBuilder();
+ *   wallBuilder.generateWall(...);
  */
 
 import * as THREE from 'three';
@@ -30,63 +31,8 @@ import {
   shouldRenderConnection,
 } from './connection-matcher.js';
 import { generateConnection } from './connection-geometry.js';
-
-// CSG module - loaded dynamically
-let csgModule: {
-  Evaluator: new () => CSGEvaluator;
-  Brush: new (geometry: THREE.BufferGeometry, material?: THREE.Material | THREE.Material[]) => CSGBrush;
-  SUBTRACTION: number;
-} | null = null;
-
-// Type definitions for CSG classes
-interface CSGEvaluator {
-  evaluate(a: CSGBrush, b: CSGBrush, operation: number): CSGBrush;
-}
-
-interface CSGBrush extends THREE.Mesh {
-  updateMatrixWorld(): void;
-}
-
-/**
- * Initialize CSG support by dynamically loading three-bvh-csg
- * 
- * @returns true if CSG is available, false otherwise
- */
-export async function initCSG(): Promise<boolean> {
-  if (csgModule !== null) {
-    return true; // Already initialized
-  }
-
-  try {
-    const mod = await import('three-bvh-csg');
-    csgModule = {
-      Evaluator: mod.Evaluator,
-      Brush: mod.Brush,
-      SUBTRACTION: mod.SUBTRACTION,
-    };
-    return true;
-  } catch {
-    // CSG not available - will use fallback rendering
-    return false;
-  }
-}
-
-/**
- * Check if CSG is currently available
- */
-export function isCsgAvailable(): boolean {
-  return csgModule !== null;
-}
-
-/**
- * Get the CSG module (throws if not initialized)
- */
-function getCSG() {
-  if (!csgModule) {
-    throw new Error('CSG not initialized. Call initCSG() first.');
-  }
-  return csgModule;
-}
+// Use centralized CSG manager - ensures single source of truth for CSG initialization
+import { isCsgAvailable, getCSG, type CSGEvaluator, type CSGBrush } from './csg-manager.js';
 
 /**
  * Hole specification for wall cutouts
@@ -232,6 +178,9 @@ export interface WallBuilderOptions {
 
 /**
  * Wall builder class that manages CSG operations
+ * 
+ * Uses the centralized CSG manager from csg-manager.ts.
+ * Call initCSG() before creating WallBuilder instances to enable CSG operations.
  */
 export class WallBuilder {
   private evaluator: CSGEvaluator | null = null;
@@ -240,8 +189,9 @@ export class WallBuilder {
   private styleResolver: StyleResolver = () => undefined;
 
   constructor() {
-    if (csgModule) {
-      this.evaluator = new csgModule.Evaluator();
+    // Use centralized CSG manager - CSG must be initialized via initCSG() before this
+    if (isCsgAvailable()) {
+      this.evaluator = new (getCSG().Evaluator)();
     }
     this.themeColors = getThemeColors('light');
   }
@@ -287,7 +237,7 @@ export class WallBuilder {
       return;
     }
 
-    if (this.evaluator && csgModule) {
+    if (this.evaluator && isCsgAvailable()) {
       // CSG path: generate wall with proper cutouts
       this.generateWallWithCSG(
         wall, room, ownership.segments, allRooms, connections,
@@ -526,8 +476,8 @@ export class WallBuilder {
     elevation: number,
     config: JsonConfig
   ): CSGBrush | null {
-    if (!csgModule) return null;
-    const { Brush } = csgModule;
+    if (!isCsgAvailable()) return null;
+    const { Brush } = getCSG();
 
     const defaultDoorWidth = config.door_width ?? DIMENSIONS.DOOR.WIDTH;
     const defaultDoorHeight = config.door_height ?? DIMENSIONS.DOOR.HEIGHT;
@@ -628,8 +578,8 @@ export class WallBuilder {
     allRooms: JsonRoom[],
     config: JsonConfig
   ): { brush: CSGBrush; x: number; z: number; y: number } | null {
-    if (!csgModule) return null;
-    const { Brush } = csgModule;
+    if (!isCsgAvailable()) return null;
+    const { Brush } = getCSG();
 
     // Door dimensions
     let doorWidth: number;

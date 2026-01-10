@@ -88,8 +88,8 @@ Renders floorplan DSL to a PNG image, SVG vector, or 3D PNG.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `projection` | `"isometric"` \| `"perspective"` | `"isometric"` | Camera projection mode |
-| `cameraPosition` | `[x, y, z]` | auto | Camera position for perspective mode |
-| `cameraTarget` | `[x, y, z]` | auto | Look-at target for perspective mode |
+| `cameraPosition` | `{x, y, z}` | auto | Camera position for perspective mode |
+| `cameraTarget` | `{x, y, z}` | auto | Look-at target for perspective mode |
 | `fov` | number | 50 | Field of view in degrees (10-120) |
 
 **Output (PNG/3D-PNG):**
@@ -148,8 +148,8 @@ Renders floorplan DSL to a PNG image, SVG vector, or 3D PNG.
   "dsl": "floorplan\n  floor f1 {...}",
   "format": "3d-png",
   "projection": "perspective",
-  "cameraPosition": [30, 20, 30],
-  "cameraTarget": [5, 0, 5],
+  "cameraPosition": {"x": 30, "y": 20, "z": 30},
+  "cameraTarget": {"x": 5, "y": 0, "z": 5},
   "fov": 60
 }
 

@@ -52,13 +52,21 @@ const RenderInputSchema = z.object({
     .optional()
     .describe("3D camera projection mode: 'isometric' (default) for orthographic view, 'perspective' for realistic depth"),
   cameraPosition: z
-    .tuple([z.number(), z.number(), z.number()])
+    .object({
+      x: z.number(),
+      y: z.number(),
+      z: z.number(),
+    })
     .optional()
-    .describe("Camera position [x, y, z] for perspective mode. Y is up."),
+    .describe("Camera position for perspective mode. Y is up."),
   cameraTarget: z
-    .tuple([z.number(), z.number(), z.number()])
+    .object({
+      x: z.number(),
+      y: z.number(),
+      z: z.number(),
+    })
     .optional()
-    .describe("Camera look-at target [x, y, z] for perspective mode"),
+    .describe("Camera look-at target for perspective mode"),
   fov: z
     .number()
     .min(10)
@@ -139,12 +147,20 @@ export function registerRenderTool(server: McpServer): void {
           }
 
           try {
+            // Convert camera position/target from objects to tuples for the renderer
+            const cameraPosTuple = cameraPosition 
+              ? [cameraPosition.x, cameraPosition.y, cameraPosition.z] as [number, number, number]
+              : undefined;
+            const cameraTargetTuple = cameraTarget
+              ? [cameraTarget.x, cameraTarget.y, cameraTarget.z] as [number, number, number]
+              : undefined;
+
             const result = await render3DToPng(jsonResult.data, {
               width,
               height,
               projection,
-              cameraPosition,
-              cameraTarget,
+              cameraPosition: cameraPosTuple,
+              cameraTarget: cameraTargetTuple,
               fov,
               renderAllFloors,
               floorIndex,

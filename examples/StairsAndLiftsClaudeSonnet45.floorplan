@@ -29,21 +29,21 @@ floorplan
     # Stair hall (widened to accommodate all circulation elements)
     room StairHall at (20, 0) size (16 x 15) walls [top: solid, right: solid, bottom: solid, left: open]
     
-    # Main straight stair - positioned at bottom of StairHall to fit run length
-    stair MainStair at (20.8, 0) 
+    # Main straight stair - positioned at left side of StairHall
+    stair MainStair at (20.5, 1) 
         shape straight toward top 
         rise 10ft 
         width 4ft 
         riser 7in 
-        tread 10in
+        tread 11in
         handrail (both)
         stringers closed
         label "Main Staircase" 
         style Circulation
     
-    # L-shaped service stair - positioned below main stair
-    stair ServiceStair at (25.5, 8) 
-        shape L-shaped from bottom turn left runs 5, 5 
+    # L-shaped service stair - positioned in middle of StairHall
+    stair ServiceStair at (25.5, 7) 
+        shape L-shaped from bottom turn right runs 5, 5 
         landing (3ft x 3ft)
         rise 10ft 
         width 3ft
@@ -51,7 +51,7 @@ floorplan
         label "Service Stair"
     
     # Elevator shaft - positioned at top right of StairHall
-    lift MainElevator at (30, 2) 
+    lift MainElevator at (31, 2) 
         size (5ft x 5ft) 
         doors (bottom) 
         label "Elevator"
@@ -67,22 +67,21 @@ floorplan
     room UpperStairHall at (20, 0) size (16 x 15) walls [top: solid, right: solid, bottom: solid, left: open]
     
     # Main stair continues - same position as GroundFloor
-    stair MainStair at (20.8, 0) 
+    stair MainStair at (20.5, 1) 
         shape straight toward top 
         rise 10ft 
         width 4ft
-        tread 10in
         stringers closed
         style Circulation
     
     # Service stair continues - same position as GroundFloor
-    stair ServiceStair at (25.5, 8) 
-        shape L-shaped from bottom turn left runs 5, 5 
+    stair ServiceStair at (25.5, 7) 
+        shape L-shaped from bottom turn right runs 5, 5 
         rise 10ft 
         width 3ft
     
     # Elevator continues - same position as GroundFloor
-    lift MainElevator at (30, 2) 
+    lift MainElevator at (31, 2) 
         size (5ft x 5ft) 
         doors (bottom)
         style Circulation
@@ -104,13 +103,13 @@ floorplan
         style ModernStair
     
     # Custom segmented stair for complex layout
-    stair CustomStair at (15, 10) 
+    stair CustomStair at (15, 2) 
         shape custom from bottom [
             flight 5 width 5ft,
             turn right landing (5ft x 5ft),
             flight 6 width 4ft,
             turn right landing (4ft x 4ft),
-            flight 6 width 4ft
+            flight 5 width 4ft
         ] 
         rise 12ft 
         width 4ft
@@ -119,14 +118,10 @@ floorplan
         style ModernStair
     
     # Glass elevator - aligned with lower floor elevators (adjusted for Penthouse position)
-    lift GlassElevator at (30, 2) 
+    lift GlassElevator at (31, 2) 
         size (5ft x 5ft) 
         doors (bottom, left) 
         label "Glass Lift"
-  }
-
-  floor Roof {
-    room GrandFoyer at (0, 0) size (36 x 25) walls [top: open, right: open, bottom: open, left: open] label "Grand Foyer Roof"
   }
   
   # Room connections

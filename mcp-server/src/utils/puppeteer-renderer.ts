@@ -147,6 +147,8 @@ export async function renderWithPuppeteer(
 
     // Capture browser errors for debugging
     page.on('pageerror', err => console.error('Browser error:', String(err)));
+    page.on('console', msg => console.log('Browser log:', msg.text()));
+
 
     // Create a minimal HTML page
     const html = createRenderingHTML(width, height);
@@ -251,16 +253,23 @@ function createRenderingHTML(width: number, height: number): string {
  * 
  * This wrapper uses the shared scene builder from floorplan-3d-core,
  * ensuring consistent rendering between viewer and MCP server.
+ * 
+ * Uses WallBuilder with CSG support for proper door/window cutouts,
+ * matching the interactive viewer's rendering exactly.
  */
 function getRenderingWrapper(): string {
   return `
     window.renderFloorplan = async function(jsonData, options) {
+      // Initialize CSG support - this enables proper wall cutouts for doors/windows
+      // After this call, WallBuilder will use CSG operations instead of simple boxes
+      await FloorplanCore.initCSG();
+
       const canvas = document.getElementById('canvas');
       const width = options.width || 800;
       const height = options.height || 600;
 
       // Use the shared buildCompleteScene from floorplan-3d-core
-      // This ensures consistent rendering with the viewer
+      // This now uses WallBuilder with CSG for consistent rendering with the viewer
       const { scene, camera, cameraResult, bounds, floorsRendered } = 
         FloorplanCore.buildCompleteScene(jsonData, options);
 
@@ -272,6 +281,12 @@ function getRenderingWrapper(): string {
       });
       renderer.setSize(width, height);
       renderer.setPixelRatio(1);
+      
+      // Enable shadows if requested (matches viewer capabilities)
+      if (options.shadows) {
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      }
 
       // Render the scene
       renderer.render(scene, camera);

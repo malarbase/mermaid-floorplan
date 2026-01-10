@@ -142,8 +142,6 @@ export {
 // Unified wall builder (with optional CSG support)
 export {
   WallBuilder,
-  initCSG,
-  isCsgAvailable,
   // Segment generation APIs for browser use
   calculateWallGeometry,
   createWallSegmentGeometry,
@@ -154,6 +152,13 @@ export type {
   WallBuilderOptions,
   WallGeometry,
 } from './wall-builder.js';
+
+// CSG manager
+export {
+  initCSG,
+  isCsgAvailable,
+  getCSG,
+} from './csg-manager.js';
 
 // Shared geometry utilities (re-exported from floorplan-common)
 export {

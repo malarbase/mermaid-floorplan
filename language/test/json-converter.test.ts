@@ -691,10 +691,13 @@ describe("JSON Converter - Stairs", () => {
     const result = convertFloorplanToJson(document.parseResult.value);
     
     const stair = result.data!.floors[0].stairs[0];
-    expect(stair.riser).toBe(7);
-    expect(stair.tread).toBe(11);
-    expect(stair.nosing).toBe(1.25);
-    expect(stair.headroom).toBe(84);
+    // Values are normalized to the default unit (feet)
+    // 7in = 7/12 ft ≈ 0.5833, 11in = 11/12 ft ≈ 0.9167
+    // 1.25in = 1.25/12 ft ≈ 0.1042, 84in = 7ft
+    expect(stair.riser).toBeCloseTo(7 / 12, 4);
+    expect(stair.tread).toBeCloseTo(11 / 12, 4);
+    expect(stair.nosing).toBeCloseTo(1.25 / 12, 4);
+    expect(stair.headroom).toBeCloseTo(7, 4);
   });
 
   it("should export stair with handrail and stringers", async () => {

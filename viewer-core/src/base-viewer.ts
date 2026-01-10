@@ -13,7 +13,7 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
-import { Evaluator } from 'three-bvh-csg';
+import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from 'floorplan-3d-core';
 import { 
   COLORS, COLORS_DARK, getThemeColors,
@@ -441,14 +441,20 @@ export abstract class BaseViewer implements SceneContext {
     }
     
     // Generate floors and track heights
+    // Track penetrations from each floor's stairs/lifts for cutting holes in the next floor
+    let prevFloorPenetrations: THREE.Box3[] = [];
+    
     const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
     normalizedData.floors.forEach((floorData) => {
       const floorHeight = floorData.height ?? globalDefault;
       this.floorHeights.push(floorHeight);
       
-      const floorGroup = this.generateFloor(floorData);
+      const { group: floorGroup, penetrations } = this.generateFloorWithPenetrations(floorData, prevFloorPenetrations);
       this._scene.add(floorGroup);
       this._floors.push(floorGroup);
+      
+      // Update penetrations for the next floor
+      prevFloorPenetrations = penetrations;
     });
     
     this.setExplodedView(this.explodedViewFactor);
@@ -495,6 +501,260 @@ export abstract class BaseViewer implements SceneContext {
    * Generate a floor group from floor data.
    */
   protected generateFloor(floorData: JsonFloor): THREE.Group {
+    // Delegate to the new method but ignore penetrations (for backwards compatibility)
+    return this.generateFloorWithPenetrations(floorData, []).group;
+  }
+  
+  /**
+   * Compute bounding box for a stair penetration.
+   * Returns a box in world space that can be used to cut holes in the floor above.
+   * For multi-flight stairs, computes penetration at the TOP (final flight) of the stair.
+   */
+  private computeStairPenetration(stair: { x: number; z: number; width?: number; shape: { type: string; direction?: string; entry?: string; runs?: number[]; outerRadius?: number; segments?: Array<{ type: string; steps?: number; width?: number; direction?: string; landing?: [number, number] }> } }, tread?: number, rise?: number): THREE.Box3 {
+    const DEFAULT_WIDTH = 1.0; // meters
+    const DEFAULT_TREAD = 0.28; // meters
+    const DEFAULT_RISER = 0.18; // meters
+    
+    const stairWidth = stair.width ?? DEFAULT_WIDTH;
+    const treadDepth = tread ?? DEFAULT_TREAD;
+    const riserHeight = DEFAULT_RISER;
+    const stairRise = rise ?? 3.0; // default 3m rise
+    
+    // For custom/segmented stairs, trace through segments to find final flight position
+    if ((stair.shape.type === 'custom' || stair.shape.type === 'segmented') && stair.shape.segments) {
+      return this.computeCustomStairPenetration(stair, treadDepth, stairWidth, stairRise);
+    }
+    
+    // Calculate step count and total run based on shape
+    let runLength = 0;
+    let boundWidth = stairWidth;
+    let boundDepth = 0;
+    
+    const stepCount = Math.ceil(stairRise / riserHeight);
+    
+    if (stair.shape.type === 'straight') {
+      runLength = stepCount * treadDepth;
+      boundDepth = runLength;
+    } else if (stair.shape.type === 'L-shaped') {
+      const runs = stair.shape.runs ?? [Math.ceil(stepCount / 2), Math.floor(stepCount / 2)];
+      const run1Length = runs[0] * treadDepth;
+      const run2Length = runs[1] * treadDepth;
+      // L-shaped bounds encompass both runs plus landing
+      boundWidth = Math.max(stairWidth, run2Length + stairWidth);
+      boundDepth = run1Length + stairWidth; // landing width
+    } else if (stair.shape.type === 'spiral') {
+      const outerRadius = stair.shape.outerRadius ?? 1.5;
+      boundWidth = outerRadius * 2;
+      boundDepth = outerRadius * 2;
+    } else {
+      // Default: treat as straight
+      runLength = stepCount * treadDepth;
+      boundDepth = runLength;
+    }
+    
+    // Determine climb direction (which way the stair extends)
+    // "direction" = which way the stair climbs (direct)
+    // "entry" = which way you enter (so stair climbs OPPOSITE direction)
+    let climbDirection: string;
+    if (stair.shape.direction) {
+      climbDirection = stair.shape.direction;
+    } else if (stair.shape.entry) {
+      // Entry is opposite of climb direction
+      const entryToClimb: Record<string, string> = {
+        'top': 'bottom',
+        'bottom': 'top', 
+        'left': 'right',
+        'right': 'left'
+      };
+      climbDirection = entryToClimb[stair.shape.entry] ?? 'top';
+    } else {
+      climbDirection = 'top';
+    }
+    
+    let minX = stair.x;
+    let maxX = stair.x + boundWidth;
+    let minZ = stair.z;
+    let maxZ = stair.z + boundDepth;
+    
+    // Adjust bounds based on climb direction (which way the stair extends)
+    if (climbDirection === 'bottom') {
+      // Stair extends toward bottom (south, -Z)
+      minZ = stair.z - boundDepth;
+      maxZ = stair.z + boundWidth; // width at entry
+    } else if (climbDirection === 'top') {
+      // Stair extends toward top (north, +Z) - default
+      minZ = stair.z;
+      maxZ = stair.z + boundDepth;
+    } else if (climbDirection === 'left') {
+      // Stair extends toward left (west, -X)
+      minX = stair.x - boundDepth;
+      maxX = stair.x + boundWidth;
+      minZ = stair.z;
+      maxZ = stair.z + boundWidth;
+    } else if (climbDirection === 'right') {
+      // Stair extends toward right (east, +X)
+      minX = stair.x;
+      maxX = stair.x + boundDepth;
+      minZ = stair.z;
+      maxZ = stair.z + boundWidth;
+    }
+    
+    // Create box with vertical extent (doesn't matter much for horizontal cutting)
+    const box = new THREE.Box3(
+      new THREE.Vector3(minX, 0, minZ),
+      new THREE.Vector3(maxX, stairRise, maxZ)
+    );
+    
+    return box;
+  }
+  
+  /**
+   * Compute bounding box for a custom stair penetration.
+   * Uses the full bounding box of the entire stair (all segments) for the floor cutout.
+   * Works in LOCAL coordinates (like stair-geometry.ts), then transforms to world.
+   */
+  private computeCustomStairPenetration(
+    stair: { x: number; z: number; width?: number; shape: { entry?: string; segments?: Array<{ type: string; steps?: number; width?: number; direction?: string; landing?: [number, number] }> } },
+    treadDepth: number,
+    defaultWidth: number,
+    stairRise: number
+  ): THREE.Box3 {
+    const segments = stair.shape.segments!;
+    
+    // Work in LOCAL coordinates (same as stair-geometry.ts)
+    // Initial forward direction in local space is -Z
+    let forward = new THREE.Vector2(0, -1);
+    
+    // Track bounding box of entire stair
+    let minLocalX = 0, maxLocalX = 0, minLocalZ = 0, maxLocalZ = 0;
+    let currentPos = new THREE.Vector2(0, 0); // Start at local origin (entry point)
+    
+    for (const segment of segments) {
+      if (segment.type === 'flight') {
+        const steps = segment.steps ?? 10;
+        const segWidth = segment.width ?? defaultWidth;
+        const flightLength = steps * treadDepth;
+        
+        // Update bounding box with flight start position
+        minLocalX = Math.min(minLocalX, currentPos.x - segWidth/2);
+        maxLocalX = Math.max(maxLocalX, currentPos.x + segWidth/2);
+        minLocalZ = Math.min(minLocalZ, currentPos.y);
+        maxLocalZ = Math.max(maxLocalZ, currentPos.y);
+        
+        // Advance to end of flight
+        currentPos.add(forward.clone().multiplyScalar(flightLength));
+        
+        // Update bounding box with flight end position
+        minLocalX = Math.min(minLocalX, currentPos.x - segWidth/2);
+        maxLocalX = Math.max(maxLocalX, currentPos.x + segWidth/2);
+        minLocalZ = Math.min(minLocalZ, currentPos.y);
+        maxLocalZ = Math.max(maxLocalZ, currentPos.y);
+        
+      } else if (segment.type === 'turn') {
+        const landingW = segment.landing ? segment.landing[0] : defaultWidth;
+        const landingD = segment.landing ? segment.landing[1] : defaultWidth;
+        
+        // Look ahead to get next flight width for alignment (matching stair-geometry.ts)
+        const segIdx = segments.indexOf(segment);
+        const nextSegment = segIdx + 1 < segments.length ? segments[segIdx + 1] : null;
+        const nextFlightWidth = (nextSegment && nextSegment.type === 'flight' && nextSegment.width) 
+          ? nextSegment.width 
+          : defaultWidth;
+        
+        // Update bounding box with landing area (conservative: use max dimension)
+        const landingCenter = currentPos.clone().add(forward.clone().multiplyScalar(landingD / 2));
+        const maxLandingDim = Math.max(landingW, landingD) / 2;
+        minLocalX = Math.min(minLocalX, landingCenter.x - maxLandingDim);
+        maxLocalX = Math.max(maxLocalX, landingCenter.x + maxLandingDim);
+        minLocalZ = Math.min(minLocalZ, landingCenter.y - maxLandingDim);
+        maxLocalZ = Math.max(maxLocalZ, landingCenter.y + maxLandingDim);
+        
+        // Advance to center of landing
+        currentPos.add(forward.clone().multiplyScalar(landingD / 2));
+        
+        // Turn - use rotation formula matching Three.js applyAxisAngle around Y
+        const turnAngle = segment.direction === 'left' ? Math.PI / 2 : -Math.PI / 2;
+        const cos2 = Math.cos(turnAngle);
+        const sin2 = Math.sin(turnAngle);
+        forward = new THREE.Vector2(
+          forward.x * cos2 + forward.y * sin2,
+          -forward.x * sin2 + forward.y * cos2
+        );
+        
+        // Shift to edge of landing in new direction
+        currentPos.add(forward.clone().multiplyScalar(landingW / 2));
+        
+        // Align outer edges (matching stair-geometry.ts)
+        const perpSign = segment.direction === 'right' ? 1 : -1;
+        const perpNew = new THREE.Vector2(forward.y, -forward.x);
+        const widthDiff = (landingW - nextFlightWidth) / 2;
+        currentPos.add(perpNew.clone().multiplyScalar(widthDiff * perpSign));
+      }
+    }
+    
+    // Transform LOCAL bounding box to WORLD coords
+    const entry = stair.shape.entry ?? 'bottom';
+    let entryRotation = 0;
+    switch (entry) {
+      case 'top': entryRotation = Math.PI; break;
+      case 'bottom': entryRotation = 0; break;
+      case 'right': entryRotation = -Math.PI / 2; break;
+      case 'left': entryRotation = Math.PI / 2; break;
+    }
+    
+    const cos = Math.cos(entryRotation);
+    const sin = Math.sin(entryRotation);
+    
+    // Transform bounding box corners (offset so bbox corner aligns with stair position)
+    const transformToWorld = (local: THREE.Vector2): THREE.Vector2 => {
+      const offsetX = local.x - minLocalX;
+      const offsetZ = local.y - minLocalZ;
+      const rotatedX = offsetX * cos + offsetZ * sin;
+      const rotatedZ = -offsetX * sin + offsetZ * cos;
+      return new THREE.Vector2(rotatedX + stair.x, rotatedZ + stair.z);
+    };
+    
+    // Transform all 4 corners of the bounding box
+    const localCorners = [
+      new THREE.Vector2(minLocalX, minLocalZ),
+      new THREE.Vector2(maxLocalX, minLocalZ),
+      new THREE.Vector2(minLocalX, maxLocalZ),
+      new THREE.Vector2(maxLocalX, maxLocalZ)
+    ];
+    const worldCorners = localCorners.map(transformToWorld);
+    
+    // Compute world bounds
+    const minX = Math.min(...worldCorners.map(c => c.x));
+    const maxX = Math.max(...worldCorners.map(c => c.x));
+    const minZ = Math.min(...worldCorners.map(c => c.y));
+    const maxZ = Math.max(...worldCorners.map(c => c.y));
+    
+    return new THREE.Box3(
+      new THREE.Vector3(minX, 0, minZ),
+      new THREE.Vector3(maxX, stairRise, maxZ)
+    );
+  }
+  
+  /**
+   * Compute bounding box for a lift penetration.
+   */
+  private computeLiftPenetration(lift: { x: number; z: number; width: number; height: number }): THREE.Box3 {
+    return new THREE.Box3(
+      new THREE.Vector3(lift.x, 0, lift.z),
+      new THREE.Vector3(lift.x + lift.width, 10, lift.z + lift.height) // height doesn't matter for horizontal cutting
+    );
+  }
+  
+  /**
+   * Generate a floor group from floor data with penetration support.
+   * @param floorData The floor data
+   * @param prevFloorPenetrations Penetration boxes from the previous floor's stairs/lifts
+   * @returns The floor group and penetration boxes for this floor's stairs/lifts
+   */
+  protected generateFloorWithPenetrations(
+    floorData: JsonFloor, 
+    prevFloorPenetrations: THREE.Box3[]
+  ): { group: THREE.Group; penetrations: THREE.Box3[] } {
     const group = new THREE.Group();
     group.name = floorData.id;
     
@@ -530,8 +790,8 @@ export abstract class BaseViewer implements SceneContext {
         hasExplicitStyle ? undefined : this.currentTheme
       );
       
-      // 1. Floor plate
-      const floorMesh = this.createFloorMesh(roomWithDefaults, materials.floor);
+      // 1. Floor plate with penetration support
+      const floorMesh = this.createFloorMeshWithPenetrations(roomWithDefaults, materials.floor, prevFloorPenetrations);
       group.add(floorMesh);
       
       // Register floor mesh in registry for selection support
@@ -551,11 +811,17 @@ export abstract class BaseViewer implements SceneContext {
       });
     });
     
+    // Collect penetrations for the next floor
+    const penetrations: THREE.Box3[] = [];
+    
     // 3. Stairs
     if (floorData.stairs) {
       floorData.stairs.forEach(stair => {
         const stairGroup = this.stairGenerator.generateStair(stair);
         group.add(stairGroup);
+        
+        // Compute penetration bounds for next floor
+        penetrations.push(this.computeStairPenetration(stair, stair.tread, stair.rise));
       });
     }
     
@@ -564,10 +830,13 @@ export abstract class BaseViewer implements SceneContext {
       floorData.lifts.forEach(lift => {
         const liftGroup = this.stairGenerator.generateLift(lift, floorDefault);
         group.add(liftGroup);
+        
+        // Compute penetration bounds for next floor
+        penetrations.push(this.computeLiftPenetration(lift));
       });
     }
     
-    return group;
+    return { group, penetrations };
   }
   
   /**
@@ -580,6 +849,8 @@ export abstract class BaseViewer implements SceneContext {
   
   /**
    * Create a floor mesh for a room.
+   * NOTE: This method does NOT support floor penetrations (holes for stairs/lifts).
+   * It creates simple box geometry without CSG hole-cutting.
    */
   protected createFloorMesh(room: JsonRoom, material: THREE.Material): THREE.Mesh {
     const floorThickness = this.config.floor_thickness ?? DIMENSIONS.FLOOR.THICKNESS;
@@ -588,10 +859,87 @@ export abstract class BaseViewer implements SceneContext {
     const centerZ = room.z + room.height / 2;
     const elevation = room.elevation || 0;
     
+    
     const floorMesh = new THREE.Mesh(floorGeom, material);
     floorMesh.position.set(centerX, elevation, centerZ);
     floorMesh.receiveShadow = true;
     return floorMesh;
+  }
+  
+  /**
+   * Create a floor mesh with CSG hole-cutting for stair/lift penetrations.
+   */
+  protected createFloorMeshWithPenetrations(
+    room: JsonRoom, 
+    material: THREE.Material, 
+    penetrations: THREE.Box3[]
+  ): THREE.Mesh {
+    const floorThickness = this.config.floor_thickness ?? DIMENSIONS.FLOOR.THICKNESS;
+    const centerX = room.x + room.width / 2;
+    const centerZ = room.z + room.height / 2;
+    const elevation = room.elevation || 0;
+    
+    // Room bounding box (in XZ plane)
+    const roomBox = new THREE.Box3(
+      new THREE.Vector3(room.x, elevation - floorThickness, room.z),
+      new THREE.Vector3(room.x + room.width, elevation + floorThickness, room.z + room.height)
+    );
+    
+    // Find penetrations that intersect this room
+    const overlappingPenetrations = penetrations.filter(pen => pen.intersectsBox(roomBox));
+    
+    
+    if (overlappingPenetrations.length === 0) {
+      // No penetrations - create simple floor
+      const floorGeom = new THREE.BoxGeometry(room.width, floorThickness, room.height);
+      const floorMesh = new THREE.Mesh(floorGeom, material);
+      floorMesh.position.set(centerX, elevation, centerZ);
+      floorMesh.receiveShadow = true;
+      return floorMesh;
+    }
+    
+    // Create floor as CSG-compatible Brush
+    const floorGeom = new THREE.BoxGeometry(room.width, floorThickness, room.height);
+    const floorBrush = new Brush(floorGeom, material);
+    floorBrush.position.set(centerX, elevation, centerZ);
+    floorBrush.updateMatrixWorld();
+    
+    // CSG subtract each penetration
+    const csgEvaluator = new Evaluator();
+    let resultBrush: Brush = floorBrush;
+    
+    for (const pen of overlappingPenetrations) {
+      // Compute intersection bounds (clip penetration to room bounds)
+      const intersection = pen.clone().intersect(roomBox);
+      const size = new THREE.Vector3();
+      intersection.getSize(size);
+      const center = new THREE.Vector3();
+      intersection.getCenter(center);
+      
+      // Skip tiny intersections
+      if (size.x < 0.1 || size.z < 0.1) continue;
+      
+      // Create hole geometry as Brush
+      const holeGeom = new THREE.BoxGeometry(size.x, floorThickness * 2, size.z);
+      const holeBrush = new Brush(holeGeom);
+      holeBrush.position.set(center.x, elevation, center.z);
+      holeBrush.updateMatrixWorld();
+      
+      
+      // Perform CSG subtraction
+      try {
+        resultBrush = csgEvaluator.evaluate(resultBrush, holeBrush, SUBTRACTION);
+      } catch {
+        // CSG failed - fallback to no hole
+        console.warn('CSG subtraction failed for room', room.name);
+      }
+    }
+    
+    // Convert Brush result to Mesh
+    const resultMesh = new THREE.Mesh(resultBrush.geometry, material);
+    resultMesh.position.copy(resultBrush.position);
+    resultMesh.receiveShadow = true;
+    return resultMesh;
   }
   
   /**

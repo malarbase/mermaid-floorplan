@@ -249,6 +249,8 @@ export interface Render3DOptions {
   renderAllFloors?: boolean;
   /** Floor index to render (0-based) */
   floorIndex?: number;
+  /** Enable shadow rendering (default: false for headless rendering) */
+  shadows?: boolean;
 }
 
 /**

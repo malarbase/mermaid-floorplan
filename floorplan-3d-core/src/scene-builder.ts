@@ -3,14 +3,18 @@
  * 
  * This module builds a Three.js scene from JSON floorplan data.
  * It works in both browser and Node.js environments.
+ * 
+ * Uses WallBuilder for CSG-based wall generation when three-bvh-csg is available,
+ * falling back to simple box walls otherwise. This ensures consistent rendering
+ * between the interactive viewer and headless (MCP server) rendering.
  */
 
 import * as THREE from 'three';
-import type { JsonExport, JsonFloor, JsonStyle, SceneBounds, Render3DOptions } from './types.js';
+import type { JsonExport, JsonFloor, JsonStyle, SceneBounds, Render3DOptions, JsonRoom } from './types.js';
 import { DIMENSIONS, getThemeColors, type ViewerTheme } from './constants.js';
 import { MaterialFactory, type MaterialStyle } from './materials.js';
 import { generateFloorSlabs } from './floor-geometry.js';
-import { generateFloorWalls } from './wall-geometry.js';
+import { WallBuilder } from './wall-builder.js';
 import { generateFloorConnections } from './connection-geometry.js';
 import { StairGenerator } from './stair-geometry.js';
 import { computeSceneBounds, setupCamera, type CameraSetupResult } from './camera-utils.js';
@@ -103,6 +107,17 @@ export function buildFloorplanScene(
 
   // Render each floor
   const stairGenerator = new StairGenerator();
+  
+  // Create wall builder with theme and style resolver
+  // WallBuilder uses CSG when available (after initCSG() is called) for proper door/window cutouts
+  const wallBuilder = new WallBuilder();
+  wallBuilder.setTheme(theme ?? 'light');
+  wallBuilder.setStyleResolver((room: JsonRoom) => 
+    styleMap.get(room.style ?? config.default_style ?? '')
+  );
+  
+  // Track vertical penetrations from previous floor (for cutting holes)
+  let prevFloorPenetrations: THREE.Box3[] = [];
 
   for (const floor of floorsToRender) {
     const floorGroup = new THREE.Group();
@@ -111,35 +126,57 @@ export function buildFloorplanScene(
     const yOffset = floorPositions.get(floor.index) ?? 0;
     floorGroup.position.y = yOffset;
 
-    // Generate floor slabs
+    // Generate floor slabs (cut holes for stairs/lifts from floor below)
     if (showFloors) {
       const slabs = generateFloorSlabs(floor, {
         thickness: floorThickness,
         theme,
         styleMap,
+        penetrations: prevFloorPenetrations,
       });
       floorGroup.add(slabs);
     }
 
-    // Generate walls
+    // Prepare rooms with default heights for wall ownership detection
+    const floorHeight = floor.height ?? defaultHeight;
+    const allRooms = floor.rooms.map(r => ({
+      ...r,
+      roomHeight: r.roomHeight ?? floorHeight,
+    }));
+
+    // Generate walls using WallBuilder (CSG-enabled when available)
+    // WallBuilder handles connections internally, so we only need separate
+    // connection generation when walls are disabled
     if (showWalls) {
-      const walls = generateFloorWalls(floor, {
-        wallThickness,
-        defaultHeight: floor.height ?? defaultHeight,
-        theme,
-        styleMap,
-      });
-      floorGroup.add(walls);
+      for (const room of allRooms) {
+        const roomStyle = styleMap.get(room.style ?? config.default_style ?? '');
+        const materials = MaterialFactory.createMaterialSet(roomStyle, theme);
+
+        for (const wall of room.walls) {
+          if (wall.type === 'open') continue;
+          
+          wallBuilder.generateWall(
+            wall,
+            room,
+            allRooms,
+            normalizedData.connections ?? [],
+            materials,
+            floorGroup,
+            config
+          );
+        }
+      }
     }
 
-    // Generate connections (doors/windows)
-    if (showConnections) {
+    // Generate standalone connections only when walls are disabled
+    // (WallBuilder handles connections internally when generating walls)
+    if (showConnections && !showWalls) {
       const connections = generateFloorConnections(
         floor,
         normalizedData.connections ?? [],
         {
           wallThickness,
-          defaultHeight: floor.height ?? defaultHeight,
+          defaultHeight: floorHeight,
           theme,
           styleMap,
         }
@@ -147,11 +184,18 @@ export function buildFloorplanScene(
       floorGroup.add(connections);
     }
 
+    const currentFloorPenetrations: THREE.Box3[] = [];
+
     // Generate stairs
     if (showStairs && floor.stairs) {
       for (const stair of floor.stairs) {
         const stairGroup = stairGenerator.generateStair(stair);
         floorGroup.add(stairGroup);
+        // Update world matrix before computing bounding box
+        floorGroup.updateMatrixWorld(true);
+        // Track for next floor's holes
+        const stairBox = new THREE.Box3().setFromObject(stairGroup);
+        currentFloorPenetrations.push(stairBox);
       }
     }
 
@@ -161,8 +205,13 @@ export function buildFloorplanScene(
       for (const lift of floor.lifts) {
         const liftGroup = stairGenerator.generateLift(lift, floorHeight);
         floorGroup.add(liftGroup);
+        // Track for next floor's holes
+        currentFloorPenetrations.push(new THREE.Box3().setFromObject(liftGroup));
       }
     }
+
+    // Update penetrations for the next floor
+    prevFloorPenetrations = currentFloorPenetrations;
 
     scene.add(floorGroup);
   }
@@ -222,9 +271,9 @@ export function buildCompleteScene(
 
   const cameraResult = setupCamera(renderOptions, bounds, aspectRatio);
 
-  // Set up lighting
+  // Set up lighting (shadows disabled by default for headless rendering)
   setupLighting(scene, bounds, {
-    shadows: false, // Disabled for headless rendering
+    shadows: renderOptions.shadows ?? false,
   });
 
   return {
