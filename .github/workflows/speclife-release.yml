@@ -23,7 +23,13 @@ jobs:
       - name: Extract version from commit
         id: version
         run: |
-          VERSION=$(echo "${{ github.event.head_commit.message }}" | grep -oP 'v\d+\.\d+\.\d+')
+          # Extract version from first line only (commit title)
+          FIRST_LINE=$(echo "${{ github.event.head_commit.message }}" | head -n1)
+          VERSION=$(echo "$FIRST_LINE" | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not extract version from commit title: $FIRST_LINE"
+            exit 1
+          fi
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "Detected version: $VERSION"
       
