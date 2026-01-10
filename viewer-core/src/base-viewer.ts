@@ -609,8 +609,8 @@ export abstract class BaseViewer implements SceneContext {
   }
   
   /**
-   * Compute penetration for custom/segmented stairs by tracing through segments
-   * to find where the FINAL flight ends.
+   * Compute bounding box for a custom stair penetration.
+   * Uses the full bounding box of the entire stair (all segments) for the floor cutout.
    * Works in LOCAL coordinates (like stair-geometry.ts), then transforms to world.
    */
   private computeCustomStairPenetration(
@@ -625,30 +625,15 @@ export abstract class BaseViewer implements SceneContext {
     // Initial forward direction in local space is -Z
     let forward = new THREE.Vector2(0, -1);
     
-    // Trace through segments in LOCAL coords to find final flight position
-    // Track bounding box to compute offset from DSL position (bounding box corner) to entry
+    // Track bounding box of entire stair
     let minLocalX = 0, maxLocalX = 0, minLocalZ = 0, maxLocalZ = 0;
-    
     let currentPos = new THREE.Vector2(0, 0); // Start at local origin (entry point)
-    let lastFlightStart = new THREE.Vector2(0, 0);
-    let lastFlightWidth = defaultWidth;
-    let lastFlightSteps = 0;
-    
-    // Track last landing for combined penetration
-    let lastLandingCenter = new THREE.Vector2(0, 0);
-    let lastLandingW = defaultWidth;
-    let lastLandingD = defaultWidth;
-    let lastLandingForward = forward.clone(); // Forward direction AT the landing (before turn)
     
     for (const segment of segments) {
       if (segment.type === 'flight') {
         const steps = segment.steps ?? 10;
         const segWidth = segment.width ?? defaultWidth;
         const flightLength = steps * treadDepth;
-        
-        lastFlightStart = currentPos.clone();
-        lastFlightWidth = segWidth;
-        lastFlightSteps = steps;
         
         // Update bounding box with flight start position
         minLocalX = Math.min(minLocalX, currentPos.x - segWidth/2);
@@ -676,17 +661,18 @@ export abstract class BaseViewer implements SceneContext {
           ? nextSegment.width 
           : defaultWidth;
         
+        // Update bounding box with landing area (conservative: use max dimension)
+        const landingCenter = currentPos.clone().add(forward.clone().multiplyScalar(landingD / 2));
+        const maxLandingDim = Math.max(landingW, landingD) / 2;
+        minLocalX = Math.min(minLocalX, landingCenter.x - maxLandingDim);
+        maxLocalX = Math.max(maxLocalX, landingCenter.x + maxLandingDim);
+        minLocalZ = Math.min(minLocalZ, landingCenter.y - maxLandingDim);
+        maxLocalZ = Math.max(maxLocalZ, landingCenter.y + maxLandingDim);
+        
         // Advance to center of landing
         currentPos.add(forward.clone().multiplyScalar(landingD / 2));
         
-        // Save landing info BEFORE the turn
-        lastLandingCenter = currentPos.clone();
-        lastLandingW = landingW;
-        lastLandingD = landingD;
-        lastLandingForward = forward.clone();
-        
         // Turn - use rotation formula matching Three.js applyAxisAngle around Y
-        // In 2D (X, Z) representation: newX = X*cos + Z*sin, newZ = -X*sin + Z*cos
         const turnAngle = segment.direction === 'left' ? Math.PI / 2 : -Math.PI / 2;
         const cos2 = Math.cos(turnAngle);
         const sin2 = Math.sin(turnAngle);
@@ -699,53 +685,14 @@ export abstract class BaseViewer implements SceneContext {
         currentPos.add(forward.clone().multiplyScalar(landingW / 2));
         
         // Align outer edges (matching stair-geometry.ts)
-        // Three.js +90° rotation around Y: (X,Z) → (Z,-X), so perpendicular = (forward.y, -forward.x)
         const perpSign = segment.direction === 'right' ? 1 : -1;
-        const perpendicular = new THREE.Vector2(forward.y, -forward.x);
+        const perpNew = new THREE.Vector2(forward.y, -forward.x);
         const widthDiff = (landingW - nextFlightWidth) / 2;
-        currentPos.add(perpendicular.clone().multiplyScalar(widthDiff * perpSign));
+        currentPos.add(perpNew.clone().multiplyScalar(widthDiff * perpSign));
       }
     }
     
-    // Create penetration box covering LANDING + FINAL FLIGHT (in LOCAL coords)
-    const finalFlightLength = lastFlightSteps * treadDepth;
-    const halfFlightWidth = lastFlightWidth / 2;
-    const flightPerpendicular = new THREE.Vector2(-forward.y, forward.x);
-    
-    // Final flight extends from lastFlightStart in forward direction
-    const flightEnd = lastFlightStart.clone().add(forward.clone().multiplyScalar(finalFlightLength));
-    
-    // Compute flight corners
-    const flightCorner1 = lastFlightStart.clone().add(flightPerpendicular.clone().multiplyScalar(-halfFlightWidth));
-    const flightCorner2 = lastFlightStart.clone().add(flightPerpendicular.clone().multiplyScalar(halfFlightWidth));
-    const flightCorner3 = flightEnd.clone().add(flightPerpendicular.clone().multiplyScalar(-halfFlightWidth));
-    const flightCorner4 = flightEnd.clone().add(flightPerpendicular.clone().multiplyScalar(halfFlightWidth));
-    
-    // Compute landing corners (landing is aligned with the flight that ENTERS it)
-    const landingPerpendicular = new THREE.Vector2(-lastLandingForward.y, lastLandingForward.x);
-    const halfLandingW = lastLandingW / 2;
-    const halfLandingD = lastLandingD / 2;
-    const landingCorner1 = lastLandingCenter.clone()
-      .add(lastLandingForward.clone().multiplyScalar(-halfLandingD))
-      .add(landingPerpendicular.clone().multiplyScalar(-halfLandingW));
-    const landingCorner2 = lastLandingCenter.clone()
-      .add(lastLandingForward.clone().multiplyScalar(-halfLandingD))
-      .add(landingPerpendicular.clone().multiplyScalar(halfLandingW));
-    const landingCorner3 = lastLandingCenter.clone()
-      .add(lastLandingForward.clone().multiplyScalar(halfLandingD))
-      .add(landingPerpendicular.clone().multiplyScalar(-halfLandingW));
-    const landingCorner4 = lastLandingCenter.clone()
-      .add(lastLandingForward.clone().multiplyScalar(halfLandingD))
-      .add(landingPerpendicular.clone().multiplyScalar(halfLandingW));
-    
-    // Combine all corners for bounding box (landing + flight)
-    const allLocalCorners = [
-      flightCorner1, flightCorner2, flightCorner3, flightCorner4,
-      landingCorner1, landingCorner2, landingCorner3, landingCorner4
-    ];
-    
-    // Transform LOCAL corners to WORLD coords
-    // The stair group has rotation based on entry direction
+    // Transform LOCAL bounding box to WORLD coords
     const entry = stair.shape.entry ?? 'bottom';
     let entryRotation = 0;
     switch (entry) {
@@ -755,38 +702,32 @@ export abstract class BaseViewer implements SceneContext {
       case 'left': entryRotation = Math.PI / 2; break;
     }
     
-    // Apply rotation and translation to each corner
-    // Use rotation formula matching Three.js applyAxisAngle around Y
     const cos = Math.cos(entryRotation);
     const sin = Math.sin(entryRotation);
     
-    // The DSL position (stair.x, stair.z) appears to be the bounding box corner
-    // The stair geometry positions entry at (stair.x, stair.z), but that misplaces the stairs
-    // We need to offset so the bbox corner aligns with stair position
-    // Additional adjustment: shift down by ~2 stair treads to align with actual geometry
-    const additionalZOffset = treadDepth * 2; // ~0.56m to shift cutout down
+    // Transform bounding box corners (offset so bbox corner aligns with stair position)
     const transformToWorld = (local: THREE.Vector2): THREE.Vector2 => {
-      // Offset local coords so bbox corner is at origin
       const offsetX = local.x - minLocalX;
-      const offsetZ = local.y - minLocalZ + additionalZOffset;
-      
-      // Rotate around Y axis (in XZ plane): newX = X*cos + Z*sin, newZ = -X*sin + Z*cos
+      const offsetZ = local.y - minLocalZ;
       const rotatedX = offsetX * cos + offsetZ * sin;
       const rotatedZ = -offsetX * sin + offsetZ * cos;
-      
-      // Translate by stair position (bbox corner position)
       return new THREE.Vector2(rotatedX + stair.x, rotatedZ + stair.z);
     };
     
-    // Transform all corners to world coordinates
-    const worldCorners = allLocalCorners.map(transformToWorld);
+    // Transform all 4 corners of the bounding box
+    const localCorners = [
+      new THREE.Vector2(minLocalX, minLocalZ),
+      new THREE.Vector2(maxLocalX, minLocalZ),
+      new THREE.Vector2(minLocalX, maxLocalZ),
+      new THREE.Vector2(maxLocalX, maxLocalZ)
+    ];
+    const worldCorners = localCorners.map(transformToWorld);
     
-    // Compute bounds from all world corners
+    // Compute world bounds
     const minX = Math.min(...worldCorners.map(c => c.x));
     const maxX = Math.max(...worldCorners.map(c => c.x));
     const minZ = Math.min(...worldCorners.map(c => c.y));
     const maxZ = Math.max(...worldCorners.map(c => c.y));
-    
     
     return new THREE.Box3(
       new THREE.Vector3(minX, 0, minZ),
