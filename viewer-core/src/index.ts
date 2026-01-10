@@ -24,6 +24,10 @@
 export { BaseViewer } from './base-viewer.js';
 export type { BaseViewerOptions } from './base-viewer.js';
 
+// Unified FloorplanApp
+export { FloorplanApp } from './floorplan-app.js';
+export type { FloorplanAppOptions, AuthResult } from './floorplan-app.js';
+
 // Scene context
 export type {
   SelectableObject,
