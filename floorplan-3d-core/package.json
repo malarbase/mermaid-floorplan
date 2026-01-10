@@ -1,6 +1,6 @@
 {
   "name": "floorplan-3d-core",
-  "version": "0.5.0",
+  "version": "0.7.1",
   "description": "Shared 3D rendering primitives for floorplan visualization",
   "license": "MIT",
   "author": "Malar Kannan",
@@ -30,7 +30,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "floorplan-common": "^0.1.0"
+    "floorplan-common": "*"
   },
   "peerDependencies": {
     "three": ">=0.150.0",
