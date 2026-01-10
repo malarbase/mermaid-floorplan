@@ -1,7 +1,7 @@
 {
   "name": "floorplans-language",
   "description": "The language specific package",
-  "version": "0.4.0",
+  "version": "0.7.1",
   "license": "MIT",
   "author": "Alexander Lang, Malar Kannan",
   "type": "module",
@@ -37,7 +37,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "floorplan-common": "^0.1.0",
+    "floorplan-common": "*",
     "langium": "~4.0.0"
   },
   "devDependencies": {
