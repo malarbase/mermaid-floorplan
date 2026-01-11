@@ -159,3 +159,13 @@ export type {
   ParseResultWithDocument,
 } from './dsl-parser.js';
 
+// Layout Manager (CSS custom properties based layout state)
+export {
+  LayoutManager,
+  getLayoutManager,
+  resetLayoutManager,
+} from './layout-manager.js';
+export type {
+  LayoutManagerConfig,
+  LayoutState,
+} from './layout-manager.js';

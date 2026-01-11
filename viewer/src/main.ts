@@ -32,10 +32,14 @@ import {
   createSliderControl,
   createDslEditor,
   createEditorPanel,
+  getLayoutManager,
 } from 'viewer-core';
 
 // Inject shared styles
 injectStyles();
+
+// Initialize layout manager early so it can be used by UI components
+const layoutManager = getLayoutManager();
 
 // Default floorplan content for initial display
 const defaultFloorplan = `%%{version: 1.0}%%
@@ -131,20 +135,40 @@ const editorPanel = createEditorPanel({
   editable: false,       // Read-only mode
   isAuthenticated: false,
   width: 450,
+  onLoginClick: () => {
+    // Delegate to the FloorplanApp's onAuthRequired callback
+    if (viewerRef) {
+      viewerRef.requestEditMode();
+    }
+  },
   onToggle: (isOpen: boolean) => {
     // Trigger Monaco editor resize if needed
     setTimeout(() => dslEditor?.editor.layout(), 250);
     
-    // Sync body class for CSS alignment of shortcut info, minimap, etc.
+    // Update layout manager to reposition other panels
+    layoutManager.setEditorOpen(isOpen);
+    layoutManager.setEditorWidth(editorPanel.getWidth());
+    
+    // Sync body class for CSS alignment (backup)
     document.body.classList.toggle('editor-open', isOpen);
     if (isOpen) {
-      document.documentElement.style.setProperty('--editor-width', '450px');
+      document.documentElement.style.setProperty('--editor-width', `${editorPanel.getWidth()}px`);
     }
     
     // Sync header bar state (viewer ref will be set after creation)
     if (viewerRef) {
       viewerRef.headerBar?.setEditorOpen(isOpen);
     }
+  },
+  onResize: (newWidth: number) => {
+    // Update layout manager with new width
+    layoutManager.setEditorWidth(newWidth);
+    
+    // Update CSS variable for any backup alignment
+    document.documentElement.style.setProperty('--editor-width', `${newWidth}px`);
+    
+    // Trigger Monaco editor resize
+    setTimeout(() => dslEditor?.editor.layout(), 50);
   },
 });
 
@@ -199,7 +223,12 @@ const viewer = new FloorplanApp({
   
   // No auth required for viewer
   isAuthenticated: false,
-  onAuthRequired: undefined,
+  onAuthRequired: async () => {
+    // In a real app, this would open a login modal or redirect to auth provider
+    // For testing, we simulate a successful login by returning true
+    const confirmLogin = confirm('Authentication required!\n\nSimulate successful login?');
+    return confirmLogin;
+  },
   
   // File load callback - update editor and log
   onFileLoad: (filename, content) => {
@@ -385,6 +414,7 @@ const overlay2D = createOverlay2DUI({
       overlay2DCheckbox.checked = false;
     }
   },
+  onVisibilityChange: (visible) => layoutManager.setOverlay2DVisible(visible),
 });
 document.body.appendChild(overlay2D.element);
 
@@ -447,6 +477,7 @@ const annotationControls = createAnnotationControlsUI({
     if (summaryEl) {
       summaryEl.classList.toggle('visible', show);
     }
+    layoutManager.setFloorSummaryVisible(show);
   },
   onAreaUnitChange: (unit) => {
     viewer.annotationManager.state.areaUnit = unit;

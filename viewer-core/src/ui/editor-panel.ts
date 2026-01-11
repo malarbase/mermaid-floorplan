@@ -20,10 +20,16 @@ export interface EditorPanelConfig {
   initialContent?: string;
   /** Editor width in pixels (default: 400) */
   width?: number;
+  /** Minimum width when resizing (default: 300) */
+  minWidth?: number;
+  /** Maximum width when resizing (default: 80% of viewport) */
+  maxWidth?: number;
   /** Callback when "Login to Edit" is clicked */
   onLoginClick?: () => void;
   /** Callback when collapse/expand state changes */
   onToggle?: (isOpen: boolean) => void;
+  /** Callback when panel is resized */
+  onResize?: (width: number) => void;
   /** Callback when content changes (only in editable mode) */
   onChange?: (content: string) => void;
   /** Callback when cursor position changes (for 3D sync) */
@@ -37,6 +43,10 @@ export interface EditorPanel {
   editorContainer: HTMLElement;
   /** Get current open/closed state */
   isOpen: () => boolean;
+  /** Get current panel width */
+  getWidth: () => number;
+  /** Set panel width */
+  setWidth: (width: number) => void;
   /** Toggle panel open/closed */
   toggle: () => void;
   /** Open the panel */
@@ -66,18 +76,25 @@ export function createEditorPanel(config: EditorPanelConfig = {}): EditorPanel {
     editable = false,
     isAuthenticated = false,
     width = 400,
+    minWidth = 300,
+    maxWidth = window.innerWidth * 0.8,
     onLoginClick,
     onToggle,
+    onResize,
   } = config;
 
   let isOpen = initiallyOpen;
   let currentEditable = editable;
   let currentAuthenticated = isAuthenticated;
+  let currentWidth = width;
+  let isResizing = false;
 
   // Create root panel element
   const panel = document.createElement('div');
   panel.className = 'fp-editor-panel';
   panel.style.width = `${width}px`;
+  // Set CSS variable for collapsed state positioning
+  panel.style.setProperty('--fp-editor-width', `${width}px`);
   if (!isOpen) {
     panel.classList.add('fp-editor-panel--collapsed');
   }
@@ -119,16 +136,55 @@ export function createEditorPanel(config: EditorPanelConfig = {}): EditorPanel {
   updateLoginButton();
   headerActions.appendChild(loginButton);
 
-  // Collapse/expand button
-  const collapseBtn = document.createElement('button');
-  collapseBtn.className = 'fp-editor-panel__collapse-btn';
-  collapseBtn.innerHTML = '◀';
-  collapseBtn.title = 'Collapse panel';
-  collapseBtn.addEventListener('click', () => togglePanel());
-  headerActions.appendChild(collapseBtn);
-
   header.appendChild(headerActions);
   panel.appendChild(header);
+
+  // Collapse/expand button - positioned absolutely on the panel edge
+  const collapseBtn = document.createElement('button');
+  collapseBtn.className = 'fp-editor-panel__collapse-btn';
+  collapseBtn.innerHTML = isOpen ? '◀' : '▶';
+  collapseBtn.title = isOpen ? 'Collapse panel' : 'Expand panel';
+  collapseBtn.addEventListener('click', () => togglePanel());
+  panel.appendChild(collapseBtn);
+
+  // Resize handle - positioned on the right edge of the panel
+  const resizeHandle = document.createElement('div');
+  resizeHandle.className = 'fp-editor-panel__resize-handle';
+  resizeHandle.title = 'Drag to resize';
+  panel.appendChild(resizeHandle);
+
+  // Resize functionality
+  const handleMouseDown = (e: MouseEvent): void => {
+    if (!isOpen) return; // Don't allow resize when collapsed
+    isResizing = true;
+    panel.classList.add('fp-editor-panel--resizing');
+    resizeHandle.classList.add('active');
+    document.body.style.cursor = 'ew-resize';
+    document.body.style.userSelect = 'none';
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: MouseEvent): void => {
+    if (!isResizing) return;
+    const newWidth = Math.max(minWidth, Math.min(maxWidth, e.clientX));
+    currentWidth = newWidth;
+    panel.style.width = `${newWidth}px`;
+    panel.style.setProperty('--fp-editor-width', `${newWidth}px`);
+    onResize?.(newWidth);
+  };
+
+  const handleMouseUp = (): void => {
+    if (!isResizing) return;
+    isResizing = false;
+    panel.classList.remove('fp-editor-panel--resizing');
+    resizeHandle.classList.remove('active');
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+  };
+
+  resizeHandle.addEventListener('mousedown', handleMouseDown);
+  document.addEventListener('mousemove', handleMouseMove);
+  document.addEventListener('mouseup', handleMouseUp);
 
   // Create editor container
   const editorContainer = document.createElement('div');
@@ -176,6 +232,15 @@ export function createEditorPanel(config: EditorPanelConfig = {}): EditorPanel {
     editorContainer,
 
     isOpen: () => isOpen,
+
+    getWidth: () => currentWidth,
+
+    setWidth(newWidth: number): void {
+      currentWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+      panel.style.width = `${currentWidth}px`;
+      panel.style.setProperty('--fp-editor-width', `${currentWidth}px`);
+      onResize?.(currentWidth);
+    },
 
     toggle: togglePanel,
 
@@ -226,6 +291,9 @@ export function createEditorPanel(config: EditorPanelConfig = {}): EditorPanel {
     },
 
     destroy(): void {
+      // Clean up event listeners
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
       panel.remove();
     },
   };

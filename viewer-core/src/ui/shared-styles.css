@@ -8,20 +8,52 @@
   box-sizing: border-box;
 }
 
+/* === Layout Variables (defaults, overridden by LayoutManager) === */
+:root {
+  --layout-header-height: 40px;
+  --layout-header-offset: 40px;
+  --layout-editor-width: 0px;
+  --layout-editor-width-open: 450px;
+  --layout-overlay-2d-height: 220px;
+  --layout-bottom-gap: 10px;
+  --layout-bottom-stack-offset: 0px;
+  --layout-overlay-2d-visible: 0;
+  --layout-floor-summary-visible: 0;
+}
+
 /* === Control Panel === */
 .fp-control-panel {
   position: absolute;
-  top: 10px;
+  top: calc(var(--layout-header-offset) + 10px);
   right: 10px;
   background: rgba(255, 255, 255, 0.95);
   padding: 0;
   border-radius: 10px;
   width: 260px;
-  max-height: calc(100vh - 20px);
+  max-height: calc(100vh - var(--layout-header-offset) - 20px);
   overflow-y: auto;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 13px;
+  transition: top 0.3s ease, max-height 0.3s ease;
+}
+
+/* When header is visible (body has header-visible class), shift panels down */
+body.header-visible .fp-control-panel {
+  top: calc(40px + 10px);
+  max-height: calc(100vh - 40px - 20px);
+}
+
+body.header-visible .fp-shortcut-info {
+  top: calc(40px + 10px);
+}
+
+body.header-visible .fp-warnings-panel {
+  top: calc(40px + 120px);
+}
+
+body.header-visible .fp-editor-panel {
+  top: 40px;
 }
 
 body.dark-theme .fp-control-panel {
@@ -324,8 +356,8 @@ body.dark-theme .fp-floor-item label {
 /* === Floor Summary Panel === */
 .fp-floor-summary-panel {
   position: absolute;
-  bottom: 10px;
-  left: 10px;
+  bottom: calc(var(--layout-bottom-stack-offset) + 10px);
+  left: calc(var(--layout-editor-width) + 10px);
   background: rgba(255, 255, 255, 0.95);
   border-radius: 8px;
   padding: 12px 16px;
@@ -333,7 +365,8 @@ body.dark-theme .fp-floor-item label {
   font-size: 12px;
   max-width: 300px;
   display: none;
-  transition: left 0.3s ease;
+  transition: left 0.3s ease, bottom 0.3s ease;
+  z-index: 55; /* Above 2D overlay (50) */
 }
 
 body.dark-theme .fp-floor-summary-panel {
@@ -388,7 +421,7 @@ body.dark-theme .floor-stats {
 .fp-overlay-2d {
   position: absolute;
   bottom: 10px;
-  left: 10px;
+  left: calc(var(--layout-editor-width) + 10px);
   width: 280px;
   height: 220px;
   background: rgba(255, 255, 255, 0.95);
@@ -740,8 +773,8 @@ body.dark-theme .fp-help-footer {
 /* === Validation Warnings Panel === */
 .fp-warnings-panel {
   position: absolute;
-  top: 120px;  /* Below shortcut info panel (~100px) + margin */
-  left: 10px;
+  top: calc(var(--layout-header-offset) + 120px);  /* Below shortcut info panel (~100px) + margin */
+  left: calc(var(--layout-editor-width) + 10px);
   background: #fff8e1;
   border: 1px solid #ffd54f;
   border-radius: 8px;
@@ -751,7 +784,7 @@ body.dark-theme .fp-help-footer {
   font-size: 13px;
   z-index: 100;
   display: none;
-  transition: left 0.3s ease;
+  transition: left 0.3s ease, top 0.3s ease;
 }
 
 body.dark-theme .fp-warnings-panel {
@@ -869,8 +902,8 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
 /* === Shortcut Info Panel === */
 .fp-shortcut-info {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: calc(var(--layout-header-offset) + 10px);
+  left: calc(var(--layout-editor-width) + 10px);
   background: rgba(0, 0, 0, 0.75);
   color: white;
   padding: 12px 16px;
@@ -879,7 +912,7 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
   font-size: 13px;
   max-width: 200px;
   z-index: 50;
-  transition: left 0.3s ease;
+  transition: left 0.3s ease, top 0.3s ease;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
@@ -901,22 +934,13 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
   opacity: 0.6;
 }
 
-/* Shift panels when editor is open */
-body.editor-open .fp-shortcut-info {
-  left: calc(var(--editor-width, 450px) + 10px);
-}
-
-body.editor-open .fp-warnings-panel {
-  left: calc(var(--editor-width, 450px) + 10px);
-}
-
-body.editor-open .fp-overlay-2d {
-  left: calc(var(--editor-width, 450px) + 10px);
-}
-
-body.editor-open .fp-floor-summary-panel {
-  left: calc(var(--editor-width, 450px) + 10px);
-}
+/* 
+ * Note: Panel positioning is now handled by CSS custom properties 
+ * (--layout-editor-width, --layout-header-offset, etc.)
+ * set by the LayoutManager class.
+ * The body.editor-open class is still set for backward compatibility
+ * but positioning is controlled by the CSS variables.
+ */
 
 /* === Header Bar === */
 .fp-header-bar {
@@ -2070,7 +2094,7 @@ body.dark-theme .fp-drag-drop-overlay__hint {
 /* === Editor Panel === */
 .fp-editor-panel {
   position: absolute;
-  top: 40px; /* Below header bar */
+  top: var(--layout-header-offset, 0);
   left: 0;
   bottom: 0;
   background: rgba(255, 255, 255, 0.98);
@@ -2078,7 +2102,7 @@ body.dark-theme .fp-drag-drop-overlay__hint {
   display: flex;
   flex-direction: column;
   z-index: 200;
-  transition: width 0.2s ease, transform 0.2s ease;
+  transition: width 0.25s ease, top 0.3s ease;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -2087,55 +2111,24 @@ body.dark-theme .fp-editor-panel {
   border-right-color: #404040;
 }
 
+/* Collapsed state: shrink to 0 width, only collapse button remains visible */
 .fp-editor-panel--collapsed {
-  width: 40px !important;
-  bottom: auto !important;  /* Don't span full height */
-  height: auto !important;  /* Size to content */
+  width: 0 !important;
+  border-right: none;
+  background: transparent;
+  overflow: visible;  /* Allow collapse button to show outside */
 }
 
+/* Hide all content when collapsed */
 .fp-editor-panel--collapsed .fp-editor-panel__editor,
 .fp-editor-panel--collapsed .fp-editor-panel__status,
-.fp-editor-panel--collapsed .fp-editor-panel__title-section,
-.fp-editor-panel--collapsed .fp-editor-panel__login-btn {
-  display: none !important;
-}
-
-/* When collapsed, keep header compact at top */
 .fp-editor-panel--collapsed .fp-editor-panel__header {
-  flex: none;
-  flex-direction: row;
-  justify-content: center;
-  align-items: center;
-  padding: 6px;
-  border-bottom: none;
-  background: transparent;
+  display: none;
 }
 
-.fp-editor-panel--collapsed .fp-editor-panel__actions {
-  width: auto;
-  justify-content: center;
-}
-
-.fp-editor-panel--collapsed .fp-editor-panel__collapse-btn {
-  width: 28px;
-  height: 28px;
-  background: rgba(30, 30, 30, 0.9);
-  border-radius: 6px;
-  font-size: 14px;
-  color: #fff;
-}
-
-body:not(.dark-theme) .fp-editor-panel--collapsed .fp-editor-panel__collapse-btn {
-  background: rgba(50, 50, 50, 0.9);
-  color: #fff;
-}
-
-.fp-editor-panel--collapsed .fp-editor-panel__collapse-btn:hover {
-  background: rgba(50, 50, 50, 0.95);
-}
-
-body:not(.dark-theme) .fp-editor-panel--collapsed .fp-editor-panel__collapse-btn:hover {
-  background: rgba(70, 70, 70, 0.95);
+/* When collapsed, the resize handle is hidden */
+.fp-editor-panel--collapsed .fp-editor-panel__resize-handle {
+  display: none;
 }
 
 .fp-editor-panel__header {
@@ -2229,34 +2222,41 @@ body.dark-theme .fp-editor-panel__login-btn:hover {
   background: rgba(100, 180, 255, 0.25);
 }
 
+/* Collapse button - tab-like shape positioned on the panel edge */
 .fp-editor-panel__collapse-btn {
+  position: absolute;
+  right: 0;  /* Flush with panel edge when expanded */
+  top: 50%;
+  transform: translateX(100%) translateY(-50%);  /* Push outside the panel */
   display: flex;
   align-items: center;
   justify-content: center;
   width: 28px;
-  height: 28px;
+  height: 56px;
   padding: 0;
-  background: transparent;
+  /* Smooth transition for any style changes */
+  transition: background 0.15s ease, right 0.25s ease;
+  background: rgba(30, 30, 30, 0.95);
   border: none;
-  border-radius: 6px;
-  font-size: 12px;
-  color: #666;
+  /* Tab-like shape: rounded on LEFT side when expanded (button extends right from panel) */
+  border-radius: 0 8px 8px 0;
+  font-size: 14px;
+  color: #fff;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
+  transition: background 0.15s, border-radius 0.15s;
+  z-index: 210;
 }
 
 .fp-editor-panel__collapse-btn:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: #333;
+  background: rgba(50, 50, 50, 0.95);
 }
 
-body.dark-theme .fp-editor-panel__collapse-btn {
-  color: #999;
+body:not(.dark-theme) .fp-editor-panel__collapse-btn {
+  background: rgba(40, 40, 40, 0.95);
 }
 
-body.dark-theme .fp-editor-panel__collapse-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+body:not(.dark-theme) .fp-editor-panel__collapse-btn:hover {
+  background: rgba(60, 60, 60, 0.95);
 }
 
 .fp-editor-panel__editor {
@@ -2292,4 +2292,41 @@ body.dark-theme .fp-editor-panel__status-text {
 
 body.dark-theme .fp-editor-panel__status-text--error {
   color: #f85149;
+}
+
+/* === Editor Panel Resize Handle === */
+.fp-editor-panel__resize-handle {
+  position: absolute;
+  top: 0;
+  right: -6px;
+  width: 12px;
+  height: 100%;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 220;
+}
+
+.fp-editor-panel__resize-handle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 100%;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.fp-editor-panel__resize-handle:hover::before,
+.fp-editor-panel__resize-handle.active::before {
+  background: #4a90d9;
+}
+
+.fp-editor-panel--collapsed .fp-editor-panel__resize-handle {
+  display: none;
+}
+
+.fp-editor-panel--resizing {
+  transition: none !important;
 }

@@ -26,6 +26,7 @@ import {
 } from './ui/index.js';
 import { parseFloorplanDSLWithDocument, isFloorplanFile, isJsonFile } from './dsl-parser.js';
 import type { DslEditorInstance } from './dsl-editor.js';
+import { getLayoutManager, type LayoutManager } from './layout-manager.js';
 
 // Inject shared styles
 injectStyles();
@@ -112,6 +113,7 @@ export class FloorplanApp extends BaseViewer {
   // Managers
   private _selectionManager: SelectionManager | null = null;
   private overlay2DManager: Overlay2DManager | null = null;
+  private layoutManager: LayoutManager;
   
   // State
   private editorPanelOpen: boolean;
@@ -161,6 +163,14 @@ export class FloorplanApp extends BaseViewer {
     this.onEditorToggleCallback = options.onEditorToggle;
     this.onParseWarningsCallback = options.onParseWarnings;
     
+    // Initialize layout manager (singleton)
+    this.layoutManager = getLayoutManager();
+    
+    // If header auto-hide is enabled, header starts hidden
+    if (this.headerAutoHide) {
+      this.layoutManager.setHeaderVisible(false);
+    }
+    
     // Initialize selection manager if enabled or toggleable
     // (We need the manager to exist for V key toggle to work)
     if (this.enableSelection || this.allowSelectionToggle) {
@@ -183,6 +193,7 @@ export class FloorplanApp extends BaseViewer {
       getCurrentTheme: () => this.currentTheme,
       getFloorplanData: () => this.currentFloorplanData,
       getVisibleFloorIds: () => this._floorManager.getVisibleFloorIds(),
+      onVisibilityChange: (visible) => this.layoutManager.setOverlay2DVisible(visible),
     });
     
     // Setup UI components
@@ -244,6 +255,7 @@ export class FloorplanApp extends BaseViewer {
       onEditorToggle: () => this.toggleEditorPanel(),
       onThemeToggle: () => this.handleThemeToggle(),
       onCommandPaletteClick: () => this.commandPalette?.show(),
+      onVisibilityChange: (visible) => this.layoutManager.setHeaderVisible(visible),
     });
     
     // Create file dropdown

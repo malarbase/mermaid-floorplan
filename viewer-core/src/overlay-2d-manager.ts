@@ -11,6 +11,8 @@ export interface Overlay2DCallbacks {
     getCurrentTheme: () => ViewerTheme;
     getFloorplanData: () => JsonExport | null;
     getVisibleFloorIds: () => string[];
+    /** Called when the 2D overlay visibility changes */
+    onVisibilityChange?: (visible: boolean) => void;
 }
 
 export class Overlay2DManager {
@@ -124,6 +126,8 @@ export class Overlay2DManager {
                 this.updateOpacity();
             }
         }
+        // Notify callback of visibility change
+        this.callbacks.onVisibilityChange?.(this.overlayVisible);
     }
     
     /**

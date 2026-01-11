@@ -28,6 +28,8 @@ export interface HeaderBarConfig {
   onThemeToggle?: () => void;
   /** Callback when command palette trigger is clicked */
   onCommandPaletteClick?: () => void;
+  /** Callback when header visibility changes (for auto-hide) */
+  onVisibilityChange?: (visible: boolean) => void;
 }
 
 export interface HeaderBar {
@@ -67,6 +69,7 @@ export function createHeaderBar(config: HeaderBarConfig = {}): HeaderBar {
     onEditorToggle,
     onThemeToggle,
     onCommandPaletteClick,
+    onVisibilityChange,
   } = config;
 
   // Create header container
@@ -138,6 +141,17 @@ export function createHeaderBar(config: HeaderBarConfig = {}): HeaderBar {
     onCommandPaletteClick?.();
   };
 
+  // Track visibility for callbacks
+  let currentlyVisible = !autoHide; // Visible by default, hidden if auto-hide enabled
+
+  // Helper to update body class for CSS-based panel positioning
+  const updateBodyClass = (visible: boolean) => {
+    document.body.classList.toggle('header-visible', visible);
+  };
+
+  // Initialize body class based on initial visibility
+  updateBodyClass(currentlyVisible);
+
   // Auto-hide: show on hover zone
   const handleHoverZoneEnter = () => {
     header.classList.add('fp-header-bar--visible');
@@ -145,12 +159,22 @@ export function createHeaderBar(config: HeaderBarConfig = {}): HeaderBar {
       clearTimeout(autoHideTimeout);
       autoHideTimeout = undefined;
     }
+    if (!currentlyVisible) {
+      currentlyVisible = true;
+      updateBodyClass(true);
+      onVisibilityChange?.(true);
+    }
   };
 
   const handleHeaderLeave = () => {
     if (isAutoHide) {
       autoHideTimeout = window.setTimeout(() => {
         header.classList.remove('fp-header-bar--visible');
+        if (currentlyVisible) {
+          currentlyVisible = false;
+          updateBodyClass(false);
+          onVisibilityChange?.(false);
+        }
       }, 500);
     }
   };
