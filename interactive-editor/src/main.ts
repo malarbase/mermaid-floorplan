@@ -92,6 +92,7 @@ const dslEditor = createDslEditor({
 const editor3d = new InteractiveEditor({
   containerId: 'app',
   enableSelection: true,
+  selectionDebug: true,  // Enable debug logging for selection
 });
 
 // Create 2D overlay manager
@@ -413,7 +414,7 @@ if (editor3d.selectionManager) {
   editorSync = new EditorViewerSync(
     dslEditor.editor,
     editor3d.selectionManager,
-    { debug: false }
+    { debug: true }  // Enable debug logging to diagnose selection issues
   );
   
   // Handle editor cursor → 3D selection

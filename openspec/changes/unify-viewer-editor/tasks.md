@@ -49,7 +49,7 @@
 
 - [x] 7.1 Update `interactive-editor/src/main.ts` - consolidated inline JS to TypeScript module
 - [x] 7.2 Reduce `interactive-editor/index.html` to minimal shell - removed inline script
-- [ ] 7.3 Verify all editor features work (selection, properties, DSL sync)
+- [x] 7.3 Verify all editor features work (selection, properties, DSL sync) - Fixed: `generateFloorWithPenetrations` override
 - [ ] 7.4 Verify auth gating callback is invoked correctly
 
 ## 8. Testing and Cleanup

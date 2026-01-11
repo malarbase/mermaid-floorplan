@@ -516,7 +516,7 @@ export abstract class BaseViewer implements SceneContext {
    * Returns a box in world space that can be used to cut holes in the floor above.
    * For multi-flight stairs, computes penetration at the TOP (final flight) of the stair.
    */
-  private computeStairPenetration(stair: { x: number; z: number; width?: number; shape: { type: string; direction?: string; entry?: string; runs?: number[]; outerRadius?: number; segments?: Array<{ type: string; steps?: number; width?: number; direction?: string; landing?: [number, number] }> } }, tread?: number, rise?: number): THREE.Box3 {
+  protected computeStairPenetration(stair: { x: number; z: number; width?: number; shape: { type: string; direction?: string; entry?: string; runs?: number[]; outerRadius?: number; segments?: Array<{ type: string; steps?: number; width?: number; direction?: string; landing?: [number, number] }> } }, tread?: number, rise?: number): THREE.Box3 {
     const DEFAULT_WIDTH = 1.0; // meters
     const DEFAULT_TREAD = 0.28; // meters
     const DEFAULT_RISER = 0.18; // meters
@@ -744,7 +744,7 @@ export abstract class BaseViewer implements SceneContext {
   /**
    * Compute bounding box for a lift penetration.
    */
-  private computeLiftPenetration(lift: { x: number; z: number; width: number; height: number }): THREE.Box3 {
+  protected computeLiftPenetration(lift: { x: number; z: number; width: number; height: number }): THREE.Box3 {
     return new THREE.Box3(
       new THREE.Vector3(lift.x, 0, lift.z),
       new THREE.Vector3(lift.x + lift.width, 10, lift.z + lift.height) // height doesn't matter for horizontal cutting
