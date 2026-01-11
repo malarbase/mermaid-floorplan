@@ -486,7 +486,7 @@
       /* 2D Overlay Mini-map */
       #overlay-2d {
         position: absolute;
-        bottom: 80px;
+        bottom: 10px;
         left: 10px;
         width: 280px;
         height: 220px;
@@ -497,7 +497,7 @@
         z-index: 50;
         display: none;
         border: 1px solid #444;
-        transition: left 0.3s ease;
+        transition: left 0.3s ease, bottom 0.3s ease;
       }
       
       #overlay-2d.visible {
@@ -590,24 +590,34 @@
         left: calc(var(--editor-width, 450px) + 10px);
       }
       
-      body.editor-open .fp-shortcut-info {
-        left: calc(var(--editor-width, 450px) + 10px);
+      /* Shortcut info panel positioned at bottom-right - doesn't need to move with editor */
+      .fp-shortcut-info {
+        top: auto !important;
+        left: auto !important;
+        bottom: 10px;
+        right: 320px;  /* Offset from control panel on the right */
       }
       
       body.editor-open #floor-summary {
         left: calc(var(--editor-width, 450px) + 10px);
       }
       
-      /* Floor Summary Panel - positioned at bottom-left to avoid control panel */
+      body.editor-open .properties-panel {
+        left: calc(var(--editor-width, 450px) + 16px);
+      }
+      
+      /* Floor Summary Panel - positioned above the 2D overlay when visible */
       #floor-summary {
         position: absolute;
-        bottom: 10px;
+        bottom: 240px;  /* Stack above 2D overlay (10px + 220px + 10px gap) */
         left: 10px;
         background: rgba(30, 30, 30, 0.95);
         border-radius: 8px;
         padding: 12px 16px;
         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         font-size: 12px;
+        z-index: 55;  /* Above 2D overlay (z-index: 50) */
+        transition: left 0.3s ease, bottom 0.3s ease;
         max-width: 300px;
         display: none;
         border: 1px solid #444;
@@ -791,16 +801,17 @@
       /* Properties Panel */
       .properties-panel {
         position: absolute;
-        top: 16px;
+        top: var(--properties-panel-top, 16px);
         left: 16px;
         background: rgba(0, 0, 0, 0.9);
         color: white;
         border-radius: 8px;
         min-width: 220px;
         max-width: 280px;
-        z-index: 100;
+        z-index: 95;  /* Below warnings panel (z-index: 100) */
         border: 1px solid #333;
         display: none;
+        transition: top 0.3s ease, left 0.3s ease;
       }
       
       .properties-panel-content {

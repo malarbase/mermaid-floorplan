@@ -119,6 +119,33 @@ const validationWarningsUI = createValidationWarningsUI({
 });
 document.body.appendChild(validationWarningsUI.element);
 
+// Helper to update properties panel position based on warnings panel height
+function updatePropertiesPanelPosition(): void {
+  const warningsEl = validationWarningsUI.element;
+  const isWarningsVisible = warningsEl.style.display !== 'none';
+  
+  if (isWarningsVisible) {
+    // Get the bottom of the warnings panel and add some margin
+    const warningsRect = warningsEl.getBoundingClientRect();
+    const newTop = warningsRect.bottom + 10; // 10px gap below warnings
+    document.documentElement.style.setProperty('--properties-panel-top', `${newTop}px`);
+  } else {
+    // Reset to default position when warnings are hidden
+    document.documentElement.style.setProperty('--properties-panel-top', '16px');
+  }
+}
+
+// Watch for warnings panel size changes (collapse/expand)
+const warningsObserver = new MutationObserver(() => {
+  requestAnimationFrame(updatePropertiesPanelPosition);
+});
+warningsObserver.observe(validationWarningsUI.element, { 
+  attributes: true, 
+  attributeFilter: ['class', 'style'],
+  childList: true,
+  subtree: true
+});
+
 // Create shortcut info panel
 const shortcutInfoUI = createShortcutInfoUI({
   title: 'Floorplan Editor',
@@ -265,11 +292,15 @@ async function parseAndUpdate(content: string) {
         }));
       
       validationWarningsUI.update(warnings);
+      // Update properties panel position after warnings update
+      requestAnimationFrame(updatePropertiesPanelPosition);
     } catch (docErr) {
       console.warn('Failed to create Langium document:', docErr);
       currentLangiumDoc = null;
       overlay2DManager.setLangiumDocument(null);
       validationWarningsUI.clear();
+      // Update properties panel position after warnings clear
+      requestAnimationFrame(updatePropertiesPanelPosition);
     }
     
     // Update entity locations for sync
@@ -759,7 +790,7 @@ function updateFloorListUI() {
     const visible = floorManager ? floorManager.getFloorVisibility(floorId) : true;
     
     const item = document.createElement('div');
-    item.className = 'floor-item';
+    item.className = 'fp-floor-item';
     
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
