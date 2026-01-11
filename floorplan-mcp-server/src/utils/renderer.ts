@@ -1,7 +1,7 @@
 /**
  * Floorplan rendering utilities for MCP server
  * 
- * This module uses the shared rendering from the floorplans-language package.
+ * This module uses the shared rendering from the floorplan-language package.
  * Following Mermaid's convention: grammar + rendering in same diagram folder.
  * 
  * The language package exports everything needed for rendering,
@@ -10,8 +10,8 @@
 
 import { Resvg } from "@resvg/resvg-js";
 import type { LangiumDocument } from "langium";
-import type { Floorplan, RenderOptions, AreaUnit, LengthUnit } from "floorplans-language";
-import { render } from "floorplans-language";
+import type { Floorplan, RenderOptions, AreaUnit, LengthUnit } from "floorplan-language";
+import { render } from "floorplan-language";
 
 export interface GenerateSvgOptions {
   /** Floor index to render (default: 0) */
@@ -34,7 +34,7 @@ export interface GenerateSvgOptions {
 
 /**
  * Generate SVG from parsed floorplan document
- * Uses the shared renderer from floorplans-language
+ * Uses the shared renderer from floorplan-language
  */
 export function generateSvg(
   document: LangiumDocument<Floorplan>,

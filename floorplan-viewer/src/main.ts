@@ -11,7 +11,7 @@
  * - Keyboard navigation
  * - Collapsible read-only DSL editor panel
  * 
- * This uses the unified FloorplanApp class from viewer-core with
+ * This uses the unified FloorplanApp class from floorplan-viewer-core with
  * viewer-only feature flags (no editing, no auth required).
  */
 
@@ -33,7 +33,7 @@ import {
   createDslEditor,
   createEditorPanel,
   getLayoutManager,
-} from 'viewer-core';
+} from 'floorplan-viewer-core';
 
 // Inject shared styles
 injectStyles();
@@ -124,12 +124,12 @@ floorSummary.innerHTML = `
 document.body.appendChild(floorSummary);
 
 // ========================================
-// Read-Only Editor Panel (using viewer-core component)
+// Read-Only Editor Panel (using floorplan-viewer-core component)
 // ========================================
 
 // Track editor state (used by editorPanel callbacks)
 
-// Create read-only editor panel using viewer-core's component
+// Create read-only editor panel using floorplan-viewer-core's component
 const editorPanel = createEditorPanel({
   initiallyOpen: false,  // Start collapsed in viewer
   editable: false,       // Read-only mode

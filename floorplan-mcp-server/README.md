@@ -1,4 +1,4 @@
-# Floorplans MCP Server
+# Floorplan MCP Server
 
 An MCP (Model Context Protocol) server that enables AI assistants to render, validate, and modify floorplan DSL code. Returns **PNG images**, **SVG vectors**, or **3D PNG renders** for visual analysis.
 
@@ -22,7 +22,7 @@ An MCP (Model Context Protocol) server that enables AI assistants to render, val
 ```bash
 # From the workspace root
 npm install
-npm run build --workspace mcp-server
+npm run build --workspace floorplan-mcp-server
 ```
 
 ## Usage
@@ -36,7 +36,7 @@ Add to your `.cursor/mcp.json`:
   "mcpServers": {
     "floorplans": {
       "command": "node",
-      "args": ["/path/to/mermaid-floorplan/mcp-server/out/index.js"]
+      "args": ["/path/to/mermaid-floorplan/floorplan-mcp-server/out/index.js"]
     }
   }
 }
@@ -51,7 +51,7 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "floorplans": {
       "command": "node",
-      "args": ["/path/to/mermaid-floorplan/mcp-server/out/index.js"]
+      "args": ["/path/to/mermaid-floorplan/floorplan-mcp-server/out/index.js"]
     }
   }
 }
@@ -303,7 +303,7 @@ The 3D PNG rendering feature (`format: "3d-png"`) uses Puppeteer with headless C
 ```bash
 # Dependencies are installed automatically with npm install
 # Puppeteer will download Chromium automatically on first install
-npm install --workspace mcp-server
+npm install --workspace floorplan-mcp-server
 ```
 
 ### Why Puppeteer?
@@ -317,13 +317,13 @@ The 3D renderer uses Puppeteer instead of headless-gl because:
 
 ```bash
 # Build
-npm run build --workspace mcp-server
+npm run build --workspace floorplan-mcp-server
 
 # Clean build
-npm run build:clean --workspace mcp-server
+npm run build:clean --workspace floorplan-mcp-server
 
 # Run directly
-node mcp-server/out/index.js
+node floorplan-mcp-server/out/index.js
 ```
 
 ## DSL Quick Reference

@@ -2,7 +2,7 @@
  * Spatial analysis utilities for computing relative positions from absolute coordinates
  */
 
-import { type Room, getRoomSize } from "floorplans-language";
+import { type Room, getRoomSize } from "floorplan-language";
 
 export type Direction =
   | "right-of"

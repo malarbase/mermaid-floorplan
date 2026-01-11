@@ -5,11 +5,11 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const sharedStylesPath = resolve(__dirname, '../viewer-core/src/ui/shared-styles.css');
+const sharedStylesPath = resolve(__dirname, '../floorplan-viewer-core/src/ui/shared-styles.css');
 
 // Paths to workspace packages for direct source imports during development
-const viewerCoreSrc = resolve(__dirname, '../viewer-core/src');
-const languageSrc = resolve(__dirname, '../language/src');
+const viewerCoreSrc = resolve(__dirname, '../floorplan-viewer-core/src');
+const languageSrc = resolve(__dirname, '../floorplan-language/src');
 const floorplan3DCoreSrc = resolve(__dirname, '../floorplan-3d-core/src');
 const floorplanCommonSrc = resolve(__dirname, '../floorplan-common/src');
 
@@ -43,8 +43,8 @@ export default defineConfig({
     alias: {
       // During development, import directly from source files for hot reload
       // This bypasses the compiled 'out/' directories
-      'viewer-core': viewerCoreSrc,
-      'floorplans-language': languageSrc,
+      'floorplan-viewer-core': viewerCoreSrc,
+      'floorplan-language': languageSrc,
       'floorplan-3d-core': floorplan3DCoreSrc,
       'floorplan-common': floorplanCommonSrc,
     },
@@ -54,7 +54,7 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: '../viewer-core/src/ui/shared-styles.css',
+          src: '../floorplan-viewer-core/src/ui/shared-styles.css',
           dest: '.'  // copies to dist root
         }
       ]
@@ -68,7 +68,7 @@ export default defineConfig({
     },
     watch: {
       // Watch workspace package source directories for changes
-      ignored: ['!**/viewer-core/src/**', '!**/language/src/**', '!**/floorplan-3d-core/src/**', '!**/floorplan-common/src/**'],
+      ignored: ['!**/floorplan-viewer-core/src/**', '!**/floorplan-language/src/**', '!**/floorplan-3d-core/src/**', '!**/floorplan-common/src/**'],
     },
   },
 });

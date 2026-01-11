@@ -18,9 +18,9 @@ import {
   createValidationWarningsUI,
   createShortcutInfoUI,
   injectStyles,
-} from 'viewer-core';
+} from 'floorplan-viewer-core';
 import { EmptyFileSystem, URI, type LangiumDocument } from 'langium';
-import { createFloorplansServices, convertFloorplanToJson, type Floorplan } from 'floorplans-language';
+import { createFloorplansServices, convertFloorplanToJson, type Floorplan } from 'floorplan-language';
 import { InteractiveEditor } from './interactive-editor.js';
 import { EditorViewerSync } from './editor-viewer-sync.js';
 import { PropertiesPanel } from './properties-panel.js';

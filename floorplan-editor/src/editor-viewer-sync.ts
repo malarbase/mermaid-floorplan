@@ -8,7 +8,7 @@
  * - Error state management
  */
 import * as monaco from 'monaco-editor';
-import type { SelectableObject, SourceRange, SelectionManager } from 'viewer-core';
+import type { SelectableObject, SourceRange, SelectionManager } from 'floorplan-viewer-core';
 
 /**
  * Configuration for EditorViewerSync

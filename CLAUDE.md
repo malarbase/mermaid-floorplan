@@ -26,7 +26,7 @@ This project implements a floorplan diagram DSL following [Mermaid.js convention
 ### Package Structure
 
 ```
-language/                           # floorplans-language (npm package)
+language/                           # floorplan-language (npm package)
 ├── src/diagrams/floorplans/        # ← Diagram folder (grammar + rendering together)
 │   ├── floorplans.langium          # Langium grammar
 │   ├── renderer.ts                 # render(), renderFloor(), renderToFile()
@@ -37,10 +37,10 @@ language/                           # floorplans-language (npm package)
 
 mcp-server/                         # floorplans-mcp-server (AI tools)
 ├── src/tools/                      # render_floorplan, validate_floorplan, modify_floorplan
-└── src/utils/renderer.ts           # Imports from floorplans-language + svgToPng
+└── src/utils/renderer.ts           # Imports from floorplan-language + svgToPng
 
 src/                                # Web app (Monaco editor)
-└── renderer.ts                     # Imports from floorplans-language
+└── renderer.ts                     # Imports from floorplan-language
 ```
 
 ### Single Source of Truth
@@ -48,7 +48,7 @@ src/                                # Web app (Monaco editor)
 All rendering code lives in `language/src/diagrams/floorplans/`. Consumers import:
 
 ```typescript
-import { render, renderToFile, getStyles, createFloorplansServices } from "floorplans-language";
+import { render, renderToFile, getStyles, createFloorplansServices } from "floorplan-language";
 ```
 
 ### Key Files

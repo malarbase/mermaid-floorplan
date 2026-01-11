@@ -1,7 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
 import { parseFloorplan, validateFloorplan } from "../utils/parser.js";
-import { convertFloorplanToJson } from "floorplans-language";
+import { convertFloorplanToJson } from "floorplan-language";
 
 const AnalyzeInputSchema = z.object({
   dsl: z.string().describe("Floorplan DSL code to analyze"),

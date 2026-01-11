@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, test } from "vitest";
 import { EmptyFileSystem, type LangiumDocument } from "langium";
 import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices } from "floorplans-language";
+import type { Floorplan } from "floorplan-language";
+import { createFloorplansServices } from "floorplan-language";
 import { extractVersionFromAST, parseVersion, resolveVersion } from "../src/diagrams/floorplans/version-resolver.js";
 
 let services: ReturnType<typeof createFloorplansServices>;

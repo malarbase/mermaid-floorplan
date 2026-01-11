@@ -7,7 +7,7 @@
  * - Properties panel for editing
  * - Branching history (undo/redo)
  * 
- * Uses shared WallGenerator from viewer-core for proper:
+ * Uses shared WallGenerator from floorplan-viewer-core for proper:
  * - Wall ownership detection (no duplicate walls)
  * - CSG operations for door/window cutouts
  * - Multi-floor elevation stacking
@@ -27,7 +27,7 @@ import {
   type SceneContext,
   type SelectableObject,
   type MarqueeMode,
-} from 'viewer-core';
+} from 'floorplan-viewer-core';
 
 // Inject shared styles before anything else
 injectStyles();

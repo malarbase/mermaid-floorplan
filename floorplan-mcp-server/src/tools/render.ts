@@ -3,7 +3,7 @@ import { z } from "zod";
 import { parseFloorplan, extractAllRoomMetadata, validateFloorplan, type ValidationWarning } from "../utils/parser.js";
 import { generateSvg, svgToPng } from "../utils/renderer.js";
 import { render3DToPng, formatSceneBounds } from "../utils/renderer3d.js";
-import { convertFloorplanToJson, type FloorplanSummary, type FloorMetrics } from "floorplans-language";
+import { convertFloorplanToJson, type FloorplanSummary, type FloorMetrics } from "floorplan-language";
 
 const RenderInputSchema = z.object({
   dsl: z.string().describe("Floorplan DSL code to render"),

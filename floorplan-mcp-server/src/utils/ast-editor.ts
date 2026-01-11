@@ -5,7 +5,7 @@
 
 import type { LangiumDocument, CstNode, LeafCstNode } from "langium";
 import { isCompositeCstNode, isLeafCstNode } from "langium";
-import type { Floorplan, Room, Floor } from "floorplans-language";
+import type { Floorplan, Room, Floor } from "floorplan-language";
 
 export interface TextEdit {
   offset: number;

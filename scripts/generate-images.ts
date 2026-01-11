@@ -20,8 +20,8 @@
 
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
-import type { Floorplan, AreaUnit, LengthUnit } from "floorplans-language";
-import { createFloorplansServices, renderFloor, render, resolveVariables, buildStyleContext, convertFloorplanToJson, formatSummaryTable } from "floorplans-language";
+import type { Floorplan, AreaUnit, LengthUnit } from "floorplan-language";
+import { createFloorplansServices, renderFloor, render, resolveVariables, buildStyleContext, convertFloorplanToJson, formatSummaryTable } from "floorplan-language";
 import { svgToPng } from "floorplans-mcp-server/utils/renderer";
 import * as fs from "fs";
 import * as path from "path";

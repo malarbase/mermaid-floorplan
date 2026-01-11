@@ -1,15 +1,15 @@
-# viewer-core
+# floorplan-viewer-core
 
 Shared abstractions and UI components for the floorplan viewer and interactive-editor packages.
 
 ## Overview
 
-`viewer-core` provides a unified library of UI components that both `viewer` and `interactive-editor` can use without style duplication. All shared UI styles use the `fp-*` class prefix convention.
+`floorplan-viewer-core` provides a unified library of UI components that both `viewer` and `interactive-editor` can use without style duplication. All shared UI styles use the `fp-*` class prefix convention.
 
 ## Installation
 
 ```bash
-npm install viewer-core
+npm install floorplan-viewer-core
 ```
 
 ## Usage
@@ -19,7 +19,7 @@ npm install viewer-core
 Before using any UI components, inject the shared styles:
 
 ```typescript
-import { injectStyles } from 'viewer-core';
+import { injectStyles } from 'floorplan-viewer-core';
 
 // Inject once at app startup
 injectStyles();
@@ -41,7 +41,7 @@ import {
   createCameraControlsUI,
   createDialogUI,
   createPropertiesPanelUI 
-} from 'viewer-core';
+} from 'floorplan-viewer-core';
 
 // Create a control panel with sections
 const panel = createControlPanel({ id: 'controls' });
@@ -175,7 +175,7 @@ import type {
   DialogField,
   PropertiesPanelUIOptions,
   PropertyDefinition 
-} from 'viewer-core';
+} from 'floorplan-viewer-core';
 
 const config: DialogConfig = {
   title: 'My Dialog',

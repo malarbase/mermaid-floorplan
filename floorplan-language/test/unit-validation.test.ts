@@ -4,8 +4,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { EmptyFileSystem, type LangiumDocument } from "langium";
 import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices } from "floorplans-language";
+import type { Floorplan } from "floorplan-language";
+import { createFloorplansServices } from "floorplan-language";
 
 let services: ReturnType<typeof createFloorplansServices>;
 let parse: ReturnType<typeof parseHelper<Floorplan>>;

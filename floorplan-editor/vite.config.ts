@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const sharedStylesPath = resolve(__dirname, '../viewer-core/src/ui/shared-styles.css');
+const sharedStylesPath = resolve(__dirname, '../floorplan-viewer-core/src/ui/shared-styles.css');
 
 // Custom plugin to serve shared-styles.css during dev
 function serveSharedStyles(): Plugin {
@@ -43,7 +43,7 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         {
-          src: '../viewer-core/src/ui/shared-styles.css',
+          src: '../floorplan-viewer-core/src/ui/shared-styles.css',
           dest: '.'  // copies to dist root
         }
       ]

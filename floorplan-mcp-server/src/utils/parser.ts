@@ -9,7 +9,7 @@ import {
   validateSizeReferences,
   getRoomSize,
   type ResolvedPosition,
-} from "floorplans-language";
+} from "floorplan-language";
 
 const services = createFloorplansServices(EmptyFileSystem);
 const parse = parseHelper<Floorplan>(services.Floorplans);

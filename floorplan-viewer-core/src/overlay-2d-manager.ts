@@ -2,8 +2,8 @@
  * 2D Overlay Manager - Handles the 2D SVG overlay rendering and interactions
  */
 import type { LangiumDocument } from 'langium';
-import type { Floorplan } from 'floorplans-language';
-import { render as render2D, type RenderOptions } from 'floorplans-language';
+import type { Floorplan } from 'floorplan-language';
+import { render as render2D, type RenderOptions } from 'floorplan-language';
 import type { ViewerTheme } from 'floorplan-3d-core';
 import type { JsonExport } from 'floorplan-3d-core';
 

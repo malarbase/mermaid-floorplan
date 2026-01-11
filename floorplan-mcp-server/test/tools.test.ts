@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { parseFloorplan, validateFloorplan } from '../src/utils/parser.js';
 import { generateSvg } from '../src/utils/renderer.js';
-import { convertFloorplanToJson } from 'floorplans-language';
+import { convertFloorplanToJson } from 'floorplan-language';
 
 const SIMPLE_FLOORPLAN = `
 floorplan

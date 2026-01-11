@@ -6,12 +6,12 @@
   "private": true,
   "scripts": {
     "clean": "npm run clean --workspaces",
-    "dev": "npm run --workspace floorplans-viewer dev",
+    "dev": "npm run --workspace floorplan-viewer dev",
     "build": "echo | npm run langium:generate && npm run build --workspaces",
     "build:all": "echo | npm run langium:generate && npm run build --workspaces",
-    "langium:generate": "npm run --workspace language langium:generate",
-    "langium:watch": "npm run --workspace language langium:watch",
-    "test": "npm run --workspace language test && npm run --workspace mcp-server test"
+    "langium:generate": "npm run --workspace floorplan-language langium:generate",
+    "langium:watch": "npm run --workspace floorplan-language langium:watch",
+    "test": "npm run --workspace floorplan-language test && npm run --workspace floorplan-mcp-server test"
   },
   "devDependencies": {
     "langium": "^4.0.0",
@@ -26,12 +26,12 @@
   },
   "workspaces": [
     "floorplan-common",
-    "language",
+    "floorplan-language",
     "floorplan-3d-core",
-    "viewer-core",
-    "mcp-server",
-    "viewer",
-    "interactive-editor"
+    "floorplan-viewer-core",
+    "floorplan-mcp-server",
+    "floorplan-viewer",
+    "floorplan-editor"
   ],
   "dependencies": {
     "@speclife/cli": "^0.6.1"

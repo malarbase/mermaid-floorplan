@@ -1,8 +1,8 @@
 import { beforeAll, describe, expect, test } from "vitest";
 import { EmptyFileSystem, type LangiumDocument } from "langium";
 import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, render, generateDoor, generateConnections } from "floorplans-language";
+import type { Floorplan } from "floorplan-language";
+import { createFloorplansServices, render, generateDoor, generateConnections } from "floorplan-language";
 
 let services: ReturnType<typeof createFloorplansServices>;
 let parse: ReturnType<typeof parseHelper<Floorplan>>;
@@ -263,7 +263,7 @@ describe("Metrics Computation Tests", () => {
     `;
     
     const document = await parse(input);
-    const { convertFloorplanToJson } = await import("floorplans-language");
+    const { convertFloorplanToJson } = await import("floorplan-language");
     const result = convertFloorplanToJson(document.parseResult.value);
     
     expect(result.data).toBeDefined();
@@ -279,7 +279,7 @@ describe("Metrics Computation Tests", () => {
     `;
     
     const document = await parse(input);
-    const { convertFloorplanToJson } = await import("floorplans-language");
+    const { convertFloorplanToJson } = await import("floorplan-language");
     const result = convertFloorplanToJson(document.parseResult.value);
     
     expect(result.data).toBeDefined();
@@ -298,7 +298,7 @@ describe("Metrics Computation Tests", () => {
     `;
     
     const document = await parse(input);
-    const { convertFloorplanToJson } = await import("floorplans-language");
+    const { convertFloorplanToJson } = await import("floorplan-language");
     const result = convertFloorplanToJson(document.parseResult.value);
     
     expect(result.data).toBeDefined();
@@ -326,7 +326,7 @@ describe("Metrics Computation Tests", () => {
     `;
     
     const document = await parse(input);
-    const { convertFloorplanToJson } = await import("floorplans-language");
+    const { convertFloorplanToJson } = await import("floorplan-language");
     const result = convertFloorplanToJson(document.parseResult.value);
     
     expect(result.data).toBeDefined();

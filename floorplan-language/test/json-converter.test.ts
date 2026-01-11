@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, convertFloorplanToJson } from "floorplans-language";
+import type { Floorplan } from "floorplan-language";
+import { createFloorplansServices, convertFloorplanToJson } from "floorplan-language";
 
 let parse: ReturnType<typeof parseHelper<Floorplan>>;
 

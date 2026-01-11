@@ -10,7 +10,7 @@
  * - Navigation methods (goToLine, setSelection)
  */
 import * as monaco from 'monaco-editor';
-import { monarchConfig } from 'floorplans-language';
+import { monarchConfig } from 'floorplan-language';
 
 /**
  * Configuration for the DSL editor

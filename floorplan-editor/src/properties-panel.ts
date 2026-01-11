@@ -6,7 +6,7 @@
  * - Supports editing common properties (position, size, style)
  * - Emits change events that can be applied to the Monaco editor
  */
-import type { SelectableObject, SourceRange } from 'viewer-core';
+import type { SelectableObject, SourceRange } from 'floorplan-viewer-core';
 
 /**
  * Property definition for rendering form controls.
@@ -310,7 +310,7 @@ export class PropertiesPanel {
 
   /**
    * Get CSS styles for the properties panel.
-   * @deprecated Styles are now in viewer-core/src/ui/shared-styles.css
+   * @deprecated Styles are now in floorplan-viewer-core/src/ui/shared-styles.css
    * This method is kept for backward compatibility.
    */
   static getStyles(): string {

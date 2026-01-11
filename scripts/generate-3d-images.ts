@@ -17,8 +17,8 @@
 
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, convertFloorplanToJson } from "floorplans-language";
+import type { Floorplan } from "floorplan-language";
+import { createFloorplansServices, convertFloorplanToJson } from "floorplan-language";
 import { render3DToPng, closeBrowser } from "floorplans-mcp-server/utils/renderer3d";
 import * as fs from "fs";
 import * as path from "path";

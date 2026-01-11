@@ -12,16 +12,16 @@
 export { InteractiveEditor } from './interactive-editor.js';
 export type { InteractiveEditorOptions } from './interactive-editor.js';
 
-// Re-export SelectionManager from viewer-core
-export { SelectionManager } from 'viewer-core';
-export type { MarqueeMode, SelectionManagerConfig } from 'viewer-core';
+// Re-export SelectionManager from floorplan-viewer-core
+export { SelectionManager } from 'floorplan-viewer-core';
+export type { MarqueeMode, SelectionManagerConfig } from 'floorplan-viewer-core';
 
 export { EditorViewerSync } from './editor-viewer-sync.js';
 export type { EditorViewerSyncConfig, EntityLocation } from './editor-viewer-sync.js';
 
-// Re-export DSL editor from viewer-core
-export { createDslEditor, monaco } from 'viewer-core';
-export type { DslEditorConfig, DslEditorInstance } from 'viewer-core';
+// Re-export DSL editor from floorplan-viewer-core
+export { createDslEditor, monaco } from 'floorplan-viewer-core';
+export type { DslEditorConfig, DslEditorInstance } from 'floorplan-viewer-core';
 
 export { DslGenerator, dslGenerator } from './dsl-generator.js';
 export type {
@@ -37,7 +37,7 @@ export type {
   PropertiesPanelConfig,
 } from './properties-panel.js';
 
-// Re-export viewer-core types for convenience
+// Re-export floorplan-viewer-core types for convenience
 export type {
   SceneContext,
   SelectableObject,
@@ -46,4 +46,4 @@ export type {
   SelectionAPI,
   SelectionChangeEvent,
   SelectionSource,
-} from 'viewer-core';
+} from 'floorplan-viewer-core';

@@ -1,5 +1,5 @@
 {
-  "name": "floorplans-mcp-server",
+  "name": "floorplan-mcp-server",
   "description": "MCP server for floorplan DSL rendering and manipulation",
   "version": "0.8.0",
   "license": "GPL-3.0-or-later",
@@ -10,7 +10,7 @@
     "npm": ">=10.2.3"
   },
   "bin": {
-    "floorplans-mcp": "./out/index.js"
+    "floorplan-mcp": "./out/index.js"
   },
   "files": [
     "out"
@@ -41,7 +41,7 @@
     "@modelcontextprotocol/sdk": "^1.0.0",
     "@resvg/resvg-js": "^2.6.2",
     "floorplan-3d-core": "*",
-    "floorplans-language": "*",
+    "floorplan-language": "*",
     "puppeteer": "^24.0.0",
     "langium": "~4.0.0",
     "three": "^0.170.0",

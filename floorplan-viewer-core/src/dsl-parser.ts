@@ -7,8 +7,8 @@
  */
 
 import { EmptyFileSystem, URI, type LangiumDocument } from "langium";
-import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, convertFloorplanToJson } from "floorplans-language";
+import type { Floorplan } from "floorplan-language";
+import { createFloorplansServices, convertFloorplanToJson } from "floorplan-language";
 import type { JsonExport } from "floorplan-3d-core";
 
 // Initialize Langium services with EmptyFileSystem (browser-compatible)
@@ -45,7 +45,7 @@ export interface ParseResultWithDocument extends ParseResult {
 
 /**
  * Parse a floorplan DSL string and convert to JSON format.
- * Uses the shared convertFloorplanToJson function from floorplans-language.
+ * Uses the shared convertFloorplanToJson function from floorplan-language.
  */
 export async function parseFloorplanDSL(dslContent: string): Promise<ParseResult> {
     const result = await parseFloorplanDSLWithDocument(dslContent);

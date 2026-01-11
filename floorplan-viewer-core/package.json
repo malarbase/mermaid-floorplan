@@ -1,5 +1,5 @@
 {
-  "name": "viewer-core",
+  "name": "floorplan-viewer-core",
   "version": "0.8.0",
   "description": "Shared abstractions for floorplan viewer and interactive editor",
   "license": "GPL-3.0-or-later",
@@ -26,7 +26,7 @@
   },
   "dependencies": {
     "floorplan-3d-core": "*",
-    "floorplans-language": "*"
+    "floorplan-language": "*"
   },
   "peerDependencies": {
     "monaco-editor": ">=0.45.0",
