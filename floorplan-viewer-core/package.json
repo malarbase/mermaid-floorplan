@@ -1,6 +1,6 @@
 {
   "name": "floorplan-viewer-core",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "description": "Shared abstractions for floorplan viewer and interactive editor",
   "license": "GPL-3.0-or-later",
   "author": "Malar Kannan",
