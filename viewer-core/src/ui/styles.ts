@@ -741,8 +741,8 @@ body.dark-theme .fp-help-footer {
 /* === Validation Warnings Panel === */
 .fp-warnings-panel {
   position: absolute;
-  top: 120px;  /* Below shortcut info panel (~100px) + margin */
-  left: 10px;
+  top: calc(var(--layout-header-offset, 0px) + 10px);  /* Aligned with header */
+  left: calc(var(--layout-editor-width, 0px) + 10px);
   background: #fff8e1;
   border: 1px solid #ffd54f;
   border-radius: 8px;
@@ -752,7 +752,7 @@ body.dark-theme .fp-help-footer {
   font-size: 13px;
   z-index: 100;
   display: none;
-  transition: left 0.3s ease;
+  transition: left 0.3s ease, top 0.3s ease;
 }
 
 body.dark-theme .fp-warnings-panel {
@@ -870,8 +870,8 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
 /* === Shortcut Info Panel === */
 .fp-shortcut-info {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  bottom: 10px;
+  right: 320px;  /* Offset from control panel on the right */
   background: rgba(0, 0, 0, 0.75);
   color: white;
   padding: 12px 16px;
@@ -880,11 +880,9 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
   font-size: 13px;
   max-width: 200px;
   z-index: 50;
-  transition: left 0.3s ease;
+  transition: right 0.3s ease, bottom 0.3s ease;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
 }
-
-/* Note: Shortcut info is ~100px tall, so warnings panel should be below it */
 
 .fp-shortcut-info h3 {
   margin: 0 0 8px 0;
@@ -902,22 +900,7 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
   opacity: 0.6;
 }
 
-/* Shift panels when editor is open */
-body.editor-open .fp-shortcut-info {
-  left: calc(var(--editor-width, 450px) + 10px);
-}
-
-body.editor-open .fp-warnings-panel {
-  left: calc(var(--editor-width, 450px) + 10px);
-}
-
-body.editor-open .fp-overlay-2d {
-  left: calc(var(--editor-width, 450px) + 10px);
-}
-
-body.editor-open .fp-floor-summary-panel {
-  left: calc(var(--editor-width, 450px) + 10px);
-}
+/* Shortcut info panel is now at bottom-right, no need to shift when editor opens */
 `;
 
 let stylesInjected = false;

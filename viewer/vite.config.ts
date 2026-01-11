@@ -7,6 +7,12 @@ import { readFileSync } from 'fs';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const sharedStylesPath = resolve(__dirname, '../viewer-core/src/ui/shared-styles.css');
 
+// Paths to workspace packages for direct source imports during development
+const viewerCoreSrc = resolve(__dirname, '../viewer-core/src');
+const languageSrc = resolve(__dirname, '../language/src');
+const floorplan3DCoreSrc = resolve(__dirname, '../floorplan-3d-core/src');
+const floorplanCommonSrc = resolve(__dirname, '../floorplan-common/src');
+
 // Custom plugin to serve shared-styles.css during dev
 function serveSharedStyles(): Plugin {
   return {
@@ -33,6 +39,16 @@ export default defineConfig({
     outDir: 'dist',
     emptyOutDir: true,
   },
+  resolve: {
+    alias: {
+      // During development, import directly from source files for hot reload
+      // This bypasses the compiled 'out/' directories
+      'viewer-core': viewerCoreSrc,
+      'floorplans-language': languageSrc,
+      'floorplan-3d-core': floorplan3DCoreSrc,
+      'floorplan-common': floorplanCommonSrc,
+    },
+  },
   plugins: [
     serveSharedStyles(),
     viteStaticCopy({
@@ -49,6 +65,10 @@ export default defineConfig({
     fs: {
       // Allow serving files from the parent project (for worktrees accessing shared node_modules)
       allow: ['..', '../..']
-    }
-  }
+    },
+    watch: {
+      // Watch workspace package source directories for changes
+      ignored: ['!**/viewer-core/src/**', '!**/language/src/**', '!**/floorplan-3d-core/src/**', '!**/floorplan-common/src/**'],
+    },
+  },
 });

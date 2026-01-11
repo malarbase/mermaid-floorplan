@@ -117,19 +117,14 @@ export class LayoutManager {
       controlPanel.style.maxHeight = `calc(100vh - ${headerOffset + 20}px)`;
     }
 
-    // Shortcut info panel - top-left (after editor)
-    const shortcutInfo = document.querySelector('.fp-shortcut-info') as HTMLElement | null;
-    if (shortcutInfo) {
-      shortcutInfo.style.top = `${headerOffset + 10}px`;
-      shortcutInfo.style.left = `${editorWidth + 10}px`;
-    }
-
-    // Warnings panel - below shortcut info
+    // Warnings panel - top-left, aligned with header
     const warningsPanel = document.querySelector('.fp-warnings-panel') as HTMLElement | null;
     if (warningsPanel) {
-      warningsPanel.style.top = `${headerOffset + 120}px`;
+      warningsPanel.style.top = `${headerOffset + 10}px`;
       warningsPanel.style.left = `${editorWidth + 10}px`;
     }
+
+    // Shortcut info panel - bottom-right (no dynamic positioning needed, uses CSS)
 
     // Editor panel - full height below header
     const editorPanel = document.querySelector('.fp-editor-panel') as HTMLElement | null;
