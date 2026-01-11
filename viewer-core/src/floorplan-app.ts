@@ -59,6 +59,8 @@ export interface FloorplanAppOptions {
   enableChat?: boolean;
   /** Show header bar with file operations */
   showHeaderBar?: boolean;
+  /** Enable header bar auto-hide (hides when not interacting) */
+  headerAutoHide?: boolean;
   /** Enable drag-and-drop file loading */
   enableDragDrop?: boolean;
   /** Editor panel default state (true = open, false = closed) */
@@ -75,6 +77,10 @@ export interface FloorplanAppOptions {
   onFileLoad?: (filename: string, content: string) => void;
   /** Callback when DSL content changes */
   onDslChange?: (content: string) => void;
+  /** Callback when theme changes */
+  onThemeChange?: (theme: 'light' | 'dark') => void;
+  /** Callback when editor panel is toggled */
+  onEditorToggle?: (isOpen: boolean) => void;
 }
 
 /**
@@ -87,14 +93,15 @@ export class FloorplanApp extends BaseViewer {
   public readonly allowSelectionToggle: boolean;
   public readonly enableChat: boolean;
   public readonly showHeaderBar: boolean;
+  public readonly headerAutoHide: boolean;
   public readonly enableDragDrop: boolean;
   
   // Auth state
   private _isAuthenticated: boolean;
   private _onAuthRequired?: () => AuthResult;
   
-  // UI Components
-  private headerBar: HeaderBar | null = null;
+  // UI Components (headerBar is public for external sync)
+  public headerBar: HeaderBar | null = null;
   private fileDropdown: FileDropdown | null = null;
   private commandPalette: CommandPalette | null = null;
   private dragDropHandler: DragDropHandler | null = null;
@@ -113,6 +120,8 @@ export class FloorplanApp extends BaseViewer {
   // Callbacks
   private onFileLoadCallback?: (filename: string, content: string) => void;
   private onDslChangeCallback?: (content: string) => void;
+  private onThemeChangeCallback?: (theme: 'light' | 'dark') => void;
+  private onEditorToggleCallback?: (isOpen: boolean) => void;
   
   // SceneContext getters
   get selectionManager(): SelectionManager | null { return this._selectionManager; }
@@ -134,6 +143,7 @@ export class FloorplanApp extends BaseViewer {
     this.allowSelectionToggle = options.allowSelectionToggle ?? (this.enableSelection || this.enableEditing);
     this.enableChat = options.enableChat ?? false;
     this.showHeaderBar = options.showHeaderBar ?? true;
+    this.headerAutoHide = options.headerAutoHide ?? false;
     this.enableDragDrop = options.enableDragDrop ?? true;
     this.editorPanelOpen = options.editorPanelDefaultOpen ?? this.enableEditing;
     
@@ -144,6 +154,8 @@ export class FloorplanApp extends BaseViewer {
     // Store callbacks
     this.onFileLoadCallback = options.onFileLoad;
     this.onDslChangeCallback = options.onDslChange;
+    this.onThemeChangeCallback = options.onThemeChange;
+    this.onEditorToggleCallback = options.onEditorToggle;
     
     // Initialize selection manager if enabled or toggleable
     // (We need the manager to exist for V key toggle to work)
@@ -222,8 +234,11 @@ export class FloorplanApp extends BaseViewer {
       filename: this.currentFilename,
       editorOpen: this.editorPanelOpen,
       isAuthenticated: this._isAuthenticated,
+      theme: this.currentTheme as 'light' | 'dark',
+      autoHide: this.headerAutoHide,
       onFileDropdownClick: () => this.toggleFileDropdown(),
       onEditorToggle: () => this.toggleEditorPanel(),
+      onThemeToggle: () => this.handleThemeToggle(),
       onCommandPaletteClick: () => this.commandPalette?.show(),
     });
     
@@ -232,6 +247,11 @@ export class FloorplanApp extends BaseViewer {
       isAuthenticated: this._isAuthenticated,
       onAction: (action, data) => this.handleFileAction(action, data),
     });
+    
+    // Add hover zone to DOM first (so header bar can slide over it)
+    if (this.headerBar.hoverZone) {
+      container.appendChild(this.headerBar.hoverZone);
+    }
     
     // Add to DOM
     container.appendChild(this.headerBar.element);
@@ -324,10 +344,8 @@ export class FloorplanApp extends BaseViewer {
     this.editorPanelOpen = !this.editorPanelOpen;
     this.headerBar?.setEditorOpen(this.editorPanelOpen);
     
-    const panel = document.getElementById('editor-panel');
-    if (panel) {
-      panel.style.transform = this.editorPanelOpen ? 'translateX(0)' : `translateX(-${this.editorPanelWidth}px)`;
-    }
+    // Don't apply transform - let the callback handle panel state via editorPanel.open()/close()
+    // This ensures consistent behavior whether toggled from header bar or panel's own button
     
     document.body.classList.toggle('editor-open', this.editorPanelOpen);
     if (this.editorPanelOpen) {
@@ -335,6 +353,19 @@ export class FloorplanApp extends BaseViewer {
     }
     
     this.overlay2DManager?.onEditorStateChanged(this.editorPanelOpen, this.editorPanelWidth);
+    
+    // Notify callback - this will call editorPanel.open()/close()
+    this.onEditorToggleCallback?.(this.editorPanelOpen);
+  }
+  
+  /**
+   * Handle theme toggle from header bar.
+   */
+  private handleThemeToggle(): void {
+    this.toggleTheme();
+    const newTheme = this.currentTheme as 'light' | 'dark';
+    this.headerBar?.setTheme(newTheme);
+    this.onThemeChangeCallback?.(newTheme);
   }
   
   /**

@@ -130,8 +130,6 @@ export abstract class BaseViewer implements SceneContext {
     
     // Init scene
     this._scene = new THREE.Scene();
-    const colors = getThemeColors(this.currentTheme);
-    this._scene.background = new THREE.Color(colors.BACKGROUND);
     
     // Init perspective camera
     const fov = 75;
@@ -197,7 +195,6 @@ export abstract class BaseViewer implements SceneContext {
     
     // Init wall generator with CSG evaluator
     this.wallGenerator = new WallGenerator(new Evaluator());
-    this.wallGenerator.setTheme(this.currentTheme);
     
     // Init stair generator
     this.stairGenerator = new StairGenerator();
@@ -247,6 +244,9 @@ export abstract class BaseViewer implements SceneContext {
       );
       this.keyboardControls.setPivotIndicator(this.pivotIndicator!);
     }
+    
+    // Apply initial theme (sets scene background, body class, wall generator theme)
+    this.applyTheme();
   }
   
   /**

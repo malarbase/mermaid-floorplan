@@ -68,7 +68,7 @@ export class FloorManager {
             const isVisible = this.floorVisibility.get(floorId) ?? true;
             
             const floorItem = document.createElement('div');
-            floorItem.className = 'floor-item';
+            floorItem.className = 'fp-floor-item';
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';

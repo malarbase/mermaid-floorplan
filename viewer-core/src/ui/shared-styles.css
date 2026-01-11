@@ -934,6 +934,36 @@ body.editor-open .fp-floor-summary-panel {
   z-index: 300;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   backdrop-filter: blur(8px);
+  /* Auto-hide transition */
+  transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+/* Auto-hide mode: header slides up when not interacting */
+.fp-header-bar--auto-hide {
+  transform: translateY(-100%);
+  opacity: 0;
+}
+
+.fp-header-bar--auto-hide:hover,
+.fp-header-bar--auto-hide.fp-header-bar--visible {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* Hover zone at top to reveal auto-hidden header */
+.fp-header-hover-zone {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 10px;
+  z-index: 299;
+}
+
+.fp-header-hover-zone:hover + .fp-header-bar--auto-hide,
+.fp-header-hover-zone:hover ~ .fp-header-bar--auto-hide {
+  transform: translateY(0);
+  opacity: 1;
 }
 
 body:not(.dark-theme) .fp-header-bar {
@@ -1056,6 +1086,37 @@ body:not(.dark-theme) .fp-editor-toggle:hover {
 body:not(.dark-theme) .fp-editor-toggle-icon,
 body:not(.dark-theme) .fp-editor-toggle-label {
   color: #333;
+}
+
+/* Theme toggle button */
+.fp-theme-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.fp-theme-toggle:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.fp-theme-toggle-icon {
+  font-size: 16px;
+}
+
+body:not(.dark-theme) .fp-theme-toggle {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+body:not(.dark-theme) .fp-theme-toggle:hover {
+  background: rgba(0, 0, 0, 0.05);
 }
 
 /* Command palette trigger */
@@ -2028,12 +2089,53 @@ body.dark-theme .fp-editor-panel {
 
 .fp-editor-panel--collapsed {
   width: 40px !important;
+  bottom: auto !important;  /* Don't span full height */
+  height: auto !important;  /* Size to content */
 }
 
 .fp-editor-panel--collapsed .fp-editor-panel__editor,
 .fp-editor-panel--collapsed .fp-editor-panel__status,
-.fp-editor-panel--collapsed .fp-editor-panel__title-section {
-  display: none;
+.fp-editor-panel--collapsed .fp-editor-panel__title-section,
+.fp-editor-panel--collapsed .fp-editor-panel__login-btn {
+  display: none !important;
+}
+
+/* When collapsed, keep header compact at top */
+.fp-editor-panel--collapsed .fp-editor-panel__header {
+  flex: none;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  padding: 6px;
+  border-bottom: none;
+  background: transparent;
+}
+
+.fp-editor-panel--collapsed .fp-editor-panel__actions {
+  width: auto;
+  justify-content: center;
+}
+
+.fp-editor-panel--collapsed .fp-editor-panel__collapse-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(30, 30, 30, 0.9);
+  border-radius: 6px;
+  font-size: 14px;
+  color: #fff;
+}
+
+body:not(.dark-theme) .fp-editor-panel--collapsed .fp-editor-panel__collapse-btn {
+  background: rgba(50, 50, 50, 0.9);
+  color: #fff;
+}
+
+.fp-editor-panel--collapsed .fp-editor-panel__collapse-btn:hover {
+  background: rgba(50, 50, 50, 0.95);
+}
+
+body:not(.dark-theme) .fp-editor-panel--collapsed .fp-editor-panel__collapse-btn:hover {
+  background: rgba(70, 70, 70, 0.95);
 }
 
 .fp-editor-panel__header {

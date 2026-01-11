@@ -26,6 +26,7 @@ import {
   createOverlay2DUI,
   createKeyboardHelpUI,
   createShortcutInfoUI,
+  createValidationWarningsUI,
   createControlPanelSection,
   getSectionContent,
   createSliderControl,
@@ -86,6 +87,10 @@ const shortcutInfo = createShortcutInfoUI({
 });
 document.body.appendChild(shortcutInfo.element);
 
+// Create validation warnings panel (shows DSL parsing warnings)
+const validationWarnings = createValidationWarningsUI({});
+document.body.appendChild(validationWarnings.element);
+
 // Create floor summary container
 const floorSummary = document.createElement('div');
 floorSummary.id = 'floor-summary';
@@ -100,28 +105,54 @@ document.body.appendChild(floorSummary);
 // Read-Only Editor Panel (using viewer-core component)
 // ========================================
 
+// Track editor state (used by editorPanel callbacks)
+
 // Create read-only editor panel using viewer-core's component
 const editorPanel = createEditorPanel({
   initiallyOpen: false,  // Start collapsed in viewer
   editable: false,       // Read-only mode
   isAuthenticated: false,
   width: 450,
-  onToggle: (_isOpen) => {
+  onToggle: (isOpen: boolean) => {
     // Trigger Monaco editor resize if needed
-    dslEditor?.editor.layout();
+    setTimeout(() => dslEditor?.editor.layout(), 250);
+    
+    // Sync body class for CSS alignment of shortcut info, minimap, etc.
+    document.body.classList.toggle('editor-open', isOpen);
+    if (isOpen) {
+      document.documentElement.style.setProperty('--editor-width', '450px');
+    }
+    
+    // Sync header bar state (viewer ref will be set after creation)
+    if (viewerRef) {
+      viewerRef.headerBar?.setEditorOpen(isOpen);
+    }
   },
 });
+
+// Store viewer reference for use in onToggle callback
+let viewerRef: FloorplanApp | null = null;
+
+// Set the ID so FloorplanApp can find it (for consistency)
+editorPanel.element.id = 'editor-panel';
 document.body.appendChild(editorPanel.element);
 
 // Create Monaco editor inside the panel's container
 let dslEditor: ReturnType<typeof createDslEditor> | null = null;
 
+// Function to update Monaco editor theme
+function updateEditorTheme(theme: 'light' | 'dark'): void {
+  const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
+  dslEditor?.editor.updateOptions({ theme: monacoTheme });
+}
+
 // Wait for next frame to ensure DOM is ready, then create editor
 requestAnimationFrame(() => {
+  // Use light theme initially (matching app's initialTheme)
   dslEditor = createDslEditor({
     containerId: editorPanel.editorContainer.id,
     initialContent: defaultFloorplan,
-    theme: 'vs-dark',
+    theme: 'vs',  // Light theme to match initialTheme: 'light'
     fontSize: 13,
   });
   
@@ -145,6 +176,8 @@ const viewer = new FloorplanApp({
   enableChat: false,           // No AI chat in viewer
   showHeaderBar: true,         // File dropdown + command palette
   enableDragDrop: true,        // Drag-drop file loading
+  editorPanelDefaultOpen: false,  // Editor panel starts collapsed
+  headerAutoHide: true,          // Header bar auto-hides when not interacting
   
   // No auth required for viewer
   isAuthenticated: false,
@@ -158,7 +191,30 @@ const viewer = new FloorplanApp({
       dslEditor.setValue(content);
     }
   },
+  
+  // Theme change callback - sync Monaco editor theme and control panel button
+  onThemeChange: (theme: 'light' | 'dark') => {
+    updateEditorTheme(theme);
+    // Sync the control panel theme button
+    if (themeBtnInControlPanel) {
+      themeBtnInControlPanel.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    }
+  },
+  
+  // Editor toggle callback - sync with our editorPanel
+  onEditorToggle: (isOpen: boolean) => {
+    if (isOpen) {
+      editorPanel.open();
+    } else {
+      editorPanel.close();
+    }
+    // Resize Monaco editor after transition
+    setTimeout(() => dslEditor?.editor.layout(), 250);
+  },
 });
+
+// Set viewer reference for use in editorPanel.onToggle callback
+viewerRef = viewer;
 
 // ========================================
 // Control Panel UI
@@ -235,6 +291,9 @@ const viewSection = createControlPanelSection({
 });
 const viewContent = getSectionContent(viewSection);
 
+// Track theme button for sync
+let themeBtnInControlPanel: HTMLButtonElement | null = null;
+
 if (viewContent) {
   // Theme toggle button
   const themeRow = document.createElement('div');
@@ -245,17 +304,19 @@ if (viewContent) {
     </div>
   `;
   
-  const themeBtn = document.createElement('button');
-  themeBtn.className = 'fp-btn fp-btn-secondary';
-  themeBtn.id = 'theme-toggle-btn';
-  themeBtn.style.cssText = 'padding: 4px 12px; font-size: 11px; margin-top: 4px;';
-  themeBtn.textContent = '🌙 Dark';
-  themeBtn.addEventListener('click', () => {
+  themeBtnInControlPanel = document.createElement('button');
+  themeBtnInControlPanel.className = 'fp-btn fp-btn-secondary';
+  themeBtnInControlPanel.id = 'theme-toggle-btn';
+  themeBtnInControlPanel.style.cssText = 'padding: 4px 12px; font-size: 11px; margin-top: 4px;';
+  themeBtnInControlPanel.textContent = '🌙 Dark';
+  themeBtnInControlPanel.addEventListener('click', () => {
     viewer.toggleTheme();
     const theme = viewer.theme;
-    themeBtn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtnInControlPanel!.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    // Also sync Monaco editor
+    updateEditorTheme(theme as 'light' | 'dark');
   });
-  themeRow.appendChild(themeBtn);
+  themeRow.appendChild(themeBtnInControlPanel);
   viewContent.appendChild(themeRow);
   
   // Exploded view slider
