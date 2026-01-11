@@ -5,39 +5,48 @@ TBD - created by archiving change add-interactive-editor. Update Purpose after a
 ## Requirements
 ### Requirement: Module Architecture
 
-The interactive editor SHALL be implemented using the unified `FloorplanApp` class from `viewer-core`, configured with full editing capabilities enabled.
+The interactive editor SHALL be implemented as a separate module (`interactive-editor`) that extends the read-only viewer, sharing common code via a `viewer-core` package. All shared UI styles SHALL use the `fp-*` class prefix convention and be defined in `viewer-core`.
 
 #### Scenario: Viewer remains independently usable
 
 - **GIVEN** a user wants to embed a read-only floorplan visualization
-- **WHEN** they instantiate `FloorplanApp` with `enableEditing: false`
+- **WHEN** they import only the `viewer` package
 - **THEN** they SHALL get a fully functional 3D viewer
-- **AND** the bundle SHALL NOT include editor-specific code when tree-shaken
+- **AND** the bundle SHALL NOT include editor-specific code (selection, sync, properties, LSP)
 - **AND** the bundle size SHALL remain under 1MB (excluding Three.js)
 
-#### Scenario: Interactive editor uses FloorplanApp
+#### Scenario: Interactive editor extends viewer
 
 - **GIVEN** a user wants full editing capabilities
-- **WHEN** they instantiate `FloorplanApp` with `enableEditing: true`
+- **WHEN** they import the `interactive-editor` package
 - **THEN** they SHALL get all viewer functionality plus editing features
-- **AND** the same `FloorplanApp` class SHALL be used (not a separate class)
+- **AND** the `InteractiveEditor` class SHALL extend the `Viewer` class
 - **AND** shared code SHALL come from `viewer-core` (not duplicated)
 
 #### Scenario: Viewer-core provides shared abstractions
 
-- **GIVEN** both viewer and editor modes need common functionality
-- **WHEN** `FloorplanApp` is instantiated
+- **GIVEN** both `viewer` and `interactive-editor` need common functionality
+- **WHEN** the packages are built
 - **THEN** shared interfaces and utilities SHALL be in `viewer-core`
-- **AND** `viewer-core` SHALL include: scene context, mesh registry, selection API, floor renderer, toolbar, drag-drop
-- **AND** feature enablement SHALL be controlled via constructor options
+- **AND** `viewer-core` SHALL include: scene context, mesh registry, selection API, floor renderer
+- **AND** both packages SHALL depend on `viewer-core`
 
-#### Scenario: Selection API available in both modes
+#### Scenario: Selection API available in viewer-core
 
 - **GIVEN** a user wants basic selection in the read-only viewer
 - **WHEN** they use the `viewer-core` selection API
 - **THEN** they SHALL be able to highlight meshes programmatically
 - **AND** they SHALL receive selection events (for analytics, linking, etc.)
-- **AND** advanced features (properties panel editing) SHALL require `enableEditing: true`
+- **BUT** advanced features (marquee, properties panel) SHALL require `interactive-editor`
+
+#### Scenario: Shared UI styles use fp-* prefix
+
+- **GIVEN** both `viewer` and `interactive-editor` need shared UI components
+- **WHEN** the developer creates or modifies UI elements
+- **THEN** all class names SHALL use the `fp-*` prefix (e.g., `fp-floor-item`, `fp-floor-summary-panel`)
+- **AND** styles SHALL be defined in `viewer-core/src/ui/styles.ts`
+- **AND** the `interactive-editor` SHALL NOT duplicate styles inline in `index.html`
+- **AND** theme-aware styles SHALL be applied consistently via `body.dark-theme` selectors
 
 ### Requirement: 3D Object Selection
 
@@ -741,4 +750,24 @@ The editor SHALL support multiple file loading methods through the unified toolb
 - **WHEN** the user drags a file onto the 3D canvas
 - **THEN** the file SHALL be loaded (per drag-drop requirement)
 - **AND** the editor panel SHALL update with the loaded content
+
+### Requirement: Consolidated UI Component Library
+
+The `viewer-core` package SHALL provide a unified library of UI components that both `viewer` and `interactive-editor` can use without style duplication.
+
+#### Scenario: Floor list component uses shared styles
+
+- **GIVEN** the interactive-editor displays a list of floors
+- **WHEN** the floor list is rendered
+- **THEN** each floor item SHALL use the `fp-floor-item` class
+- **AND** the class SHALL be styled in `viewer-core/src/ui/styles.ts`
+- **AND** theme switching SHALL update floor item label colors automatically
+
+#### Scenario: Panel positioning uses CSS custom properties
+
+- **GIVEN** both apps have panels that need to adjust position when editor expands
+- **WHEN** the editor panel state changes
+- **THEN** panels SHALL use CSS custom properties (`--layout-editor-width`, `--layout-header-offset`)
+- **AND** the `LayoutManager` class SHALL update these properties
+- **AND** both apps SHALL respond to the same CSS variable changes
 
