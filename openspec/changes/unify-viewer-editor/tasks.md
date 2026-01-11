@@ -38,21 +38,17 @@
 - [x] 5.3 Show error toast for unsupported file types
 - [x] 5.4 Integrate with FloorplanApp file loading
 
-## 6. Migrate Viewer Package (Phase 2 - Future Work)
+## 6. Migrate Viewer Package (Phase 2)
 
-> Note: Phase 1 infrastructure is complete. These tasks will migrate the viewer to use the new FloorplanApp class.
+- [x] 6.1 Update `viewer/src/main.ts` to use `FloorplanApp`
+- [x] 6.2 Reduce `viewer/index.html` to minimal shell
+- [x] 6.3 Verify all viewer features work (camera, lighting, floors, export)
+- [x] 6.4 Verify 2D overlay and annotations work
 
-- [ ] 6.1 Update `viewer/src/main.ts` to use `FloorplanApp`
-- [ ] 6.2 Reduce `viewer/index.html` to minimal shell
-- [ ] 6.3 Verify all viewer features work (camera, lighting, floors, export)
-- [ ] 6.4 Verify 2D overlay and annotations work
+## 7. Migrate Interactive-Editor Package (Phase 2)
 
-## 7. Migrate Interactive-Editor Package (Phase 2 - Future Work)
-
-> Note: Phase 1 infrastructure is complete. These tasks will migrate the interactive-editor to use the new FloorplanApp class.
-
-- [ ] 7.1 Update `interactive-editor/src/main.ts` to use `FloorplanApp`
-- [ ] 7.2 Reduce `interactive-editor/index.html` to minimal shell
+- [x] 7.1 Update `interactive-editor/src/main.ts` - consolidated inline JS to TypeScript module
+- [x] 7.2 Reduce `interactive-editor/index.html` to minimal shell - removed inline script
 - [ ] 7.3 Verify all editor features work (selection, properties, DSL sync)
 - [ ] 7.4 Verify auth gating callback is invoked correctly
 

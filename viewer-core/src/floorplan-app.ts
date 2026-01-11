@@ -81,6 +81,8 @@ export interface FloorplanAppOptions {
   onThemeChange?: (theme: 'light' | 'dark') => void;
   /** Callback when editor panel is toggled */
   onEditorToggle?: (isOpen: boolean) => void;
+  /** Callback when DSL parsing produces warnings */
+  onParseWarnings?: (warnings: Array<{ message: string; line?: number; column?: number }>) => void;
 }
 
 /**
@@ -122,6 +124,7 @@ export class FloorplanApp extends BaseViewer {
   private onDslChangeCallback?: (content: string) => void;
   private onThemeChangeCallback?: (theme: 'light' | 'dark') => void;
   private onEditorToggleCallback?: (isOpen: boolean) => void;
+  private onParseWarningsCallback?: (warnings: Array<{ message: string; line?: number; column?: number }>) => void;
   
   // SceneContext getters
   get selectionManager(): SelectionManager | null { return this._selectionManager; }
@@ -156,6 +159,7 @@ export class FloorplanApp extends BaseViewer {
     this.onDslChangeCallback = options.onDslChange;
     this.onThemeChangeCallback = options.onThemeChange;
     this.onEditorToggleCallback = options.onEditorToggle;
+    this.onParseWarningsCallback = options.onParseWarnings;
     
     // Initialize selection manager if enabled or toggleable
     // (We need the manager to exist for V key toggle to work)
@@ -498,6 +502,9 @@ export class FloorplanApp extends BaseViewer {
       if (result.data) {
         this.loadFloorplan(result.data);
         this.overlay2DManager?.setLangiumDocument(result.document ?? null);
+        
+        // Notify about any warnings
+        this.onParseWarningsCallback?.(result.warnings);
       }
       
       // Update editor if available

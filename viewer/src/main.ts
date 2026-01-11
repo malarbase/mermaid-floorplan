@@ -88,7 +88,25 @@ const shortcutInfo = createShortcutInfoUI({
 document.body.appendChild(shortcutInfo.element);
 
 // Create validation warnings panel (shows DSL parsing warnings)
-const validationWarnings = createValidationWarningsUI({});
+const validationWarnings = createValidationWarningsUI({
+  onWarningClick: (warning) => {
+    // Navigate to warning line in Monaco editor
+    if (warning.line && dslEditor) {
+      // Open editor panel if collapsed
+      if (!editorPanel.isOpen()) {
+        editorPanel.open();
+        document.body.classList.add('editor-open');
+        document.documentElement.style.setProperty('--editor-width', '450px');
+        viewerRef?.headerBar?.setEditorOpen(true);
+      }
+      
+      // Navigate to the line
+      dslEditor.editor.revealLineInCenter(warning.line);
+      dslEditor.editor.setPosition({ lineNumber: warning.line, column: warning.column || 1 });
+      dslEditor.editor.focus();
+    }
+  },
+});
 document.body.appendChild(validationWarnings.element);
 
 // Create floor summary container
@@ -210,6 +228,11 @@ const viewer = new FloorplanApp({
     }
     // Resize Monaco editor after transition
     setTimeout(() => dslEditor?.editor.layout(), 250);
+  },
+  
+  // Parse warnings callback - update validation warnings panel
+  onParseWarnings: (warnings) => {
+    validationWarnings.update(warnings);
   },
 });
 
