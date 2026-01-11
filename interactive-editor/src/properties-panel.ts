@@ -116,21 +116,21 @@ export class PropertiesPanel {
 
     // Create panel structure
     this.container.innerHTML = `
-      <div class="properties-panel-content">
-        <div class="properties-panel-title">Properties</div>
-        <div class="properties-panel-form"></div>
-        <div class="properties-panel-actions">
-          <button class="delete-btn">Delete</button>
+      <div class="fp-properties-panel-content">
+        <div class="fp-properties-panel-title">Properties</div>
+        <div class="fp-properties-panel-form"></div>
+        <div class="fp-properties-panel-actions">
+          <button class="fp-delete-btn">Delete</button>
         </div>
       </div>
     `;
 
-    this.titleEl = this.container.querySelector('.properties-panel-title')!;
-    this.formEl = this.container.querySelector('.properties-panel-form')!;
-    this.actionsEl = this.container.querySelector('.properties-panel-actions')!;
+    this.titleEl = this.container.querySelector('.fp-properties-panel-title')!;
+    this.formEl = this.container.querySelector('.fp-properties-panel-form')!;
+    this.actionsEl = this.container.querySelector('.fp-properties-panel-actions')!;
     
     // Wire up delete button
-    const deleteBtn = this.actionsEl.querySelector('.delete-btn')!;
+    const deleteBtn = this.actionsEl.querySelector('.fp-delete-btn')!;
     deleteBtn.addEventListener('click', () => this.handleDelete());
 
     // Initially hidden
@@ -193,7 +193,7 @@ export class PropertiesPanel {
 
     // Add note about editing
     const note = document.createElement('div');
-    note.className = 'properties-panel-note';
+    note.className = 'fp-properties-panel-note';
     note.textContent = 'Edit values to update DSL';
     this.formEl.appendChild(note);
   }
@@ -203,11 +203,11 @@ export class PropertiesPanel {
    */
   private createPropertyRow(def: PropertyDef): HTMLElement {
     const row = document.createElement('div');
-    row.className = 'property-row';
+    row.className = 'fp-property-row';
 
     const label = document.createElement('label');
     label.textContent = def.label;
-    label.className = 'property-label';
+    label.className = 'fp-property-label';
     row.appendChild(label);
 
     const value = this.currentData[def.name];
@@ -216,13 +216,13 @@ export class PropertiesPanel {
     switch (def.type) {
       case 'readonly':
         input = document.createElement('span');
-        input.className = 'property-value readonly';
+        input.className = 'fp-property-value readonly';
         input.textContent = String(value ?? '—');
         break;
 
       case 'select':
         input = document.createElement('select');
-        input.className = 'property-input';
+        input.className = 'fp-property-input';
         for (const opt of def.options ?? []) {
           const option = document.createElement('option');
           option.value = opt;
@@ -237,7 +237,7 @@ export class PropertiesPanel {
 
       case 'number':
         input = document.createElement('input');
-        input.className = 'property-input';
+        input.className = 'fp-property-input';
         (input as HTMLInputElement).type = 'number';
         (input as HTMLInputElement).value = String(value ?? '');
         if (def.step !== undefined) (input as HTMLInputElement).step = String(def.step);
@@ -254,7 +254,7 @@ export class PropertiesPanel {
       case 'text':
       default:
         input = document.createElement('input');
-        input.className = 'property-input';
+        input.className = 'fp-property-input';
         (input as HTMLInputElement).type = 'text';
         (input as HTMLInputElement).value = String(value ?? '');
         (input as HTMLInputElement).addEventListener('change', () => {
@@ -310,71 +310,12 @@ export class PropertiesPanel {
 
   /**
    * Get CSS styles for the properties panel.
-   * Call this to get CSS that should be added to the page.
+   * @deprecated Styles are now in viewer-core/src/ui/shared-styles.css
+   * This method is kept for backward compatibility.
    */
   static getStyles(): string {
-    return `
-      .properties-panel-content {
-        padding: 12px;
-      }
-      
-      .properties-panel-title {
-        font-size: 14px;
-        font-weight: 600;
-        color: #fff;
-        margin-bottom: 12px;
-        padding-bottom: 8px;
-        border-bottom: 1px solid #444;
-      }
-      
-      .properties-panel-form {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-      }
-      
-      .property-row {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      
-      .property-label {
-        flex: 0 0 80px;
-        font-size: 12px;
-        color: #999;
-      }
-      
-      .property-input {
-        flex: 1;
-        background: #333;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 4px 8px;
-        color: #fff;
-        font-size: 12px;
-      }
-      
-      .property-input:focus {
-        outline: none;
-        border-color: #4a9eff;
-      }
-      
-      .property-value.readonly {
-        flex: 1;
-        color: #888;
-        font-size: 12px;
-      }
-      
-      .properties-panel-note {
-        margin-top: 12px;
-        padding-top: 8px;
-        border-top: 1px solid #444;
-        font-size: 11px;
-        color: #666;
-        font-style: italic;
-      }
-    `;
+    // Styles are now managed in shared-styles.css with fp-* prefix
+    return '';
   }
 }
 

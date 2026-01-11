@@ -58,7 +58,7 @@ The viewer SHALL provide default lighting when no lights are defined in the DSL.
 - **AND** the user's lighting choices SHALL be respected
 
 ### Requirement: Light Visualization Helpers
-The viewer MAY provide optional visualization of light positions and directions.
+The viewer SHALL provide optional visualization of light positions and directions when enabled.
 
 #### Scenario: Show light helpers
 - **WHEN** the user enables "Show Lights" in viewer options

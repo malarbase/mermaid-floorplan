@@ -87,3 +87,59 @@ export {
   type ShortcutItem,
 } from './shortcut-info-ui.js';
 
+// Header Bar & File Operations
+export {
+  createHeaderBar,
+  type HeaderBar,
+  type HeaderBarConfig,
+} from './header-bar.js';
+
+export {
+  createFileDropdown,
+  type FileDropdown,
+  type FileDropdownConfig,
+  type FileOperation,
+  type RecentFile,
+} from './file-dropdown.js';
+
+export {
+  createCommandPalette,
+  createFileCommands,
+  createViewCommands,
+  type CommandPalette,
+  type CommandPaletteConfig,
+  type Command,
+} from './command-palette.js';
+
+export {
+  initializeDragDrop,
+  isFloorplanFile,
+  isJsonFile,
+  type DragDropConfig,
+  type DragDropHandler,
+} from './drag-drop.js';
+
+export {
+  createEditorPanel,
+  type EditorPanel,
+  type EditorPanelConfig,
+} from './editor-panel.js';
+
+// Dialog components
+export {
+  createDialogUI,
+  createConfirmDialogUI,
+  type DialogUI,
+  type DialogConfig,
+  type DialogField,
+  type ConfirmDialogUI,
+  type ConfirmDialogConfig,
+} from './dialog-ui.js';
+
+// Properties Panel
+export {
+  createPropertiesPanelUI,
+  type PropertiesPanelUI,
+  type PropertiesPanelUIOptions,
+  type PropertyDefinition,
+} from './properties-panel-ui.js';

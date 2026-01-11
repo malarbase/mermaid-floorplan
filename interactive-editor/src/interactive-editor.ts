@@ -46,6 +46,8 @@ export interface InteractiveEditorOptions {
   marqueeMode?: MarqueeMode;
   /** Initial theme (default: 'dark') */
   initialTheme?: ViewerTheme;
+  /** Enable selection debug logging (default: false) */
+  selectionDebug?: boolean;
 }
 
 /**
@@ -88,6 +90,8 @@ export class InteractiveEditor extends BaseViewer implements SceneContext {
         this._meshRegistry,
         {
           marqueeMode: options.marqueeMode ?? 'intersection',
+          debug: options.selectionDebug ?? false,
+          enabled: true,  // Explicitly enable selection
         }
       );
     }
@@ -205,9 +209,12 @@ export class InteractiveEditor extends BaseViewer implements SceneContext {
   }
   
   /**
-   * Override generateFloor to register meshes in the mesh registry for selection.
+   * Override generateFloorWithPenetrations to register meshes in the mesh registry for selection.
    */
-  protected generateFloor(floorData: JsonFloor): THREE.Group {
+  protected generateFloorWithPenetrations(
+    floorData: JsonFloor, 
+    prevFloorPenetrations: THREE.Box3[]
+  ): { group: THREE.Group; penetrations: THREE.Box3[] } {
     const group = new THREE.Group();
     group.name = floorData.id;
 
@@ -242,8 +249,8 @@ export class InteractiveEditor extends BaseViewer implements SceneContext {
         hasExplicitStyle ? undefined : this.currentTheme
       );
 
-      // 1. Floor plate
-      const floorMesh = this.createFloorMesh(roomWithDefaults, materials.floor);
+      // 1. Floor plate with penetration support
+      const floorMesh = this.createFloorMeshWithPenetrations(roomWithDefaults, materials.floor, prevFloorPenetrations);
       group.add(floorMesh);
       
       // Register floor mesh in registry for selection support
@@ -273,13 +280,16 @@ export class InteractiveEditor extends BaseViewer implements SceneContext {
         );
         
         // Find newly added meshes and register walls
+        let wallMeshCount = 0;
         group.traverse(obj => {
           if (!wallMeshesBefore.has(obj) && obj instanceof THREE.Mesh) {
             // Check if this looks like a wall mesh (not a door/window)
             // Wall meshes typically have material arrays or standard material
-            const isWallMesh = Array.isArray(obj.material) || 
-              (obj.material instanceof THREE.MeshStandardMaterial && 
-               !obj.material.transparent);
+            const isArrayMaterial = Array.isArray(obj.material);
+            const isStandardMaterial = obj.material instanceof THREE.MeshStandardMaterial;
+            const isTransparent = isStandardMaterial && (obj.material as THREE.MeshStandardMaterial).transparent;
+            const isWallMesh = isArrayMaterial || (isStandardMaterial && !isTransparent);
+            
             
             if (isWallMesh && !this._meshRegistry.getEntityForMesh(obj)) {
               // Get wall source range
@@ -291,17 +301,24 @@ export class InteractiveEditor extends BaseViewer implements SceneContext {
                 floorData.id,
                 wallSourceRange
               );
+              wallMeshCount++;
             }
           }
         });
       });
     });
 
+    // Collect penetrations for the next floor
+    const penetrations: THREE.Box3[] = [];
+
     // 3. Stairs
     if (floorData.stairs) {
       floorData.stairs.forEach(stair => {
         const stairGroup = this.stairGenerator.generateStair(stair);
         group.add(stairGroup);
+        
+        // Compute penetration bounds for next floor
+        penetrations.push(this.computeStairPenetration(stair, stair.tread, stair.rise));
       });
     }
 
@@ -310,10 +327,13 @@ export class InteractiveEditor extends BaseViewer implements SceneContext {
       floorData.lifts.forEach(lift => {
         const liftGroup = this.stairGenerator.generateLift(lift, floorDefault);
         group.add(liftGroup);
+        
+        // Compute penetration bounds for next floor
+        penetrations.push(this.computeLiftPenetration(lift));
       });
     }
 
-    return group;
+    return { group, penetrations };
   }
   
   /**

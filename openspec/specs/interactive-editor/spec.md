@@ -5,7 +5,7 @@ TBD - created by archiving change add-interactive-editor. Update Purpose after a
 ## Requirements
 ### Requirement: Module Architecture
 
-The interactive editor SHALL be implemented as a separate module (`interactive-editor`) that extends the read-only viewer, sharing common code via a `viewer-core` package.
+The interactive editor SHALL be implemented as a separate module (`interactive-editor`) that extends the read-only viewer, sharing common code via a `viewer-core` package. All shared UI styles SHALL use the `fp-*` class prefix convention and be defined in `viewer-core`.
 
 #### Scenario: Viewer remains independently usable
 
@@ -38,6 +38,15 @@ The interactive editor SHALL be implemented as a separate module (`interactive-e
 - **THEN** they SHALL be able to highlight meshes programmatically
 - **AND** they SHALL receive selection events (for analytics, linking, etc.)
 - **BUT** advanced features (marquee, properties panel) SHALL require `interactive-editor`
+
+#### Scenario: Shared UI styles use fp-* prefix
+
+- **GIVEN** both `viewer` and `interactive-editor` need shared UI components
+- **WHEN** the developer creates or modifies UI elements
+- **THEN** all class names SHALL use the `fp-*` prefix (e.g., `fp-floor-item`, `fp-floor-summary-panel`)
+- **AND** styles SHALL be defined in `viewer-core/src/ui/styles.ts`
+- **AND** the `interactive-editor` SHALL NOT duplicate styles inline in `index.html`
+- **AND** theme-aware styles SHALL be applied consistently via `body.dark-theme` selectors
 
 ### Requirement: 3D Object Selection
 
@@ -658,4 +667,107 @@ The editor SHALL support keyboard-based element navigation.
 - **THEN** the delete confirmation flow SHALL begin
 
 ---
+
+### Requirement: Auth-Gated Edit Mode
+
+The editor SHALL gate editing features behind an authentication callback to enable SSO/social login integration.
+
+#### Scenario: Edit attempt without auth triggers callback
+
+- **GIVEN** the app is configured with `onAuthRequired` callback
+- **WHEN** user attempts to edit (click in editor, modify properties)
+- **THEN** the `onAuthRequired` callback SHALL be invoked
+- **AND** the edit operation SHALL be blocked until callback resolves true
+
+#### Scenario: Successful auth enables editing
+
+- **GIVEN** the `onAuthRequired` callback returns true
+- **WHEN** the auth flow completes
+- **THEN** the editor SHALL become fully editable
+- **AND** selection mode SHALL be enabled
+- **AND** properties panel SHALL allow modifications
+- **AND** AI chat SHALL be accessible
+
+#### Scenario: Auth rejection keeps viewer mode
+
+- **GIVEN** the `onAuthRequired` callback returns false
+- **WHEN** the auth flow completes
+- **THEN** the app SHALL remain in read-only mode
+- **AND** a message MAY be displayed explaining auth is required
+
+#### Scenario: Pre-authenticated instantiation
+
+- **GIVEN** the user is already authenticated
+- **WHEN** instantiating `FloorplanApp({ enableEditing: true, isAuthenticated: true })`
+- **THEN** edit features SHALL be enabled immediately
+- **AND** no auth callback SHALL be invoked
+
+### Requirement: Unified Export Interface
+
+The editor SHALL provide all export options via the toolbar Save dropdown, consolidating previously scattered export locations.
+
+#### Scenario: DSL export from toolbar
+
+- **GIVEN** the user has a floorplan loaded
+- **WHEN** the user clicks Save → "Save .floorplan"
+- **THEN** the current DSL SHALL be downloaded as a `.floorplan` file
+- **AND** authentication SHALL be required
+
+#### Scenario: JSON export from toolbar
+
+- **GIVEN** the user has a floorplan loaded
+- **WHEN** the user clicks Save → "Export JSON"
+- **THEN** the JSON representation SHALL be downloaded
+- **AND** no authentication SHALL be required
+
+#### Scenario: 3D export from toolbar
+
+- **GIVEN** the user has a floorplan loaded
+- **WHEN** the user clicks Save → "Export GLB" or "Export GLTF"
+- **THEN** the 3D model SHALL be exported (existing functionality)
+- **AND** no authentication SHALL be required
+
+### Requirement: Consistent File Loading
+
+The editor SHALL support multiple file loading methods through the unified toolbar and drag-drop interface.
+
+#### Scenario: File picker from toolbar
+
+- **WHEN** the user clicks Open → "Open File..."
+- **THEN** a file picker dialog SHALL open
+- **AND** the user can select `.floorplan` or `.json` files
+- **AND** the selected file SHALL be loaded into viewer and editor
+
+#### Scenario: URL loading from toolbar
+
+- **WHEN** the user clicks Open → "Open from URL..."
+- **THEN** a URL input dialog SHALL appear
+- **AND** the user can enter a URL to a floorplan file
+- **AND** the file SHALL be fetched and loaded
+
+#### Scenario: Drag-drop loading
+
+- **WHEN** the user drags a file onto the 3D canvas
+- **THEN** the file SHALL be loaded (per drag-drop requirement)
+- **AND** the editor panel SHALL update with the loaded content
+
+### Requirement: Consolidated UI Component Library
+
+The `viewer-core` package SHALL provide a unified library of UI components that both `viewer` and `interactive-editor` can use without style duplication.
+
+#### Scenario: Floor list component uses shared styles
+
+- **GIVEN** the interactive-editor displays a list of floors
+- **WHEN** the floor list is rendered
+- **THEN** each floor item SHALL use the `fp-floor-item` class
+- **AND** the class SHALL be styled in `viewer-core/src/ui/styles.ts`
+- **AND** theme switching SHALL update floor item label colors automatically
+
+#### Scenario: Panel positioning uses CSS custom properties
+
+- **GIVEN** both apps have panels that need to adjust position when editor expands
+- **WHEN** the editor panel state changes
+- **THEN** panels SHALL use CSS custom properties (`--layout-editor-width`, `--layout-header-offset`)
+- **AND** the `LayoutManager` class SHALL update these properties
+- **AND** both apps SHALL respond to the same CSS variable changes
 

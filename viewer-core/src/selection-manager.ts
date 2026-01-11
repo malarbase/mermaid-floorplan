@@ -36,6 +36,10 @@ export interface SelectionManagerConfig {
   enableHoverPreview?: boolean;
   /** Initial enabled state (default: true) */
   enabled?: boolean;
+  /** Allow user to toggle selection via V key (default: true) */
+  allowToggle?: boolean;
+  /** Enable debug logging (default: false) */
+  debug?: boolean;
 }
 
 /**
@@ -119,6 +123,8 @@ export class SelectionManager extends BaseSelectionManager {
       highlightColor: config.highlightColor ?? 0x00ff00,
       enableHoverPreview: config.enableHoverPreview ?? true,
       enabled: config.enabled ?? true,
+      allowToggle: config.allowToggle ?? true,
+      debug: config.debug ?? false,
     };
     
     this._enabled = this.config.enabled;
@@ -334,6 +340,9 @@ export class SelectionManager extends BaseSelectionManager {
   private setupEventListeners(): void {
     const domElement = this.renderer.domElement;
     
+    console.log('[SelectionManager] Setting up event listeners on:', domElement);
+    console.log('[SelectionManager] domElement tagName:', domElement.tagName, 'id:', domElement.id);
+    
     domElement.addEventListener('mousedown', this.boundMouseDown);
     domElement.addEventListener('mousemove', this.boundMouseMove);
     domElement.addEventListener('mouseup', this.boundMouseUp);
@@ -341,6 +350,8 @@ export class SelectionManager extends BaseSelectionManager {
     // Global key listeners for modifiers
     window.addEventListener('keydown', this.boundKeyDown);
     window.addEventListener('keyup', this.boundKeyUp);
+    
+    console.log('[SelectionManager] Event listeners attached');
   }
   
   /**
@@ -366,11 +377,25 @@ export class SelectionManager extends BaseSelectionManager {
   }
   
   /**
+   * Debug logging helper.
+   */
+  private log(...args: unknown[]): void {
+    if (this.config.debug) {
+      console.log('[SelectionManager]', ...args);
+    }
+  }
+  
+  /**
    * Handle mouse down event.
    */
   private onMouseDown(event: MouseEvent): void {
+    this.log('onMouseDown', { enabled: this._enabled, button: event.button, altPressed: this.isAltPressed });
+    
     // Skip if disabled
-    if (!this._enabled) return;
+    if (!this._enabled) {
+      this.log('Skipping - disabled');
+      return;
+    }
     
     // Only handle left click
     if (event.button !== 0) return;
@@ -385,6 +410,8 @@ export class SelectionManager extends BaseSelectionManager {
     this.dragCurrentX = this.dragStartX;
     this.dragCurrentY = this.dragStartY;
     this.isDragging = true;
+    
+    this.log('Started drag at', this.dragStartX, this.dragStartY);
     
     // Disable orbit controls during potential selection
     this.controls.enabled = false;
@@ -468,8 +495,8 @@ export class SelectionManager extends BaseSelectionManager {
       this.isAltPressed = true;
     }
     
-    // V key toggles selection mode
-    if (event.code === 'KeyV') {
+    // V key toggles selection mode (if allowed)
+    if (event.code === 'KeyV' && this.config.allowToggle) {
       this.toggleEnabled();
     }
     
@@ -514,6 +541,8 @@ export class SelectionManager extends BaseSelectionManager {
    * Handle click selection (raycast).
    */
   private handleClickSelection(event: MouseEvent): void {
+    this.log('handleClickSelection called');
+    
     // Calculate normalized device coordinates
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -523,16 +552,26 @@ export class SelectionManager extends BaseSelectionManager {
     this.raycaster.setFromCamera(this.mouse, this.camera);
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
     
+    this.log('Raycast found', intersects.length, 'intersections');
+    if (this.config.debug && intersects.length > 0) {
+      this.log('First intersection:', intersects[0].object.name, 'type:', intersects[0].object.type);
+    }
+    
     // Find first selectable object that is visible
     for (const intersection of intersects) {
       // Skip invisible objects (e.g., on hidden floors)
       if (!this.isObjectVisible(intersection.object)) {
+        this.log('Skipping invisible object:', intersection.object.name);
         continue;
       }
       
       const selectable = this.meshRegistry.findSelectableAncestor(intersection.object);
+      this.log('findSelectableAncestor for', intersection.object.name, 'returned:', selectable?.name ?? 'null');
+      
       if (selectable) {
         const entity = this.meshRegistry.getEntityForMesh(selectable);
+        this.log('getEntityForMesh returned:', entity);
+        
         if (entity) {
           if (event.shiftKey) {
             // Toggle selection with Shift
@@ -548,10 +587,13 @@ export class SelectionManager extends BaseSelectionManager {
             this.select(entity, false);
             this.emitChange([entity], previousSelection.filter(p => !this.isSameEntity(p, entity)), 'click');
           }
+          this.log('Selected entity:', entity.entityType, entity.entityId);
           return;
         }
       }
     }
+    
+    this.log('No selectable entity found, deselecting');
     
     // Click on empty space - deselect all (unless Shift held)
     if (!event.shiftKey) {

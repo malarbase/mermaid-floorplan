@@ -111,6 +111,10 @@ export abstract class BaseViewer implements SceneContext {
   get annotationManager(): AnnotationManager { return this._annotationManager; }
   get floorManager(): FloorManager { return this._floorManager; }
   
+  // Light and theme getters
+  get light(): THREE.DirectionalLight { return this.directionalLight; }
+  get theme(): ViewerTheme { return this.currentTheme; }
+  
   constructor(options: BaseViewerOptions) {
     const { containerId, initialTheme = 'light', enableKeyboardControls = true } = options;
     
@@ -126,8 +130,6 @@ export abstract class BaseViewer implements SceneContext {
     
     // Init scene
     this._scene = new THREE.Scene();
-    const colors = getThemeColors(this.currentTheme);
-    this._scene.background = new THREE.Color(colors.BACKGROUND);
     
     // Init perspective camera
     const fov = 75;
@@ -193,7 +195,6 @@ export abstract class BaseViewer implements SceneContext {
     
     // Init wall generator with CSG evaluator
     this.wallGenerator = new WallGenerator(new Evaluator());
-    this.wallGenerator.setTheme(this.currentTheme);
     
     // Init stair generator
     this.stairGenerator = new StairGenerator();
@@ -243,6 +244,9 @@ export abstract class BaseViewer implements SceneContext {
       );
       this.keyboardControls.setPivotIndicator(this.pivotIndicator!);
     }
+    
+    // Apply initial theme (sets scene background, body class, wall generator theme)
+    this.applyTheme();
   }
   
   /**
@@ -257,6 +261,8 @@ export abstract class BaseViewer implements SceneContext {
         overlay.style.display = visible ? 'flex' : 'none';
       }
     }
+    // Sync keyboard controls state
+    this.keyboardControls?.syncHelpOverlayState(visible);
   }
   
   /**
@@ -510,7 +516,7 @@ export abstract class BaseViewer implements SceneContext {
    * Returns a box in world space that can be used to cut holes in the floor above.
    * For multi-flight stairs, computes penetration at the TOP (final flight) of the stair.
    */
-  private computeStairPenetration(stair: { x: number; z: number; width?: number; shape: { type: string; direction?: string; entry?: string; runs?: number[]; outerRadius?: number; segments?: Array<{ type: string; steps?: number; width?: number; direction?: string; landing?: [number, number] }> } }, tread?: number, rise?: number): THREE.Box3 {
+  protected computeStairPenetration(stair: { x: number; z: number; width?: number; shape: { type: string; direction?: string; entry?: string; runs?: number[]; outerRadius?: number; segments?: Array<{ type: string; steps?: number; width?: number; direction?: string; landing?: [number, number] }> } }, tread?: number, rise?: number): THREE.Box3 {
     const DEFAULT_WIDTH = 1.0; // meters
     const DEFAULT_TREAD = 0.28; // meters
     const DEFAULT_RISER = 0.18; // meters
@@ -738,7 +744,7 @@ export abstract class BaseViewer implements SceneContext {
   /**
    * Compute bounding box for a lift penetration.
    */
-  private computeLiftPenetration(lift: { x: number; z: number; width: number; height: number }): THREE.Box3 {
+  protected computeLiftPenetration(lift: { x: number; z: number; width: number; height: number }): THREE.Box3 {
     return new THREE.Box3(
       new THREE.Vector3(lift.x, 0, lift.z),
       new THREE.Vector3(lift.x + lift.width, 10, lift.z + lift.height) // height doesn't matter for horizontal cutting
