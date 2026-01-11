@@ -156,30 +156,30 @@ export-3d-perspective: ## Generate 3D PNG (perspective view)
 # ===============================
 
 viewer-dev: ## Start the 3D viewer dev server
-	npm run --workspace floorplans-viewer dev
+	npm run --workspace floorplan-viewer dev
 
 viewer-build: ## Build the 3D viewer
-	npm run --workspace floorplans-viewer build
+	npm run --workspace floorplan-viewer build
 
 # ===============================
 # Interactive Editor
 # ===============================
 
 editor-dev: ## Start the interactive editor dev server
-	npm run --workspace interactive-editor dev
+	npm run --workspace floorplan-editor dev
 
 editor-build: ## Build the interactive editor
-	npm run --workspace interactive-editor build
+	npm run --workspace floorplan-editor build
 
 # ===============================
 # MCP Server
 # ===============================
 
 mcp-build: ## Build the MCP server package
-	npm run --workspace mcp-server build
+	npm run --workspace floorplan-mcp-server build
 
 mcp-server: mcp-build ## Start the MCP server
-	npm run --workspace mcp-server start
+	npm run --workspace floorplan-mcp-server start
 
 # ===============================
 # Development Shortcuts

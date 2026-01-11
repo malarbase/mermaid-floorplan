@@ -280,7 +280,7 @@ Add to `.cursor/mcp.json`:
   "mcpServers": {
     "floorplans": {
       "command": "node",
-      "args": ["/path/to/mermaid-floorplan/mcp-server/out/index.js"]
+      "args": ["/path/to/mermaid-floorplan/floorplan-mcp-server/out/index.js"]
     }
   }
 }
@@ -297,7 +297,7 @@ Add to `.cursor/mcp.json`:
 - **`validate_floorplan`** - Fast syntax validation
 - **`modify_floorplan`** - Programmatic DSL modifications
 
-See [mcp-server/README.md](./mcp-server/README.md) for full documentation.
+See [floorplan-mcp-server/README.md](./floorplan-mcp-server/README.md) for full documentation.
 
 ## Rendering Features
 
@@ -451,8 +451,8 @@ This project uses a dual-licensing structure to reflect different use cases:
 
 ### User-Facing Applications (GPL v3)
 The following modules are licensed under **GNU General Public License v3**:
-- **`viewer/`** - Interactive 3D floorplan viewer application
-- **`mcp-server/`** - Model Context Protocol server for Claude integration
+- **`floorplan-viewer/`** - Interactive 3D floorplan viewer application
+- **`floorplan-mcp-server/`** - Model Context Protocol server for Claude integration
 
 These are end-user applications and are GPL-licensed to ensure that any modifications or distributions remain open source.
 
@@ -468,7 +468,7 @@ These libraries can be freely used in both open-source and proprietary projects.
 **Copyright © 2025-2026 Malar Kannan**
 
 ### Language Grammar (MIT License)
-- **`language/`** - Langium-based DSL parser and validator
+- **`floorplan-language/`** - Langium-based DSL parser and validator
 
 **Copyright © 2025 Alexander Lang, 2025-2026 Malar Kannan**
 
@@ -476,11 +476,11 @@ These libraries can be freely used in both open-source and proprietary projects.
 
 | Module | License | Copyright |
 |--------|---------|-----------|
-| `viewer/` | GPL-3.0-or-later | Malar Kannan |
-| `mcp-server/` | GPL-3.0-or-later | Malar Kannan |
+| `floorplan-viewer/` | GPL-3.0-or-later | Malar Kannan |
+| `floorplan-mcp-server/` | GPL-3.0-or-later | Malar Kannan |
 | `floorplan-3d-core/` | MIT | Malar Kannan |
 | `floorplan-common/` | MIT | Malar Kannan |
-| `language/` | MIT | Alexander Lang, Malar Kannan |
+| `floorplan-language/` | MIT | Alexander Lang, Malar Kannan |
 
 See the `LICENSE` file in each module directory for full license text.
 

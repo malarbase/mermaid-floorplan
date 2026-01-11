@@ -139,7 +139,7 @@ Features follow a deprecation lifecycle:
 
 Use the migration utilities to upgrade between versions:
 ```typescript
-import { migrate } from 'floorplans-language';
+import { migrate } from 'floorplan-language';
 
 const result = migrate(content, '2.0.0');
 if (result.success) {
@@ -206,7 +206,7 @@ npm run dev
 
 ### Common Issues
 - **"Invalid URL" error during langium:generate:** Node.js version is below 20. Switch using `nvm use 20`.
-- **"Failed to resolve entry for package 'floorplans-language'":** Run `npm run build --workspaces` before `npm run dev`.
+- **"Failed to resolve entry for package 'floorplan-language'":** Run `npm run build --workspaces` before `npm run dev`.
 - **Port in use:** Vite auto-selects next available port (5174, 5175, etc.)
 - **"Maximum call stack size exceeded" when running tests in Cursor:** This is a Cursor sandbox restriction, NOT a code bug. The sandbox blocks certain file system operations required by vitest workers. Run tests outside the sandbox or use `required_permissions: ["all"]` in AI tool calls.
 

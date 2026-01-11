@@ -44,7 +44,7 @@ The interactive editor SHALL be implemented as a separate module (`interactive-e
 - **GIVEN** both `viewer` and `interactive-editor` need shared UI components
 - **WHEN** the developer creates or modifies UI elements
 - **THEN** all class names SHALL use the `fp-*` prefix (e.g., `fp-floor-item`, `fp-floor-summary-panel`)
-- **AND** styles SHALL be defined in `viewer-core/src/ui/styles.ts`
+- **AND** styles SHALL be defined in `floorplan-viewer-core/src/ui/styles.ts`
 - **AND** the `interactive-editor` SHALL NOT duplicate styles inline in `index.html`
 - **AND** theme-aware styles SHALL be applied consistently via `body.dark-theme` selectors
 
@@ -760,7 +760,7 @@ The `viewer-core` package SHALL provide a unified library of UI components that 
 - **GIVEN** the interactive-editor displays a list of floors
 - **WHEN** the floor list is rendered
 - **THEN** each floor item SHALL use the `fp-floor-item` class
-- **AND** the class SHALL be styled in `viewer-core/src/ui/styles.ts`
+- **AND** the class SHALL be styled in `floorplan-viewer-core/src/ui/styles.ts`
 - **AND** theme switching SHALL update floor item label colors automatically
 
 #### Scenario: Panel positioning uses CSS custom properties

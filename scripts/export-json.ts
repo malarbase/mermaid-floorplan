@@ -2,13 +2,13 @@
  * Script to export floorplan DSL to JSON for 3D viewing
  * Usage: npx tsx scripts/export-json.ts <input.floorplan> [output.json]
  * 
- * Uses the shared convertFloorplanToJson function from floorplans-language.
+ * Uses the shared convertFloorplanToJson function from floorplan-language.
  */
 
 import { EmptyFileSystem } from "langium";
 import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplans-language";
-import { createFloorplansServices, convertFloorplanToJson, formatSummaryTable } from "floorplans-language";
+import type { Floorplan } from "floorplan-language";
+import { createFloorplansServices, convertFloorplanToJson, formatSummaryTable } from "floorplan-language";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -26,7 +26,7 @@ export type {
     JsonStairSegment,
     JsonLift,
     JsonVerticalConnection,
-} from "floorplans-language";
+} from "floorplan-language";
 
 // Initialize services
 const services = createFloorplansServices(EmptyFileSystem);
