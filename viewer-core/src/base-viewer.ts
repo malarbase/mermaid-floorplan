@@ -111,6 +111,10 @@ export abstract class BaseViewer implements SceneContext {
   get annotationManager(): AnnotationManager { return this._annotationManager; }
   get floorManager(): FloorManager { return this._floorManager; }
   
+  // Light and theme getters
+  get light(): THREE.DirectionalLight { return this.directionalLight; }
+  get theme(): ViewerTheme { return this.currentTheme; }
+  
   constructor(options: BaseViewerOptions) {
     const { containerId, initialTheme = 'light', enableKeyboardControls = true } = options;
     
@@ -257,6 +261,8 @@ export abstract class BaseViewer implements SceneContext {
         overlay.style.display = visible ? 'flex' : 'none';
       }
     }
+    // Sync keyboard controls state
+    this.keyboardControls?.syncHelpOverlayState(visible);
   }
   
   /**

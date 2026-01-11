@@ -1,266 +1,43 @@
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-// Import types and shared code from floorplan-3d-core for consistent rendering
-import type { JsonExport } from 'floorplan-3d-core';
-// Import shared viewer interfaces, wall generator, and managers from viewer-core
-import { 
-  BaseViewer,
-  Overlay2DManager,
-  createDslEditor,
-  monaco,
-  injectStyles,
-  parseFloorplanDSLWithDocument,
-  isFloorplanFile,
-  isJsonFile,
-  type DslEditorInstance,
-  type ParseError,
-} from 'viewer-core';
-// Chat integration
-import { OpenAIChatService } from './openai-chat';
+/**
+ * Floorplan 3D Viewer
+ * 
+ * A read-only viewer for .floorplan DSL files with:
+ * - Full 3D visualization
+ * - Drag-and-drop file loading
+ * - File dropdown with import/export options
+ * - Command palette (⌘K)
+ * - Control panel for camera, lighting, floors, annotations
+ * - 2D overlay mini-map
+ * - Keyboard navigation
+ * - Collapsible read-only DSL editor panel
+ * 
+ * This uses the unified FloorplanApp class from viewer-core with
+ * viewer-only feature flags (no editing, no auth required).
+ */
 
-// Inject shared styles before anything else
+import { 
+  FloorplanApp, 
+  injectStyles,
+  createControlPanel,
+  createCameraControlsUI,
+  createLightControlsUI,
+  createFloorControlsUI,
+  createAnnotationControlsUI,
+  createOverlay2DUI,
+  createKeyboardHelpUI,
+  createShortcutInfoUI,
+  createControlPanelSection,
+  getSectionContent,
+  createSliderControl,
+  createDslEditor,
+  createEditorPanel,
+} from 'viewer-core';
+
+// Inject shared styles
 injectStyles();
 
-class Viewer extends BaseViewer {
-    // Light controls
-    protected lightAzimuth: number = 45;
-    protected lightElevation: number = 60;
-    protected lightIntensity: number = 1.0;
-    protected lightRadius: number = 100;
-    
-    // Validation warnings
-    protected validationWarnings: ParseError[] = [];
-    protected warningsPanel: HTMLElement | null = null;
-    protected warningsPanelCollapsed: boolean = true;
-    
-    // Editor panel state
-    protected editorInstance: DslEditorInstance | null = null;
-    protected chatService: OpenAIChatService = new OpenAIChatService();
-    protected editorPanelOpen: boolean = false;
-    protected editorDebounceTimer: number | undefined;
-    
-    // 2D Overlay manager
-    protected overlay2DManager: Overlay2DManager;
-
-    constructor() {
-        super({
-            containerId: 'app',
-            initialTheme: 'light',
-            enableKeyboardControls: true,
-        });
-        
-        // Initialize 2D overlay manager
-        this.overlay2DManager = new Overlay2DManager({
-            getCurrentTheme: () => this.currentTheme,
-            getFloorplanData: () => this.currentFloorplanData,
-            getVisibleFloorIds: () => this._floorManager.getVisibleFloorIds(),
-        });
-
-        // UI Controls
-        this.setupUIControls();
-        
-        // Create warnings panel
-        this.createWarningsPanel();
-        
-        // Setup help overlay close button and click-outside-to-close
-        this.setupHelpOverlay();
-        
-        // Initialize editor panel
-        this.setupEditorPanel();
-
-        // Start animation loop
-        this.startAnimation();
-    }
-    
-    /**
-     * Override to handle floor visibility changes in 2D overlay.
-     */
-    protected onFloorVisibilityChanged(): void {
-        this.overlay2DManager.render();
-    }
-    
-    /**
-     * Override to update 2D overlay after floorplan loads.
-     */
-    protected onFloorplanLoaded(): void {
-        this.overlay2DManager.render();
-    }
-    
-    private setupUIControls() {
-        // Exploded view slider
-        const explodedSlider = document.getElementById('exploded-view') as HTMLInputElement;
-        explodedSlider?.addEventListener('input', (e) => {
-            const val = parseInt((e.target as HTMLInputElement).value);
-            this.setExplodedView(val / 100);
-            this.updateSliderValue('exploded-value', `${val}%`);
-        });
-
-        // File input
-        const fileInput = document.getElementById('file-input') as HTMLInputElement;
-        fileInput?.addEventListener('change', this.onFileLoad.bind(this));
-        
-        // Light controls
-        const azimuthSlider = document.getElementById('light-azimuth') as HTMLInputElement;
-        azimuthSlider?.addEventListener('input', (e) => {
-            this.lightAzimuth = parseFloat((e.target as HTMLInputElement).value);
-            this.updateLightPosition();
-            this.updateSliderValue('light-azimuth-value', `${Math.round(this.lightAzimuth)}°`);
-        });
-        
-        const elevationSlider = document.getElementById('light-elevation') as HTMLInputElement;
-        elevationSlider?.addEventListener('input', (e) => {
-            this.lightElevation = parseFloat((e.target as HTMLInputElement).value);
-            this.updateLightPosition();
-            this.updateSliderValue('light-elevation-value', `${Math.round(this.lightElevation)}°`);
-        });
-        
-        const intensitySlider = document.getElementById('light-intensity') as HTMLInputElement;
-        intensitySlider?.addEventListener('input', (e) => {
-            this.lightIntensity = parseFloat((e.target as HTMLInputElement).value);
-            this.directionalLight.intensity = this.lightIntensity;
-            this.updateSliderValue('light-intensity-value', this.lightIntensity.toFixed(1));
-        });
-        
-        // Export buttons
-        const exportGlbBtn = document.getElementById('export-glb-btn') as HTMLButtonElement;
-        exportGlbBtn?.addEventListener('click', () => this.exportGLTF(true));
-        
-        const exportGltfBtn = document.getElementById('export-gltf-btn') as HTMLButtonElement;
-        exportGltfBtn?.addEventListener('click', () => this.exportGLTF(false));
-        
-        // Theme toggle
-        const themeToggleBtn = document.getElementById('theme-toggle-btn') as HTMLButtonElement;
-        themeToggleBtn?.addEventListener('click', () => {
-            this.toggleTheme();
-            this.updateThemeButton();
-            // Update Monaco editor theme
-            monaco.editor.setTheme(this.currentTheme === 'dark' ? 'vs-dark' : 'vs');
-            // Update 2D overlay for theme change
-            this.overlay2DManager.render();
-        });
-        
-        // Collapsible sections
-        document.querySelectorAll('.fp-section-header').forEach(header => {
-            header.addEventListener('click', () => {
-                const section = header.parentElement;
-                section?.classList.toggle('collapsed');
-            });
-        });
-        
-        // Setup manager controls
-        this._cameraManager.setupControls();
-        this._annotationManager.setupControls();
-        this._floorManager.setupControls();
-        this.overlay2DManager.setupControls();
-    }
-    
-    // ==================== Editor Panel Setup ====================
-    
-    private async setupEditorPanel() {
-        // Panel toggle button
-        const toggleBtn = document.getElementById('editor-panel-toggle');
-        
-        toggleBtn?.addEventListener('click', () => {
-            this.editorPanelOpen = !this.editorPanelOpen;
-            this.updateEditorPanelPosition();
-            if (toggleBtn) {
-                toggleBtn.textContent = this.editorPanelOpen ? '◀' : '▶';
-            }
-        });
-        
-        // Setup resize handle
-        this.setupEditorResize();
-        
-        // Initialize Monaco editor with default content
-        const defaultContent = this.getDefaultFloorplanContent();
-        try {
-            this.editorInstance = createDslEditor({
-                containerId: 'editor-container',
-                initialContent: defaultContent,
-                theme: 'vs-dark',
-                fontSize: 13,
-                onChange: () => this.scheduleEditorUpdate(),
-            });
-            
-            // Load the default floorplan
-            this.loadFloorplanFromEditor();
-        } catch (err) {
-            console.error('Failed to initialize editor:', err);
-        }
-        
-        // Setup chat
-        this.setupChat();
-    }
-    
-    private updateEditorPanelPosition() {
-        const panel = document.getElementById('editor-panel');
-        if (!panel) return;
-        
-        const width = panel.offsetWidth;
-        panel.style.transform = this.editorPanelOpen ? 'translateX(0)' : `translateX(-${width}px)`;
-        document.body.classList.toggle('editor-open', this.editorPanelOpen);
-        
-        // Update CSS variable for other elements
-        if (this.editorPanelOpen) {
-            document.documentElement.style.setProperty('--editor-width', `${width}px`);
-        }
-        
-        // Notify 2D overlay manager of editor state change to adjust position
-        this.overlay2DManager.onEditorStateChanged(this.editorPanelOpen, width);
-    }
-    
-    private setupEditorResize() {
-        const resizeHandle = document.getElementById('editor-resize-handle');
-        const panel = document.getElementById('editor-panel');
-        
-        if (!resizeHandle || !panel) return;
-        
-        let isResizing = false;
-        let startX = 0;
-        let startWidth = 0;
-        
-        const onMouseDown = (e: MouseEvent) => {
-            isResizing = true;
-            startX = e.clientX;
-            startWidth = panel.offsetWidth;
-            
-            resizeHandle.classList.add('active');
-            panel.classList.add('resizing');
-            document.body.style.cursor = 'ew-resize';
-            document.body.style.userSelect = 'none';
-            
-            e.preventDefault();
-        };
-        
-        const onMouseMove = (e: MouseEvent) => {
-            if (!isResizing) return;
-            
-            const deltaX = e.clientX - startX;
-            const newWidth = Math.max(300, Math.min(startWidth + deltaX, window.innerWidth * 0.8));
-            
-            panel.style.width = `${newWidth}px`;
-            panel.style.transform = this.editorPanelOpen ? 'translateX(0)' : `translateX(-${newWidth}px)`;
-            
-            // Update CSS variable for other elements that depend on editor width
-            document.documentElement.style.setProperty('--editor-width', `${newWidth}px`);
-        };
-        
-        const onMouseUp = () => {
-            if (isResizing) {
-                isResizing = false;
-                resizeHandle.classList.remove('active');
-                panel.classList.remove('resizing');
-                document.body.style.cursor = '';
-                document.body.style.userSelect = '';
-            }
-        };
-        
-        resizeHandle.addEventListener('mousedown', onMouseDown);
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mouseup', onMouseUp);
-    }
-    
-    private getDefaultFloorplanContent(): string {
-        return `%%{version: 1.0}%%
+// Default floorplan content for initial display
+const defaultFloorplan = `%%{version: 1.0}%%
 floorplan
   # Style definitions
   style Modern {
@@ -291,460 +68,317 @@ floorplan
   connect LivingRoom.bottom to Hallway.top door at 50%
   connect Hallway.right to MasterBedroom.left door at 50%
 `;
-    }
-    
-    private scheduleEditorUpdate() {
-        if (this.editorDebounceTimer) {
-            window.clearTimeout(this.editorDebounceTimer);
-        }
-        this.editorDebounceTimer = window.setTimeout(() => {
-            this.loadFloorplanFromEditor();
-        }, 500);
-    }
-    
-    private async loadFloorplanFromEditor() {
-        if (!this.editorInstance) return;
-        
-        const content = this.editorInstance.getValue();
-        
-        try {
-            const result = await parseFloorplanDSLWithDocument(content);
-            
-            if (result.errors.length > 0) {
-                // Don't update if there are errors
-                this.validationWarnings = result.errors;
-                this.updateWarningsPanel();
-                return;
-            }
-            
-            // Store validation warnings
-            this.validationWarnings = result.warnings;
-            this.updateWarningsPanel();
-            
-            // Store Langium document for 2D rendering
-            this.overlay2DManager.setLangiumDocument(result.document ?? null);
-            
-            if (result.data) {
-                this.loadFloorplan(result.data);
-                
-                // Update chat context with new floorplan
-                this.chatService.updateFloorplanContext(content);
-            }
-        } catch (err) {
-            console.error('Failed to parse floorplan from editor:', err);
-        }
-    }
-    
-    private setupChat() {
-        const chatMessages = document.getElementById('chat-messages') as HTMLElement;
-        const chatInput = document.getElementById('chat-input') as HTMLInputElement;
-        const sendButton = document.getElementById('send-button') as HTMLButtonElement;
-        const baseUrlInput = document.getElementById('base-url-input') as HTMLInputElement;
-        const apiKeyInput = document.getElementById('api-key-input') as HTMLInputElement;
-        const saveApiKeyButton = document.getElementById('save-api-key') as HTMLButtonElement;
-        const removeApiKeyButton = document.getElementById('remove-api-key') as HTMLButtonElement;
-        const apiKeyStatus = document.getElementById('api-key-status') as HTMLElement;
-        const modelSelect = document.getElementById('model-select') as HTMLSelectElement;
-        
-        // Load saved settings
-        const savedBaseUrl = localStorage.getItem('openai_base_url') || 'https://api.openai.com/v1';
-        const savedApiKey = localStorage.getItem('openai_api_key');
-        const savedModel = localStorage.getItem('openai_model') || 'gpt-4o-mini';
-        
-        // Apply saved base URL
-        baseUrlInput.value = savedBaseUrl;
-        this.chatService.setBaseUrl(savedBaseUrl);
-        
-        if (savedApiKey) {
-            apiKeyInput.value = savedApiKey;
-            this.chatService.setApiKey(savedApiKey);
-            this.updateChatUI(true);
-        }
-        
-        modelSelect.value = savedModel;
-        this.chatService.setModel(savedModel);
-        
-        const updateChatUI = (apiKeyValid: boolean) => {
-            if (apiKeyValid) {
-                apiKeyStatus.textContent = 'API key is set';
-                apiKeyStatus.className = 'api-key-status valid';
-                chatInput.disabled = false;
-                sendButton.disabled = false;
-                removeApiKeyButton.style.display = 'inline-block';
-            } else {
-                apiKeyStatus.textContent = 'Enter API key for AI chat';
-                apiKeyStatus.className = 'api-key-status invalid';
-                chatInput.disabled = true;
-                sendButton.disabled = true;
-                removeApiKeyButton.style.display = 'none';
-            }
-        };
-        
-        this.updateChatUI = updateChatUI;
-        
-        const addMessage = (content: string, isUser: boolean, isLoading: boolean = false): HTMLElement => {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user-message' : isLoading ? 'loading-message' : 'assistant-message'}`;
-            
-            if (isLoading) {
-                messageDiv.innerHTML = `
-                    <span>Thinking</span>
-                    <div class="loading-ellipsis">
-                        <div></div><div></div><div></div><div></div>
-                    </div>
-                `;
-            } else {
-                messageDiv.textContent = content;
-            }
-            
-            chatMessages.appendChild(messageDiv);
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-            return messageDiv;
-        };
-        
-        const extractFloorplanContent = (response: string): { floorplan: string | null; cleanedResponse: string } => {
-            const floorplanRegex = /```\n*fp\n([\s\S]*?)\n```/g;
-            const match = floorplanRegex.exec(response);
-            
-            if (match) {
-                const floorplan = match[1].trim();
-                const cleanedResponse = response.replace(floorplanRegex, '').trim();
-                return { floorplan, cleanedResponse };
-            }
-            
-            return { floorplan: null, cleanedResponse: response };
-        };
-        
-        const sendMessage = async () => {
-            const message = chatInput.value.trim();
-            if (!message || !this.editorInstance) return;
-            
-            addMessage(message, true);
-            chatInput.value = '';
-            sendButton.disabled = true;
-            
-            const loadingMessage = addMessage('', false, true);
-            
-            try {
-                const response = await this.chatService.sendMessage(message, this.editorInstance.getValue());
-                const { floorplan, cleanedResponse } = extractFloorplanContent(response);
-                
-                // If floorplan content was found, update the editor
-                if (floorplan && this.editorInstance) {
-                    this.editorInstance.setValue(floorplan);
-                }
-                
-                // Replace loading message with actual response
-                loadingMessage.className = 'message assistant-message';
-                loadingMessage.textContent = cleanedResponse || 'Done!';
-            } catch (error) {
-                loadingMessage.className = 'message assistant-message';
-                loadingMessage.textContent = 'Error: ' + (error as Error).message;
-            } finally {
-                sendButton.disabled = false;
-            }
-        };
-        
-        const saveApiKey = async () => {
-            const baseUrl = baseUrlInput.value.trim() || 'https://api.openai.com/v1';
-            const apiKey = apiKeyInput.value.trim();
-            
-            if (!apiKey) {
-                apiKeyStatus.textContent = 'Please enter an API key';
-                apiKeyStatus.className = 'api-key-status invalid';
-                return;
-            }
-            
-            // Save base URL first
-            this.chatService.setBaseUrl(baseUrl);
-            localStorage.setItem('openai_base_url', baseUrl);
-            
-            saveApiKeyButton.disabled = true;
-            saveApiKeyButton.textContent = 'Validating...';
-            
-            try {
-                const isValid = await this.chatService.validateApiKey(apiKey);
-                if (isValid) {
-                    this.chatService.setApiKey(apiKey);
-                    localStorage.setItem('openai_api_key', apiKey);
-                    updateChatUI(true);
-                } else {
-                    apiKeyStatus.textContent = 'Invalid API key or URL';
-                    apiKeyStatus.className = 'api-key-status invalid';
-                }
-            } catch {
-                apiKeyStatus.textContent = 'Error validating (check URL)';
-                apiKeyStatus.className = 'api-key-status invalid';
-            } finally {
-                saveApiKeyButton.disabled = false;
-                saveApiKeyButton.textContent = 'Save';
-            }
-        };
-        
-        const removeApiKey = () => {
-            localStorage.removeItem('openai_api_key');
-            localStorage.removeItem('openai_base_url');
-            this.chatService.setApiKey('');
-            this.chatService.setBaseUrl('https://api.openai.com/v1');
-            apiKeyInput.value = '';
-            baseUrlInput.value = 'https://api.openai.com/v1';
-            updateChatUI(false);
-        };
-        
-        const updateModel = () => {
-            const selectedModel = modelSelect.value;
-            this.chatService.setModel(selectedModel);
-            localStorage.setItem('openai_model', selectedModel);
-        };
-        
-        // Event listeners
-        saveApiKeyButton?.addEventListener('click', saveApiKey);
-        removeApiKeyButton?.addEventListener('click', removeApiKey);
-        modelSelect?.addEventListener('change', updateModel);
-        baseUrlInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') saveApiKey();
-        });
-        apiKeyInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') saveApiKey();
-        });
-        sendButton?.addEventListener('click', sendMessage);
-        chatInput?.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') sendMessage();
-        });
-        
-        // Initial UI state
-        if (!savedApiKey) {
-            updateChatUI(false);
-        }
-    }
-    
-    private updateChatUI: (valid: boolean) => void = () => {};
-    
-    private updateSliderValue(elementId: string, value: string) {
-        const element = document.getElementById(elementId);
-        if (element) {
-            element.textContent = value;
-        }
-    }
 
-    private updateThemeButton() {
-        const btn = document.getElementById('theme-toggle-btn');
-        if (btn) {
-            switch (this.currentTheme) {
-                case 'light':
-                    btn.textContent = '🌙 Dark';
-                    break;
-                case 'dark':
-                    btn.textContent = '☀️ Light';
-                    break;
-                case 'blueprint':
-                    btn.textContent = '📐 Blueprint';
-                    break;
-            }
-        }
-    }
-    
-    /**
-     * Setup help overlay close functionality
-     */
-    private setupHelpOverlay(): void {
-        const overlay = document.getElementById('keyboard-help-overlay');
-        const closeBtn = document.getElementById('keyboard-help-close');
-        const panel = overlay?.querySelector('.fp-keyboard-help-panel');
-        
-        // Close button click
-        closeBtn?.addEventListener('click', () => {
-            this.setHelpOverlayVisible(false);
-        });
-        
-        // Click outside panel to close
-        overlay?.addEventListener('click', (e) => {
-            if (e.target === overlay) {
-                this.setHelpOverlayVisible(false);
-            }
-        });
-        
-        // Prevent clicks on panel from closing
-        panel?.addEventListener('click', (e) => {
-            e.stopPropagation();
-        });
-    }
-    
-    private async exportGLTF(binary: boolean) {
-        const exporter = new GLTFExporter();
-        
-        try {
-            const result = await new Promise<ArrayBuffer | object>((resolve, reject) => {
-                exporter.parse(
-                    this._scene,
-                    (gltf) => resolve(gltf),
-                    (error) => reject(error),
-                    { binary }
-                );
-            });
-            
-            if (binary) {
-                // GLB export
-                const blob = new Blob([result as ArrayBuffer], { type: 'application/octet-stream' });
-                this.downloadBlob(blob, 'floorplan.glb');
-            } else {
-                // GLTF export
-                const json = JSON.stringify(result, null, 2);
-                const blob = new Blob([json], { type: 'application/json' });
-                this.downloadBlob(blob, 'floorplan.gltf');
-            }
-        } catch (error) {
-            console.error('Export failed:', error);
-            alert('Failed to export model');
-        }
-    }
-    
-    private downloadBlob(blob: Blob, filename: string) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    }
-    
-    // ==================== Validation Warnings Panel ====================
-    
-    private createWarningsPanel() {
-        this.warningsPanel = document.createElement('div');
-        this.warningsPanel.id = 'warnings-panel';
-        this.warningsPanel.className = 'fp-warnings-panel collapsed';
-        this.warningsPanel.innerHTML = `
-            <div class="fp-warnings-header">
-                <span class="fp-warnings-badge">⚠️ <span id="warning-count">0</span> warnings</span>
-                <button id="toggle-warnings" class="fp-warnings-toggle">▼</button>
-            </div>
-            <div class="fp-warnings-list" id="warnings-list"></div>
-        `;
-        document.body.appendChild(this.warningsPanel);
-        
-        // Toggle collapse
-        const toggleBtn = document.getElementById('toggle-warnings');
-        toggleBtn?.addEventListener('click', () => {
-            this.warningsPanelCollapsed = !this.warningsPanelCollapsed;
-            this.warningsPanel?.classList.toggle('collapsed', this.warningsPanelCollapsed);
-            if (toggleBtn) {
-                toggleBtn.textContent = this.warningsPanelCollapsed ? '▼' : '▲';
-            }
-        });
-    }
-    
-    private updateWarningsPanel() {
-        const countEl = document.getElementById('warning-count');
-        const listEl = document.getElementById('warnings-list');
-        
-        if (countEl) {
-            countEl.textContent = String(this.validationWarnings.length);
-        }
-        
-        if (listEl) {
-            if (this.validationWarnings.length === 0) {
-                listEl.innerHTML = '<div class="fp-no-warnings">No warnings</div>';
-            } else {
-                listEl.innerHTML = this.validationWarnings.map((w, index) => {
-                    const lineInfo = w.line ? `<span class="fp-warning-line">line ${w.line}:</span> ` : '';
-                    return `<div class="fp-warning-item" data-index="${index}" style="cursor: pointer;">${lineInfo}${w.message}</div>`;
-                }).join('');
-                
-                // Add click handlers for navigation to editor
-                listEl.querySelectorAll('.fp-warning-item').forEach((item) => {
-                    item.addEventListener('click', () => {
-                        const index = parseInt(item.getAttribute('data-index') || '0', 10);
-                        const warning = this.validationWarnings[index];
-                        if (warning.line && this.editorInstance) {
-                            // Open editor panel if not already open
-                            if (!this.editorPanelOpen) {
-                                document.getElementById('editor-panel-toggle')?.click();
-                            }
-                            this.editorInstance.goToLine(warning.line, warning.column || 1);
-                        }
-                    });
-                });
-            }
-        }
-        
-        // Show/hide panel based on whether there are warnings
-        if (this.warningsPanel) {
-            this.warningsPanel.style.display = this.validationWarnings.length > 0 ? 'block' : 'none';
-        }
-    }
+// ========================================
+// Create UI Components BEFORE FloorplanApp
+// (FloorplanApp.setupHelpOverlay needs these elements)
+// ========================================
 
-    private onFileLoad(event: Event) {
-        const file = (event.target as HTMLInputElement).files?.[0];
-        if (!file) return;
+// Create keyboard help overlay (accessible via H or ? keys)
+const keyboardHelp = createKeyboardHelpUI({
+  onClose: () => keyboardHelp.hide(),
+});
+document.body.appendChild(keyboardHelp.element);
 
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            const content = e.target?.result as string;
-            
-            if (isFloorplanFile(file.name)) {
-                // Parse DSL file directly
-                try {
-                    const result = await parseFloorplanDSLWithDocument(content);
-                    if (result.errors.length > 0) {
-                        const errorMsg = result.errors.map(e => 
-                            e.line ? `Line ${e.line}: ${e.message}` : e.message
-                        ).join('\n');
-                        console.error("Parse errors:", result.errors);
-                        alert(`Failed to parse floorplan:\n${errorMsg}`);
-                        return;
-                    }
-                    
-                    // Update editor with loaded content
-                    if (this.editorInstance) {
-                        this.editorInstance.setValue(content);
-                    }
-                    
-                    // Store validation warnings
-                    this.validationWarnings = result.warnings;
-                    this.updateWarningsPanel();
-                    
-                    // Display warnings in console (keep for debugging)
-                    if (result.warnings.length > 0) {
-                        console.warn("⚠️  Validation warnings:");
-                        for (const warning of result.warnings) {
-                            const line = warning.line ? ` (line ${warning.line})` : "";
-                            console.warn(`  ⚠ ${warning.message}${line}`);
-                        }
-                    }
-                    
-                    // Store Langium document for 2D rendering
-                    this.overlay2DManager.setLangiumDocument(result.document ?? null);
-                    
-                    if (result.data) {
-                        this.loadFloorplan(result.data);
-                    }
-                } catch (err) {
-                    console.error("Failed to parse floorplan DSL", err);
-                    alert("Failed to parse floorplan file");
-                }
-            } else if (isJsonFile(file.name)) {
-                // Parse JSON file
-                try {
-                    const json = JSON.parse(content) as JsonExport;
-                    // Clear warnings for JSON files (no validation)
-                    this.validationWarnings = [];
-                    this.updateWarningsPanel();
-                    // JSON files don't have a Langium document for 2D rendering
-                    this.overlay2DManager.setLangiumDocument(null);
-                    this.loadFloorplan(json);
-                } catch (err) {
-                    console.error("Failed to parse JSON", err);
-                    alert("Invalid JSON file");
-                }
-            } else {
-                alert("Unsupported file type. Please use .floorplan or .json files.");
-            }
-        };
-        reader.readAsText(file);
+// Create shortcut info panel (bottom-left corner hint)
+const shortcutInfo = createShortcutInfoUI({
+  title: 'Floorplan 3D Viewer',
+});
+document.body.appendChild(shortcutInfo.element);
+
+// Create floor summary container
+const floorSummary = document.createElement('div');
+floorSummary.id = 'floor-summary';
+floorSummary.className = 'fp-floor-summary';
+floorSummary.innerHTML = `
+  <div class="floor-summary-title">Floor Summary</div>
+  <div id="floor-summary-content"></div>
+`;
+document.body.appendChild(floorSummary);
+
+// ========================================
+// Read-Only Editor Panel (using viewer-core component)
+// ========================================
+
+// Create read-only editor panel using viewer-core's component
+const editorPanel = createEditorPanel({
+  initiallyOpen: false,  // Start collapsed in viewer
+  editable: false,       // Read-only mode
+  isAuthenticated: false,
+  width: 450,
+  onToggle: (_isOpen) => {
+    // Trigger Monaco editor resize if needed
+    dslEditor?.editor.layout();
+  },
+});
+document.body.appendChild(editorPanel.element);
+
+// Create Monaco editor inside the panel's container
+let dslEditor: ReturnType<typeof createDslEditor> | null = null;
+
+// Wait for next frame to ensure DOM is ready, then create editor
+requestAnimationFrame(() => {
+  dslEditor = createDslEditor({
+    containerId: editorPanel.editorContainer.id,
+    initialContent: defaultFloorplan,
+    theme: 'vs-dark',
+    fontSize: 13,
+  });
+  
+  // Set editor to read-only mode
+  dslEditor.editor.updateOptions({ readOnly: true });
+});
+
+// ========================================
+// Create FloorplanApp
+// ========================================
+
+const viewer = new FloorplanApp({
+  containerId: 'app',
+  initialTheme: 'light',
+  initialDsl: defaultFloorplan,
+  
+  // Viewer-only feature flags
+  enableEditing: false,        // Read-only mode
+  enableSelection: false,      // Selection off by default in viewer
+  allowSelectionToggle: true,  // User can press V to enable selection
+  enableChat: false,           // No AI chat in viewer
+  showHeaderBar: true,         // File dropdown + command palette
+  enableDragDrop: true,        // Drag-drop file loading
+  
+  // No auth required for viewer
+  isAuthenticated: false,
+  onAuthRequired: undefined,
+  
+  // File load callback - update editor and log
+  onFileLoad: (filename, content) => {
+    console.log(`Loaded: ${filename}`);
+    // Update editor content when a file is loaded
+    if (dslEditor) {
+      dslEditor.setValue(content);
     }
+  },
+});
+
+// ========================================
+// Control Panel UI
+// ========================================
+
+// Create control panel UI
+const controlPanel = createControlPanel();
+document.body.appendChild(controlPanel);
+
+// Add camera controls to panel
+const cameraControls = createCameraControlsUI({
+  initialMode: 'perspective',
+  initialFov: 75,
+  onModeChange: () => {
+    viewer.cameraManager.toggleCameraMode();
+  },
+  onFovChange: (fov) => {
+    if (viewer.perspectiveCamera) {
+      viewer.perspectiveCamera.fov = fov;
+      viewer.perspectiveCamera.updateProjectionMatrix();
+    }
+  },
+  onIsometric: () => {
+    viewer.cameraManager.setIsometricView();
+  },
+});
+controlPanel.appendChild(cameraControls.element);
+
+// Track light control values
+let currentAzimuth = 45;
+let currentElevation = 60;
+
+// Helper to update light position from azimuth/elevation
+function updateLightPosition(azimuth: number, elevation: number): void {
+  const azRad = azimuth * Math.PI / 180;
+  const elRad = elevation * Math.PI / 180;
+  const distance = 20;
+  
+  const x = distance * Math.cos(elRad) * Math.sin(azRad);
+  const y = distance * Math.sin(elRad);
+  const z = distance * Math.cos(elRad) * Math.cos(azRad);
+  
+  if (viewer.light) {
+    viewer.light.position.set(x, y, z);
+  }
 }
 
-new Viewer();
+// Add light controls to panel
+const lightControls = createLightControlsUI({
+  initialAzimuth: currentAzimuth,
+  initialElevation: currentElevation,
+  initialIntensity: 1.0,
+  onAzimuthChange: (azimuth) => {
+    currentAzimuth = azimuth;
+    updateLightPosition(currentAzimuth, currentElevation);
+  },
+  onElevationChange: (elevation) => {
+    currentElevation = elevation;
+    updateLightPosition(currentAzimuth, currentElevation);
+  },
+  onIntensityChange: (intensity) => {
+    if (viewer.light) {
+      viewer.light.intensity = intensity;
+    }
+  },
+});
+controlPanel.appendChild(lightControls.element);
+
+// Add view controls (theme, exploded view) as a custom section
+const viewSection = createControlPanelSection({
+  title: 'View',
+  id: 'view-section',
+  collapsed: true,
+});
+const viewContent = getSectionContent(viewSection);
+
+if (viewContent) {
+  // Theme toggle button
+  const themeRow = document.createElement('div');
+  themeRow.className = 'fp-control-group';
+  themeRow.innerHTML = `
+    <div class="fp-control-row">
+      <label class="fp-label">Theme</label>
+    </div>
+  `;
+  
+  const themeBtn = document.createElement('button');
+  themeBtn.className = 'fp-btn fp-btn-secondary';
+  themeBtn.id = 'theme-toggle-btn';
+  themeBtn.style.cssText = 'padding: 4px 12px; font-size: 11px; margin-top: 4px;';
+  themeBtn.textContent = '🌙 Dark';
+  themeBtn.addEventListener('click', () => {
+    viewer.toggleTheme();
+    const theme = viewer.theme;
+    themeBtn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+  });
+  themeRow.appendChild(themeBtn);
+  viewContent.appendChild(themeRow);
+  
+  // Exploded view slider
+  const explodedSlider = createSliderControl({
+    id: 'exploded-view',
+    label: 'Exploded View',
+    min: 0,
+    max: 100,
+    value: 0,
+    step: 1,
+    formatValue: (v) => `${Math.round(v)}%`,
+    onChange: (value) => {
+      viewer.setExplodedView(value / 100);
+    },
+  });
+  viewContent.appendChild(explodedSlider.element);
+}
+controlPanel.appendChild(viewSection);
+
+// Add floor controls to panel
+const floorControls = createFloorControlsUI({
+  onShowAll: () => viewer.floorManager.setAllFloorsVisible(true),
+  onHideAll: () => viewer.floorManager.setAllFloorsVisible(false),
+  onFloorToggle: (floorId, visible) => {
+    viewer.floorManager.setFloorVisible(floorId, visible);
+  },
+});
+controlPanel.appendChild(floorControls.element);
+
+// Add 2D overlay control section
+const overlay2DSection = createControlPanelSection({
+  title: '2D Overlay',
+  id: 'overlay-2d-section',
+  collapsed: true,
+});
+const overlay2DContent = getSectionContent(overlay2DSection);
+
+// Create 2D overlay UI element
+const overlay2D = createOverlay2DUI({
+  initialVisible: false,
+  onClose: () => {
+    if (overlay2DCheckbox) {
+      overlay2DCheckbox.checked = false;
+    }
+  },
+});
+document.body.appendChild(overlay2D.element);
+
+// Create checkbox control for overlay visibility
+let overlay2DCheckbox: HTMLInputElement | null = null;
+if (overlay2DContent) {
+  const checkboxRow = document.createElement('div');
+  checkboxRow.className = 'fp-checkbox-row';
+  
+  overlay2DCheckbox = document.createElement('input');
+  overlay2DCheckbox.type = 'checkbox';
+  overlay2DCheckbox.id = 'show-2d-overlay';
+  overlay2DCheckbox.addEventListener('change', () => {
+    if (overlay2DCheckbox?.checked) {
+      overlay2D.show();
+    } else {
+      overlay2D.hide();
+    }
+  });
+  
+  const label = document.createElement('label');
+  label.htmlFor = 'show-2d-overlay';
+  label.textContent = 'Show 2D Mini-map';
+  
+  checkboxRow.appendChild(overlay2DCheckbox);
+  checkboxRow.appendChild(label);
+  overlay2DContent.appendChild(checkboxRow);
+  
+  // Opacity slider
+  const opacitySlider = createSliderControl({
+    id: 'overlay-opacity',
+    label: 'Opacity',
+    min: 20,
+    max: 100,
+    value: 60,
+    step: 5,
+    formatValue: (v) => `${Math.round(v)}%`,
+    onChange: (value) => {
+      overlay2D.element.style.opacity = String(value / 100);
+    },
+  });
+  overlay2DContent.appendChild(opacitySlider.element);
+}
+controlPanel.appendChild(overlay2DSection);
+
+// Add annotation controls
+const annotationControls = createAnnotationControlsUI({
+  onShowAreaChange: (show) => {
+    viewer.annotationManager.state.showArea = show;
+    viewer.annotationManager.updateAll();
+  },
+  onShowDimensionsChange: (show) => {
+    viewer.annotationManager.state.showDimensions = show;
+    viewer.annotationManager.updateAll();
+  },
+  onShowFloorSummaryChange: (show) => {
+    viewer.annotationManager.state.showFloorSummary = show;
+    viewer.annotationManager.updateAll();
+    const summaryEl = document.getElementById('floor-summary');
+    if (summaryEl) {
+      summaryEl.classList.toggle('visible', show);
+    }
+  },
+  onAreaUnitChange: (unit) => {
+    viewer.annotationManager.state.areaUnit = unit;
+    viewer.annotationManager.updateAll();
+  },
+  onLengthUnitChange: (unit) => {
+    viewer.annotationManager.state.lengthUnit = unit;
+    viewer.annotationManager.updateAll();
+  },
+});
+controlPanel.appendChild(annotationControls.element);
+
+// Expose for debugging
+(window as unknown as { viewer: FloorplanApp }).viewer = viewer;
+
+console.log('Floorplan 3D Viewer initialized');
+console.log('Press ? or H for keyboard shortcuts');
+console.log('Press ⌘K for command palette');
+console.log('Press V to toggle selection mode');

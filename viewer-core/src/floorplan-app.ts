@@ -51,8 +51,10 @@ export interface FloorplanAppOptions {
   // Feature flags
   /** Enable editing features (DSL editing, properties panel, AI chat) */
   enableEditing?: boolean;
-  /** Enable 3D selection (click/marquee select) */
+  /** Enable 3D selection on startup (click/marquee select) */
   enableSelection?: boolean;
+  /** Allow user to toggle selection via V key (default: true if enableSelection or enableEditing) */
+  allowSelectionToggle?: boolean;
   /** Enable AI chat integration */
   enableChat?: boolean;
   /** Show header bar with file operations */
@@ -82,6 +84,7 @@ export class FloorplanApp extends BaseViewer {
   // Feature flags (readonly after construction)
   public readonly enableEditing: boolean;
   public readonly enableSelection: boolean;
+  public readonly allowSelectionToggle: boolean;
   public readonly enableChat: boolean;
   public readonly showHeaderBar: boolean;
   public readonly enableDragDrop: boolean;
@@ -127,6 +130,8 @@ export class FloorplanApp extends BaseViewer {
     // Store feature flags
     this.enableEditing = options.enableEditing ?? false;
     this.enableSelection = options.enableSelection ?? true;
+    // Default allowSelectionToggle to true if enableSelection or enableEditing is true
+    this.allowSelectionToggle = options.allowSelectionToggle ?? (this.enableSelection || this.enableEditing);
     this.enableChat = options.enableChat ?? false;
     this.showHeaderBar = options.showHeaderBar ?? true;
     this.enableDragDrop = options.enableDragDrop ?? true;
@@ -140,15 +145,20 @@ export class FloorplanApp extends BaseViewer {
     this.onFileLoadCallback = options.onFileLoad;
     this.onDslChangeCallback = options.onDslChange;
     
-    // Initialize selection manager if enabled
-    if (this.enableSelection) {
+    // Initialize selection manager if enabled or toggleable
+    // (We need the manager to exist for V key toggle to work)
+    if (this.enableSelection || this.allowSelectionToggle) {
       this._selectionManager = new SelectionManager(
         this._scene,
         this._cameraManager.activeCamera,
         this._renderer,
         this._controls,
         this._meshRegistry,
-        { marqueeMode: 'intersection' }
+        { 
+          marqueeMode: 'intersection',
+          enabled: this.enableSelection,  // Start enabled/disabled based on config
+          allowToggle: this.allowSelectionToggle,  // Whether V key can toggle
+        }
       );
     }
     

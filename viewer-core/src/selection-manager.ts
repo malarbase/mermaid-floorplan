@@ -36,6 +36,8 @@ export interface SelectionManagerConfig {
   enableHoverPreview?: boolean;
   /** Initial enabled state (default: true) */
   enabled?: boolean;
+  /** Allow user to toggle selection via V key (default: true) */
+  allowToggle?: boolean;
 }
 
 /**
@@ -119,6 +121,7 @@ export class SelectionManager extends BaseSelectionManager {
       highlightColor: config.highlightColor ?? 0x00ff00,
       enableHoverPreview: config.enableHoverPreview ?? true,
       enabled: config.enabled ?? true,
+      allowToggle: config.allowToggle ?? true,
     };
     
     this._enabled = this.config.enabled;
@@ -468,8 +471,8 @@ export class SelectionManager extends BaseSelectionManager {
       this.isAltPressed = true;
     }
     
-    // V key toggles selection mode
-    if (event.code === 'KeyV') {
+    // V key toggles selection mode (if allowed)
+    if (event.code === 'KeyV' && this.config.allowToggle) {
       this.toggleEnabled();
     }
     

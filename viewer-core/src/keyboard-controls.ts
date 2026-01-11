@@ -215,6 +215,14 @@ export class KeyboardControls {
     }
     
     /**
+     * Sync help overlay state (call when overlay is closed externally).
+     * This updates the internal state without re-triggering the visibility callback.
+     */
+    public syncHelpOverlayState(visible: boolean): void {
+        this.helpOverlayVisible = visible;
+    }
+    
+    /**
      * Update function (call each frame)
      */
     public update(deltaTime: number): void {
