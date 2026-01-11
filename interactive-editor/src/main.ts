@@ -177,10 +177,13 @@ function updateEditorPanelPosition() {
     editorToggle.textContent = editorPanelOpen ? '◀' : '▶';
   }
   
-  // Toggle body class and set CSS variable
+  // Toggle body class and set CSS variables
   document.body.classList.toggle('editor-open', editorPanelOpen);
   if (editorPanelOpen) {
     document.documentElement.style.setProperty('--editor-width', `${editorPanelWidth}px`);
+    document.documentElement.style.setProperty('--layout-editor-width', `${editorPanelWidth}px`);
+  } else {
+    document.documentElement.style.setProperty('--layout-editor-width', '0px');
   }
   
   // Notify 2D overlay manager
@@ -211,6 +214,7 @@ document.addEventListener('mousemove', (e) => {
   editorPanel.style.width = newWidth + 'px';
   editorPanel.style.transform = 'translateX(0)';
   document.documentElement.style.setProperty('--editor-width', `${newWidth}px`);
+  document.documentElement.style.setProperty('--layout-editor-width', `${newWidth}px`);
 });
 
 document.addEventListener('mouseup', () => {
@@ -251,7 +255,7 @@ async function parseAndUpdate(content: string) {
       dslEditor.setErrorMarkers(errors);
       if (editorStatus) {
         editorStatus.textContent = `${errors.length} error(s)`;
-        editorStatus.className = 'editor-status error';
+        editorStatus.className = 'fp-editor-status error';
       }
       editor3d.setErrorState(true);
       validationWarningsUI.clear();
@@ -265,7 +269,7 @@ async function parseAndUpdate(content: string) {
       showError(conversionResult.errors[0].message);
       if (editorStatus) {
         editorStatus.textContent = 'Conversion error';
-        editorStatus.className = 'editor-status error';
+        editorStatus.className = 'fp-editor-status error';
       }
       editor3d.setErrorState(true);
       validationWarningsUI.clear();
@@ -314,14 +318,14 @@ async function parseAndUpdate(content: string) {
     dslEditor.clearErrorMarkers();
     if (editorStatus) {
       editorStatus.textContent = 'Ready';
-      editorStatus.className = 'editor-status success';
+      editorStatus.className = 'fp-editor-status success';
     }
     
   } catch (err) {
     showError((err as Error).message);
     if (editorStatus) {
       editorStatus.textContent = 'Parse error';
-      editorStatus.className = 'editor-status error';
+      editorStatus.className = 'fp-editor-status error';
     }
     editor3d.setErrorState(true);
     validationWarningsUI.clear();
@@ -385,6 +389,7 @@ function showError(message: string) {
     errorBanner.classList.add('visible');
   }
   errorOverlay?.classList.add('visible');
+  // Note: fp-error-banner and fp-error-overlay use 'visible' class from shared-styles.css
 }
 
 function hideError() {
@@ -399,7 +404,7 @@ function updateSelectionInfo(selection: ReadonlySet<{ entityType: string; entity
   
   if (count === 0) {
     selectionInfo.innerHTML = '<div class="details">No selection</div>';
-    selectionInfo.classList.remove('has-selection', 'visible');
+    selectionInfo.classList.remove('fp-has-selection', 'visible');
   } else {
     const types = new Map<string, number>();
     for (const obj of selection) {
@@ -416,11 +421,11 @@ function updateSelectionInfo(selection: ReadonlySet<{ entityType: string; entity
     }
     
     selectionInfo.innerHTML = `
-      <div class="count">${count}</div>
-      <div class="details">${summary}</div>
-      ${names ? `<div class="details" style="margin-top: 4px; color: #00ff00;">${names}</div>` : ''}
+      <div class="fp-selection-count">${count}</div>
+      <div class="fp-selection-details">${summary}</div>
+      ${names ? `<div class="fp-selection-details" style="margin-top: 4px; color: #00ff00;">${names}</div>` : ''}
     `;
-    selectionInfo.classList.add('has-selection', 'visible');
+    selectionInfo.classList.add('fp-has-selection', 'visible');
   }
 }
 
@@ -905,7 +910,7 @@ document.addEventListener('click', () => {
 });
 
 exportMenu?.addEventListener('click', async (e) => {
-  const item = (e.target as HTMLElement).closest('.export-menu-item');
+  const item = (e.target as HTMLElement).closest('.fp-export-menu-item');
   if (!item) return;
   
   const format = (item as HTMLElement).dataset.format;
@@ -1029,7 +1034,7 @@ addRoomBtn?.addEventListener('click', () => {
   if (roomYInput) roomYInput.value = '0';
   if (roomWidthInput) roomWidthInput.value = '4';
   if (roomHeightInput) roomHeightInput.value = '4';
-  addRoomError?.classList.remove('visible');
+  addRoomError?.classList.remove('fp-visible');
   if (addRoomError) addRoomError.textContent = '';
   
   addRoomDialog?.classList.add('visible');
@@ -1169,7 +1174,7 @@ function findRoomInsertionPoint(): { line: number; column: number } | null {
 function showAddRoomError(message: string) {
   if (addRoomError) {
     addRoomError.textContent = message;
-    addRoomError.classList.add('visible');
+    addRoomError.classList.add('fp-visible');
   }
 }
 

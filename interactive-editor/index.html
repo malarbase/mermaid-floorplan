@@ -239,120 +239,7 @@
         font-size: 14px;
       }
       
-      /* Add room dialog */
-      .dialog-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: rgba(0, 0, 0, 0.6);
-        z-index: 400;
-        display: none;
-        align-items: center;
-        justify-content: center;
-      }
-      
-      .dialog-overlay.visible {
-        display: flex;
-      }
-      
-      .dialog {
-        background: #2d2d2d;
-        border: 1px solid #555;
-        border-radius: 8px;
-        padding: 20px;
-        min-width: 320px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      }
-      
-      .dialog-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #fff;
-        margin-bottom: 16px;
-      }
-      
-      .dialog-field {
-        margin-bottom: 12px;
-      }
-      
-      .dialog-field label {
-        display: block;
-        font-size: 12px;
-        color: #999;
-        margin-bottom: 4px;
-      }
-      
-      .dialog-field input {
-        width: 100%;
-        background: #1e1e1e;
-        border: 1px solid #555;
-        border-radius: 4px;
-        padding: 8px 10px;
-        color: #fff;
-        font-size: 13px;
-      }
-      
-      .dialog-field input:focus {
-        outline: none;
-        border-color: #4a9eff;
-      }
-      
-      .dialog-row {
-        display: flex;
-        gap: 12px;
-      }
-      
-      .dialog-row .dialog-field {
-        flex: 1;
-      }
-      
-      .dialog-buttons {
-        display: flex;
-        justify-content: flex-end;
-        gap: 8px;
-        margin-top: 20px;
-      }
-      
-      .dialog-btn {
-        padding: 8px 16px;
-        border-radius: 4px;
-        font-size: 13px;
-        cursor: pointer;
-        border: 1px solid transparent;
-      }
-      
-      .dialog-btn.cancel {
-        background: #3c3c3c;
-        border-color: #555;
-        color: #ccc;
-      }
-      
-      .dialog-btn.cancel:hover {
-        background: #4a4a4a;
-      }
-      
-      .dialog-btn.primary {
-        background: #2d5a2d;
-        border-color: #4a8a4a;
-        color: #8f8;
-      }
-      
-      .dialog-btn.primary:hover {
-        background: #3a6a3a;
-      }
-      
-      .dialog-error {
-        color: #f44;
-        font-size: 12px;
-        margin-top: 8px;
-        display: none;
-      }
-      
-      .dialog-error.visible {
-        display: block;
-      }
+      /* Dialog styles - use .fp-dialog-* classes from shared-styles.css */
       
       .editor-status.error {
         color: #f44;
@@ -483,112 +370,11 @@
         background: #666;
       }
       
-      /* 2D Overlay Mini-map */
-      #overlay-2d {
-        position: absolute;
-        bottom: 10px;
-        left: 10px;
-        width: 280px;
-        height: 220px;
-        background: rgba(30, 30, 30, 0.95);
-        border-radius: 8px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        overflow: hidden;
-        z-index: 50;
-        display: none;
-        border: 1px solid #444;
-        transition: left 0.3s ease, bottom 0.3s ease;
-      }
+      /* 2D Overlay Mini-map - uses .fp-overlay-2d-* classes from shared-styles.css */
       
-      #overlay-2d.visible {
-        display: block;
-      }
-      
-      #overlay-2d-header {
-        background: #2a2a2a;
-        padding: 8px 12px;
-        font-size: 12px;
-        font-weight: 600;
-        color: #ccc;
-        border-bottom: 1px solid #3c3c3c;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        cursor: grab;
-        user-select: none;
-      }
-      
-      #overlay-2d-header:active {
-        cursor: grabbing;
-      }
-      
-      #overlay-2d-close {
-        background: none;
-        border: none;
-        font-size: 18px;
-        line-height: 1;
-        color: #888;
-        cursor: pointer;
-        padding: 0 4px;
-        border-radius: 4px;
-        transition: background 0.15s, color 0.15s;
-      }
-      
-      #overlay-2d-close:hover {
-        background: rgba(255, 255, 255, 0.1);
-        color: #fff;
-      }
-      
-      #overlay-2d.dragging {
-        opacity: 0.9;
-        transition: none;
-      }
-      
-      #overlay-2d-resize {
-        position: absolute;
-        bottom: 0;
-        right: 0;
-        width: 16px;
-        height: 16px;
-        cursor: nwse-resize;
-        background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.15) 50%);
-        border-radius: 0 0 8px 0;
-      }
-      
-      #overlay-2d-resize:hover {
-        background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.3) 50%);
-      }
-      
-      #overlay-2d-content {
-        width: 100%;
-        height: calc(100% - 32px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 8px;
-      }
-      
-      #overlay-2d-content svg {
-        max-width: 100%;
-        max-height: 100%;
-        width: auto;
-        height: auto;
-      }
-      
-      #overlay-2d-empty {
-        color: #888;
-        font-size: 11px;
-        font-style: italic;
-      }
-      
-      /* Shift panels when editor is open */
-      body.editor-open #overlay-2d {
-        left: calc(var(--editor-width, 450px) + 10px);
-      }
-      
-      body.editor-open .fp-warnings-panel {
-        left: calc(var(--editor-width, 450px) + 10px);
-      }
+      /* Panel positioning when editor is open - uses CSS custom properties from shared-styles.css 
+       * The shared styles use --layout-editor-width for positioning .fp-overlay-2d, .fp-floor-summary-panel, etc.
+       * We set --editor-width on toggle for backward compatibility, and update --layout-editor-width via LayoutManager */
       
       /* Shortcut info panel positioned at bottom-right - doesn't need to move with editor */
       .fp-shortcut-info {
@@ -598,139 +384,15 @@
         right: 320px;  /* Offset from control panel on the right */
       }
       
-      body.editor-open #floor-summary {
-        left: calc(var(--editor-width, 450px) + 10px);
-      }
-      
       body.editor-open .properties-panel {
         left: calc(var(--editor-width, 450px) + 16px);
       }
       
-      /* Floor Summary Panel - positioned above the 2D overlay when visible */
-      #floor-summary {
-        position: absolute;
-        bottom: 240px;  /* Stack above 2D overlay (10px + 220px + 10px gap) */
-        left: 10px;
-        background: rgba(30, 30, 30, 0.95);
-        border-radius: 8px;
-        padding: 12px 16px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-        font-size: 12px;
-        z-index: 55;  /* Above 2D overlay (z-index: 50) */
-        transition: left 0.3s ease, bottom 0.3s ease;
-        max-width: 300px;
-        display: none;
-        border: 1px solid #444;
-        color: #ccc;
-        transition: left 0.3s ease;
-        z-index: 50;
-      }
+      /* Floor Summary Panel - uses .fp-floor-summary-panel from shared-styles.css */
       
-      #floor-summary.visible {
-        display: block;
-      }
+      /* Annotation Labels (CSS2D) - uses shared styles from shared-styles.css */
       
-      .floor-summary-title {
-        font-weight: 600;
-        font-size: 14px;
-        margin-bottom: 10px;
-        color: #e0e0e0;
-      }
-      
-      .floor-summary-item {
-        padding: 8px 0;
-        border-bottom: 1px solid #3c3c3c;
-      }
-      
-      .floor-summary-item:last-child {
-        border-bottom: none;
-      }
-      
-      .floor-name {
-        font-weight: 500;
-        color: #4a90d9;
-        margin-bottom: 4px;
-      }
-      
-      .floor-stats {
-        display: flex;
-        gap: 12px;
-        color: #888;
-      }
-      
-      /* Annotation Labels (CSS2D) */
-      .area-label {
-        background: rgba(74, 144, 217, 0.9);
-        color: white;
-        padding: 4px 8px;
-        border-radius: 4px;
-        font-size: 12px;
-        font-weight: 500;
-        white-space: nowrap;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-      }
-      
-      .dimension-label {
-        color: white;
-        padding: 2px 6px;
-        border-radius: 3px;
-        font-size: 10px;
-        white-space: nowrap;
-        font-weight: 500;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
-      }
-      
-      /* Width label - teal */
-      .width-label {
-        background: rgba(0, 150, 136, 0.9);
-      }
-      
-      /* Depth label - orange */
-      .depth-label {
-        background: rgba(255, 152, 0, 0.9);
-      }
-      
-      /* Height label - purple */
-      .height-label {
-        background: rgba(156, 39, 176, 0.9);
-      }
-      
-      /* Selection info panel */
-      .selection-info {
-        position: absolute;
-        bottom: 16px;
-        right: 16px;
-        background: rgba(0, 0, 0, 0.85);
-        color: white;
-        padding: 12px 16px;
-        border-radius: 8px;
-        font-size: 14px;
-        z-index: 100;
-        border: 1px solid #333;
-        min-width: 180px;
-        display: none; /* Hidden by default */
-      }
-      
-      .selection-info.visible {
-        display: block;
-      }
-      
-      .selection-info.has-selection {
-        border-color: #00ff00;
-        background: rgba(0, 40, 0, 0.85);
-      }
-      
-      .selection-info .count {
-        font-size: 20px;
-        font-weight: bold;
-        color: #00ff00;
-        margin-bottom: 2px;
-      }
-      
-      .selection-info .details {
-        color: #aaa;
-        font-size: 11px;
-      }
+      /* Selection info panel - uses .fp-selection-info from shared-styles.css */
       
       
       /* Error banner */
@@ -899,56 +561,7 @@
         border-color: #9a5a5a;
       }
       
-      /* Confirm delete dialog */
-      .confirm-dialog {
-        background: #2d2d2d;
-        border: 1px solid #555;
-        border-radius: 8px;
-        padding: 20px;
-        min-width: 320px;
-        max-width: 420px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-      }
-      
-      .confirm-dialog-title {
-        font-size: 16px;
-        font-weight: 600;
-        color: #f88;
-        margin-bottom: 12px;
-      }
-      
-      .confirm-dialog-message {
-        font-size: 13px;
-        color: #ccc;
-        margin-bottom: 12px;
-        line-height: 1.5;
-      }
-      
-      .confirm-dialog-warning {
-        background: rgba(244, 136, 136, 0.15);
-        border: 1px solid rgba(244, 136, 136, 0.3);
-        border-radius: 4px;
-        padding: 10px;
-        margin-bottom: 16px;
-      }
-      
-      .confirm-dialog-warning-title {
-        font-size: 12px;
-        font-weight: 600;
-        color: #f88;
-        margin-bottom: 6px;
-      }
-      
-      .confirm-dialog-warning-list {
-        font-size: 11px;
-        color: #ccc;
-        margin: 0;
-        padding-left: 16px;
-      }
-      
-      .confirm-dialog-warning-list li {
-        margin-bottom: 2px;
-      }
+      /* Confirm dialog styles - use .fp-confirm-dialog-* classes from shared-styles.css */
       
       /* Keyboard Help Overlay */
       #keyboard-help-overlay {
@@ -1264,24 +877,24 @@
         </div>
         
         <!-- 2D Overlay Mini-map Container -->
-        <div id="overlay-2d">
-          <div id="overlay-2d-header">
+        <div id="overlay-2d" class="fp-overlay-2d">
+          <div id="overlay-2d-header" class="fp-overlay-2d-header">
             <span>2D Floor Plan</span>
-            <button id="overlay-2d-close" title="Close">×</button>
+            <button id="overlay-2d-close" class="fp-overlay-2d-close" title="Close">×</button>
           </div>
-          <div id="overlay-2d-content">
-            <span id="overlay-2d-empty">2D view will appear here</span>
+          <div id="overlay-2d-content" class="fp-overlay-2d-content">
+            <span id="overlay-2d-empty" class="fp-overlay-2d-empty">2D view will appear here</span>
           </div>
-          <div id="overlay-2d-resize"></div>
+          <div id="overlay-2d-resize" class="fp-overlay-2d-resize"></div>
         </div>
         
         <!-- Floor Summary Panel -->
-        <div id="floor-summary">
+        <div id="floor-summary" class="fp-floor-summary-panel">
           <div class="floor-summary-title">Floor Summary</div>
           <div id="floor-summary-content"></div>
         </div>
         
-        <div id="selection-info" class="selection-info" role="status" aria-live="polite" aria-label="Selection status">
+        <div id="selection-info" class="fp-selection-info" role="status" aria-live="polite" aria-label="Selection status">
           <div class="details">No selection</div>
         </div>
         
@@ -1291,17 +904,17 @@
     </div>
     
     <!-- Delete Confirm Dialog -->
-    <div class="dialog-overlay" id="delete-confirm-dialog">
-      <div class="confirm-dialog">
-        <div class="confirm-dialog-title">Delete <span id="delete-entity-name"></span>?</div>
-        <div class="confirm-dialog-message" id="delete-message"></div>
-        <div class="confirm-dialog-warning" id="delete-warning" style="display: none;">
-          <div class="confirm-dialog-warning-title">⚠️ This will also delete:</div>
-          <ul class="confirm-dialog-warning-list" id="delete-cascade-list"></ul>
+    <div class="fp-dialog-overlay" id="delete-confirm-dialog">
+      <div class="fp-confirm-dialog">
+        <div class="fp-confirm-dialog-title">Delete <span id="delete-entity-name"></span>?</div>
+        <div class="fp-confirm-dialog-message" id="delete-message"></div>
+        <div class="fp-confirm-dialog-warning" id="delete-warning" style="display: none;">
+          <div class="fp-confirm-dialog-warning-title">⚠️ This will also delete:</div>
+          <ul class="fp-confirm-dialog-warning-list" id="delete-cascade-list"></ul>
         </div>
-        <div class="dialog-buttons">
-          <button class="dialog-btn cancel" id="delete-cancel">Cancel</button>
-          <button class="dialog-btn primary" id="delete-confirm" style="background: #5a2d2d; border-color: #8a4a4a; color: #f88;">Delete</button>
+        <div class="fp-dialog-buttons">
+          <button class="fp-dialog-btn fp-dialog-btn-cancel" id="delete-cancel">Cancel</button>
+          <button class="fp-dialog-btn fp-dialog-btn-danger" id="delete-confirm">Delete</button>
         </div>
       </div>
     </div>
@@ -1402,37 +1015,37 @@
     </div>
     
     <!-- Add Room Dialog -->
-    <div class="dialog-overlay" id="add-room-dialog">
-      <div class="dialog">
-        <div class="dialog-title">Add New Room</div>
-        <div class="dialog-field">
+    <div class="fp-dialog-overlay" id="add-room-dialog">
+      <div class="fp-dialog">
+        <div class="fp-dialog-title">Add New Room</div>
+        <div class="fp-dialog-field">
           <label for="room-name">Room Name</label>
           <input type="text" id="room-name" placeholder="e.g., Bedroom, Office" autocomplete="off">
         </div>
-        <div class="dialog-row">
-          <div class="dialog-field">
+        <div class="fp-dialog-row">
+          <div class="fp-dialog-field">
             <label for="room-x">X Position</label>
             <input type="number" id="room-x" value="0" step="0.5">
           </div>
-          <div class="dialog-field">
+          <div class="fp-dialog-field">
             <label for="room-y">Y Position</label>
             <input type="number" id="room-y" value="0" step="0.5">
           </div>
         </div>
-        <div class="dialog-row">
-          <div class="dialog-field">
+        <div class="fp-dialog-row">
+          <div class="fp-dialog-field">
             <label for="room-width">Width</label>
             <input type="number" id="room-width" value="4" step="0.5" min="0.5">
           </div>
-          <div class="dialog-field">
+          <div class="fp-dialog-field">
             <label for="room-height">Height</label>
             <input type="number" id="room-height" value="4" step="0.5" min="0.5">
           </div>
         </div>
-        <div class="dialog-error" id="add-room-error"></div>
-        <div class="dialog-buttons">
-          <button class="dialog-btn cancel" id="add-room-cancel">Cancel</button>
-          <button class="dialog-btn primary" id="add-room-confirm">Add Room</button>
+        <div class="fp-dialog-error" id="add-room-error"></div>
+        <div class="fp-dialog-buttons">
+          <button class="fp-dialog-btn fp-dialog-btn-cancel" id="add-room-cancel">Cancel</button>
+          <button class="fp-dialog-btn fp-dialog-btn-primary" id="add-room-confirm">Add Room</button>
         </div>
       </div>
     </div>

@@ -10,6 +10,8 @@ global.document = dom.window.document;
 global.window = dom.window as unknown as Window & typeof globalThis;
 global.HTMLElement = dom.window.HTMLElement;
 global.KeyboardEvent = dom.window.KeyboardEvent;
+global.Event = dom.window.Event;
+global.HTMLSpanElement = dom.window.HTMLSpanElement;
 
 import {
   createHeaderBar,
@@ -19,6 +21,9 @@ import {
   createViewCommands,
   initializeDragDrop,
   createEditorPanel,
+  createDialogUI,
+  createConfirmDialogUI,
+  createPropertiesPanelUI,
 } from '../src/ui/index.js';
 
 describe('Header Bar', () => {
@@ -277,6 +282,390 @@ describe('Editor Panel', () => {
 
   it('should have destroy method', () => {
     const panel = createEditorPanel();
+    expect(panel.destroy).toBeDefined();
+    expect(() => panel.destroy()).not.toThrow();
+  });
+});
+
+describe('Dialog UI', () => {
+  let container: HTMLElement;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    container.remove();
+  });
+
+  it('should create dialog element', () => {
+    const dialog = createDialogUI({
+      title: 'Test Dialog',
+    });
+    expect(dialog.element).toBeInstanceOf(HTMLElement);
+    expect(dialog.element.classList.contains('fp-dialog-overlay')).toBe(true);
+  });
+
+  it('should have show/hide methods', () => {
+    const dialog = createDialogUI({
+      title: 'Test Dialog',
+    });
+    container.appendChild(dialog.element);
+
+    expect(dialog.show).toBeDefined();
+    expect(dialog.hide).toBeDefined();
+
+    dialog.show();
+    expect(dialog.element.classList.contains('visible')).toBe(true);
+
+    dialog.hide();
+    expect(dialog.element.classList.contains('visible')).toBe(false);
+  });
+
+  it('should create fields and get values', () => {
+    const dialog = createDialogUI({
+      title: 'Test Dialog',
+      fields: [
+        { name: 'name', label: 'Name', type: 'text', value: 'Room1' },
+        { name: 'width', label: 'Width', type: 'number', value: 10 },
+      ],
+    });
+    container.appendChild(dialog.element);
+
+    const values = dialog.getValues();
+    expect(values.name).toBe('Room1');
+    expect(values.width).toBe('10');
+  });
+
+  it('should set and clear error', () => {
+    const dialog = createDialogUI({
+      title: 'Test Dialog',
+    });
+    container.appendChild(dialog.element);
+
+    dialog.setError('Test error message');
+    const errorEl = dialog.element.querySelector('.fp-dialog-error');
+    expect(errorEl?.textContent).toBe('Test error message');
+    expect(errorEl?.classList.contains('visible')).toBe(true);
+
+    dialog.clearError();
+    expect(errorEl?.textContent).toBe('');
+    expect(errorEl?.classList.contains('visible')).toBe(false);
+  });
+
+  it('should call primary action onClick with values', () => {
+    const onClick = vi.fn();
+    const dialog = createDialogUI({
+      title: 'Test Dialog',
+      fields: [
+        { name: 'name', label: 'Name', type: 'text', value: 'Test' },
+      ],
+      primaryAction: {
+        label: 'Submit',
+        onClick,
+      },
+    });
+    container.appendChild(dialog.element);
+
+    const submitBtn = dialog.element.querySelector('.fp-dialog-btn.primary') as HTMLElement;
+    submitBtn.click();
+
+    expect(onClick).toHaveBeenCalledWith({ name: 'Test' });
+  });
+
+  it('should call cancel action onClick', () => {
+    const onCancel = vi.fn();
+    const dialog = createDialogUI({
+      title: 'Test Dialog',
+      cancelAction: {
+        label: 'Cancel',
+        onClick: onCancel,
+      },
+    });
+    container.appendChild(dialog.element);
+
+    const cancelBtn = dialog.element.querySelector('.fp-dialog-btn.cancel') as HTMLElement;
+    cancelBtn.click();
+
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('should have destroy method', () => {
+    const dialog = createDialogUI({
+      title: 'Test Dialog',
+    });
+    expect(dialog.destroy).toBeDefined();
+    expect(() => dialog.destroy()).not.toThrow();
+  });
+});
+
+describe('Confirm Dialog UI', () => {
+  let container: HTMLElement;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    container.remove();
+  });
+
+  it('should create confirm dialog element', () => {
+    const dialog = createConfirmDialogUI({
+      title: 'Confirm Delete',
+      message: 'Are you sure?',
+      onConfirm: vi.fn(),
+    });
+    expect(dialog.element).toBeInstanceOf(HTMLElement);
+    expect(dialog.element.classList.contains('fp-dialog-overlay')).toBe(true);
+  });
+
+  it('should have show/hide methods', () => {
+    const dialog = createConfirmDialogUI({
+      title: 'Confirm',
+      message: 'Test',
+      onConfirm: vi.fn(),
+    });
+    container.appendChild(dialog.element);
+
+    dialog.show();
+    expect(dialog.element.classList.contains('visible')).toBe(true);
+
+    dialog.hide();
+    expect(dialog.element.classList.contains('visible')).toBe(false);
+  });
+
+  it('should call onConfirm when confirm button clicked', () => {
+    const onConfirm = vi.fn();
+    const dialog = createConfirmDialogUI({
+      title: 'Confirm',
+      message: 'Test',
+      onConfirm,
+    });
+    container.appendChild(dialog.element);
+
+    const confirmBtn = dialog.element.querySelector('.fp-dialog-btn.danger') as HTMLElement;
+    confirmBtn.click();
+
+    expect(onConfirm).toHaveBeenCalled();
+  });
+
+  it('should call onCancel when cancel button clicked', () => {
+    const onCancel = vi.fn();
+    const dialog = createConfirmDialogUI({
+      title: 'Confirm',
+      message: 'Test',
+      onConfirm: vi.fn(),
+      onCancel,
+    });
+    container.appendChild(dialog.element);
+
+    const cancelBtn = dialog.element.querySelector('.fp-dialog-btn.cancel') as HTMLElement;
+    cancelBtn.click();
+
+    expect(onCancel).toHaveBeenCalled();
+  });
+
+  it('should display warning section', () => {
+    const dialog = createConfirmDialogUI({
+      title: 'Confirm',
+      message: 'Test',
+      warning: {
+        title: 'Warning',
+        items: ['Item 1', 'Item 2'],
+      },
+      onConfirm: vi.fn(),
+    });
+    container.appendChild(dialog.element);
+
+    const warningEl = dialog.element.querySelector('.fp-confirm-dialog-warning') as HTMLElement;
+    expect(warningEl.style.display).toBe('block');
+
+    const warningItems = warningEl.querySelectorAll('li');
+    expect(warningItems.length).toBe(2);
+  });
+
+  it('should update warning items', () => {
+    const dialog = createConfirmDialogUI({
+      title: 'Confirm',
+      message: 'Test',
+      onConfirm: vi.fn(),
+    });
+    container.appendChild(dialog.element);
+
+    dialog.updateWarning('New Warning', ['New Item 1', 'New Item 2', 'New Item 3']);
+
+    const warningEl = dialog.element.querySelector('.fp-confirm-dialog-warning') as HTMLElement;
+    expect(warningEl.style.display).toBe('block');
+
+    const warningTitle = warningEl.querySelector('.fp-confirm-dialog-warning-title');
+    expect(warningTitle?.textContent).toBe('New Warning');
+
+    const warningItems = warningEl.querySelectorAll('li');
+    expect(warningItems.length).toBe(3);
+  });
+
+  it('should have destroy method', () => {
+    const dialog = createConfirmDialogUI({
+      title: 'Confirm',
+      message: 'Test',
+      onConfirm: vi.fn(),
+    });
+    expect(dialog.destroy).toBeDefined();
+    expect(() => dialog.destroy()).not.toThrow();
+  });
+});
+
+describe('Properties Panel UI', () => {
+  let container: HTMLElement;
+
+  beforeEach(() => {
+    container = document.createElement('div');
+    document.body.appendChild(container);
+  });
+
+  afterEach(() => {
+    container.remove();
+  });
+
+  it('should create properties panel element', () => {
+    const panel = createPropertiesPanelUI();
+    expect(panel.element).toBeInstanceOf(HTMLElement);
+    expect(panel.element.classList.contains('fp-properties-panel')).toBe(true);
+  });
+
+  it('should start hidden', () => {
+    const panel = createPropertiesPanelUI();
+    expect(panel.isVisible()).toBe(false);
+  });
+
+  it('should show panel with properties', () => {
+    const panel = createPropertiesPanelUI();
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Living Room', [
+      { name: 'width', label: 'Width', type: 'number', value: 10 },
+      { name: 'height', label: 'Height', type: 'number', value: 8 },
+    ]);
+
+    expect(panel.isVisible()).toBe(true);
+  });
+
+  it('should hide panel', () => {
+    const panel = createPropertiesPanelUI();
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Test', []);
+    expect(panel.isVisible()).toBe(true);
+
+    panel.hide();
+    expect(panel.isVisible()).toBe(false);
+  });
+
+  it('should display title with entity type and id', () => {
+    const panel = createPropertiesPanelUI();
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Kitchen', []);
+
+    const title = panel.element.querySelector('.fp-properties-panel-title');
+    expect(title?.textContent).toBe('Room: Kitchen');
+  });
+
+  it('should create property inputs', () => {
+    const panel = createPropertiesPanelUI();
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Test', [
+      { name: 'name', label: 'Name', type: 'text', value: 'TestRoom' },
+      { name: 'width', label: 'Width', type: 'number', value: 10 },
+    ]);
+
+    const inputs = panel.element.querySelectorAll('.fp-property-input');
+    expect(inputs.length).toBe(2);
+  });
+
+  it('should create readonly properties', () => {
+    const panel = createPropertiesPanelUI();
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Test', [
+      { name: 'id', label: 'ID', type: 'readonly', value: 'room-123' },
+    ]);
+
+    const readonlyEl = panel.element.querySelector('.fp-property-value.readonly');
+    expect(readonlyEl?.textContent).toBe('room-123');
+  });
+
+  it('should create select properties', () => {
+    const panel = createPropertiesPanelUI();
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Test', [
+      {
+        name: 'type',
+        label: 'Type',
+        type: 'select',
+        value: 'bedroom',
+        options: [
+          { value: 'bedroom', label: 'Bedroom' },
+          { value: 'bathroom', label: 'Bathroom' },
+        ],
+      },
+    ]);
+
+    const select = panel.element.querySelector('select') as HTMLSelectElement;
+    expect(select).toBeDefined();
+    expect(select.value).toBe('bedroom');
+  });
+
+  it('should call onPropertyChange when input changes', () => {
+    const onPropertyChange = vi.fn();
+    const panel = createPropertiesPanelUI({ onPropertyChange });
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Test', [
+      { name: 'width', label: 'Width', type: 'number', value: 10 },
+    ]);
+
+    const input = panel.element.querySelector('input') as HTMLInputElement;
+    input.value = '15';
+    input.dispatchEvent(new Event('change'));
+
+    expect(onPropertyChange).toHaveBeenCalledWith('width', '15');
+  });
+
+  it('should call onDelete when delete button clicked', () => {
+    const onDelete = vi.fn();
+    const panel = createPropertiesPanelUI({ onDelete });
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Test', []);
+
+    const deleteBtn = panel.element.querySelector('.fp-dialog-btn.danger') as HTMLElement;
+    deleteBtn.click();
+
+    expect(onDelete).toHaveBeenCalled();
+  });
+
+  it('should update property value', () => {
+    const panel = createPropertiesPanelUI();
+    container.appendChild(panel.element);
+
+    panel.show('Room', 'Test', [
+      { name: 'width', label: 'Width', type: 'number', value: 10 },
+    ]);
+
+    panel.updateProperty('width', 20);
+
+    const input = panel.element.querySelector('input') as HTMLInputElement;
+    expect(input.value).toBe('20');
+  });
+
+  it('should have destroy method', () => {
+    const panel = createPropertiesPanelUI();
     expect(panel.destroy).toBeDefined();
     expect(() => panel.destroy()).not.toThrow();
   });

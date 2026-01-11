@@ -677,9 +677,14 @@ body.dark-theme .fp-help-footer {
   border: 1px solid #333;
   min-width: 180px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  display: none; /* Hidden by default */
 }
 
-.fp-selection-info.has-selection {
+.fp-selection-info.visible {
+  display: block;
+}
+
+.fp-selection-info.fp-has-selection {
   border-color: #00ff00;
   background: rgba(0, 40, 0, 0.85);
 }

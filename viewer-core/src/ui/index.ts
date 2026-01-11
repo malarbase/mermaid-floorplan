@@ -124,3 +124,22 @@ export {
   type EditorPanel,
   type EditorPanelConfig,
 } from './editor-panel.js';
+
+// Dialog components
+export {
+  createDialogUI,
+  createConfirmDialogUI,
+  type DialogUI,
+  type DialogConfig,
+  type DialogField,
+  type ConfirmDialogUI,
+  type ConfirmDialogConfig,
+} from './dialog-ui.js';
+
+// Properties Panel
+export {
+  createPropertiesPanelUI,
+  type PropertiesPanelUI,
+  type PropertiesPanelUIOptions,
+  type PropertyDefinition,
+} from './properties-panel-ui.js';
