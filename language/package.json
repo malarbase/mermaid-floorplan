@@ -1,7 +1,7 @@
 {
   "name": "floorplans-language",
   "description": "The language specific package",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "license": "MIT",
   "author": "Alexander Lang, Malar Kannan",
   "type": "module",
