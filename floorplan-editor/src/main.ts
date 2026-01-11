@@ -31,7 +31,8 @@ import type { JsonExport, JsonRoom, JsonConnection } from 'floorplan-3d-core';
 injectStyles();
 
 // Sample DSL content
-const sampleDsl = `floorplan
+const sampleDsl = `%%{version: 1.0}%%
+floorplan
   config {
     default_height: 2.8,
     wall_thickness: 0.15,
@@ -39,9 +40,9 @@ const sampleDsl = `floorplan
   }
   
   floor GroundFloor {
-    room LivingRoom at (0, 0) size (8 x 6) walls [top: solid, right: solid, bottom: solid, left: solid]
-    room Kitchen at (8.5, 0) size (5 x 6) walls [top: solid, right: solid, bottom: solid, left: open]
-    room DiningRoom at (14, 0) size (5 x 6) walls [top: solid, right: solid, bottom: solid, left: solid]
+    room LivingRoom at (0, 0) size (8 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] 
+    room Kitchen size (5 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] right-of LivingRoom
+    room DiningRoom size (5 x 6) walls [top: solid, right: open, bottom: solid, left: solid] right-of Kitchen
     room Bedroom at (0, 7) size (6 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
     room Bathroom at (6.5, 7) size (4 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
     room Office at (11, 7) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]

@@ -125,7 +125,7 @@
         gap: 12px;
       }
       
-      .editor-status {
+      .fp-editor-status {
         font-size: 12px;
         color: #888;
       }
@@ -241,11 +241,11 @@
       
       /* Dialog styles - use .fp-dialog-* classes from shared-styles.css */
       
-      .editor-status.error {
+      .fp-editor-status.error {
         color: #f44;
       }
       
-      .editor-status.success {
+      .fp-editor-status.success {
         color: #4a4;
       }
       
@@ -384,7 +384,7 @@
         right: 320px;  /* Offset from control panel on the right */
       }
       
-      body.editor-open .properties-panel {
+      body.editor-open .fp-properties-panel {
         left: calc(var(--editor-width, 450px) + 16px);
       }
       
@@ -461,7 +461,7 @@
       }
       
       /* Properties Panel */
-      .properties-panel {
+      .fp-properties-panel {
         position: absolute;
         top: var(--properties-panel-top, 16px);
         left: 16px;
@@ -476,11 +476,11 @@
         transition: top 0.3s ease, left 0.3s ease;
       }
       
-      .properties-panel-content {
+      .fp-properties-panel-content {
         padding: 12px;
       }
       
-      .properties-panel-title {
+      .fp-properties-panel-title {
         font-size: 14px;
         font-weight: 600;
         color: #fff;
@@ -489,25 +489,25 @@
         border-bottom: 1px solid #444;
       }
       
-      .properties-panel-form {
+      .fp-properties-panel-form {
         display: flex;
         flex-direction: column;
         gap: 8px;
       }
       
-      .property-row {
+      .fp-property-row {
         display: flex;
         align-items: center;
         gap: 8px;
       }
       
-      .property-label {
+      .fp-property-label {
         flex: 0 0 80px;
         font-size: 12px;
         color: #999;
       }
       
-      .property-input {
+      .fp-property-input {
         flex: 1;
         background: #333;
         border: 1px solid #555;
@@ -518,18 +518,18 @@
         min-width: 0;
       }
       
-      .property-input:focus {
+      .fp-property-input:focus {
         outline: none;
         border-color: #4a9eff;
       }
       
-      .property-value.readonly {
+      .fp-property-value.readonly {
         flex: 1;
         color: #888;
         font-size: 12px;
       }
       
-      .properties-panel-note {
+      .fp-properties-panel-note {
         margin-top: 12px;
         padding-top: 8px;
         border-top: 1px solid #444;
@@ -538,7 +538,7 @@
         font-style: italic;
       }
       
-      .properties-panel-actions {
+      .fp-properties-panel-actions {
         margin-top: 12px;
         padding-top: 12px;
         border-top: 1px solid #444;
@@ -546,7 +546,7 @@
         justify-content: flex-end;
       }
       
-      .delete-btn {
+      .fp-delete-btn {
         background: #5a2d2d;
         border: 1px solid #8a4a4a;
         color: #f88;
@@ -556,7 +556,7 @@
         cursor: pointer;
       }
       
-      .delete-btn:hover {
+      .fp-delete-btn:hover {
         background: #6a3a3a;
         border-color: #9a5a5a;
       }
@@ -706,7 +706,7 @@
               </button>
             </div>
           </div>
-          <span id="editor-status" class="editor-status">Ready</span>
+          <span id="editor-status" class="fp-editor-status">Ready</span>
         </div>
       </div>
       <div id="editor-container"></div>
@@ -899,7 +899,7 @@
         </div>
         
         <!-- Properties Panel (shown when single element selected) -->
-        <div id="properties-panel" class="properties-panel" role="complementary" aria-label="Properties panel"></div>
+        <div id="properties-panel" class="fp-properties-panel" role="complementary" aria-label="Properties panel"></div>
       </div>
     </div>
     
