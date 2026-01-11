@@ -347,15 +347,37 @@ function extractEntityLocations(jsonData: JsonExport) {
   }> = [];
   
   for (const floor of jsonData.floors) {
+    // Track floor bounds from room source ranges
+    let floorStartLine = Infinity;
+    let floorStartColumn = 0;
+    let floorEndLine = 0;
+    let floorEndColumn = 0;
+    
+    const floorKey = `${floor.id}:floor:${floor.id}`;
+    
     for (const room of floor.rooms) {
       const roomKey = `${floor.id}:room:${room.name}`;
+      const roomWithSource = room as JsonRoom & { _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number } };
       
-      if ((room as JsonRoom & { _sourceRange?: unknown })._sourceRange) {
+      if (roomWithSource._sourceRange) {
+        const range = roomWithSource._sourceRange;
+        
+        // Track floor bounds
+        if (range.startLine < floorStartLine) {
+          floorStartLine = range.startLine;
+          floorStartColumn = range.startColumn;
+        }
+        if (range.endLine > floorEndLine) {
+          floorEndLine = range.endLine;
+          floorEndColumn = range.endColumn;
+        }
+        
         locations.push({
           entityType: 'room',
           entityId: room.name,
           floorId: floor.id,
-          sourceRange: (room as JsonRoom & { _sourceRange: { startLine: number; startColumn: number; endLine: number; endColumn: number } })._sourceRange,
+          sourceRange: range,
+          parentKey: floorKey, // Link room to its parent floor
         });
       }
       
@@ -371,6 +393,21 @@ function extractEntityLocations(jsonData: JsonExport) {
           });
         }
       }
+    }
+    
+    // Add floor entity if we found any rooms with source ranges
+    if (floorStartLine !== Infinity) {
+      locations.push({
+        entityType: 'floor',
+        entityId: floor.id,
+        floorId: floor.id,
+        sourceRange: {
+          startLine: floorStartLine,
+          startColumn: floorStartColumn,
+          endLine: floorEndLine,
+          endColumn: floorEndColumn,
+        },
+      });
     }
   }
   

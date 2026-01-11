@@ -259,7 +259,7 @@ export class BaseSelectionManager implements SelectionAPI {
   highlight(obj: SelectableObject): void {
     if (!this.isHighlighted(obj)) {
       this.highlighted.add(obj);
-      this.applyHighlight(obj, true, 'primary');
+      this.applyHighlight(obj, true, 'hover');
     }
   }
   
@@ -270,7 +270,7 @@ export class BaseSelectionManager implements SelectionAPI {
           this.highlighted.delete(highlighted);
           // Only remove highlight if not selected
           if (!this.isSelected(highlighted)) {
-            this.applyHighlight(highlighted, false, 'primary');
+            this.applyHighlight(highlighted, false, 'hover');
           }
           break;
         }
@@ -278,7 +278,7 @@ export class BaseSelectionManager implements SelectionAPI {
     } else {
       for (const highlighted of this.highlighted) {
         if (!this.isSelected(highlighted)) {
-          this.applyHighlight(highlighted, false, 'primary');
+          this.applyHighlight(highlighted, false, 'hover');
         }
       }
       this.highlighted.clear();
@@ -309,6 +309,7 @@ export class BaseSelectionManager implements SelectionAPI {
   public static readonly HighlightLevel = {
     PRIMARY: 'primary' as const,
     SECONDARY: 'secondary' as const,
+    HOVER: 'hover' as const,
   };
   
   /**
@@ -316,9 +317,9 @@ export class BaseSelectionManager implements SelectionAPI {
    * Override in subclass to implement actual visual feedback.
    * @param _obj - Object to highlight
    * @param _highlight - Whether to apply or remove highlight
-   * @param _level - Highlight level: 'primary' for main selection, 'secondary' for hierarchical children
+   * @param _level - Highlight level: 'primary' for main selection, 'secondary' for hierarchical children, 'hover' for preview
    */
-  protected applyHighlight(_obj: SelectableObject, _highlight: boolean, _level: 'primary' | 'secondary' = 'primary'): void {
+  protected applyHighlight(_obj: SelectableObject, _highlight: boolean, _level: 'primary' | 'secondary' | 'hover' = 'primary'): void {
     // Base implementation does nothing - override in subclass
   }
   

@@ -153,13 +153,13 @@ export class EditorViewerSync {
   private buildEntityHierarchy(): void {
     this.entityHierarchy.clear();
     
-    // Group entities by floor
-    const floorRooms = new Map<string, string[]>(); // floorId -> room keys
+    // Group entities by floor and room
+    const floorRooms = new Map<string, string[]>(); // floor key -> room keys
     const roomWalls = new Map<string, string[]>();  // room key -> wall keys
     
     for (const [key, entity] of this.entityLocations) {
       if (entity.entityType === 'room') {
-        const floorKey = entity.floorId;
+        const floorKey = `${entity.floorId}:floor:${entity.floorId}`;
         if (!floorRooms.has(floorKey)) {
           floorRooms.set(floorKey, []);
         }
@@ -187,8 +187,12 @@ export class EditorViewerSync {
         childKeys: [],
       };
       
-      if (entity.entityType === 'room') {
-        // Room's children are its walls
+      if (entity.entityType === 'floor') {
+        // Floor's children are all rooms on this floor
+        context.childKeys = floorRooms.get(key) || [];
+      } else if (entity.entityType === 'room') {
+        // Room's parent is the floor, children are its walls
+        context.parentKey = `${entity.floorId}:floor:${entity.floorId}`;
         context.childKeys = roomWalls.get(key) || [];
       } else if (entity.entityType === 'wall') {
         // Wall's parent is its room
@@ -245,7 +249,21 @@ export class EditorViewerSync {
     const allKeys: string[] = [entityKey];
     let breadcrumb: string | undefined;
     
-    if (entity.entityType === 'room') {
+    if (entity.entityType === 'floor') {
+      // Floor selected: add all rooms and their walls
+      breadcrumb = `Floor: ${entity.entityId}`;
+      
+      // Add all rooms on this floor
+      for (const roomKey of context.childKeys) {
+        allKeys.push(roomKey);
+        
+        // Also add all walls of each room
+        const roomContext = this.entityHierarchy.get(roomKey);
+        if (roomContext) {
+          allKeys.push(...roomContext.childKeys);
+        }
+      }
+    } else if (entity.entityType === 'room') {
       // Room selected: add all its walls
       allKeys.push(...context.childKeys);
       breadcrumb = entity.entityId;

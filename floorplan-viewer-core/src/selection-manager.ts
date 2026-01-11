@@ -70,11 +70,13 @@ export class SelectionManager extends BaseSelectionManager {
   private _enabled: boolean;
   
   // Highlight visuals
-  private outlineMaterial: THREE.LineBasicMaterial;
-  private secondaryOutlineMaterial: THREE.LineBasicMaterial; // Dimmed outline for hierarchical children
+  private outlineMaterial: THREE.LineBasicMaterial;           // Primary selection (green)
+  private secondaryOutlineMaterial: THREE.LineBasicMaterial;  // Hierarchical children (dimmed green)
+  private hoverHighlightMaterial: THREE.LineBasicMaterial;    // Hover/preview highlight (cyan)
   private outlinedObjects = new Map<string, THREE.LineSegments>(); // keyed by mesh uuid
   private emissiveObjects = new Map<string, { color: THREE.Color; intensity: number }>(); // Store original emission values
   private hierarchyLevel = new Map<string, 'primary' | 'secondary'>(); // Track highlight level per object
+  private isHoverHighlight = new Map<string, boolean>(); // Track if object is hover (not selection)
   
   // Marquee state
   private isDragging = false;
@@ -132,18 +134,26 @@ export class SelectionManager extends BaseSelectionManager {
     this._enabled = this.config.enabled;
     
     // Create highlight materials
+    // Primary selection: bright green
     this.outlineMaterial = new THREE.LineBasicMaterial({
       color: this.config.highlightColor,
       linewidth: 2,
     });
     
     // Secondary (dimmed) outline for hierarchical children
-    // Use a muted version of the highlight color (30% opacity via blending)
     this.secondaryOutlineMaterial = new THREE.LineBasicMaterial({
       color: 0x88cc88, // Dimmed green
       linewidth: 1,
       transparent: true,
       opacity: 0.5,
+    });
+    
+    // Hover/preview highlight: cyan (distinct from selection green)
+    this.hoverHighlightMaterial = new THREE.LineBasicMaterial({
+      color: 0x00ccff, // Cyan
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.8,
     });
     
     // Bind event handlers
@@ -839,25 +849,35 @@ export class SelectionManager extends BaseSelectionManager {
   /**
    * Apply or remove highlight from an object.
    * Uses edge outlines for walls, emission change for floor plates (rooms).
-   * @param level - 'primary' for main selection (full highlight), 'secondary' for hierarchical children (dimmed)
+   * @param level - 'primary' for main selection, 'secondary' for hierarchical children, 'hover' for preview
    */
-  protected override applyHighlight(obj: SelectableObject, highlight: boolean, level: 'primary' | 'secondary' = 'primary'): void {
+  protected override applyHighlight(obj: SelectableObject, highlight: boolean, level: 'primary' | 'secondary' | 'hover' = 'primary'): void {
     const mesh = obj.mesh;
     const key = mesh.uuid;
     const isRoom = obj.entityType === 'room';
     const isPrimary = level === 'primary';
+    const isHover = level === 'hover';
     
     if (highlight) {
-      // Track hierarchy level for this object
-      this.hierarchyLevel.set(key, level);
+      // Track hierarchy level and hover state for this object
+      this.hierarchyLevel.set(key, level === 'hover' ? 'primary' : level);
+      this.isHoverHighlight.set(key, isHover);
       
       // Create outline if not already present
       if (mesh instanceof THREE.Mesh && !this.outlinedObjects.has(key)) {
         const edges = new THREE.EdgesGeometry(mesh.geometry);
-        // Use primary or secondary material based on level
-        const material = isPrimary 
-          ? this.outlineMaterial.clone() 
-          : this.secondaryOutlineMaterial.clone();
+        // Use different material based on level:
+        // - hover: cyan outline for preview
+        // - primary: green outline for selection
+        // - secondary: dimmed green for hierarchical children
+        let material: THREE.LineBasicMaterial;
+        if (isHover) {
+          material = this.hoverHighlightMaterial.clone();
+        } else if (isPrimary) {
+          material = this.outlineMaterial.clone();
+        } else {
+          material = this.secondaryOutlineMaterial.clone();
+        }
         const outline = new THREE.LineSegments(edges, material);
         
         // Match transform - need to consider world transform
@@ -877,14 +897,26 @@ export class SelectionManager extends BaseSelectionManager {
             color: material.emissive.clone(),
             intensity: material.emissiveIntensity,
           });
-          // Apply highlight emission - dimmed for secondary
-          material.emissive.setHex(isPrimary ? 0x00ff00 : 0x88cc88);
-          material.emissiveIntensity = isPrimary ? 0.3 : 0.15;
+          // Apply highlight emission:
+          // - hover: cyan glow
+          // - primary: green glow
+          // - secondary: dimmed green glow
+          if (isHover) {
+            material.emissive.setHex(0x00ccff);
+            material.emissiveIntensity = 0.25;
+          } else if (isPrimary) {
+            material.emissive.setHex(0x00ff00);
+            material.emissiveIntensity = 0.3;
+          } else {
+            material.emissive.setHex(0x88cc88);
+            material.emissiveIntensity = 0.15;
+          }
         }
       }
     } else {
-      // Clear hierarchy level
+      // Clear hierarchy level and hover state
       this.hierarchyLevel.delete(key);
+      this.isHoverHighlight.delete(key);
       
       // Remove outline
       const outline = this.outlinedObjects.get(key);
@@ -933,12 +965,14 @@ export class SelectionManager extends BaseSelectionManager {
     // Clean up emissive tracking
     this.emissiveObjects.clear();
     
-    // Clean up hierarchy level tracking
+    // Clean up hierarchy level and hover tracking
     this.hierarchyLevel.clear();
+    this.isHoverHighlight.clear();
     
     // Clean up materials
     this.outlineMaterial.dispose();
     this.secondaryOutlineMaterial.dispose();
+    this.hoverHighlightMaterial.dispose();
     
     // Remove marquee overlay
     if (this.marqueeOverlay && this.marqueeOverlay.parentElement) {
