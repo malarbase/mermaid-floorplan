@@ -162,6 +162,8 @@ export interface JsonFloor {
     height?: number;
     /** Computed metrics for this floor */
     metrics?: FloorMetrics;
+    /** Source location in DSL file (for editor sync) */
+    _sourceRange?: JsonSourceRange;
 }
 
 // ============================================================================
@@ -421,7 +423,8 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             rooms: [],
             stairs: [],
             lifts: [],
-            height: floor.height?.value
+            height: floor.height?.value,
+            _sourceRange: extractSourceRange(floor.$cstNode)
         };
 
         for (const room of floor.rooms) {

@@ -347,36 +347,29 @@ function extractEntityLocations(jsonData: JsonExport) {
   }> = [];
   
   for (const floor of jsonData.floors) {
-    // Track floor bounds from room source ranges
-    let floorStartLine = Infinity;
-    let floorStartColumn = 0;
-    let floorEndLine = 0;
-    let floorEndColumn = 0;
-    
     const floorKey = `${floor.id}:floor:${floor.id}`;
+    const floorWithSource = floor as typeof floor & { _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number } };
+    
+    // Add floor entity with its source range
+    if (floorWithSource._sourceRange) {
+      locations.push({
+        entityType: 'floor',
+        entityId: floor.id,
+        floorId: floor.id,
+        sourceRange: floorWithSource._sourceRange,
+      });
+    }
     
     for (const room of floor.rooms) {
       const roomKey = `${floor.id}:room:${room.name}`;
       const roomWithSource = room as JsonRoom & { _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number } };
       
       if (roomWithSource._sourceRange) {
-        const range = roomWithSource._sourceRange;
-        
-        // Track floor bounds
-        if (range.startLine < floorStartLine) {
-          floorStartLine = range.startLine;
-          floorStartColumn = range.startColumn;
-        }
-        if (range.endLine > floorEndLine) {
-          floorEndLine = range.endLine;
-          floorEndColumn = range.endColumn;
-        }
-        
         locations.push({
           entityType: 'room',
           entityId: room.name,
           floorId: floor.id,
-          sourceRange: range,
+          sourceRange: roomWithSource._sourceRange,
           parentKey: floorKey, // Link room to its parent floor
         });
       }
@@ -393,21 +386,6 @@ function extractEntityLocations(jsonData: JsonExport) {
           });
         }
       }
-    }
-    
-    // Add floor entity if we found any rooms with source ranges
-    if (floorStartLine !== Infinity) {
-      locations.push({
-        entityType: 'floor',
-        entityId: floor.id,
-        floorId: floor.id,
-        sourceRange: {
-          startLine: floorStartLine,
-          startColumn: floorStartColumn,
-          endLine: floorEndLine,
-          endColumn: floorEndColumn,
-        },
-      });
     }
   }
   
