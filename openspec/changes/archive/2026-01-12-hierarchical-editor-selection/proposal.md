@@ -1,6 +1,6 @@
 # Hierarchical Editor Selection
 
-## Status: Draft
+## Status: In Progress
 
 ## Why
 

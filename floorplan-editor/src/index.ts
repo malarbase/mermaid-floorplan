@@ -17,7 +17,12 @@ export { SelectionManager } from 'floorplan-viewer-core';
 export type { MarqueeMode, SelectionManagerConfig } from 'floorplan-viewer-core';
 
 export { EditorViewerSync } from './editor-viewer-sync.js';
-export type { EditorViewerSyncConfig, EntityLocation } from './editor-viewer-sync.js';
+export type {
+  EditorViewerSyncConfig,
+  EntityLocation,
+  EntityHierarchyContext,
+  HierarchyExpansionResult,
+} from './editor-viewer-sync.js';
 
 // Re-export DSL editor from floorplan-viewer-core
 export { createDslEditor, monaco } from 'floorplan-viewer-core';

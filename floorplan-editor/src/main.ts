@@ -334,7 +334,8 @@ async function parseAndUpdate(content: string) {
 }
 
 /**
- * Extract entity locations from JSON for editor sync
+ * Extract entity locations from JSON for editor sync.
+ * Includes parent references for hierarchical selection.
  */
 function extractEntityLocations(jsonData: JsonExport) {
   const locations: Array<{
@@ -342,16 +343,34 @@ function extractEntityLocations(jsonData: JsonExport) {
     entityId: string;
     floorId: string;
     sourceRange: { startLine: number; startColumn: number; endLine: number; endColumn: number };
+    parentKey?: string;
   }> = [];
   
   for (const floor of jsonData.floors) {
+    const floorKey = `${floor.id}:floor:${floor.id}`;
+    const floorWithSource = floor as typeof floor & { _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number } };
+    
+    // Add floor entity with its source range
+    if (floorWithSource._sourceRange) {
+      locations.push({
+        entityType: 'floor',
+        entityId: floor.id,
+        floorId: floor.id,
+        sourceRange: floorWithSource._sourceRange,
+      });
+    }
+    
     for (const room of floor.rooms) {
-      if ((room as JsonRoom & { _sourceRange?: unknown })._sourceRange) {
+      const roomKey = `${floor.id}:room:${room.name}`;
+      const roomWithSource = room as JsonRoom & { _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number } };
+      
+      if (roomWithSource._sourceRange) {
         locations.push({
           entityType: 'room',
           entityId: room.name,
           floorId: floor.id,
-          sourceRange: (room as JsonRoom & { _sourceRange: { startLine: number; startColumn: number; endLine: number; endColumn: number } })._sourceRange,
+          sourceRange: roomWithSource._sourceRange,
+          parentKey: floorKey, // Link room to its parent floor
         });
       }
       
@@ -363,6 +382,7 @@ function extractEntityLocations(jsonData: JsonExport) {
             entityId: `${room.name}_${wall.direction}`,
             floorId: floor.id,
             sourceRange: wallWithSource._sourceRange,
+            parentKey: roomKey, // Link wall to its parent room
           });
         }
       }
@@ -454,7 +474,7 @@ if (editor3d.selectionManager) {
     { debug: true }  // Enable debug logging to diagnose selection issues
   );
   
-  // Handle editor cursor → 3D selection
+  // Handle editor cursor → 3D selection (simple mode)
   editorSync.onEditorSelect((entityKey, isAdditive) => {
     const parts = entityKey.split(':');
     if (parts.length !== 3) return;
@@ -470,6 +490,45 @@ if (editor3d.selectionManager) {
         editor3d.selectionManager?.select(entity, isAdditive);
         break;
       }
+    }
+  });
+  
+  // Handle editor cursor → 3D hierarchical selection
+  editorSync.onEditorHierarchicalSelect((result, isAdditive) => {
+    const registry = editor3d.meshRegistry;
+    const allEntities = registry.getAllEntities();
+    
+    // Find the primary entity (for primary highlight)
+    const primaryParts = result.primaryKey.split(':');
+    let primaryEntity = null;
+    if (primaryParts.length === 3) {
+      const [floorId, entityType, entityId] = primaryParts;
+      primaryEntity = allEntities.find(
+        e => e.floorId === floorId && e.entityType === entityType && e.entityId === entityId
+      );
+    }
+    
+    // Collect all entities to select (primary + hierarchical children)
+    const entitiesToSelect = [];
+    for (const entityKey of result.allKeys) {
+      const parts = entityKey.split(':');
+      if (parts.length !== 3) continue;
+      
+      const [floorId, entityType, entityId] = parts;
+      const entity = allEntities.find(
+        e => e.floorId === floorId && e.entityType === entityType && e.entityId === entityId
+      );
+      if (entity) {
+        entitiesToSelect.push(entity);
+      }
+    }
+    
+    if (entitiesToSelect.length > 0) {
+      // Use selectMultiple for batch selection with hierarchy metadata
+      editor3d.selectionManager?.selectMultiple(entitiesToSelect, isAdditive, {
+        primaryEntity: primaryEntity ?? undefined,
+        isHierarchical: true,
+      });
     }
   });
   

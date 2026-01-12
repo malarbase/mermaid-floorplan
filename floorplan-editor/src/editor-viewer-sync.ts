@@ -28,6 +28,36 @@ export interface EntityLocation {
   entityId: string;
   floorId: string;
   sourceRange: SourceRange;
+  /** Parent entity key (e.g., room for walls) */
+  parentKey?: string;
+}
+
+/**
+ * Hierarchy context for an entity
+ */
+export interface EntityHierarchyContext {
+  /** The entity key (floorId:entityType:entityId) */
+  entityKey: string;
+  /** Entity type (floor, room, wall, connection) */
+  entityType: string;
+  /** Depth in hierarchy (0=floor, 1=room, 2=wall/door) */
+  depth: number;
+  /** Parent entity key, if any */
+  parentKey?: string;
+  /** Child entity keys */
+  childKeys: string[];
+}
+
+/**
+ * Result of hierarchical expansion
+ */
+export interface HierarchyExpansionResult {
+  /** Primary entity key (the one cursor is on) */
+  primaryKey: string;
+  /** All entity keys to select (primary + children based on hierarchy level) */
+  allKeys: string[];
+  /** Context for displaying breadcrumb (e.g., "Kitchen > top wall") */
+  breadcrumb?: string;
 }
 
 /**
@@ -48,12 +78,21 @@ export class EditorViewerSync {
   // Entity location index (populated from JSON with source ranges)
   private entityLocations: Map<string, EntityLocation> = new Map();
   
+  // Entity hierarchy index (key -> hierarchy context)
+  private entityHierarchy: Map<string, EntityHierarchyContext> = new Map();
+  
+  // Configuration for hierarchical selection
+  private hierarchicalSelectionEnabled = true;
+  
   // Disposables for cleanup
   private disposables: monaco.IDisposable[] = [];
   
   // Callback for when user selects entity in editor (cursor position)
   // isAdditive is true when handling multi-cursor (subsequent entities after first)
   private onEditorSelectCallback?: (entityKey: string, isAdditive: boolean) => void;
+  
+  // Callback for hierarchical selection - returns expansion result with all keys to select
+  private onEditorHierarchicalSelectCallback?: (result: HierarchyExpansionResult, isAdditive: boolean) => void;
   
   // Callbacks for text highlight → 3D highlight preview
   private onEditorHighlightCallback?: (entityKeys: string[]) => void;
@@ -94,9 +133,171 @@ export class EditorViewerSync {
       this.entityLocations.set(key, entity);
     }
     
+    // Build hierarchy index
+    this.buildEntityHierarchy();
+    
     if (this.config.debug) {
       console.log(`[EditorViewerSync] Updated ${entities.length} entity locations`);
+      console.log(`[EditorViewerSync] Built hierarchy with ${this.entityHierarchy.size} entries`);
     }
+  }
+  
+  /**
+   * Build entity hierarchy from locations.
+   * Hierarchy structure:
+   *   floor (depth 0)
+   *     └── room (depth 1)
+   *           └── wall (depth 2)
+   *           └── connection (depth 2, spans rooms)
+   */
+  private buildEntityHierarchy(): void {
+    this.entityHierarchy.clear();
+    
+    // Group entities by floor and room
+    const floorRooms = new Map<string, string[]>(); // floor key -> room keys
+    const roomWalls = new Map<string, string[]>();  // room key -> wall keys
+    
+    for (const [key, entity] of this.entityLocations) {
+      if (entity.entityType === 'room') {
+        const floorKey = `${entity.floorId}:floor:${entity.floorId}`;
+        if (!floorRooms.has(floorKey)) {
+          floorRooms.set(floorKey, []);
+        }
+        floorRooms.get(floorKey)!.push(key);
+      } else if (entity.entityType === 'wall') {
+        // Wall entityId is "RoomName_direction", extract room name
+        const match = entity.entityId.match(/^(.+)_(top|bottom|left|right)$/);
+        if (match) {
+          const roomName = match[1];
+          const roomKey = `${entity.floorId}:room:${roomName}`;
+          if (!roomWalls.has(roomKey)) {
+            roomWalls.set(roomKey, []);
+          }
+          roomWalls.get(roomKey)!.push(key);
+        }
+      }
+    }
+    
+    // Build hierarchy contexts for each entity
+    for (const [key, entity] of this.entityLocations) {
+      const context: EntityHierarchyContext = {
+        entityKey: key,
+        entityType: entity.entityType,
+        depth: this.getEntityDepth(entity.entityType),
+        childKeys: [],
+      };
+      
+      if (entity.entityType === 'floor') {
+        // Floor's children are all rooms on this floor
+        context.childKeys = floorRooms.get(key) || [];
+      } else if (entity.entityType === 'room') {
+        // Room's parent is the floor, children are its walls
+        context.parentKey = `${entity.floorId}:floor:${entity.floorId}`;
+        context.childKeys = roomWalls.get(key) || [];
+      } else if (entity.entityType === 'wall') {
+        // Wall's parent is its room
+        const match = entity.entityId.match(/^(.+)_(top|bottom|left|right)$/);
+        if (match) {
+          const roomName = match[1];
+          context.parentKey = `${entity.floorId}:room:${roomName}`;
+        }
+      } else if (entity.entityType === 'connection') {
+        // Connections don't have a strict parent in this hierarchy
+        // They span between rooms
+      }
+      
+      this.entityHierarchy.set(key, context);
+    }
+  }
+  
+  /**
+   * Get the depth of an entity type in the hierarchy.
+   */
+  private getEntityDepth(entityType: string): number {
+    switch (entityType) {
+      case 'floor': return 0;
+      case 'room': return 1;
+      case 'wall': return 2;
+      case 'connection': return 2;
+      default: return 1;
+    }
+  }
+  
+  /**
+   * Get hierarchy context for an entity.
+   */
+  getHierarchyContext(entityKey: string): EntityHierarchyContext | undefined {
+    return this.entityHierarchy.get(entityKey);
+  }
+  
+  /**
+   * Expand an entity to its hierarchical selection.
+   * Based on cursor position context:
+   * - On floor: select all rooms + walls on that floor
+   * - On room: select room + all its walls
+   * - On wall: select just that wall
+   * - On connection: select just that connection
+   */
+  expandToHierarchy(entityKey: string): HierarchyExpansionResult {
+    const context = this.entityHierarchy.get(entityKey);
+    const entity = this.entityLocations.get(entityKey);
+    
+    if (!context || !entity) {
+      return { primaryKey: entityKey, allKeys: [entityKey] };
+    }
+    
+    const allKeys: string[] = [entityKey];
+    let breadcrumb: string | undefined;
+    
+    if (entity.entityType === 'floor') {
+      // Floor selected: add all rooms and their walls
+      breadcrumb = `Floor: ${entity.entityId}`;
+      
+      // Add all rooms on this floor
+      for (const roomKey of context.childKeys) {
+        allKeys.push(roomKey);
+        
+        // Also add all walls of each room
+        const roomContext = this.entityHierarchy.get(roomKey);
+        if (roomContext) {
+          allKeys.push(...roomContext.childKeys);
+        }
+      }
+    } else if (entity.entityType === 'room') {
+      // Room selected: add all its walls
+      allKeys.push(...context.childKeys);
+      breadcrumb = entity.entityId;
+    } else if (entity.entityType === 'wall') {
+      // Wall selected: just the wall, show breadcrumb
+      const match = entity.entityId.match(/^(.+)_(top|bottom|left|right)$/);
+      if (match) {
+        const [, roomName, direction] = match;
+        breadcrumb = `${roomName} › ${direction} wall`;
+      }
+    } else if (entity.entityType === 'connection') {
+      // Connection: just the connection
+      breadcrumb = `Connection: ${entity.entityId}`;
+    }
+    
+    return {
+      primaryKey: entityKey,
+      allKeys,
+      breadcrumb,
+    };
+  }
+  
+  /**
+   * Enable or disable hierarchical selection.
+   */
+  setHierarchicalSelection(enabled: boolean): void {
+    this.hierarchicalSelectionEnabled = enabled;
+  }
+  
+  /**
+   * Check if hierarchical selection is enabled.
+   */
+  isHierarchicalSelectionEnabled(): boolean {
+    return this.hierarchicalSelectionEnabled;
   }
   
   /**
@@ -106,6 +307,15 @@ export class EditorViewerSync {
    */
   onEditorSelect(callback: (entityKey: string, isAdditive: boolean) => void): void {
     this.onEditorSelectCallback = callback;
+  }
+  
+  /**
+   * Set callback for hierarchical selection (cursor position expands to hierarchy).
+   * @param callback - Called with expansion result containing all keys to select.
+   *                   isAdditive is true for multi-cursor (2nd+ entities).
+   */
+  onEditorHierarchicalSelect(callback: (result: HierarchyExpansionResult, isAdditive: boolean) => void): void {
+    this.onEditorHierarchicalSelectCallback = callback;
   }
   
   /**
@@ -222,6 +432,54 @@ export class EditorViewerSync {
     }
   }
   
+  // Breadcrumb decoration for hierarchical context
+  private breadcrumbDecorationCollection: monaco.editor.IEditorDecorationsCollection | null = null;
+  private breadcrumbDecorationTimeout: ReturnType<typeof setTimeout> | null = null;
+  
+  /**
+   * Show breadcrumb decoration for hierarchical context.
+   * E.g., "Kitchen › top wall" when a wall is selected.
+   */
+  private showBreadcrumbDecoration(breadcrumb: string, lineNumber: number): void {
+    // Clear existing breadcrumb
+    this.clearBreadcrumbDecoration();
+    
+    // Create inline decoration at end of line
+    this.breadcrumbDecorationCollection = this.editor.createDecorationsCollection([{
+      range: new monaco.Range(lineNumber, 1, lineNumber, 1000),
+      options: {
+        after: {
+          content: ` ${breadcrumb}`,
+          inlineClassName: 'hierarchy-breadcrumb-hint',
+        },
+        isWholeLine: false,
+      },
+    }]);
+    
+    // Auto-dismiss after 4 seconds
+    this.breadcrumbDecorationTimeout = setTimeout(() => {
+      this.clearBreadcrumbDecoration();
+    }, 4000);
+    
+    if (this.config.debug) {
+      console.log(`[EditorViewerSync] Showing breadcrumb: ${breadcrumb}`);
+    }
+  }
+  
+  /**
+   * Clear any active breadcrumb decoration.
+   */
+  private clearBreadcrumbDecoration(): void {
+    if (this.breadcrumbDecorationTimeout) {
+      clearTimeout(this.breadcrumbDecorationTimeout);
+      this.breadcrumbDecorationTimeout = null;
+    }
+    if (this.breadcrumbDecorationCollection) {
+      this.breadcrumbDecorationCollection.clear();
+      this.breadcrumbDecorationCollection = null;
+    }
+  }
+  
   /**
    * Setup editor cursor → 3D sync.
    */
@@ -260,12 +518,24 @@ export class EditorViewerSync {
     // Find entity at cursor position
     const entityKey = this.findEntityAtPosition(position);
     
-    if (entityKey && this.onEditorSelectCallback) {
-      this.onEditorSelectCallback(entityKey, isAdditive);
+    if (entityKey) {
+      // If hierarchical selection is enabled and we have a callback, use it
+      if (this.hierarchicalSelectionEnabled && this.onEditorHierarchicalSelectCallback) {
+        const expansion = this.expandToHierarchy(entityKey);
+        this.onEditorHierarchicalSelectCallback(expansion, isAdditive);
+        
+        // Show breadcrumb decoration if available
+        if (expansion.breadcrumb) {
+          this.showBreadcrumbDecoration(expansion.breadcrumb, position.lineNumber);
+        }
+      } else if (this.onEditorSelectCallback) {
+        // Fall back to simple selection
+        this.onEditorSelectCallback(entityKey, isAdditive);
+      }
     }
     
     if (this.config.debug) {
-      console.log(`[EditorViewerSync] Cursor at ${position.lineNumber}:${position.column}, entity: ${entityKey || 'none'}, additive: ${isAdditive}`);
+      console.log(`[EditorViewerSync] Cursor at ${position.lineNumber}:${position.column}, entity: ${entityKey || 'none'}, additive: ${isAdditive}, hierarchical: ${this.hierarchicalSelectionEnabled}`);
     }
   }
   
@@ -276,23 +546,42 @@ export class EditorViewerSync {
     this.lockSync('editor-to-3d');
     
     // Collect unique entity keys from all cursor positions
-    const entityKeys = new Set<string>();
+    const primaryEntityKeys = new Set<string>();
+    const allEntityKeys = new Set<string>();
+    
     for (const selection of selections) {
       const entityKey = this.findEntityAtPosition(selection.getPosition());
       if (entityKey) {
-        entityKeys.add(entityKey);
+        primaryEntityKeys.add(entityKey);
+        
+        // If hierarchical selection enabled, expand each entity
+        if (this.hierarchicalSelectionEnabled) {
+          const expansion = this.expandToHierarchy(entityKey);
+          for (const key of expansion.allKeys) {
+            allEntityKeys.add(key);
+          }
+        } else {
+          allEntityKeys.add(entityKey);
+        }
       }
     }
     
     if (this.config.debug) {
-      console.log(`[EditorViewerSync] Multi-cursor: ${entityKeys.size} unique entities from ${selections.length} cursors`);
+      console.log(`[EditorViewerSync] Multi-cursor: ${primaryEntityKeys.size} primary entities, ${allEntityKeys.size} total (hierarchical) from ${selections.length} cursors`);
     }
     
-    // Emit callbacks for each unique entity
-    // First one replaces selection, rest are additive
-    if (this.onEditorSelectCallback) {
+    // If hierarchical selection is enabled and we have the callback
+    if (this.hierarchicalSelectionEnabled && this.onEditorHierarchicalSelectCallback) {
+      // Emit as a combined hierarchical selection
+      const combinedResult: HierarchyExpansionResult = {
+        primaryKey: Array.from(primaryEntityKeys)[0] || '',
+        allKeys: Array.from(allEntityKeys),
+      };
+      this.onEditorHierarchicalSelectCallback(combinedResult, false);
+    } else if (this.onEditorSelectCallback) {
+      // Fall back to simple selection - emit callbacks for each unique entity
       let isFirst = true;
-      for (const entityKey of entityKeys) {
+      for (const entityKey of primaryEntityKeys) {
         this.onEditorSelectCallback(entityKey, !isFirst);
         isFirst = false;
       }
@@ -591,6 +880,9 @@ export class EditorViewerSync {
     // Clear wall decoration
     this.clearWallDecoration();
     
+    // Clear breadcrumb decoration
+    this.clearBreadcrumbDecoration();
+    
     // Clear multi-select decorations
     this.clearMultiSelectDecorations();
     
@@ -600,8 +892,9 @@ export class EditorViewerSync {
     }
     this.disposables = [];
     
-    // Clear entity locations
+    // Clear entity locations and hierarchy
     this.entityLocations.clear();
+    this.entityHierarchy.clear();
   }
 }
 

@@ -57,6 +57,16 @@ export interface HighlightStyle {
 }
 
 /**
+ * Options for selectMultiple with hierarchical selection support.
+ */
+export interface SelectMultipleOptions {
+  /** The primary entity (receives full highlight) when doing hierarchical selection */
+  primaryEntity?: SelectableObject;
+  /** Whether this is a hierarchical selection (children get secondary highlight) */
+  isHierarchical?: boolean;
+}
+
+/**
  * Selection API interface - implemented by viewer-core for basic selection,
  * extended by interactive-editor for full interactivity.
  */
@@ -84,8 +94,9 @@ export interface SelectionAPI {
    * 
    * @param objs - Objects to select
    * @param additive - If true, add to existing selection; if false, replace selection
+   * @param options - Options for hierarchical selection
    */
-  selectMultiple(objs: SelectableObject[], additive?: boolean): void;
+  selectMultiple(objs: SelectableObject[], additive?: boolean, options?: SelectMultipleOptions): void;
   
   /**
    * Deselect an object. If no object specified, deselect all.
@@ -162,7 +173,7 @@ export class BaseSelectionManager implements SelectionAPI {
       // Clear existing selection
       for (const selected of this.selection) {
         removed.push(selected);
-        this.applyHighlight(selected, false);
+        this.applyHighlight(selected, false, 'primary');
       }
       this.selection.clear();
     }
@@ -171,13 +182,13 @@ export class BaseSelectionManager implements SelectionAPI {
     if (!this.isSelected(obj)) {
       this.selection.add(obj);
       added.push(obj);
-      this.applyHighlight(obj, true);
+      this.applyHighlight(obj, true, 'primary');
     }
     
     this.emitChange(added, removed, 'api');
   }
   
-  selectMultiple(objs: SelectableObject[], additive = false): void {
+  selectMultiple(objs: SelectableObject[], additive = false, options?: SelectMultipleOptions): void {
     const added: SelectableObject[] = [];
     const removed: SelectableObject[] = [];
     
@@ -193,7 +204,12 @@ export class BaseSelectionManager implements SelectionAPI {
       if (!this.isSelected(obj)) {
         this.selection.add(obj);
         added.push(obj);
-        this.applyHighlight(obj, true);
+        
+        // Determine if this is primary or secondary (hierarchical child)
+        const isPrimary = !options?.isHierarchical || 
+          (options.primaryEntity && this.isSameEntity(obj, options.primaryEntity));
+        
+        this.applyHighlight(obj, true, isPrimary ? 'primary' : 'secondary');
       }
     }
     
@@ -208,7 +224,7 @@ export class BaseSelectionManager implements SelectionAPI {
       for (const selected of this.selection) {
         if (this.isSameEntity(selected, obj)) {
           removed.push(selected);
-          this.applyHighlight(selected, false);
+          this.applyHighlight(selected, false, 'primary');
           this.selection.delete(selected);
           break;
         }
@@ -217,7 +233,7 @@ export class BaseSelectionManager implements SelectionAPI {
       // Deselect all
       for (const selected of this.selection) {
         removed.push(selected);
-        this.applyHighlight(selected, false);
+        this.applyHighlight(selected, false, 'primary');
       }
       this.selection.clear();
     }
@@ -243,7 +259,7 @@ export class BaseSelectionManager implements SelectionAPI {
   highlight(obj: SelectableObject): void {
     if (!this.isHighlighted(obj)) {
       this.highlighted.add(obj);
-      this.applyHighlight(obj, true);
+      this.applyHighlight(obj, true, 'hover');
     }
   }
   
@@ -254,7 +270,7 @@ export class BaseSelectionManager implements SelectionAPI {
           this.highlighted.delete(highlighted);
           // Only remove highlight if not selected
           if (!this.isSelected(highlighted)) {
-            this.applyHighlight(highlighted, false);
+            this.applyHighlight(highlighted, false, 'hover');
           }
           break;
         }
@@ -262,7 +278,7 @@ export class BaseSelectionManager implements SelectionAPI {
     } else {
       for (const highlighted of this.highlighted) {
         if (!this.isSelected(highlighted)) {
-          this.applyHighlight(highlighted, false);
+          this.applyHighlight(highlighted, false, 'hover');
         }
       }
       this.highlighted.clear();
@@ -278,20 +294,32 @@ export class BaseSelectionManager implements SelectionAPI {
     this.highlightStyle = { ...this.highlightStyle, ...style };
     // Re-apply highlights with new style
     for (const obj of this.selection) {
-      this.applyHighlight(obj, true);
+      this.applyHighlight(obj, true, 'primary');
     }
     for (const obj of this.highlighted) {
       if (!this.isSelected(obj)) {
-        this.applyHighlight(obj, true);
+        this.applyHighlight(obj, true, 'primary');
       }
     }
   }
   
   /**
+   * Highlight level for hierarchical selection.
+   */
+  public static readonly HighlightLevel = {
+    PRIMARY: 'primary' as const,
+    SECONDARY: 'secondary' as const,
+    HOVER: 'hover' as const,
+  };
+  
+  /**
    * Apply or remove highlight from an object.
    * Override in subclass to implement actual visual feedback.
+   * @param _obj - Object to highlight
+   * @param _highlight - Whether to apply or remove highlight
+   * @param _level - Highlight level: 'primary' for main selection, 'secondary' for hierarchical children, 'hover' for preview
    */
-  protected applyHighlight(_obj: SelectableObject, _highlight: boolean): void {
+  protected applyHighlight(_obj: SelectableObject, _highlight: boolean, _level: 'primary' | 'secondary' | 'hover' = 'primary'): void {
     // Base implementation does nothing - override in subclass
   }
   

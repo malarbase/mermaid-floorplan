@@ -56,6 +56,7 @@ export type {
   SelectionChangeListener,
   HighlightStyle,
   SelectionAPI,
+  SelectMultipleOptions,
 } from './selection-api.js';
 
 // Wall generator (CSG-based, browser-only)
