@@ -506,9 +506,14 @@ export class SelectionManager extends BaseSelectionManager {
    * Handle keyboard key down.
    */
   private onKeyDown(event: KeyboardEvent): void {
-    // Skip if typing in input
+    // Skip if typing in input or Monaco editor
     const target = event.target as HTMLElement;
     if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      return;
+    }
+    
+    // Skip if focus is in Monaco editor (uses custom elements, not standard inputs)
+    if (target.closest('.monaco-editor')) {
       return;
     }
     
@@ -868,16 +873,10 @@ export class SelectionManager extends BaseSelectionManager {
         const edges = new THREE.EdgesGeometry(mesh.geometry);
         // Use different material based on level:
         // - hover: cyan outline for preview
-        // - primary: green outline for selection
-        // - secondary: dimmed green for hierarchical children
-        let material: THREE.LineBasicMaterial;
-        if (isHover) {
-          material = this.hoverHighlightMaterial.clone();
-        } else if (isPrimary) {
-          material = this.outlineMaterial.clone();
-        } else {
-          material = this.secondaryOutlineMaterial.clone();
-        }
+        // - primary/secondary: same bright green outline (all selected items look equally selected)
+        const material = isHover
+          ? this.hoverHighlightMaterial.clone()
+          : this.outlineMaterial.clone();
         const outline = new THREE.LineSegments(edges, material);
         
         // Match transform - need to consider world transform
@@ -888,8 +887,9 @@ export class SelectionManager extends BaseSelectionManager {
         this.outlinedObjects.set(key, outline);
       }
       
-      // For rooms (floor plates), also add emission glow since edges are hard to see on flat surfaces
-      if (isRoom && mesh instanceof THREE.Mesh) {
+      // For rooms (floor plates), add emission glow to show focus
+      // Only primary gets glow - secondary has outline but no glow (to show "selected but not focused")
+      if (isRoom && mesh instanceof THREE.Mesh && (isPrimary || isHover)) {
         const material = mesh.material;
         if (material instanceof THREE.MeshStandardMaterial && !this.emissiveObjects.has(key)) {
           // Store original values
@@ -900,16 +900,13 @@ export class SelectionManager extends BaseSelectionManager {
           // Apply highlight emission:
           // - hover: cyan glow
           // - primary: green glow
-          // - secondary: dimmed green glow
+          // - secondary: NO glow (just outline)
           if (isHover) {
             material.emissive.setHex(0x00ccff);
             material.emissiveIntensity = 0.25;
-          } else if (isPrimary) {
+          } else {
             material.emissive.setHex(0x00ff00);
             material.emissiveIntensity = 0.3;
-          } else {
-            material.emissive.setHex(0x88cc88);
-            material.emissiveIntensity = 0.15;
           }
         }
       }
