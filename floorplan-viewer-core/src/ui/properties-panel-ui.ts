@@ -1,6 +1,8 @@
 /**
- * Properties Panel UI component for displaying and editing entity properties
+ * Properties Panel UI component for displaying and editing entity properties (Vanilla)
  * Uses .fp-properties-panel classes from shared-styles.css
+ * 
+ * @deprecated Use Solid.js version instead: `createSolidPropertiesPanel` from './solid/PropertiesPanelWrapper'
  */
 
 import { injectStyles } from './styles.js';

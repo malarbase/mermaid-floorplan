@@ -12,6 +12,11 @@
       "types": "./out/index.d.ts",
       "import": "./out/index.js",
       "default": "./out/index.js"
+    },
+    "./ui/solid": {
+      "types": "./out/ui/solid/index.d.ts",
+      "import": "./out/ui/solid/index.js",
+      "default": "./out/ui/solid/index.js"
     }
   },
   "files": [
@@ -26,7 +31,8 @@
   },
   "dependencies": {
     "floorplan-3d-core": "*",
-    "floorplan-language": "*"
+    "floorplan-language": "*",
+    "solid-js": "^1.9.0"
   },
   "peerDependencies": {
     "monaco-editor": ">=0.45.0",
@@ -34,6 +40,7 @@
     "three-bvh-csg": ">=0.0.16"
   },
   "devDependencies": {
+    "@solidjs/testing-library": "^0.8.10",
     "@types/three": "^0.170.0",
     "jsdom": "^27.4.0",
     "langium": "^4.0.0",
@@ -41,6 +48,7 @@
     "three": "^0.170.0",
     "three-bvh-csg": "^0.0.16",
     "typescript": "~5.8.3",
+    "vite-plugin-solid": "^2.11.10",
     "vitest": "^3.0.0"
   },
   "keywords": [

@@ -37,6 +37,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "dxf-writer": "^1.18.4",
     "floorplan-common": "*",
     "langium": "~4.0.0"
   },

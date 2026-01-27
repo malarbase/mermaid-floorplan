@@ -695,13 +695,13 @@
     <!-- Editor Panel (collapsible overlay) -->
     <div id="editor-panel" class="open" role="region" aria-label="Code Editor">
       <div id="editor-resize-handle"></div>
-      <button id="editor-panel-toggle" title="Toggle Editor">◀</button>
+      <button id="editor-panel-toggle" title="Toggle Editor" aria-label="Toggle code editor panel" data-tooltip="Toggle Editor (E)">◀</button>
       <div id="editor-panel-header">
         <h2>Floorplan DSL</h2>
         <div class="editor-header-right">
-          <button class="add-room-btn" id="add-room-btn" aria-label="Add new room">Room</button>
+          <button class="add-room-btn" id="add-room-btn" aria-label="Add new room" data-tooltip="Add a new room to the floorplan">Room</button>
           <div class="export-dropdown">
-            <button class="export-btn" id="export-btn" aria-haspopup="menu" aria-expanded="false">Export</button>
+            <button class="export-btn" id="export-btn" aria-haspopup="menu" aria-expanded="false" data-tooltip="Export floorplan to various formats">Export</button>
             <div class="export-menu" id="export-menu">
               <button class="export-menu-item" data-format="dsl">
                 Floorplan DSL <span class="ext">.floorplan</span>
@@ -734,8 +734,8 @@
           <div class="fp-control-section">
             <div class="fp-section-header">Camera</div>
             <div class="fp-section-content">
-              <button id="camera-mode-btn" class="fp-btn">Switch to Orthographic</button>
-              <button id="isometric-btn" class="fp-btn fp-btn-secondary">Isometric View</button>
+              <button id="camera-mode-btn" class="fp-btn" data-tooltip="Toggle between perspective and orthographic camera (5)">Switch to Orthographic</button>
+              <button id="isometric-btn" class="fp-btn fp-btn-secondary" data-tooltip="Jump to isometric view angle">Isometric View</button>
               <div class="fp-control-group" id="fov-group">
                 <div class="fp-control-row">
                   <label class="fp-label">FOV</label>
@@ -802,8 +802,8 @@
                 <div class="fp-no-floors">Floors will appear here</div>
               </div>
               <div class="fp-floor-actions">
-                <button id="show-all-floors" class="fp-btn fp-btn-secondary">Show All</button>
-                <button id="hide-all-floors" class="fp-btn fp-btn-secondary">Hide All</button>
+                <button id="show-all-floors" class="fp-btn fp-btn-secondary" data-tooltip="Show all floors in 3D view">Show All</button>
+                <button id="hide-all-floors" class="fp-btn fp-btn-secondary" data-tooltip="Hide all floors">Hide All</button>
               </div>
             </div>
           </div>
@@ -892,7 +892,7 @@
         <div id="overlay-2d" class="fp-overlay-2d">
           <div id="overlay-2d-header" class="fp-overlay-2d-header">
             <span>2D Floor Plan</span>
-            <button id="overlay-2d-close" class="fp-overlay-2d-close" title="Close">×</button>
+            <button id="overlay-2d-close" class="fp-overlay-2d-close" title="Close" aria-label="Close 2D overlay" data-tooltip="Close 2D view">×</button>
           </div>
           <div id="overlay-2d-content" class="fp-overlay-2d-content">
             <span id="overlay-2d-empty" class="fp-overlay-2d-empty">2D view will appear here</span>

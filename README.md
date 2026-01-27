@@ -433,6 +433,84 @@ A standalone 3D viewer is available for interactive visualization.
    - Use **Left Click** to rotate, **Right Click** to pan, and **Scroll** to zoom.
    - Use the **Exploded View** slider to separate floors vertically.
 
+## Interactive Editor
+
+The web-based interactive editor combines a Monaco-based DSL editor with a synchronized 3D viewer for real-time floorplan editing.
+
+### Key Features
+
+- **Bidirectional Selection Sync**: Click a room in 3D to highlight in editor, or select DSL text to highlight in 3D
+- **Marquee Selection**: Drag to select multiple rooms in the 3D view
+- **Multi-select**: Shift-click to add/remove from selection
+- **Properties Panel**: View and edit room properties
+- **Command Palette**: Press `Cmd+K` (Mac) or `Ctrl+K` (Windows) for quick actions
+- **2D Overlay**: Toggle between 3D view and 2D floor plan overlay
+- **Export Options**: PNG, SVG, 3D PNG, and DXF export
+
+### Keyboard Shortcuts
+
+| Key | Action |
+|-----|--------|
+| `Cmd+K` / `Ctrl+K` | Open command palette |
+| `Escape` | Clear selection / close panels |
+| `W` / Arrow Up | Move camera forward |
+| `S` / Arrow Down | Move camera backward |
+| `A` / Arrow Left | Move camera left |
+| `D` / Arrow Right | Move camera right |
+| `Q` / `E` | Move camera up / down |
+| `1` | Perspective view |
+| `2` | Isometric view |
+| `3` | Orthographic view |
+| `?` | Toggle keyboard help |
+
+### Running the Editor
+
+```bash
+# Development mode
+make viewer-dev
+
+# Or directly:
+npm run dev -w floorplan-viewer
+```
+
+## DXF Export (AutoCAD)
+
+Export floorplans to DXF format for use in CAD software like AutoCAD, LibreCAD, or Illustrator.
+
+**CLI Export:**
+```bash
+# Export to DXF
+npx tsx scripts/export-dxf.ts input.floorplan output.dxf
+
+# Export specific floor
+npx tsx scripts/export-dxf.ts input.floorplan output.dxf --floor "Ground Floor"
+
+# Include dimension annotations
+npx tsx scripts/export-dxf.ts input.floorplan output.dxf --dimensions
+```
+
+**Via MCP Tool:**
+```json
+{
+  "dsl": "floorplan\n  floor f1 {...}",
+  "format": "dxf"
+}
+```
+
+**DXF Layers:**
+| Layer | Purpose |
+|-------|---------|
+| WALLS | Wall outlines |
+| DOORS | Door openings and arcs |
+| WINDOWS | Window openings |
+| ROOMS | Room boundary polylines |
+| LABELS | Room names and areas |
+| DIMENSIONS | Dimension annotations |
+| STAIRS | Staircase symbols |
+| LIFTS | Elevator symbols |
+
+See [floorplan-language/README.md](./floorplan-language/README.md#dxf-export) for full DXF documentation.
+
 ## 3D Rendering Requirements
 
 The 3D PNG rendering requires Node.js 20+ and headless-gl:

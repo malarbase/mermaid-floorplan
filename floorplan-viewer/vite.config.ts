@@ -1,4 +1,5 @@
 import { defineConfig, type Plugin } from 'vite';
+import solidPlugin from 'vite-plugin-solid';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -50,6 +51,7 @@ export default defineConfig({
     },
   },
   plugins: [
+    solidPlugin(),
     serveSharedStyles(),
     viteStaticCopy({
       targets: [

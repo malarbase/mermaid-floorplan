@@ -22,3 +22,82 @@ If you selected the test option as well, then the following files will be presen
 - [test/linking.test.ts](test/linking.test.ts) - Unit tests checking linking.
 - [test/parsing.test.ts](test/parsing.test.ts) - Unit tests regarding parsing.
 - [test/validating.test.ts](test/validating.test.ts) - Unit tests regarding validation.
+
+## DXF Export
+
+The floorplan-language package supports exporting floorplans to DXF (AutoCAD Drawing Exchange Format). DXF files can be opened in CAD software like AutoCAD, LibreCAD, and Illustrator.
+
+### Features
+
+- **Layered output**: Content is organized into layers (WALLS, DOORS, WINDOWS, ROOMS, LABELS, DIMENSIONS, STAIRS, LIFTS)
+- **Room outlines**: Closed polylines representing room boundaries
+- **Door/window openings**: Wall gaps with appropriate symbols
+- **Room labels**: Text labels with room names and optional area
+- **Dimension lines**: Optional dimension annotations
+- **Multi-floor support**: Export all floors to a single DXF with vertical offsets
+
+### Usage
+
+#### Programmatic API
+
+```typescript
+import { exportFloorToDxf, exportFloorplanToDxf } from 'floorplan-language';
+
+// Export a single floor
+const result = exportFloorToDxf(floor, connections, {
+  includeLabels: true,
+  includeDimensions: false,
+  wallThickness: 0.5,
+  scale: 1.0,
+});
+
+// Export all floors to a single DXF
+const multiResult = exportFloorplanToDxf(floors, connections, config, {
+  includeLabels: true,
+});
+
+// Save to file
+fs.writeFileSync('output.dxf', result.content);
+```
+
+#### CLI Script
+
+```bash
+# Export a floorplan to DXF
+npx tsx scripts/export-dxf.ts input.floorplan output.dxf
+
+# Export a specific floor
+npx tsx scripts/export-dxf.ts input.floorplan output.dxf --floor "Ground Floor"
+
+# Export with dimensions
+npx tsx scripts/export-dxf.ts input.floorplan output.dxf --dimensions
+
+# Export without labels
+npx tsx scripts/export-dxf.ts input.floorplan output.dxf --no-labels
+
+# Export all floors to one file
+npx tsx scripts/export-dxf.ts input.floorplan output.dxf --all-in-one
+```
+
+### DXF Layers
+
+| Layer | Color | Purpose |
+|-------|-------|---------|
+| WALLS | Gray (8) | Room wall outlines |
+| DOORS | Cyan (4) | Door openings and arcs |
+| WINDOWS | Blue (5) | Window openings |
+| ROOMS | White (7) | Room boundary polylines |
+| LABELS | Green (3) | Room name and area text |
+| DIMENSIONS | Yellow (2) | Dimension annotations |
+| STAIRS | Magenta (6) | Staircase symbols |
+| LIFTS | Red (1) | Elevator symbols |
+
+### Export Options
+
+| Option | Type | Default | Description |
+|--------|------|---------|-------------|
+| `includeLabels` | boolean | true | Include room name labels |
+| `includeDimensions` | boolean | false | Include dimension lines |
+| `wallThickness` | number | 0.5 | Wall thickness in units |
+| `scale` | number | 1.0 | Scale factor for output |
+| `units` | string | 'ft' | Unit system (ft, m, mm, in) |

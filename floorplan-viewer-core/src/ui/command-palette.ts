@@ -1,11 +1,23 @@
 /**
- * Command Palette UI Component
- * 
+ * Command Palette UI Component (DEPRECATED)
+ *
+ * @deprecated Use FloorplanUI instead for new code:
+ *   import { FloorplanAppCore, createFloorplanUI } from 'floorplan-viewer-core';
+ *   const appCore = new FloorplanAppCore({ containerId: 'app' });
+ *   const ui = createFloorplanUI(appCore, { commands });
+ *
+ * This vanilla implementation is kept for backwards compatibility.
+ * New code should use FloorplanUI which provides:
+ * - Unified UI root with shared state coordination
+ * - Fine-grained reactivity for search/filter
+ * - Better keyboard navigation
+ * - Smaller bundle footprint via tree-shaking
+ *
  * A searchable command palette (⌘K) for all app actions:
  * - File operations (Open, Save, Export)
  * - View operations (Camera, Theme, Floors)
  * - Edit operations (when authenticated)
- * 
+ *
  * Follows VS Code / Figma command palette patterns.
  */
 
