@@ -1,5 +1,12 @@
 /**
- * Header Bar UI Component
+ * Header Bar UI Component (Vanilla)
+ * 
+ * @deprecated Use FloorplanUI instead for new code:
+ *   import { FloorplanAppCore, createFloorplanUI } from 'floorplan-viewer-core';
+ *   const appCore = new FloorplanAppCore({ containerId: 'app' });
+ *   const ui = createFloorplanUI(appCore, { headerAutoHide: true });
+ * 
+ * This vanilla implementation is kept for backwards compatibility.
  * 
  * A minimal header bar with:
  * - File name dropdown for file operations
@@ -8,6 +15,9 @@
  * 
  * Follows Figma/VS Code design patterns.
  */
+
+/** Delay in ms before header auto-hides after mouse leaves */
+export const HEADER_AUTO_HIDE_DELAY = 500;
 
 export interface HeaderBarConfig {
   /** Current filename to display (default: "Untitled.floorplan") */
@@ -49,6 +59,10 @@ export interface HeaderBar {
   setAutoHide: (enabled: boolean) => void;
   /** Temporarily show the header (for auto-hide mode) */
   showTemporarily: (duration?: number) => void;
+  /** Prevent auto-hide (e.g., while dropdown is open) */
+  preventAutoHide: () => void;
+  /** Allow auto-hide again (e.g., when dropdown closes) */
+  allowAutoHide: () => void;
   /** Show/hide the header */
   setVisible: (visible: boolean) => void;
   /** Destroy and cleanup */
@@ -123,6 +137,7 @@ export function createHeaderBar(config: HeaderBarConfig = {}): HeaderBar {
   let currentTheme = theme;
   let isAutoHide = autoHide;
   let autoHideTimeout: number | undefined;
+  let autoHidePrevented = false;
 
   // Event handlers
   const handleFileDropdownClick = () => {
@@ -167,15 +182,18 @@ export function createHeaderBar(config: HeaderBarConfig = {}): HeaderBar {
   };
 
   const handleHeaderLeave = () => {
-    if (isAutoHide) {
+    if (isAutoHide && !autoHidePrevented) {
       autoHideTimeout = window.setTimeout(() => {
+        // Check again in case preventAutoHide was called during the delay
+        if (autoHidePrevented) return;
+        
         header.classList.remove('fp-header-bar--visible');
         if (currentlyVisible) {
           currentlyVisible = false;
           updateBodyClass(false);
           onVisibilityChange?.(false);
         }
-      }, 500);
+      }, HEADER_AUTO_HIDE_DELAY);
     }
   };
 
@@ -235,6 +253,27 @@ export function createHeaderBar(config: HeaderBarConfig = {}): HeaderBar {
         autoHideTimeout = window.setTimeout(() => {
           header.classList.remove('fp-header-bar--visible');
         }, duration);
+      }
+    },
+
+    preventAutoHide() {
+      autoHidePrevented = true;
+      // Cancel any pending auto-hide
+      if (autoHideTimeout) {
+        clearTimeout(autoHideTimeout);
+        autoHideTimeout = undefined;
+      }
+      // Ensure header stays visible
+      if (isAutoHide) {
+        header.classList.add('fp-header-bar--visible');
+      }
+    },
+
+    allowAutoHide() {
+      autoHidePrevented = false;
+      // If mouse is not over header, start auto-hide timer
+      if (isAutoHide && !header.matches(':hover')) {
+        handleHeaderLeave();
       }
     },
 

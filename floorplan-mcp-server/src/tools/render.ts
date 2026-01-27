@@ -3,14 +3,14 @@ import { z } from "zod";
 import { parseFloorplan, extractAllRoomMetadata, validateFloorplan, type ValidationWarning } from "../utils/parser.js";
 import { generateSvg, svgToPng } from "../utils/renderer.js";
 import { render3DToPng, formatSceneBounds } from "../utils/renderer3d.js";
-import { convertFloorplanToJson, type FloorplanSummary, type FloorMetrics } from "floorplan-language";
+import { convertFloorplanToJson, exportFloorplanToDxf, exportFloorToDxf, type FloorplanSummary, type FloorMetrics } from "floorplan-language";
 
 const RenderInputSchema = z.object({
   dsl: z.string().describe("Floorplan DSL code to render"),
   format: z
-    .enum(["png", "svg", "3d-png"])
+    .enum(["png", "svg", "3d-png", "dxf"])
     .default("png")
-    .describe("Output format: 'png' for 2D image (default), 'svg' for vector, '3d-png' for 3D perspective view"),
+    .describe("Output format: 'png' for 2D image (default), 'svg' for vector, '3d-png' for 3D perspective view, 'dxf' for AutoCAD/CAD format"),
   width: z.number().default(800).describe("Output image width in pixels"),
   height: z.number().default(600).describe("Output image height in pixels"),
   floorIndex: z
@@ -220,6 +220,82 @@ export function registerRenderTool(server: McpServer): void {
           }
         }
         
+        // Handle DXF format
+        if (format === "dxf") {
+          if (!jsonResult.data) {
+            return {
+              content: [
+                {
+                  type: "text" as const,
+                  text: JSON.stringify({
+                    success: false,
+                    errors: [{ message: "Failed to convert floorplan to JSON for DXF export" }],
+                  }),
+                },
+              ],
+            };
+          }
+
+          const dxfOptions = {
+            includeLabels: true,
+            includeDimensions: showDimensions ?? false,
+            wallThickness: jsonResult.data.config?.wall_thickness ?? 0.5,
+            units: jsonResult.data.config?.default_unit ?? "ft",
+          };
+
+          // Export based on floor selection
+          let dxfResult;
+          if (renderAllFloors || floorIndex === undefined) {
+            // Export all floors
+            dxfResult = exportFloorplanToDxf(
+              jsonResult.data.floors,
+              jsonResult.data.connections,
+              jsonResult.data.config,
+              dxfOptions
+            );
+          } else {
+            // Export specific floor
+            const floor = jsonResult.data.floors[floorIndex];
+            if (!floor) {
+              return {
+                content: [
+                  {
+                    type: "text" as const,
+                    text: JSON.stringify({
+                      success: false,
+                      errors: [{ message: `Floor index ${floorIndex} not found. Available: 0-${jsonResult.data.floors.length - 1}` }],
+                    }),
+                  },
+                ],
+              };
+            }
+            const floorConnections = jsonResult.data.connections.filter(
+              (conn) => floor.rooms.some((r) => r.name === conn.fromRoom)
+            );
+            dxfResult = exportFloorToDxf(floor, floorConnections, dxfOptions);
+          }
+
+          return {
+            content: [
+              {
+                type: "text" as const,
+                text: dxfResult.content,
+              },
+              {
+                type: "text" as const,
+                text: JSON.stringify({
+                  success: true,
+                  format: "dxf",
+                  floorCount,
+                  roomCount: dxfResult.roomCount,
+                  connectionCount: dxfResult.connectionCount,
+                  warnings: dxfResult.warnings.length > 0 ? dxfResult.warnings : (warnings.length > 0 ? warnings : undefined),
+                }),
+              },
+            ],
+          };
+        }
+
         // 2D rendering (SVG or PNG)
         const svg = generateSvg(parseResult.document, {
           floorIndex,

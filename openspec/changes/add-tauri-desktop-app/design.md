@@ -57,18 +57,58 @@ Users want a native desktop application for:
 - **Capacitor**: Primarily for mobile, weaker desktop support
 - **React Native (Desktop)**: Would require complete rewrite
 
-### Decision 2: Wrap `interactive-editor/` as Primary App
+### Decision 2: Hybrid Mode Architecture (Like Slack/Discord)
 
-**What**: Package the interactive editor as the main desktop app.
+**What**: Desktop app supports two modes:
+- **Cloud Mode**: Load SolidStart web app from Vercel (when signed in)
+- **Offline Mode**: Load bundled `interactive-editor/` (when offline or not signed in)
 
 **Why**:
-- Most feature-complete application in the project
-- Has both Monaco editor and 3D viewer
-- Supports full editing workflow
+- Best of both worlds: cloud sync when online, full offline capability
+- Mirrors successful patterns from Slack, Discord, Notion desktop apps
+- Users can choose their preferred workflow
+- Graceful degradation when internet unavailable
+
+**Implementation**:
+```rust
+// src-tauri/src/main.rs
+fn main() {
+    tauri::Builder::default()
+        .setup(|app| {
+            let window = app.get_window("main").unwrap();
+            
+            // Check mode preference and connectivity
+            let mode = get_startup_mode();
+            match mode {
+                Mode::Cloud => {
+                    // Load SolidStart app from Vercel
+                    window.eval(&format!(
+                        "window.location.href = '{}'",
+                        "https://floorplan-app.vercel.app"
+                    ))?;
+                }
+                Mode::Offline => {
+                    // Load bundled interactive-editor (default)
+                    // Already configured in tauri.conf.json
+                }
+            }
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+}
+```
+
+**User Flow**:
+1. First launch: Modal asks "Sign In" or "Work Offline"
+2. Cloud Mode: Redirects to Vercel-hosted SolidStart app
+3. Offline Mode: Uses bundled local editor
+4. Settings: Can switch modes anytime
+5. Auto-fallback: If network fails in Cloud Mode, offers Offline Mode
 
 **Alternatives Considered**:
-- `viewer/` only: Read-only, not suitable for primary app
-- Separate desktop-specific app: Duplication, maintenance burden
+- `interactive-editor/` only: No cloud sync, limited collaboration
+- SolidStart only: No true offline capability
+- Separate apps: Confusing user experience, maintenance burden
 
 ### Decision 3: Use Tauri's IPC for Native Features
 
@@ -193,7 +233,7 @@ Help
 | macOS ARM64 | `.dmg`, `.app` | Apple Silicon |
 | macOS x64 | `.dmg`, `.app` | Intel Macs |
 | Windows x64 | `.msi`, `.exe` | NSIS installer |
-| Linux x64 | `.deb`, `.AppImage` | Debian + Universal |
+| Linux x64 | `.deb`, `.rpm`, `.AppImage`, Flatpak | Debian, Fedora/RHEL, Universal, Sandboxed |
 
 ## Risks / Trade-offs
 
@@ -230,7 +270,7 @@ Help
 
 ## Architecture
 
-### Data Flow
+### Data Flow (Hybrid Mode)
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -240,24 +280,32 @@ Help
 │  ┌──────────────────────────────────────────────────────────────┐   │
 │  │                    Native Shell (Rust)                        │   │
 │  │  • Window management                                          │   │
-│  │  • Menu bar                                                   │   │
-│  │  • File system access                                         │   │
+│  │  • Menu bar (works in both modes)                             │   │
+│  │  • File system access (Offline Mode)                          │   │
 │  │  • Auto-updater                                               │   │
+│  │  • Mode switching logic                                       │   │
 │  └─────────────────────────┬────────────────────────────────────┘   │
 │                            │ IPC                                     │
 │  ┌─────────────────────────▼────────────────────────────────────┐   │
 │  │                    WebView (Frontend)                         │   │
+│  │                                                               │   │
+│  │  ┌─────────────────┐  OR  ┌─────────────────────────────┐   │   │
+│  │  │  CLOUD MODE     │      │  OFFLINE MODE               │   │   │
+│  │  │  ─────────────  │      │  ────────────               │   │   │
+│  │  │  SolidStart     │      │  interactive-editor         │   │   │
+│  │  │  (from Vercel)  │      │  (bundled)                  │   │   │
+│  │  │                 │      │                             │   │   │
+│  │  │  • Better Auth  │      │  • Native file dialogs      │   │   │
+│  │  │  • Convex sync  │      │  • Local recent files       │   │   │
+│  │  │  • Real-time    │      │  • Full offline             │   │   │
+│  │  └─────────────────┘      └─────────────────────────────┘   │   │
+│  │                                                               │   │
 │  │  ┌─────────────────────────────────────────────────────────┐ │   │
-│  │  │              interactive-editor (unchanged)              │ │   │
-│  │  │  • Monaco Editor                                         │ │   │
-│  │  │  • Three.js 3D Viewer                                    │ │   │
-│  │  │  • Langium Parser                                        │ │   │
-│  │  └─────────────────────────────────────────────────────────┘ │   │
-│  │  ┌─────────────────────────────────────────────────────────┐ │   │
-│  │  │              Tauri Bridge (new)                          │ │   │
+│  │  │              Tauri Bridge (both modes)                   │ │   │
 │  │  │  • @tauri-apps/api                                       │ │   │
 │  │  │  • Feature detection (web vs native)                     │ │   │
 │  │  │  • IPC handlers                                          │ │   │
+│  │  │  • Mode detection                                        │ │   │
 │  │  └─────────────────────────────────────────────────────────┘ │   │
 │  └──────────────────────────────────────────────────────────────┘   │
 │                                                                      │

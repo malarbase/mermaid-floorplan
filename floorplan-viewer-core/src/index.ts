@@ -24,9 +24,13 @@
 export { BaseViewer } from './base-viewer.js';
 export type { BaseViewerOptions } from './base-viewer.js';
 
-// Unified FloorplanApp
-export { FloorplanApp } from './floorplan-app.js';
-export type { FloorplanAppOptions, AuthResult } from './floorplan-app.js';
+// FloorplanAppCore (3D-only, for use with FloorplanUI)
+export { FloorplanAppCore } from './floorplan-app-core.js';
+export type { 
+  FloorplanAppCoreOptions, 
+  FloorplanAppCoreEvents,
+  AuthResult as CoreAuthResult,
+} from './floorplan-app-core.js';
 
 // Scene context
 export type {
@@ -170,3 +174,12 @@ export type {
   LayoutManagerConfig,
   LayoutState,
 } from './layout-manager.js';
+
+// Performance utilities
+export {
+  perf,
+} from './utils/performance.js';
+export type {
+  PerformanceMetric,
+  PerformanceReport,
+} from './utils/performance.js';

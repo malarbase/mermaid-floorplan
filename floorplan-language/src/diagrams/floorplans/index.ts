@@ -232,3 +232,13 @@ export {
   type MigrationResult,
   type MigrationStep,
 } from "./migrator.js";
+
+// DXF Export
+export {
+  exportFloorToDxf,
+  exportFloorplanToDxf,
+  DXF_LAYERS,
+  DXF_COLORS,
+  type DxfExportOptions,
+  type DxfExportResult,
+} from "./dxf-exporter.js";

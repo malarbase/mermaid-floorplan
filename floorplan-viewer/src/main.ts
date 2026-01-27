@@ -11,12 +11,12 @@
  * - Keyboard navigation
  * - Collapsible read-only DSL editor panel
  * 
- * This uses the unified FloorplanApp class from floorplan-viewer-core with
- * viewer-only feature flags (no editing, no auth required).
+ * This uses FloorplanAppCore + FloorplanUI (Solid.js) from floorplan-viewer-core.
+ * FloorplanAppCore handles 3D rendering, FloorplanUI handles all 2D UI components.
  */
 
 import { 
-  FloorplanApp, 
+  FloorplanAppCore,
   injectStyles,
   createControlPanel,
   createCameraControlsUI,
@@ -33,7 +33,11 @@ import {
   createDslEditor,
   createEditorPanel,
   getLayoutManager,
+  initializeDragDrop,
+  createFileCommands,
+  createViewCommands,
 } from 'floorplan-viewer-core';
+import { createFloorplanUI, type FloorplanUIAPI } from 'floorplan-viewer-core/ui/solid';
 
 // Inject shared styles
 injectStyles();
@@ -101,7 +105,8 @@ const validationWarnings = createValidationWarningsUI({
         editorPanel.open();
         document.body.classList.add('editor-open');
         document.documentElement.style.setProperty('--editor-width', '450px');
-        viewerRef?.headerBar?.setEditorOpen(true);
+        // Sync UI state
+        uiRef?.setEditorOpen(true);
       }
       
       // Navigate to the line
@@ -127,7 +132,21 @@ document.body.appendChild(floorSummary);
 // Read-Only Editor Panel (using floorplan-viewer-core component)
 // ========================================
 
-// Track editor state (used by editorPanel callbacks)
+// Store references for cross-component communication
+let viewerRef: FloorplanAppCore | null = null;
+let uiRef: FloorplanUIAPI | null = null;
+
+// Create Monaco editor inside the panel's container
+let dslEditor: ReturnType<typeof createDslEditor> | null = null;
+
+// Track theme button for sync
+let themeBtnInControlPanel: HTMLButtonElement | null = null;
+
+// Function to update Monaco editor theme
+function updateEditorTheme(theme: 'light' | 'dark'): void {
+  const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
+  dslEditor?.editor.updateOptions({ theme: monacoTheme });
+}
 
 // Create read-only editor panel using floorplan-viewer-core's component
 const editorPanel = createEditorPanel({
@@ -136,7 +155,7 @@ const editorPanel = createEditorPanel({
   isAuthenticated: false,
   width: 450,
   onLoginClick: () => {
-    // Delegate to the FloorplanApp's onAuthRequired callback
+    // Delegate to the FloorplanAppCore's onAuthRequired callback
     if (viewerRef) {
       viewerRef.requestEditMode();
     }
@@ -155,9 +174,14 @@ const editorPanel = createEditorPanel({
       document.documentElement.style.setProperty('--editor-width', `${editorPanel.getWidth()}px`);
     }
     
-    // Sync header bar state (viewer ref will be set after creation)
+    // Sync FloorplanUI state
+    if (uiRef) {
+      uiRef.setEditorOpen(isOpen);
+    }
+    
+    // Sync FloorplanAppCore state
     if (viewerRef) {
-      viewerRef.headerBar?.setEditorOpen(isOpen);
+      viewerRef.setEditorPanelOpen(isOpen);
     }
   },
   onResize: (newWidth: number) => {
@@ -172,21 +196,9 @@ const editorPanel = createEditorPanel({
   },
 });
 
-// Store viewer reference for use in onToggle callback
-let viewerRef: FloorplanApp | null = null;
-
-// Set the ID so FloorplanApp can find it (for consistency)
+// Set the ID so FloorplanAppCore can find it (for consistency)
 editorPanel.element.id = 'editor-panel';
 document.body.appendChild(editorPanel.element);
-
-// Create Monaco editor inside the panel's container
-let dslEditor: ReturnType<typeof createDslEditor> | null = null;
-
-// Function to update Monaco editor theme
-function updateEditorTheme(theme: 'light' | 'dark'): void {
-  const monacoTheme = theme === 'dark' ? 'vs-dark' : 'vs';
-  dslEditor?.editor.updateOptions({ theme: monacoTheme });
-}
 
 // Wait for next frame to ensure DOM is ready, then create editor
 requestAnimationFrame(() => {
@@ -203,23 +215,17 @@ requestAnimationFrame(() => {
 });
 
 // ========================================
-// Create FloorplanApp
+// Create FloorplanAppCore (3D-only)
 // ========================================
 
-const viewer = new FloorplanApp({
+const viewer = new FloorplanAppCore({
   containerId: 'app',
   initialTheme: 'light',
   initialDsl: defaultFloorplan,
   
   // Viewer-only feature flags
-  enableEditing: false,        // Read-only mode
   enableSelection: false,      // Selection off by default in viewer
   allowSelectionToggle: true,  // User can press V to enable selection
-  enableChat: false,           // No AI chat in viewer
-  showHeaderBar: true,         // File dropdown + command palette
-  enableDragDrop: true,        // Drag-drop file loading
-  editorPanelDefaultOpen: false,  // Editor panel starts collapsed
-  headerAutoHide: true,          // Header bar auto-hides when not interacting
   
   // No auth required for viewer
   isAuthenticated: false,
@@ -229,44 +235,129 @@ const viewer = new FloorplanApp({
     const confirmLogin = confirm('Authentication required!\n\nSimulate successful login?');
     return confirmLogin;
   },
-  
-  // File load callback - update editor and log
-  onFileLoad: (filename, content) => {
-    console.log(`Loaded: ${filename}`);
-    // Update editor content when a file is loaded
-    if (dslEditor) {
-      dslEditor.setValue(content);
-    }
+});
+
+// Store viewer reference
+viewerRef = viewer;
+
+// ========================================
+// Create FloorplanUI (Solid.js UI Layer)
+// ========================================
+
+// Build commands for command palette
+// Note: vanilla commands use 'action' property, Solid uses 'execute'
+const fileCommandsVanilla = createFileCommands({
+  onOpenFile: () => viewer.handleFileAction('open-file'),
+  onOpenUrl: () => viewer.handleFileAction('open-url'),
+  onSave: () => viewer.handleFileAction('save-floorplan'),
+  onExportJson: () => viewer.handleFileAction('export-json'),
+  onExportGlb: () => viewer.handleFileAction('export-glb'),
+  onExportGltf: () => viewer.handleFileAction('export-gltf'),
+});
+
+const viewCommandsVanilla = createViewCommands({
+  onToggleTheme: () => viewer.handleThemeToggle(),
+  onToggleOrtho: () => viewer.cameraManager.toggleCameraMode(),
+  onIsometricView: () => viewer.cameraManager.setIsometricView(),
+  onResetCamera: () => {
+    const event = new KeyboardEvent('keydown', { key: 'Home', bubbles: true });
+    document.dispatchEvent(event);
   },
-  
-  // Theme change callback - sync Monaco editor theme and control panel button
-  onThemeChange: (theme: 'light' | 'dark') => {
-    updateEditorTheme(theme);
-    // Sync the control panel theme button
-    if (themeBtnInControlPanel) {
-      themeBtnInControlPanel.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
-    }
-  },
-  
-  // Editor toggle callback - sync with our editorPanel
-  onEditorToggle: (isOpen: boolean) => {
-    if (isOpen) {
-      editorPanel.open();
-    } else {
-      editorPanel.close();
-    }
-    // Resize Monaco editor after transition
-    setTimeout(() => dslEditor?.editor.layout(), 250);
-  },
-  
-  // Parse warnings callback - update validation warnings panel
-  onParseWarnings: (warnings) => {
-    validationWarnings.update(warnings);
+  onFrameAll: () => {
+    const event = new KeyboardEvent('keydown', { key: 'f', bubbles: true });
+    document.dispatchEvent(event);
   },
 });
 
-// Set viewer reference for use in editorPanel.onToggle callback
-viewerRef = viewer;
+// Map vanilla commands (action) to Solid commands (execute)
+type SolidCommand = { id: string; label: string; description?: string; category?: string; shortcut?: string; requiresAuth?: boolean; icon?: string; execute: () => void };
+const mapToSolidCommands = (cmds: ReturnType<typeof createFileCommands>): SolidCommand[] =>
+  cmds.map(cmd => ({ ...cmd, execute: cmd.action }));
+
+const commands: SolidCommand[] = [
+  ...mapToSolidCommands(fileCommandsVanilla),
+  ...mapToSolidCommands(viewCommandsVanilla),
+];
+
+// Create FloorplanUI - handles HeaderBar, FileDropdown, and CommandPalette
+const ui = createFloorplanUI(viewer, {
+  initialFilename: 'Untitled.floorplan',
+  initialTheme: 'light',
+  initialEditorOpen: false,
+  initialAuthenticated: false,
+  headerAutoHide: true,
+  commands,
+});
+
+// Store UI reference
+uiRef = ui;
+
+// ========================================
+// Subscribe to FloorplanAppCore Events
+// ========================================
+
+// Theme change - sync Monaco editor and control panel button
+viewer.on('themeChange', ({ theme }) => {
+  updateEditorTheme(theme as 'light' | 'dark');
+  if (themeBtnInControlPanel) {
+    themeBtnInControlPanel.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+  }
+});
+
+// Editor toggle - sync with our editorPanel
+viewer.on('editorToggle', ({ isOpen }) => {
+  if (isOpen) {
+    editorPanel.open();
+  } else {
+    editorPanel.close();
+  }
+  // Resize Monaco editor after transition
+  setTimeout(() => dslEditor?.editor.layout(), 250);
+});
+
+// Parse warnings - update validation warnings panel
+viewer.on('parseWarnings', ({ warnings }) => {
+  validationWarnings.update(warnings);
+});
+
+// DSL change - update editor content
+viewer.on('dslChange', ({ content }) => {
+  if (dslEditor) {
+    dslEditor.setValue(content);
+  }
+});
+
+// Floorplan loaded - log filename
+viewer.on('filenameChange', ({ filename }) => {
+  console.log(`Loaded: ${filename}`);
+});
+
+// ========================================
+// Setup Drag-and-Drop
+// ========================================
+
+const appContainer = document.getElementById('app');
+if (appContainer) {
+  const dragDropHandler = initializeDragDrop({
+    target: appContainer,
+    onFileDrop: (file, content) => {
+      viewer.handleFileDrop(file, content);
+      // Update editor content
+      if (dslEditor) {
+        dslEditor.setValue(content);
+      }
+    },
+    onInvalidFile: (_file, reason) => {
+      // Show toast via simple notification
+      const toast = document.createElement('div');
+      toast.className = 'fp-toast error';
+      toast.textContent = reason;
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    },
+  });
+  dragDropHandler.enable();
+}
 
 // ========================================
 // Control Panel UI
@@ -343,9 +434,6 @@ const viewSection = createControlPanelSection({
 });
 const viewContent = getSectionContent(viewSection);
 
-// Track theme button for sync
-let themeBtnInControlPanel: HTMLButtonElement | null = null;
-
 if (viewContent) {
   // Theme toggle button
   const themeRow = document.createElement('div');
@@ -362,7 +450,7 @@ if (viewContent) {
   themeBtnInControlPanel.style.cssText = 'padding: 4px 12px; font-size: 11px; margin-top: 4px;';
   themeBtnInControlPanel.textContent = '🌙 Dark';
   themeBtnInControlPanel.addEventListener('click', () => {
-    viewer.toggleTheme();
+    viewer.handleThemeToggle();
     const theme = viewer.theme;
     themeBtnInControlPanel!.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
     // Also sync Monaco editor
@@ -491,9 +579,10 @@ const annotationControls = createAnnotationControlsUI({
 controlPanel.appendChild(annotationControls.element);
 
 // Expose for debugging
-(window as unknown as { viewer: FloorplanApp }).viewer = viewer;
+(window as unknown as { viewer: FloorplanAppCore; ui: FloorplanUIAPI }).viewer = viewer;
+(window as unknown as { viewer: FloorplanAppCore; ui: FloorplanUIAPI }).ui = ui;
 
-console.log('Floorplan 3D Viewer initialized');
+console.log('Floorplan 3D Viewer initialized (FloorplanAppCore + FloorplanUI)');
 console.log('Press ? or H for keyboard shortcuts');
 console.log('Press ⌘K for command palette');
 console.log('Press V to toggle selection mode');

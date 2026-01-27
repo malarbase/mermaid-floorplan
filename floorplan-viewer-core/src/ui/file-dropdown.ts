@@ -1,5 +1,12 @@
 /**
- * File Dropdown UI Component
+ * File Dropdown UI Component (Vanilla)
+ * 
+ * @deprecated Use FloorplanUI instead for new code:
+ *   import { FloorplanAppCore, createFloorplanUI } from 'floorplan-viewer-core';
+ *   const appCore = new FloorplanAppCore({ containerId: 'app' });
+ *   const ui = createFloorplanUI(appCore, { commands });
+ * 
+ * This vanilla implementation is kept for backwards compatibility.
  * 
  * A dropdown menu for file operations:
  * - Open File... (⌘O)

@@ -90,6 +90,7 @@ export {
 // Header Bar & File Operations
 export {
   createHeaderBar,
+  HEADER_AUTO_HIDE_DELAY,
   type HeaderBar,
   type HeaderBarConfig,
 } from './header-bar.js';
@@ -143,3 +144,7 @@ export {
   type PropertiesPanelUIOptions,
   type PropertyDefinition,
 } from './properties-panel-ui.js';
+
+// Solid.js Components are exported from './solid/index.js' directly
+// to avoid loading browser-specific code in Node.js environments.
+// Import Solid components with: import { ... } from 'floorplan-viewer-core/ui/solid'

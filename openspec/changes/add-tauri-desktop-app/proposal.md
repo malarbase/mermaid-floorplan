@@ -6,12 +6,37 @@ The mermaid-floorplan project currently runs only as a web application. Users wo
 
 ## What Changes
 
-- Add Tauri 2.0 integration to wrap the existing `interactive-editor/` as a native desktop application
+- Add Tauri 2.0 integration as a **hybrid desktop application** (like Slack/Discord)
+- **Cloud Mode**: Load SolidStart web app (`floorplan-app/`) from Vercel for cloud sync
+- **Offline Mode**: Load bundled `interactive-editor/` for local file editing
 - Add native file save/open dialogs for `.floorplan` files
 - Add native menu bar with standard File/Edit/View/Help menus
 - Support auto-updates for desktop releases
 - Build targets: macOS (ARM64 + x86_64), Windows (x64), Linux (x64)
 - Add GitHub Actions workflow for cross-platform builds
+
+### Hybrid Mode Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Tauri Desktop App                         │
+├─────────────────────────────────────────────────────────────┤
+│  Startup Mode Selection:                                     │
+│  ┌─────────────────┐    ┌─────────────────────┐            │
+│  │ Sign In         │    │ Work Offline        │            │
+│  │ (Cloud Mode)    │    │ (Local Mode)        │            │
+│  └────────┬────────┘    └──────────┬──────────┘            │
+│           │                        │                         │
+│  Load Vercel URL          Load bundled dist/                │
+│  (floorplan-app)          (interactive-editor)              │
+│           │                        │                         │
+│  • Better Auth            • Native file dialogs              │
+│  • Convex cloud sync      • Recent files list                │
+│  • Real-time features     • Full offline support             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+Users can switch modes via Settings or auto-fallback when offline.
 
 ## Impact
 
@@ -19,5 +44,9 @@ The mermaid-floorplan project currently runs only as a web application. Users wo
 - Affected code:
   - `src-tauri/` (new Tauri backend)
   - `interactive-editor/` (minor: IPC hooks for native features)
+  - `floorplan-app/` (minor: Tauri bridge for cloud mode) - via `add-solidstart-app`
   - `.github/workflows/` (new release workflow)
   - Root `package.json` (new scripts)
+
+### Dependencies
+- **Optional**: `add-solidstart-app` for Cloud Mode (can work without it in Offline Mode only)

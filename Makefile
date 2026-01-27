@@ -5,7 +5,7 @@
 .PHONY: all help install build clean dev test langium langium-watch \
         images images-svg images-png images-annotated render mcp-server mcp-build rebuild watch \
         viewer-dev viewer-build export-json export-images export-svg export-png export-annotated \
-        export-3d export-3d-perspective
+        export-3d export-3d-perspective export-dxf
 
 # Default target
 all: help
@@ -117,6 +117,14 @@ ifdef FLOORPLAN_FILE
 	npx tsx scripts/export-json.ts $(FLOORPLAN_FILE) $(OUTPUT_FILE)
 else
 	@echo "Usage: make export-json FLOORPLAN_FILE=path/to/file.floorplan [OUTPUT_FILE=output.json]"
+endif
+
+export-dxf: ## Export floorplan to DXF (AutoCAD format)
+ifdef FLOORPLAN_FILE
+	npx tsx scripts/export-dxf.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) $(DXF_FLAGS)
+else
+	@echo "Usage: make export-dxf FLOORPLAN_FILE=path/to/file.floorplan [OUTPUT_DIR=dir]"
+	@echo "Options: DXF_FLAGS='--dimensions --no-labels --floor Name --all-in-one'"
 endif
 
 # Aliases for backward compatibility
