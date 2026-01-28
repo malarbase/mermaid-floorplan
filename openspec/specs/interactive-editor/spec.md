@@ -5,48 +5,34 @@ TBD - created by archiving change add-interactive-editor. Update Purpose after a
 ## Requirements
 ### Requirement: Module Architecture
 
-The interactive editor SHALL be implemented as a separate module (`interactive-editor`) that extends the read-only viewer, sharing common code via a `viewer-core` package. All shared UI styles SHALL use the `fp-*` class prefix convention and be defined in `viewer-core`.
+The interactive editor SHALL be implemented with a layered architecture where `InteractiveEditorCore` extends `FloorplanAppCore` to add editor-specific functionality, and `EditorUI` extends the viewer UI pattern for full editing capabilities.
 
-#### Scenario: Viewer remains independently usable
+#### Scenario: InteractiveEditorCore extends FloorplanAppCore
 
-- **GIVEN** a user wants to embed a read-only floorplan visualization
-- **WHEN** they import only the `viewer` package
-- **THEN** they SHALL get a fully functional 3D viewer
-- **AND** the bundle SHALL NOT include editor-specific code (selection, sync, properties, LSP)
-- **AND** the bundle size SHALL remain under 1MB (excluding Three.js)
+- **GIVEN** a developer wants to build an interactive editor
+- **WHEN** they import from `floorplan-viewer-core`
+- **THEN** `InteractiveEditorCore` SHALL extend `FloorplanAppCore`
+- **AND** it SHALL add selection → DSL bidirectional sync
+- **AND** it SHALL add parse error state management
+- **AND** it SHALL emit editor-specific events (`selectionChange`, `parseError`)
 
-#### Scenario: Interactive editor extends viewer
+#### Scenario: EditorUI provides complete editor interface
 
-- **GIVEN** a user wants full editing capabilities
-- **WHEN** they import the `interactive-editor` package
-- **THEN** they SHALL get all viewer functionality plus editing features
-- **AND** the `InteractiveEditor` class SHALL extend the `Viewer` class
-- **AND** shared code SHALL come from `viewer-core` (not duplicated)
+- **GIVEN** a developer wants a reactive editor UI
+- **WHEN** they call `createEditorUI(editorCore, options)`
+- **THEN** it SHALL return a Solid.js root component
+- **AND** it SHALL include all viewer UI features (HeaderBar, FileDropdown, CommandPalette)
+- **AND** it SHALL add PropertiesPanel for selection editing
+- **AND** it SHALL add AddRoomDialog, DeleteConfirmDialog, ExportMenu
+- **AND** it SHALL display parse error banners when DSL has errors
 
-#### Scenario: Viewer-core provides shared abstractions
+#### Scenario: Standalone Solid components are reused
 
-- **GIVEN** both `viewer` and `interactive-editor` need common functionality
-- **WHEN** the packages are built
-- **THEN** shared interfaces and utilities SHALL be in `viewer-core`
-- **AND** `viewer-core` SHALL include: scene context, mesh registry, selection API, floor renderer
-- **AND** both packages SHALL depend on `viewer-core`
-
-#### Scenario: Selection API available in viewer-core
-
-- **GIVEN** a user wants basic selection in the read-only viewer
-- **WHEN** they use the `viewer-core` selection API
-- **THEN** they SHALL be able to highlight meshes programmatically
-- **AND** they SHALL receive selection events (for analytics, linking, etc.)
-- **BUT** advanced features (marquee, properties panel) SHALL require `interactive-editor`
-
-#### Scenario: Shared UI styles use fp-* prefix
-
-- **GIVEN** both `viewer` and `interactive-editor` need shared UI components
-- **WHEN** the developer creates or modifies UI elements
-- **THEN** all class names SHALL use the `fp-*` prefix (e.g., `fp-floor-item`, `fp-floor-summary-panel`)
-- **AND** styles SHALL be defined in `floorplan-viewer-core/src/ui/styles.ts`
-- **AND** the `interactive-editor` SHALL NOT duplicate styles inline in `index.html`
-- **AND** theme-aware styles SHALL be applied consistently via `body.dark-theme` selectors
+- **GIVEN** `FloorplanUI` and `EditorUI` need common UI components
+- **WHEN** the components are rendered
+- **THEN** both SHALL import from standalone files (`HeaderBar.tsx`, `FileDropdown.tsx`, `CommandPalette.tsx`)
+- **AND** no duplicate implementations SHALL exist within `FloorplanUI.tsx` or `EditorUI.tsx`
+- **AND** component behavior SHALL be consistent between viewer and editor
 
 ### Requirement: 3D Object Selection
 
@@ -948,20 +934,50 @@ The project SHALL document the pattern for integrating Solid components with van
 
 ### Requirement: Gradual Migration Strategy
 
-The project SHALL support a gradual migration path from vanilla to Solid components without breaking existing functionality.
+The project SHALL complete migration from vanilla to Solid components by removing deprecated vanilla UI files and orphaned wrapper components.
 
-#### Scenario: Vanilla components remain functional
+#### Scenario: Vanilla UI files removed
 
-- **GIVEN** Solid.js is added to the project
-- **WHEN** existing vanilla components are used
-- **THEN** they SHALL continue working without modification
-- **AND** no Solid code SHALL be required for vanilla-only features
+- **GIVEN** the codebase previously had vanilla UI implementations
+- **WHEN** the consolidation is complete
+- **THEN** `ui/command-palette.ts` SHALL be deleted
+- **AND** `ui/header-bar.ts` SHALL be deleted
+- **AND** `ui/file-dropdown.ts` SHALL be deleted
+- **AND** `ui/properties-panel-ui.ts` SHALL be deleted
+- **AND** utility functions (`createFileCommands`, `createViewCommands`) SHALL be preserved in `ui/command-utils.ts`
 
-#### Scenario: Component migration prioritized by complexity
+#### Scenario: Wrapper files removed
 
-- **GIVEN** the project roadmap
-- **WHEN** deciding which components to migrate to Solid
-- **THEN** complex UI components (command palette, properties panel) SHALL be prioritized
-- **AND** simple components (sliders, toggles) SHALL be allowed to remain vanilla
-- **AND** Three.js rendering SHALL never migrate to Solid
+- **GIVEN** orphaned wrapper components existed for Solid/vanilla bridging
+- **WHEN** the consolidation is complete
+- **THEN** `ui/solid/ControlPanelsWrapper.tsx` SHALL be deleted
+- **AND** `ui/solid/PropertiesPanelWrapper.tsx` SHALL be deleted
+- **AND** all UI rendering SHALL go through `FloorplanUI` or `EditorUI`
+
+### Requirement: Reactive Editor State Management
+
+The editor SHALL use Solid.js signals for all UI state, coordinated through the EditorUI component.
+
+#### Scenario: Selection state flows through signals
+
+- **GIVEN** a user selects an element in 3D
+- **WHEN** `InteractiveEditorCore` emits `selectionChange` event
+- **THEN** `EditorUI` SHALL update its selection signal
+- **AND** the PropertiesPanel SHALL reactively update to show selected entity
+- **AND** no imperative DOM manipulation SHALL be required
+
+#### Scenario: Parse error state flows through signals
+
+- **GIVEN** the DSL has a parse error
+- **WHEN** `InteractiveEditorCore` emits `parseError` event
+- **THEN** `EditorUI` SHALL update its error signal
+- **AND** an error banner SHALL appear reactively
+- **AND** the banner SHALL disappear when the error is fixed
+
+#### Scenario: Dialog state coordinated via signals
+
+- **GIVEN** multiple dialogs exist (AddRoom, DeleteConfirm, Export)
+- **WHEN** any dialog is opened
+- **THEN** other dialogs SHALL close via signal coordination
+- **AND** only one dialog SHALL be visible at a time
 

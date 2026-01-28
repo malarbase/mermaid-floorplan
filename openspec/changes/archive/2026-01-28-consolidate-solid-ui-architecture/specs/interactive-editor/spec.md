@@ -33,9 +33,9 @@ The interactive editor SHALL be implemented with a layered architecture where `I
 - **AND** no duplicate implementations SHALL exist within `FloorplanUI.tsx` or `EditorUI.tsx`
 - **AND** component behavior SHALL be consistent between viewer and editor
 
-### Requirement: Deprecated Vanilla UI Removal
+### Requirement: Gradual Migration Strategy
 
-The project SHALL remove deprecated vanilla TypeScript UI implementations in favor of Solid.js components.
+The project SHALL complete migration from vanilla to Solid components by removing deprecated vanilla UI files and orphaned wrapper components.
 
 #### Scenario: Vanilla UI files removed
 
@@ -54,6 +54,8 @@ The project SHALL remove deprecated vanilla TypeScript UI implementations in fav
 - **THEN** `ui/solid/ControlPanelsWrapper.tsx` SHALL be deleted
 - **AND** `ui/solid/PropertiesPanelWrapper.tsx` SHALL be deleted
 - **AND** all UI rendering SHALL go through `FloorplanUI` or `EditorUI`
+
+## ADDED Requirements
 
 ### Requirement: Reactive Editor State Management
 
