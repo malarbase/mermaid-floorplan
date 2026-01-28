@@ -78,15 +78,7 @@
     @apply fixed top-0 left-0 right-0 z-50;
     height: var(--layout-header-height);
     transition: transform 0.3s ease, opacity 0.3s ease;
-  }
-
-  .fp-header-bar.auto-hide {
-    @apply opacity-0 -translate-y-full;
-  }
-
-  .fp-header-bar.auto-hide:hover,
-  .fp-header-bar.auto-hide.visible {
-    @apply opacity-100 translate-y-0;
+    backdrop-filter: blur(8px);
   }
 
   /* 2D Overlay panel */
@@ -150,22 +142,148 @@
     @apply rounded-none;
   }
 
-  /* Editor panel (Monaco editor sidebar) */
+  /* ========================================
+   * Editor Panel (Monaco editor sidebar)
+   * Uses width-based collapsed state, not transform
+   * ======================================== */
   .fp-editor-panel {
-    @apply bg-base-200;
-    @apply fixed top-0 left-0 h-screen;
+    @apply bg-base-100;
+    @apply absolute left-0;
     @apply flex flex-col;
-    width: var(--layout-editor-width-open);
-    min-width: 300px;
-    max-width: 80vw;
-    transform: translateX(calc(-1 * var(--layout-editor-width-open)));
-    transition: transform 0.3s ease;
+    top: var(--layout-header-offset, 0);
+    bottom: 0;
     z-index: 200;
-    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+    transition: width 0.25s ease, top 0.3s ease;
+    border-right: 1px solid oklch(var(--b3));
   }
 
-  .fp-editor-panel.open {
-    transform: translateX(0);
+  /* Collapsed state: shrink to 0 width, only collapse button remains visible */
+  .fp-editor-panel--collapsed {
+    width: 0 !important;
+    border-right: none;
+    background: transparent;
+    overflow: visible;  /* Allow collapse button to show outside */
+  }
+
+  /* Hide all content when collapsed */
+  .fp-editor-panel--collapsed .fp-editor-panel__editor,
+  .fp-editor-panel--collapsed .fp-editor-panel__status,
+  .fp-editor-panel--collapsed .fp-editor-panel__header {
+    display: none;
+  }
+
+  /* When collapsed, the resize handle is hidden */
+  .fp-editor-panel--collapsed .fp-editor-panel__resize-handle {
+    display: none;
+  }
+
+  .fp-editor-panel__header {
+    @apply flex items-center justify-between;
+    @apply px-3 py-2 bg-base-200 border-b border-base-300;
+    min-height: 44px;
+  }
+
+  .fp-editor-panel__title-section {
+    @apply flex items-center gap-2.5;
+  }
+
+  .fp-editor-panel__title {
+    @apply text-sm font-semibold text-base-content;
+  }
+
+  .fp-editor-panel__mode-badge {
+    @apply badge badge-sm;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .fp-editor-panel__mode-badge--readonly {
+    @apply badge-ghost;
+  }
+
+  .fp-editor-panel__mode-badge--editable {
+    @apply badge-success badge-outline;
+  }
+
+  .fp-editor-panel__actions {
+    @apply flex items-center gap-2;
+  }
+
+  .fp-editor-panel__login-btn {
+    @apply btn btn-ghost btn-xs;
+    @apply text-primary;
+  }
+
+  .fp-editor-panel__login-btn:hover {
+    @apply bg-primary/20;
+  }
+
+  /* Collapse button - tab-like shape positioned on the panel edge */
+  .fp-editor-panel__collapse-btn {
+    @apply absolute flex items-center justify-center;
+    @apply text-sm text-base-100 cursor-pointer;
+    right: 0;
+    top: 50%;
+    transform: translateX(100%) translateY(-50%);
+    width: 28px;
+    height: 56px;
+    padding: 0;
+    background: oklch(var(--n));
+    border: none;
+    border-radius: 0 8px 8px 0;
+    transition: background 0.15s ease, right 0.25s ease;
+    z-index: 210;
+  }
+
+  .fp-editor-panel__collapse-btn:hover {
+    background: oklch(var(--n) / 0.8);
+  }
+
+  .fp-editor-panel__editor {
+    @apply flex-1 overflow-hidden;
+  }
+
+  .fp-editor-panel__status {
+    @apply flex items-center;
+    @apply px-3 py-1.5 bg-base-200 border-t border-base-300;
+    @apply text-xs;
+  }
+
+  .fp-editor-panel__status-text {
+    @apply text-base-content/60;
+  }
+
+  .fp-editor-panel__status-text--error {
+    @apply text-error;
+  }
+
+  /* Editor Panel Resize Handle */
+  .fp-editor-panel__resize-handle {
+    @apply absolute top-0 h-full cursor-ew-resize;
+    right: -6px;
+    width: 12px;
+    background: transparent;
+    z-index: 220;
+  }
+
+  .fp-editor-panel__resize-handle::before {
+    content: '';
+    @apply absolute top-0 h-full;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    background: transparent;
+    transition: background 0.2s;
+  }
+
+  .fp-editor-panel__resize-handle:hover::before,
+  .fp-editor-panel__resize-handle.active::before {
+    @apply bg-primary;
+  }
+
+  .fp-editor-panel--resizing {
+    transition: none !important;
   }
 
   /* Shortcut info panel */
@@ -180,19 +298,31 @@
    * Header Bar Components
    * ======================================== */
 
+  /* Hover zone at top to reveal auto-hidden header */
   .fp-header-hover-zone {
     @apply fixed top-0 left-0 right-0;
     height: 10px;
-    z-index: 60;
+    z-index: 299;
   }
 
+  /* Auto-hide mode: header slides up when not interacting */
   .fp-header-bar--auto-hide {
-    @apply opacity-0 -translate-y-full;
+    transform: translateY(-100%);
+    opacity: 0;
   }
 
+  /* Visible when hovering header OR when .fp-header-bar--visible is added */
   .fp-header-bar--auto-hide:hover,
-  .fp-header-bar--visible {
-    @apply opacity-100 translate-y-0;
+  .fp-header-bar--auto-hide.fp-header-bar--visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  /* Hover zone triggers header visibility via sibling combinator */
+  .fp-header-hover-zone:hover + .fp-header-bar--auto-hide,
+  .fp-header-hover-zone:hover ~ .fp-header-bar--auto-hide {
+    transform: translateY(0);
+    opacity: 1;
   }
 
   .fp-header-left,
