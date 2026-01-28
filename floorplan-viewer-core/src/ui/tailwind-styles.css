@@ -55,6 +55,12 @@
     transition: top 0.3s ease, max-height 0.3s ease;
   }
 
+  /* When header is visible, shift control panel down */
+  body.header-visible .fp-control-panel {
+    top: calc(var(--layout-header-height) + 10px);
+    max-height: calc(100vh - var(--layout-header-height) - 20px);
+  }
+
   /* Collapsible section - extends DaisyUI collapse */
   .fp-control-section {
     @apply collapse collapse-arrow border-b border-base-300;
@@ -72,13 +78,27 @@
     @apply px-4 py-3;
   }
 
-  /* Header bar - extends DaisyUI navbar */
+  /* Header bar - uses fixed positioning to ensure it's at viewport top */
   .fp-header-bar {
-    @apply navbar bg-base-100 shadow-sm;
-    @apply fixed top-0 left-0 right-0 z-50;
+    @apply flex items-center justify-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     height: var(--layout-header-height);
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    padding: 0 16px;
+    z-index: 150;
+    background: rgba(255, 255, 255, 0.95);
+    border-bottom: 1px solid #e0e0e0;
     backdrop-filter: blur(8px);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  /* Dark theme header bar */
+  [data-theme="dark"] .fp-header-bar,
+  body.dark-theme .fp-header-bar {
+    background: rgba(30, 30, 30, 0.95);
+    border-bottom-color: #444;
   }
 
   /* 2D Overlay panel */
@@ -120,6 +140,11 @@
     @apply max-w-sm;
   }
 
+  /* When header is visible, shift warnings panel down */
+  body.header-visible .fp-warnings-panel {
+    top: calc(var(--layout-header-height) + 10px);
+  }
+
   /* Properties panel - extends DaisyUI card */
   .fp-properties-panel {
     @apply card bg-base-100 shadow-lg;
@@ -144,17 +169,24 @@
 
   /* ========================================
    * Editor Panel (Monaco editor sidebar)
+   * Uses fixed positioning to ensure correct placement
    * Uses width-based collapsed state, not transform
    * ======================================== */
   .fp-editor-panel {
     @apply bg-base-100;
-    @apply absolute left-0;
     @apply flex flex-col;
-    top: var(--layout-header-offset, 0);
+    position: fixed;
+    top: 0;
+    left: 0;
     bottom: 0;
     z-index: 200;
     transition: width 0.25s ease, top 0.3s ease;
     border-right: 1px solid oklch(var(--b3));
+  }
+
+  /* When header is visible, shift editor panel down */
+  body.header-visible .fp-editor-panel {
+    top: var(--layout-header-height);
   }
 
   /* Collapsed state: shrink to 0 width, only collapse button remains visible */
