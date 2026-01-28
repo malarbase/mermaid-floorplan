@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.1] - 2026-01-28
+
+### Changed
+- **Consolidated Solid.js UI Architecture**: Unified UI component pattern across viewer and editor
+  - Created `InteractiveEditorCore` class extending `FloorplanAppCore` with editor-specific features
+  - Created `EditorUI` Solid.js component as the root UI for the interactive editor
+  - Refactored `FloorplanUI` to import standalone components instead of internal duplicates
+
+### Removed
+- Deprecated vanilla TypeScript UI files (`command-palette.ts`, `header-bar.ts`, `file-dropdown.ts`, `properties-panel-ui.ts`)
+- Orphaned Solid wrapper components (`ControlPanelsWrapper.tsx`, `PropertiesPanelWrapper.tsx`)
+
+### Fixed
+- CI artifact path after package rename
+
 ## [0.9.0] - 2026-01-12
 
 ### Added
