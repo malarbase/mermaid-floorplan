@@ -9,13 +9,14 @@
  * - Export JSON/GLB/GLTF
  *
  * Features:
- * - Reactive state with createSignal()
+ * - Reactive state with createSignal() or direct accessors
  * - Auth-aware save operation (lock icon)
  * - Recent files submenu
  * - Keyboard navigation (Escape to close)
+ * - Click outside to close
  */
 
-import { createSignal, For, Show } from 'solid-js';
+import { createSignal, createEffect, For, Show, onCleanup, type Accessor } from 'solid-js';
 
 // ============================================================================
 // Types
@@ -28,7 +29,8 @@ export type FileOperation =
   | 'save-floorplan'
   | 'export-json'
   | 'export-glb'
-  | 'export-gltf';
+  | 'export-gltf'
+  | 'export-dxf';
 
 export interface RecentFile {
   name: string;
@@ -36,15 +38,24 @@ export interface RecentFile {
   timestamp: number;
 }
 
+/** Helper to unwrap a value that may be an accessor or plain value */
+function unwrap<T>(value: T | Accessor<T> | undefined, defaultValue: T): T {
+  if (value === undefined) return defaultValue;
+  if (typeof value === 'function') return (value as Accessor<T>)();
+  return value;
+}
+
 export interface FileDropdownProps {
-  /** Whether the dropdown is open */
-  isOpen: boolean;
-  /** Position to display the dropdown */
-  position: { top: number; left: number };
-  /** Whether the user is authenticated */
-  isAuthenticated?: boolean;
-  /** Recent files list */
-  recentFiles?: RecentFile[];
+  /** Whether the dropdown is open (boolean or accessor) */
+  isOpen: boolean | Accessor<boolean>;
+  /** Position to display the dropdown (object or accessor) */
+  position?: { top: number; left: number } | Accessor<{ top: number; left: number } | null>;
+  /** Anchor rect for positioning (alternative to position, accessor) */
+  anchorRect?: DOMRect | Accessor<DOMRect | null>;
+  /** Whether the user is authenticated (boolean or accessor) */
+  isAuthenticated?: boolean | Accessor<boolean>;
+  /** Recent files list (array or accessor) */
+  recentFiles?: RecentFile[] | Accessor<RecentFile[]>;
   /** Callback when a file operation is selected */
   onAction?: (action: FileOperation, data?: unknown) => void;
   /** Callback when dropdown should close */
@@ -56,9 +67,9 @@ export interface FileDropdownProps {
  */
 export interface FileDropdownContentProps {
   /** Whether the user is authenticated */
-  isAuthenticated?: boolean;
+  isAuthenticated?: boolean | Accessor<boolean>;
   /** Recent files list */
-  recentFiles?: RecentFile[];
+  recentFiles?: RecentFile[] | Accessor<RecentFile[]>;
   /** Callback when a file operation is selected */
   onAction?: (action: FileOperation, data?: unknown) => void;
   /** Callback when dropdown should close */
@@ -79,6 +90,10 @@ const modKey = isMac ? '⌘' : 'Ctrl+';
 
 export function FileDropdownContent(props: FileDropdownContentProps) {
   const [hoveredSubmenu, setHoveredSubmenu] = createSignal(false);
+
+  // Unwrap props
+  const getIsAuthenticated = () => unwrap(props.isAuthenticated, false);
+  const getRecentFiles = () => unwrap(props.recentFiles, []);
 
   // Handle action click
   const handleAction = (action: FileOperation, data?: unknown) => {
@@ -115,7 +130,7 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
 
       {/* Recent Files Submenu */}
       <Show
-        when={props.recentFiles && props.recentFiles.length > 0}
+        when={getRecentFiles().length > 0}
         fallback={
           <div class="fp-dropdown-item fp-dropdown-item-disabled" role="menuitem">
             <span class="fp-dropdown-item-label">Open Recent</span>
@@ -138,7 +153,7 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
           </button>
           <Show when={hoveredSubmenu()}>
             <div class="fp-dropdown-submenu-content" role="menu">
-              <For each={props.recentFiles?.slice(0, 5)}>
+              <For each={getRecentFiles().slice(0, 5)}>
                 {(file) => (
                   <button
                     class="fp-recent-file-item"
@@ -160,13 +175,13 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
       {/* Save .floorplan */}
       <button
         class="fp-dropdown-item"
-        classList={{ 'fp-dropdown-item-locked': !props.isAuthenticated }}
+        classList={{ 'fp-dropdown-item-locked': !getIsAuthenticated() }}
         role="menuitem"
         onClick={() => handleAction('save-floorplan')}
       >
         <span class="fp-dropdown-item-label">Save .floorplan</span>
         <span class="fp-dropdown-item-right">
-          <Show when={!props.isAuthenticated}>
+          <Show when={!getIsAuthenticated()}>
             <span class="fp-lock-icon">🔒</span>
           </Show>
           <span class="fp-dropdown-item-shortcut">{modKey}S</span>
@@ -216,16 +231,65 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
 export function FileDropdown(props: FileDropdownProps) {
   let dropdownRef: HTMLDivElement | undefined;
 
+  // Unwrap props
+  const getIsOpen = () => unwrap(props.isOpen, false);
+  const getPosition = () => {
+    // Try anchorRect first (for FloorplanUI integration)
+    if (props.anchorRect !== undefined) {
+      const rect = unwrap(props.anchorRect, null);
+      if (rect) return { top: rect.bottom + 4, left: rect.left };
+    }
+    // Fall back to position prop
+    if (props.position !== undefined) {
+      const pos = unwrap(props.position, null);
+      if (pos) return pos;
+    }
+    return { top: 0, left: 0 };
+  };
+
+  // Click outside handler
+  const handleClickOutside = (e: MouseEvent) => {
+    if (dropdownRef && !dropdownRef.contains(e.target as Node)) {
+      props.onClose();
+    }
+  };
+
+  // Escape key handler
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      props.onClose();
+    }
+  };
+
+  // Setup/cleanup event listeners when dropdown opens/closes
+  createEffect(() => {
+    if (getIsOpen()) {
+      // Add listeners after a tick (to avoid immediate close from the click that opened it)
+      setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+        document.addEventListener('keydown', handleKeyDown);
+      }, 0);
+    } else {
+      document.removeEventListener('click', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    }
+  });
+
+  onCleanup(() => {
+    document.removeEventListener('click', handleClickOutside);
+    document.removeEventListener('keydown', handleKeyDown);
+  });
+
   return (
-    <Show when={props.isOpen}>
+    <Show when={getIsOpen()}>
       <div
         ref={dropdownRef}
         class="fp-file-dropdown"
         role="menu"
         style={{
           position: 'fixed',
-          top: `${props.position.top}px`,
-          left: `${props.position.left}px`,
+          top: `${getPosition().top}px`,
+          left: `${getPosition().left}px`,
         }}
       >
         <FileDropdownContent

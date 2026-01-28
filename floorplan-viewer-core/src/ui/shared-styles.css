@@ -32,6 +32,7 @@
   width: 260px;
   max-height: calc(100vh - var(--layout-header-offset) - 20px);
   overflow-y: auto;
+  overflow-x: hidden;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 13px;
@@ -955,7 +956,7 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
-  z-index: 300;
+  z-index: 150;  /* Below editor panel (200) so editor controls are clickable */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   backdrop-filter: blur(8px);
   /* Auto-hide transition */
@@ -1612,7 +1613,7 @@ body:not(.dark-theme) .fp-drag-drop-content {
   align-items: center;
   justify-content: space-between;
   padding: 0 12px;
-  z-index: 500;
+  z-index: 150;  /* Below editor panel (200) so editor controls are clickable */
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 13px;
   backdrop-filter: blur(8px);
@@ -2482,8 +2483,155 @@ body:not(.dark-theme) .fp-dialog-btn-cancel:hover {
   display: none;
 }
 
-.fp-dialog-error.visible {
+.fp-dialog-error.visible,
+.fp-dialog-error.fp-visible {
   display: block;
+}
+
+/* === Dialog Header/Body/Footer Structure === */
+.fp-dialog-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #444;
+}
+
+body:not(.dark-theme) .fp-dialog-header {
+  color: #333;
+  border-bottom-color: #e0e0e0;
+}
+
+.fp-dialog-body {
+  margin-bottom: 16px;
+}
+
+.fp-dialog-body p {
+  font-size: 13px;
+  color: #ccc;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+body:not(.dark-theme) .fp-dialog-body p {
+  color: #555;
+}
+
+.fp-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #444;
+}
+
+body:not(.dark-theme) .fp-dialog-footer {
+  border-top-color: #e0e0e0;
+}
+
+/* Dialog button variants using modifier classes */
+.fp-dialog-btn.primary {
+  background: #2d5a2d;
+  border-color: #4a8a4a;
+  color: #8f8;
+}
+
+.fp-dialog-btn.primary:hover {
+  background: #3a6a3a;
+}
+
+.fp-dialog-btn.danger {
+  background: #5a2d2d;
+  border-color: #8a4a4a;
+  color: #f88;
+}
+
+.fp-dialog-btn.danger:hover {
+  background: #6a3a3a;
+}
+
+/* === Dialog Form Elements === */
+.fp-form-group {
+  margin-bottom: 12px;
+}
+
+.fp-form-group label {
+  display: block;
+  font-size: 12px;
+  color: #999;
+  margin-bottom: 4px;
+}
+
+body:not(.dark-theme) .fp-form-group label {
+  color: #666;
+}
+
+.fp-form-row {
+  display: flex;
+  gap: 12px;
+}
+
+.fp-form-row .fp-form-group {
+  flex: 1;
+}
+
+.fp-dialog-input {
+  width: 100%;
+  background: #1e1e1e;
+  border: 1px solid #555;
+  border-radius: 4px;
+  padding: 8px 10px;
+  color: #fff;
+  font-size: 13px;
+}
+
+body:not(.dark-theme) .fp-dialog-input {
+  background: #f5f5f5;
+  border-color: #ddd;
+  color: #333;
+}
+
+.fp-dialog-input:focus {
+  outline: none;
+  border-color: #4a9eff;
+}
+
+/* Dialog warning box */
+.fp-dialog-warning {
+  background: rgba(244, 136, 136, 0.15);
+  border: 1px solid rgba(244, 136, 136, 0.3);
+  border-radius: 4px;
+  padding: 10px;
+  margin-top: 12px;
+  font-size: 12px;
+  color: #f88;
+}
+
+body:not(.dark-theme) .fp-dialog-warning {
+  background: rgba(200, 50, 50, 0.1);
+  border-color: rgba(200, 50, 50, 0.3);
+  color: #c33;
+}
+
+.fp-dialog-warning strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.fp-cascade-list {
+  margin: 8px 0 0 0;
+  padding-left: 20px;
+  font-size: 11px;
+  color: #ccc;
+}
+
+body:not(.dark-theme) .fp-cascade-list {
+  color: #666;
+}
+
+.fp-cascade-list li {
+  margin-bottom: 2px;
 }
 
 /* === Confirm Dialog === */

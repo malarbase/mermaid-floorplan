@@ -5,13 +5,13 @@
  * and auth-aware command filtering.
  *
  * Features:
- * - Search filtering with createSignal()
+ * - Search filtering with createSignal() or direct accessors
  * - Keyboard navigation (Arrow keys, Enter, Escape)
  * - Command categories and grouping
  * - Auth-aware command filtering (lock icon for protected commands)
  */
 
-import { createSignal, createMemo, For, Show, onMount, onCleanup } from 'solid-js';
+import { createSignal, createMemo, createEffect, For, Show, onMount, onCleanup, type Accessor } from 'solid-js';
 
 // ============================================================================
 // Types
@@ -32,21 +32,30 @@ export interface Command {
   requiresAuth?: boolean;
   /** Icon (emoji or class name) */
   icon?: string;
-  /** Execute callback */
-  execute: () => void;
+  /** Execute callback (optional - use onExecute prop of CommandPalette instead) */
+  execute?: () => void;
+}
+
+/** Helper to unwrap a value that may be an accessor or plain value */
+function unwrap<T>(value: T | Accessor<T> | undefined, defaultValue: T): T {
+  if (value === undefined) return defaultValue;
+  if (typeof value === 'function') return (value as Accessor<T>)();
+  return value;
 }
 
 export interface CommandPaletteProps {
-  /** List of available commands */
-  commands: Command[];
-  /** Whether the palette is open */
-  isOpen: boolean;
+  /** List of available commands (array or accessor) */
+  commands: Command[] | Accessor<Command[]>;
+  /** Whether the palette is open (boolean or accessor) */
+  isOpen: boolean | Accessor<boolean>;
   /** Callback when palette should close */
   onClose: () => void;
   /** Whether user is authenticated (for auth-aware filtering) */
-  isAuthenticated?: boolean;
+  isAuthenticated?: boolean | Accessor<boolean>;
   /** Placeholder text for search input */
   placeholder?: string;
+  /** Callback when a command is executed */
+  onExecute?: (command: Command) => void;
 }
 
 // ============================================================================
@@ -59,12 +68,18 @@ export function CommandPalette(props: CommandPaletteProps) {
   let inputRef: HTMLInputElement | undefined;
   let listRef: HTMLDivElement | undefined;
 
+  // Unwrap props
+  const getIsOpen = () => unwrap(props.isOpen, false);
+  const getCommands = () => unwrap(props.commands, []);
+  const getIsAuthenticated = () => unwrap(props.isAuthenticated, false);
+
   // Filter and group commands based on search query
   const filteredCommands = createMemo(() => {
+    const commands = getCommands();
     const query = searchQuery().toLowerCase().trim();
-    if (!query) return props.commands;
+    if (!query) return commands;
 
-    return props.commands.filter(cmd => {
+    return commands.filter(cmd => {
       const labelMatch = cmd.label.toLowerCase().includes(query);
       const descMatch = cmd.description?.toLowerCase().includes(query);
       const categoryMatch = cmd.category?.toLowerCase().includes(query);
@@ -143,17 +158,25 @@ export function CommandPalette(props: CommandPaletteProps) {
 
   const executeCommand = (cmd: Command) => {
     // Check auth requirement
-    if (cmd.requiresAuth && !props.isAuthenticated) {
+    if (cmd.requiresAuth && !getIsAuthenticated()) {
       return; // Don't execute if auth required but not authenticated
     }
-    cmd.execute();
     props.onClose();
+    // Call onExecute callback if provided, otherwise execute directly
+    if (props.onExecute) {
+      props.onExecute(cmd);
+    } else {
+      cmd.execute?.();
+    }
   };
 
-  // Focus input when opened
-  onMount(() => {
-    if (props.isOpen && inputRef) {
-      inputRef.focus();
+  // Focus input when opened and reset state
+  createEffect(() => {
+    if (getIsOpen()) {
+      setTimeout(() => inputRef?.focus(), 50);
+    } else {
+      setSearchQuery('');
+      setSelectedIndex(0);
     }
   });
 
@@ -166,7 +189,7 @@ export function CommandPalette(props: CommandPaletteProps) {
 
   // Global escape handler
   const handleGlobalKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && props.isOpen) {
+    if (e.key === 'Escape' && getIsOpen()) {
       props.onClose();
     }
   };
@@ -180,7 +203,7 @@ export function CommandPalette(props: CommandPaletteProps) {
   });
 
   return (
-    <Show when={props.isOpen}>
+    <Show when={getIsOpen()}>
       <div
         class="fp-command-palette-backdrop"
         onClick={handleBackdropClick}
@@ -230,7 +253,7 @@ export function CommandPalette(props: CommandPaletteProps) {
                       {(cmd) => {
                         const index = () => flatCommands().indexOf(cmd);
                         const isSelected = () => selectedIndex() === index();
-                        const isDisabled = () => cmd.requiresAuth && !props.isAuthenticated;
+                        const isDisabled = () => cmd.requiresAuth && !getIsAuthenticated();
 
                         return (
                           <div
@@ -265,7 +288,7 @@ export function CommandPalette(props: CommandPaletteProps) {
 
                             {/* Right side: shortcut or lock icon */}
                             <div class="fp-command-palette-right">
-                              <Show when={cmd.requiresAuth && !props.isAuthenticated}>
+                              <Show when={cmd.requiresAuth && !getIsAuthenticated()}>
                                 <span class="fp-command-palette-lock" title="Requires authentication">
                                   🔒
                                 </span>

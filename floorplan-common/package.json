@@ -1,6 +1,6 @@
 {
   "name": "floorplan-common",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Shared utilities for floorplan packages (geometry, types, constants)",
   "license": "MIT",
   "author": "Malar Kannan",

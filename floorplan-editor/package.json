@@ -1,6 +1,6 @@
 {
   "name": "floorplan-editor",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "Interactive floorplan editor with full editing capabilities",
   "license": "GPL-3.0-or-later",
   "author": "Malar Kannan",
@@ -29,11 +29,12 @@
   "dependencies": {
     "floorplan-3d-core": "*",
     "floorplan-language": "*",
+    "floorplan-viewer-core": "*",
     "langium": "~4.0.0",
     "monaco-editor": "^0.52.2",
+    "solid-js": "^1.9.0",
     "three": "^0.170.0",
-    "three-bvh-csg": "^0.0.16",
-    "floorplan-viewer-core": "*"
+    "three-bvh-csg": "^0.0.16"
   },
   "devDependencies": {
     "@types/three": "^0.170.0",

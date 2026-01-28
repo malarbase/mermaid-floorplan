@@ -1,7 +1,7 @@
 /**
  * Camera controls UI component (Vanilla)
  * 
- * @deprecated Use Solid.js version instead: `createSolidCameraControls` from './solid/ControlPanelsWrapper'
+ * @deprecated Use Solid.js version instead: `CameraControls` from './solid/ControlPanels'
  */
 import { injectStyles } from './styles.js';
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';

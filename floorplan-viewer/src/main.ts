@@ -269,14 +269,10 @@ const viewCommandsVanilla = createViewCommands({
   },
 });
 
-// Map vanilla commands (action) to Solid commands (execute)
-type SolidCommand = { id: string; label: string; description?: string; category?: string; shortcut?: string; requiresAuth?: boolean; icon?: string; execute: () => void };
-const mapToSolidCommands = (cmds: ReturnType<typeof createFileCommands>): SolidCommand[] =>
-  cmds.map(cmd => ({ ...cmd, execute: cmd.action }));
-
-const commands: SolidCommand[] = [
-  ...mapToSolidCommands(fileCommandsVanilla),
-  ...mapToSolidCommands(viewCommandsVanilla),
+// Commands now use `execute` directly (no mapping needed)
+const commands = [
+  ...fileCommandsVanilla,
+  ...viewCommandsVanilla,
 ];
 
 // Create FloorplanUI - handles HeaderBar, FileDropdown, and CommandPalette

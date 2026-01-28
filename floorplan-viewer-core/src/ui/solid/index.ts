@@ -24,6 +24,20 @@ export {
 } from './FloorplanUI.jsx';
 
 // ============================================================================
+// EditorUI - Editor-specific Root UI Component (Pure Solid)
+// ============================================================================
+
+export {
+  EditorUI,
+  createEditorUI,
+  createEditorUIState,
+  type EditorUIProps,
+  type EditorUIConfig,
+  type EditorUIAPI,
+  type EditorUIState,
+} from './EditorUI.jsx';
+
+// ============================================================================
 // Command Palette
 // ============================================================================
 
@@ -76,12 +90,6 @@ export {
   type PropertyOption,
 } from './PropertiesPanel.jsx';
 
-export {
-  createSolidPropertiesPanel,
-  type PropertiesPanelConfig,
-  type PropertiesPanelAPI,
-} from './PropertiesPanelWrapper.jsx';
-
 // ============================================================================
 // Control Panels (Camera, Light, Annotations)
 // ============================================================================
@@ -106,18 +114,6 @@ export {
   type AreaUnit,
   type LengthUnit,
 } from './ControlPanels.jsx';
-
-export {
-  createSolidCameraControls,
-  createSolidLightControls,
-  createSolidAnnotationControls,
-  type CameraControlsConfig,
-  type CameraControlsAPI,
-  type LightControlsConfig,
-  type LightControlsAPI,
-  type AnnotationControlsConfig,
-  type AnnotationControlsAPI,
-} from './ControlPanelsWrapper.jsx';
 
 // ============================================================================
 // Integration utilities

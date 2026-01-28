@@ -1,4 +1,5 @@
 import { defineConfig, type Plugin } from 'vite';
+import solidPlugin from 'vite-plugin-solid';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -39,6 +40,10 @@ export default defineConfig({
     },
   },
   plugins: [
+    solidPlugin({
+      // Transform JSX from floorplan-viewer-core
+      extensions: ['jsx', 'tsx'],
+    }),
     serveSharedStyles(),
     viteStaticCopy({
       targets: [
@@ -50,10 +55,12 @@ export default defineConfig({
     })
   ],
   optimizeDeps: {
-    include: ['three', 'monaco-editor'],
+    include: ['three', 'monaco-editor', 'solid-js', 'solid-js/web'],
+    // Don't pre-bundle viewer-core - let vite transform its JSX
+    exclude: ['floorplan-viewer-core'],
   },
   resolve: {
-    dedupe: ['three', 'monaco-editor'],
+    dedupe: ['three', 'monaco-editor', 'solid-js'],
   },
   server: {
     fs: {

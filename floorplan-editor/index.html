@@ -38,9 +38,14 @@
         display: flex;
         flex-direction: column;
         transform: translateX(-450px);
-        transition: transform 0.3s ease;
+        transition: transform 0.3s ease, top 0.3s ease;
         z-index: 200;
         box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+      }
+      
+      body:not(.dark-theme) #editor-panel {
+        background: #f5f5f5;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
       }
       
       #editor-panel.resizing {
@@ -233,10 +238,62 @@
         border-color: #5a9a5a;
       }
       
-      .add-room-btn::before {
-        content: '+';
-        font-weight: bold;
-        font-size: 14px;
+      /* Light theme variants for editor panel header */
+      body:not(.dark-theme) #editor-panel-header {
+        background: #f0f0f0;
+        border-bottom-color: #ddd;
+      }
+      
+      body:not(.dark-theme) #editor-panel-header h2 {
+        color: #333;
+      }
+      
+      body:not(.dark-theme) .export-btn {
+        background: #e8e8e8;
+        border-color: #ccc;
+        color: #333;
+      }
+      
+      body:not(.dark-theme) .export-btn:hover {
+        background: #ddd;
+        border-color: #bbb;
+      }
+      
+      body:not(.dark-theme) .export-menu {
+        background: #fff;
+        border-color: #ddd;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      }
+      
+      body:not(.dark-theme) .export-menu-item {
+        color: #333;
+      }
+      
+      body:not(.dark-theme) .export-menu-item:hover {
+        background: #f0f0f0;
+      }
+      
+      body:not(.dark-theme) .export-menu-item .ext {
+        color: #666;
+      }
+      
+      body:not(.dark-theme) .export-menu-divider {
+        background: #e0e0e0;
+      }
+      
+      body:not(.dark-theme) .add-room-btn {
+        background: #e8f5e9;
+        border-color: #81c784;
+        color: #2e7d32;
+      }
+      
+      body:not(.dark-theme) .add-room-btn:hover {
+        background: #c8e6c9;
+        border-color: #66bb6a;
+      }
+      
+      body:not(.dark-theme) .fp-editor-status {
+        color: #666;
       }
       
       /* Dialog styles - use .fp-dialog-* classes from shared-styles.css */
@@ -475,7 +532,7 @@
       /* Properties Panel */
       .fp-properties-panel {
         position: absolute;
-        top: var(--properties-panel-top, 16px);
+        top: var(--properties-panel-top, 70px);  /* Below header bar */
         left: 16px;
         background: rgba(0, 0, 0, 0.9);
         color: white;
@@ -486,6 +543,10 @@
         border: 1px solid #333;
         display: none;
         transition: top 0.3s ease, left 0.3s ease;
+      }
+      
+      .fp-properties-panel.visible {
+        display: block;
       }
       
       .fp-properties-panel-content {
@@ -693,13 +754,13 @@
     </div>
     
     <!-- Editor Panel (collapsible overlay) -->
-    <div id="editor-panel" class="open" role="region" aria-label="Code Editor">
+    <div id="editor-panel" class="fp-editor-panel open" role="region" aria-label="Code Editor">
       <div id="editor-resize-handle"></div>
       <button id="editor-panel-toggle" title="Toggle Editor" aria-label="Toggle code editor panel" data-tooltip="Toggle Editor (E)">◀</button>
       <div id="editor-panel-header">
         <h2>Floorplan DSL</h2>
         <div class="editor-header-right">
-          <button class="add-room-btn" id="add-room-btn" aria-label="Add new room" data-tooltip="Add a new room to the floorplan">Room</button>
+          <button class="add-room-btn" id="add-room-btn" aria-label="Add new room" data-tooltip="Add a new room to the floorplan">+ Room</button>
           <div class="export-dropdown">
             <button class="export-btn" id="export-btn" aria-haspopup="menu" aria-expanded="false" data-tooltip="Export floorplan to various formats">Export</button>
             <div class="export-menu" id="export-menu">
