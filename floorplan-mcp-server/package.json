@@ -1,7 +1,7 @@
 {
   "name": "floorplan-mcp-server",
   "description": "MCP server for floorplan DSL rendering and manipulation",
-  "version": "0.9.1",
+  "version": "0.10.1",
   "license": "GPL-3.0-or-later",
   "author": "Malar Kannan",
   "type": "module",
