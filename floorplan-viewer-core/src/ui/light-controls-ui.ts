@@ -1,7 +1,7 @@
 /**
  * Light controls UI component (Vanilla)
  * 
- * @deprecated Use Solid.js version instead: `createSolidLightControls` from './solid/ControlPanelsWrapper'
+ * @deprecated Use Solid.js version instead: `LightControls` from './solid/ControlPanels'
  */
 import { injectStyles } from './styles.js';
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';

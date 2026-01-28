@@ -1,5 +1,9 @@
 /**
- * Tests for UI components (header-bar, file-dropdown, command-palette, drag-drop, editor-panel)
+ * Tests for UI components (drag-drop, editor-panel, dialog-ui, command-utils)
+ *
+ * Note: Tests for deprecated vanilla components (header-bar, file-dropdown,
+ * command-palette, properties-panel-ui) have been removed. Use Solid.js
+ * components via FloorplanUI instead.
  */
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { JSDOM } from 'jsdom';
@@ -14,115 +18,17 @@ global.Event = dom.window.Event;
 global.HTMLSpanElement = dom.window.HTMLSpanElement;
 
 import {
-  createHeaderBar,
-  createFileDropdown,
-  createCommandPalette,
   createFileCommands,
   createViewCommands,
   initializeDragDrop,
   createEditorPanel,
   createDialogUI,
   createConfirmDialogUI,
-  createPropertiesPanelUI,
 } from '../src/ui/index.js';
 
-describe('Header Bar', () => {
-  let container: HTMLElement;
-
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    container.remove();
-  });
-
-  it('should create header bar element', () => {
-    const header = createHeaderBar();
-    expect(header.element).toBeInstanceOf(HTMLElement);
-    expect(header.element.classList.contains('fp-header-bar')).toBe(true);
-  });
-
-  it('should have setFilename method', () => {
-    const header = createHeaderBar({ filename: 'test.floorplan' });
-    expect(header.setFilename).toBeDefined();
-    // setFilename should not throw
-    expect(() => header.setFilename('new-file.floorplan')).not.toThrow();
-  });
-
-  it('should have setEditorOpen method', () => {
-    const header = createHeaderBar({ editorOpen: false });
-    expect(header.setEditorOpen).toBeDefined();
-    expect(() => header.setEditorOpen(true)).not.toThrow();
-  });
-
-  it('should have dispose method', () => {
-    const header = createHeaderBar();
-    expect(header.dispose).toBeDefined();
-    expect(() => header.dispose()).not.toThrow();
-  });
-});
-
-describe('File Dropdown', () => {
-  let container: HTMLElement;
-
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    container.remove();
-  });
-
-  it('should create file dropdown element', () => {
-    const dropdown = createFileDropdown();
-    expect(dropdown.element).toBeInstanceOf(HTMLElement);
-    expect(dropdown.element.classList.contains('fp-file-dropdown')).toBe(true);
-  });
-
-  it('should have show/hide methods', () => {
-    const dropdown = createFileDropdown();
-    expect(dropdown.show).toBeDefined();
-    expect(dropdown.hide).toBeDefined();
-    // hide should not throw
-    expect(() => dropdown.hide()).not.toThrow();
-  });
-});
-
-describe('Command Palette', () => {
-  let container: HTMLElement;
-
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    container.remove();
-  });
-
-  it('should create command palette element', () => {
-    const commands = [
-      { id: 'test', label: 'Test Command', action: vi.fn() },
-    ];
-    const palette = createCommandPalette({ commands });
-    expect(palette.element).toBeInstanceOf(HTMLElement);
-  });
-
-  it('should have element property', () => {
-    const commands = [
-      { id: 'test', label: 'Test Command', action: vi.fn() },
-    ];
-    const palette = createCommandPalette({ commands });
-    expect(palette.element).toBeDefined();
-    expect(palette.element).toBeInstanceOf(HTMLElement);
-  });
-
+describe('Command Utilities', () => {
   it('should create file commands array', () => {
     const commands = createFileCommands({
-      isAuthenticated: true,
       onOpenFile: vi.fn(),
       onOpenUrl: vi.fn(),
       onSave: vi.fn(),
@@ -133,6 +39,10 @@ describe('Command Palette', () => {
 
     expect(Array.isArray(commands)).toBe(true);
     expect(commands.length).toBeGreaterThan(0);
+    // Verify commands have expected structure
+    expect(commands[0]).toHaveProperty('id');
+    expect(commands[0]).toHaveProperty('label');
+    expect(commands[0]).toHaveProperty('execute');
   });
 
   it('should create view commands array', () => {
@@ -146,6 +56,10 @@ describe('Command Palette', () => {
 
     expect(Array.isArray(commands)).toBe(true);
     expect(commands.length).toBeGreaterThan(0);
+    // Verify commands have expected structure
+    expect(commands[0]).toHaveProperty('id');
+    expect(commands[0]).toHaveProperty('label');
+    expect(commands[0]).toHaveProperty('execute');
   });
 });
 
@@ -518,155 +432,4 @@ describe('Confirm Dialog UI', () => {
   });
 });
 
-describe('Properties Panel UI', () => {
-  let container: HTMLElement;
-
-  beforeEach(() => {
-    container = document.createElement('div');
-    document.body.appendChild(container);
-  });
-
-  afterEach(() => {
-    container.remove();
-  });
-
-  it('should create properties panel element', () => {
-    const panel = createPropertiesPanelUI();
-    expect(panel.element).toBeInstanceOf(HTMLElement);
-    expect(panel.element.classList.contains('fp-properties-panel')).toBe(true);
-  });
-
-  it('should start hidden', () => {
-    const panel = createPropertiesPanelUI();
-    expect(panel.isVisible()).toBe(false);
-  });
-
-  it('should show panel with properties', () => {
-    const panel = createPropertiesPanelUI();
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Living Room', [
-      { name: 'width', label: 'Width', type: 'number', value: 10 },
-      { name: 'height', label: 'Height', type: 'number', value: 8 },
-    ]);
-
-    expect(panel.isVisible()).toBe(true);
-  });
-
-  it('should hide panel', () => {
-    const panel = createPropertiesPanelUI();
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Test', []);
-    expect(panel.isVisible()).toBe(true);
-
-    panel.hide();
-    expect(panel.isVisible()).toBe(false);
-  });
-
-  it('should display title with entity type and id', () => {
-    const panel = createPropertiesPanelUI();
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Kitchen', []);
-
-    const title = panel.element.querySelector('.fp-properties-panel-title');
-    expect(title?.textContent).toBe('Room: Kitchen');
-  });
-
-  it('should create property inputs', () => {
-    const panel = createPropertiesPanelUI();
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Test', [
-      { name: 'name', label: 'Name', type: 'text', value: 'TestRoom' },
-      { name: 'width', label: 'Width', type: 'number', value: 10 },
-    ]);
-
-    const inputs = panel.element.querySelectorAll('.fp-property-input');
-    expect(inputs.length).toBe(2);
-  });
-
-  it('should create readonly properties', () => {
-    const panel = createPropertiesPanelUI();
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Test', [
-      { name: 'id', label: 'ID', type: 'readonly', value: 'room-123' },
-    ]);
-
-    const readonlyEl = panel.element.querySelector('.fp-property-value.readonly');
-    expect(readonlyEl?.textContent).toBe('room-123');
-  });
-
-  it('should create select properties', () => {
-    const panel = createPropertiesPanelUI();
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Test', [
-      {
-        name: 'type',
-        label: 'Type',
-        type: 'select',
-        value: 'bedroom',
-        options: [
-          { value: 'bedroom', label: 'Bedroom' },
-          { value: 'bathroom', label: 'Bathroom' },
-        ],
-      },
-    ]);
-
-    const select = panel.element.querySelector('select') as HTMLSelectElement;
-    expect(select).toBeDefined();
-    expect(select.value).toBe('bedroom');
-  });
-
-  it('should call onPropertyChange when input changes', () => {
-    const onPropertyChange = vi.fn();
-    const panel = createPropertiesPanelUI({ onPropertyChange });
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Test', [
-      { name: 'width', label: 'Width', type: 'number', value: 10 },
-    ]);
-
-    const input = panel.element.querySelector('input') as HTMLInputElement;
-    input.value = '15';
-    input.dispatchEvent(new Event('change'));
-
-    expect(onPropertyChange).toHaveBeenCalledWith('width', '15');
-  });
-
-  it('should call onDelete when delete button clicked', () => {
-    const onDelete = vi.fn();
-    const panel = createPropertiesPanelUI({ onDelete });
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Test', []);
-
-    const deleteBtn = panel.element.querySelector('.fp-dialog-btn.danger') as HTMLElement;
-    deleteBtn.click();
-
-    expect(onDelete).toHaveBeenCalled();
-  });
-
-  it('should update property value', () => {
-    const panel = createPropertiesPanelUI();
-    container.appendChild(panel.element);
-
-    panel.show('Room', 'Test', [
-      { name: 'width', label: 'Width', type: 'number', value: 10 },
-    ]);
-
-    panel.updateProperty('width', 20);
-
-    const input = panel.element.querySelector('input') as HTMLInputElement;
-    expect(input.value).toBe('20');
-  });
-
-  it('should have destroy method', () => {
-    const panel = createPropertiesPanelUI();
-    expect(panel.destroy).toBeDefined();
-    expect(() => panel.destroy()).not.toThrow();
-  });
-});
+// Note: Properties Panel UI tests removed - use Solid.js PropertiesPanel component instead

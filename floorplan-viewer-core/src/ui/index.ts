@@ -87,30 +87,15 @@ export {
   type ShortcutItem,
 } from './shortcut-info-ui.js';
 
-// Header Bar & File Operations
-export {
-  createHeaderBar,
-  HEADER_AUTO_HIDE_DELAY,
-  type HeaderBar,
-  type HeaderBarConfig,
-} from './header-bar.js';
+// Command utilities (extracted from deprecated command-palette.ts)
 
 export {
-  createFileDropdown,
-  type FileDropdown,
-  type FileDropdownConfig,
-  type FileOperation,
-  type RecentFile,
-} from './file-dropdown.js';
-
-export {
-  createCommandPalette,
   createFileCommands,
   createViewCommands,
-  type CommandPalette,
-  type CommandPaletteConfig,
+  createEditorCommands,
   type Command,
-} from './command-palette.js';
+  type FileOperation,
+} from './command-utils.js';
 
 export {
   initializeDragDrop,
@@ -137,13 +122,7 @@ export {
   type ConfirmDialogConfig,
 } from './dialog-ui.js';
 
-// Properties Panel
-export {
-  createPropertiesPanelUI,
-  type PropertiesPanelUI,
-  type PropertiesPanelUIOptions,
-  type PropertyDefinition,
-} from './properties-panel-ui.js';
+// Properties Panel - Use Solid.js PropertiesPanel from './solid/PropertiesPanel.jsx' instead
 
 // Solid.js Components are exported from './solid/index.js' directly
 // to avoid loading browser-specific code in Node.js environments.

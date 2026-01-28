@@ -68,29 +68,44 @@ For Mermaid alignment details, see:
 
 ## Solid.js Integration
 
-### Architecture: FloorplanAppCore + FloorplanUI
+### Architecture Overview
 
-This project separates 3D rendering from 2D UI via two main classes:
+This project separates 3D rendering from 2D UI via core classes and Solid.js components:
 
 ```
-FloorplanAppCore (3D-only)
-├── BaseViewer (Three.js scene, camera, renderer, controls)
-├── SelectionManager, Overlay2DManager, LayoutManager
-├── Event emitter for UI subscription
-└── Public API: loadFromDsl(), handleFileAction(), toggleEditorPanel(), etc.
+┌─────────────────────────────────────────────────────────────┐
+│ For Viewer (read-only)                                       │
+├─────────────────────────────────────────────────────────────┤
+│ FloorplanAppCore (3D-only)                                   │
+│ ├── BaseViewer (Three.js scene, camera, renderer, controls) │
+│ ├── SelectionManager, Overlay2DManager, LayoutManager       │
+│ └── Event emitter for UI subscription                       │
+│                                                             │
+│ FloorplanUI (Solid.js root via createFloorplanUI)           │
+│ ├── HeaderBar, FileDropdown, CommandPalette                 │
+│ └── Subscribes to appCore events for reactive updates       │
+└─────────────────────────────────────────────────────────────┘
 
-FloorplanUI (Solid.js root)
-├── HeaderBar (pure Solid)
-├── FileDropdown (pure Solid)
-├── CommandPalette (pure Solid)
-├── Shared state signals for reactive coordination
-└── Subscribes to appCore events for reactive updates
+┌─────────────────────────────────────────────────────────────┐
+│ For Editor (full editing capabilities)                       │
+├─────────────────────────────────────────────────────────────┤
+│ InteractiveEditorCore extends FloorplanAppCore               │
+│ ├── Selection → DSL bidirectional sync                      │
+│ ├── Parse error state management                            │
+│ └── Editor-specific events (selectionChange, parseError)    │
+│                                                             │
+│ EditorUI (Solid.js root via createEditorUI)                 │
+│ ├── HeaderBar, FileDropdown, CommandPalette                 │
+│ ├── PropertiesPanel for single selection editing            │
+│ ├── AddRoomDialog, DeleteConfirmDialog, ExportMenu          │
+│ └── Parse error banner                                      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Rule: Three.js Isolation
 
 **NEVER use Solid.js for 3D rendering.** Solid's fine-grained reactivity conflicts with Three.js's imperative scene graph:
-- Solid components live in `src/ui/solid/`
+- Solid components live in `ui/solid/`
 - Three.js code lives in base-viewer, scene-context, etc.
 - Communication happens via events and method calls
 
@@ -99,27 +114,25 @@ FloorplanUI (Solid.js root)
 | Use Case | Approach |
 |----------|----------|
 | Simple static UI (tooltip, badge) | Vanilla DOM |
-| Interactive UI with state (command palette, header) | Solid.js via FloorplanUI |
-| 3D scene manipulation | FloorplanAppCore (Three.js) |
+| Interactive UI with state (command palette, header) | Solid.js via FloorplanUI/EditorUI |
+| 3D scene manipulation | FloorplanAppCore/InteractiveEditorCore |
 | Cross-component state (dropdown open, header visible) | Solid signals |
 
-### Using FloorplanAppCore + FloorplanUI (Recommended)
+### Using FloorplanAppCore + FloorplanUI (Viewer)
 
 ```typescript
-import { FloorplanAppCore, createFloorplanUI, createFileCommands } from 'floorplan-viewer-core';
+import { FloorplanAppCore, createFloorplanUI } from 'floorplan-viewer-core';
 
-// Create 3D core
 const appCore = new FloorplanAppCore({
   containerId: 'app',
   initialTheme: 'dark',
   initialDsl: myFloorplanDsl,
 });
 
-// Create UI layer with shared state
 const ui = createFloorplanUI(appCore, {
   initialFilename: 'MyFloorplan.floorplan',
   headerAutoHide: true,
-  commands: createFileCommands({ ... }),
+  commands: [...],
 });
 
 // UI state updates automatically via event subscription
@@ -127,34 +140,45 @@ appCore.loadFromDsl(newContent);  // UI filename signal updates
 appCore.handleThemeToggle();       // UI theme signal updates
 ```
 
-### Using FloorplanApp (Legacy/Simple)
-
-For simpler use cases, the original `FloorplanApp` class still works:
+### Using InteractiveEditorCore + EditorUI (Editor)
 
 ```typescript
-import { FloorplanApp } from 'floorplan-viewer-core';
+import { InteractiveEditorCore, createEditorUI } from 'floorplan-viewer-core';
 
-const app = new FloorplanApp({
+const editorCore = new InteractiveEditorCore({
   containerId: 'app',
-  initialDsl: myFloorplanDsl,
-  showHeaderBar: true,
-  enableDragDrop: true,
+  initialTheme: 'dark',
+  selectionDebug: false,
 });
+
+const editorUI = createEditorUI(editorCore, {
+  initialFilename: 'Untitled.floorplan',
+  initialEditorOpen: true,
+  commands: [...],
+  onPropertyChange: (entityType, entityId, property, value) => { ... },
+  onDelete: (entityType, entityId) => { ... },
+  getEntityData: (entityType, entityId) => { ... },
+});
+
+// Editor-specific events
+editorCore.on('selectionChange', ({ selection }) => { ... });
+editorCore.on('parseError', ({ hasError, errorMessage }) => { ... });
 ```
 
 ### File Structure
 
 ```
 floorplan-viewer-core/src/
-├── floorplan-app-core.ts     # 3D-only class with event emitter
-├── floorplan-app.ts          # Legacy unified class
+├── floorplan-app-core.ts        # 3D viewer core with event emitter
+├── interactive-editor-core.ts   # Editor core (extends FloorplanAppCore)
 └── ui/solid/
-    ├── FloorplanUI.tsx       # Solid root component (HeaderBar, FileDropdown, CommandPalette)
-    ├── CommandPalette.tsx    # Standalone component
-    ├── FileDropdown.tsx      # Standalone component
-    ├── HeaderBar.tsx         # Standalone component
-    ├── *Wrapper.tsx          # Deprecated vanilla wrappers
-    └── index.ts              # Module exports
+    ├── FloorplanUI.tsx          # Viewer Solid root component
+    ├── EditorUI.tsx             # Editor Solid root component
+    ├── CommandPalette.tsx       # Standalone component
+    ├── FileDropdown.tsx         # Standalone component
+    ├── HeaderBar.tsx            # Standalone component
+    ├── PropertiesPanel.tsx      # Properties editing panel
+    └── index.ts                 # Module exports
 ```
 
 ### Reactive Coordination via Signals

@@ -32,6 +32,14 @@ export type {
   AuthResult as CoreAuthResult,
 } from './floorplan-app-core.js';
 
+// InteractiveEditorCore (editor-specific, extends FloorplanAppCore)
+export { InteractiveEditorCore } from './interactive-editor-core.js';
+export type {
+  InteractiveEditorCoreOptions,
+  InteractiveEditorCoreEvents,
+  EntityLocation,
+} from './interactive-editor-core.js';
+
 // Scene context
 export type {
   SelectableObject,
@@ -138,8 +146,42 @@ export type {
   SelectionManagerConfig,
 } from './selection-manager.js';
 
-// UI Components
+// UI Components (vanilla)
 export * from './ui/index.js';
+
+// UI Components (Solid.js)
+export {
+  FloorplanUI,
+  createFloorplanUI,
+  createUIState,
+  type FloorplanUIProps,
+  type FloorplanUIConfig,
+  type FloorplanUIAPI,
+  type UIState,
+  type Theme as UITheme,
+  EditorUI,
+  createEditorUI,
+  createEditorUIState,
+  type EditorUIProps,
+  type EditorUIConfig,
+  type EditorUIAPI,
+  type EditorUIState,
+  CommandPalette,
+  type Command as UICommand,
+  type CommandPaletteProps,
+  FileDropdown,
+  type FileDropdownProps,
+  type RecentFile,
+  HeaderBar,
+  type HeaderBarProps,
+  type Theme,
+  ThemeToggle,
+  createSolidThemeToggle,
+  type ThemeToggleProps,
+  PropertiesPanel,
+  type PropertiesPanelProps,
+  type PropertyDefinition,
+} from './ui/solid/index.js';
 
 // DSL Editor (Monaco-based)
 export {
@@ -183,3 +225,9 @@ export type {
   PerformanceMetric,
   PerformanceReport,
 } from './utils/performance.js';
+
+// Debug utilities
+export {
+  debug,
+  createDebugLogger,
+} from './utils/debug.js';

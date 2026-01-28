@@ -1,7 +1,7 @@
 /**
  * Annotation controls UI component (Vanilla)
  * 
- * @deprecated Use Solid.js version instead: `createSolidAnnotationControls` from './solid/ControlPanelsWrapper'
+ * @deprecated Use Solid.js version instead: `AnnotationControls` from './solid/ControlPanels'
  */
 import { injectStyles } from './styles.js';
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';
