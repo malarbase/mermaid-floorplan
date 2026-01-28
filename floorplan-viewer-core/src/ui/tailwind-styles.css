@@ -1,0 +1,542 @@
+/**
+ * Tailwind CSS + DaisyUI styles for floorplan viewer/editor
+ * 
+ * This file replaces shared-styles.css with semantic DaisyUI components
+ * and Tailwind utilities.
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* === Layout CSS Variables (preserved from shared-styles.css) === */
+:root {
+  --layout-header-height: 40px;
+  --layout-header-offset: 40px;
+  --layout-editor-width: 0px;
+  --layout-editor-width-open: 450px;
+  --layout-overlay-2d-height: 220px;
+  --layout-bottom-gap: 10px;
+  --layout-bottom-stack-offset: 0px;
+  --layout-overlay-2d-visible: 0;
+  --layout-floor-summary-visible: 0;
+}
+
+/* === Base Layer Customizations === */
+@layer base {
+  /* Body defaults */
+  body {
+    @apply font-sans overflow-hidden;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  }
+
+  /* Keyboard shortcut styling */
+  kbd {
+    @apply kbd kbd-sm;
+  }
+}
+
+/* === Component Layer - Custom component patterns === */
+@layer components {
+  /* Panel positioning utilities */
+  .fp-panel-top {
+    top: calc(var(--layout-header-offset) + 10px);
+  }
+
+  .fp-panel-left-offset {
+    left: calc(var(--layout-editor-width) + 16px);
+  }
+
+  /* Control panel - extends DaisyUI card */
+  .fp-control-panel {
+    @apply card bg-base-100 shadow-lg;
+    @apply absolute right-2.5 w-64 max-h-[calc(100vh-var(--layout-header-offset)-20px)] overflow-y-auto;
+    top: calc(var(--layout-header-offset) + 10px);
+    transition: top 0.3s ease, max-height 0.3s ease;
+  }
+
+  /* Collapsible section - extends DaisyUI collapse */
+  .fp-control-section {
+    @apply collapse collapse-arrow border-b border-base-300;
+  }
+
+  .fp-control-section:last-child {
+    @apply border-b-0;
+  }
+
+  .fp-control-section .collapse-title {
+    @apply text-sm font-semibold bg-base-200 min-h-0 py-3 px-4;
+  }
+
+  .fp-control-section .collapse-content {
+    @apply px-4 py-3;
+  }
+
+  /* Header bar - extends DaisyUI navbar */
+  .fp-header-bar {
+    @apply navbar bg-base-100 shadow-sm;
+    @apply fixed top-0 left-0 right-0 z-50;
+    height: var(--layout-header-height);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  .fp-header-bar.auto-hide {
+    @apply opacity-0 -translate-y-full;
+  }
+
+  .fp-header-bar.auto-hide:hover,
+  .fp-header-bar.auto-hide.visible {
+    @apply opacity-100 translate-y-0;
+  }
+
+  /* 2D Overlay panel */
+  .fp-overlay-2d {
+    @apply card bg-base-100 shadow-lg;
+    @apply absolute;
+    left: calc(var(--layout-editor-width) + 16px);
+    bottom: var(--layout-bottom-gap);
+    min-width: 280px;
+    max-width: 50vw;
+    height: var(--layout-overlay-2d-height);
+    transition: left 0.3s ease;
+  }
+
+  /* Floor summary panel */
+  .fp-floor-summary-panel {
+    @apply card bg-base-100 shadow-lg;
+    @apply absolute p-3;
+    left: calc(var(--layout-editor-width) + 16px);
+    bottom: calc(
+      var(--layout-bottom-gap) +
+      (var(--layout-overlay-2d-visible) * (var(--layout-overlay-2d-height) + 10px))
+    );
+    min-width: 200px;
+    transition: left 0.3s ease, bottom 0.3s ease;
+  }
+
+  /* Selection info badge */
+  .fp-selection-info {
+    @apply badge badge-lg bg-base-100 shadow-md;
+    @apply fixed bottom-4 left-1/2 -translate-x-1/2;
+    @apply px-4 py-2;
+  }
+
+  /* Warnings panel - extends DaisyUI alert */
+  .fp-warnings-panel {
+    @apply alert alert-warning;
+    @apply absolute top-[calc(var(--layout-header-offset)+10px)] left-4;
+    @apply max-w-sm;
+  }
+
+  /* Properties panel - extends DaisyUI card */
+  .fp-properties-panel {
+    @apply card bg-base-100 shadow-lg;
+    @apply absolute p-0;
+    top: calc(var(--layout-header-offset) + 10px);
+    left: calc(var(--layout-editor-width) + 16px);
+    min-width: 220px;
+    max-width: 280px;
+    transition: top 0.3s ease, left 0.3s ease;
+  }
+
+  .fp-properties-panel .card-body {
+    @apply p-3;
+  }
+
+  /* Error banner */
+  .fp-error-banner {
+    @apply alert alert-error;
+    @apply fixed top-0 left-0 right-0 z-[300];
+    @apply rounded-none;
+  }
+
+  /* Editor panel (Monaco editor sidebar) */
+  .fp-editor-panel {
+    @apply bg-base-200;
+    @apply fixed top-0 left-0 h-screen;
+    @apply flex flex-col;
+    width: var(--layout-editor-width-open);
+    min-width: 300px;
+    max-width: 80vw;
+    transform: translateX(calc(-1 * var(--layout-editor-width-open)));
+    transition: transform 0.3s ease;
+    z-index: 200;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3);
+  }
+
+  .fp-editor-panel.open {
+    transform: translateX(0);
+  }
+
+  /* Shortcut info panel */
+  .fp-shortcut-info {
+    @apply card bg-base-100 shadow-md;
+    @apply fixed bottom-2.5 left-4;
+    @apply p-3 text-xs;
+    max-width: 280px;
+  }
+
+  /* ========================================
+   * Header Bar Components
+   * ======================================== */
+
+  .fp-header-hover-zone {
+    @apply fixed top-0 left-0 right-0;
+    height: 10px;
+    z-index: 60;
+  }
+
+  .fp-header-bar--auto-hide {
+    @apply opacity-0 -translate-y-full;
+  }
+
+  .fp-header-bar--auto-hide:hover,
+  .fp-header-bar--visible {
+    @apply opacity-100 translate-y-0;
+  }
+
+  .fp-header-left,
+  .fp-header-right {
+    @apply flex items-center gap-3;
+  }
+
+  .fp-header-center {
+    @apply absolute left-1/2 -translate-x-1/2;
+  }
+
+  .fp-header-logo {
+    @apply text-xl;
+  }
+
+  .fp-header-title {
+    @apply text-sm font-semibold text-base-content;
+  }
+
+  .fp-file-dropdown-trigger {
+    @apply btn btn-ghost btn-sm gap-1;
+  }
+
+  .fp-filename {
+    @apply font-medium max-w-[200px] truncate;
+  }
+
+  .fp-dropdown-arrow {
+    @apply text-xs opacity-60;
+  }
+
+  .fp-editor-toggle {
+    @apply btn btn-ghost btn-sm gap-1;
+  }
+
+  .fp-editor-toggle.active {
+    @apply bg-primary/15 text-primary;
+  }
+
+  .fp-editor-toggle-icon,
+  .fp-editor-toggle-label {
+    @apply text-sm;
+  }
+
+  .fp-theme-toggle {
+    @apply btn btn-ghost btn-sm btn-square;
+  }
+
+  .fp-theme-toggle-icon {
+    @apply text-base;
+  }
+
+  .fp-command-palette-trigger {
+    @apply btn btn-ghost btn-sm;
+  }
+
+  .fp-kbd-hint {
+    @apply kbd kbd-sm bg-base-200;
+  }
+
+  /* ========================================
+   * Button Components
+   * ======================================== */
+
+  .fp-btn {
+    @apply btn btn-primary btn-sm;
+  }
+
+  .fp-btn-secondary {
+    @apply btn btn-neutral btn-sm;
+  }
+
+  .fp-btn-group {
+    @apply join;
+  }
+
+  .fp-btn-group .fp-btn {
+    @apply join-item flex-1;
+  }
+
+  /* ========================================
+   * Form Controls
+   * ======================================== */
+
+  .fp-label {
+    @apply text-xs font-medium text-base-content/70;
+  }
+
+  .fp-slider {
+    @apply range range-primary range-xs;
+  }
+
+  .fp-slider-value {
+    @apply text-xs text-base-content/60 min-w-[35px] text-right;
+  }
+
+  .fp-checkbox-row {
+    @apply flex items-center gap-2;
+  }
+
+  .fp-checkbox-row input[type="checkbox"] {
+    @apply checkbox checkbox-sm checkbox-primary;
+  }
+
+  .fp-checkbox-row label {
+    @apply text-xs text-base-content/80 cursor-pointer flex-1;
+  }
+
+  .fp-select {
+    @apply select select-bordered select-sm;
+  }
+
+  .fp-control-group {
+    @apply flex flex-col gap-1.5;
+  }
+
+  .fp-control-row {
+    @apply flex items-center justify-between gap-2;
+  }
+
+  /* ========================================
+   * Floor List
+   * ======================================== */
+
+  .fp-floor-list {
+    @apply flex flex-col gap-1.5;
+  }
+
+  .fp-floor-item {
+    @apply flex items-center gap-2 py-1;
+  }
+
+  .fp-floor-item input[type="checkbox"] {
+    @apply checkbox checkbox-sm;
+  }
+
+  .fp-floor-item label {
+    @apply text-xs text-base-content cursor-pointer flex-1;
+  }
+
+  .fp-floor-actions {
+    @apply flex gap-2 mt-2;
+  }
+
+  .fp-no-floors {
+    @apply text-xs text-base-content/50 italic py-2;
+  }
+
+  /* ========================================
+   * Section Content
+   * ======================================== */
+
+  .fp-section-header {
+    @apply flex items-center justify-between;
+    @apply py-3 px-4 cursor-pointer select-none;
+    @apply bg-base-200 font-semibold text-sm text-base-content;
+    transition: background 0.2s;
+  }
+
+  .fp-section-header:hover {
+    @apply bg-base-300;
+  }
+
+  .fp-section-header::after {
+    content: '▼';
+    @apply text-xs transition-transform duration-200;
+  }
+
+  .fp-control-section.collapsed .fp-section-header::after {
+    transform: rotate(-90deg);
+  }
+
+  .fp-section-content {
+    @apply px-4 py-3 flex flex-col gap-3;
+  }
+
+  .fp-control-section.collapsed .fp-section-content {
+    @apply hidden;
+  }
+
+  /* ========================================
+   * Dialog Components
+   * ======================================== */
+
+  .fp-dialog-overlay {
+    @apply modal modal-bottom sm:modal-middle;
+  }
+
+  .fp-dialog-overlay.visible {
+    @apply modal-open;
+  }
+
+  .fp-dialog {
+    @apply modal-box;
+  }
+
+  .fp-dialog-title {
+    @apply text-lg font-bold mb-4;
+  }
+
+  .fp-dialog-field {
+    @apply form-control mb-3;
+  }
+
+  .fp-dialog-field label {
+    @apply label;
+  }
+
+  .fp-dialog-field label span {
+    @apply label-text;
+  }
+
+  .fp-dialog-field input {
+    @apply input input-bordered w-full;
+  }
+
+  .fp-dialog-row {
+    @apply flex gap-3;
+  }
+
+  .fp-dialog-row .fp-dialog-field {
+    @apply flex-1;
+  }
+
+  .fp-dialog-error {
+    @apply text-error text-sm mt-2;
+  }
+
+  .fp-dialog-buttons {
+    @apply modal-action;
+  }
+
+  .fp-dialog-btn {
+    @apply btn;
+  }
+
+  .fp-dialog-btn-cancel {
+    @apply btn-ghost;
+  }
+
+  .fp-dialog-btn-primary {
+    @apply btn-primary;
+  }
+
+  .fp-dialog-btn-danger {
+    @apply btn-error;
+  }
+
+  /* ========================================
+   * Confirm Dialog
+   * ======================================== */
+
+  .fp-confirm-dialog {
+    @apply modal-box max-w-md;
+  }
+
+  .fp-confirm-dialog-title {
+    @apply text-lg font-bold;
+  }
+
+  .fp-confirm-dialog-message {
+    @apply py-4 text-base-content/80;
+  }
+
+  .fp-confirm-dialog-warning {
+    @apply alert alert-warning mt-2;
+  }
+
+  .fp-confirm-dialog-warning-title {
+    @apply font-semibold;
+  }
+
+  .fp-confirm-dialog-warning-list {
+    @apply list-disc list-inside text-sm mt-1;
+  }
+
+  /* ========================================
+   * 2D Overlay Components
+   * ======================================== */
+
+  .fp-overlay-2d-header {
+    @apply flex items-center justify-between;
+    @apply px-3 py-2 bg-base-200 border-b border-base-300;
+    @apply text-sm font-medium;
+  }
+
+  .fp-overlay-2d-close {
+    @apply btn btn-ghost btn-xs btn-circle;
+  }
+
+  .fp-overlay-2d-content {
+    @apply flex-1 overflow-hidden relative;
+  }
+
+  .fp-overlay-2d-empty {
+    @apply absolute inset-0 flex items-center justify-center;
+    @apply text-base-content/50 text-sm;
+  }
+
+  .fp-overlay-2d-resize {
+    @apply absolute bottom-0 right-0 w-4 h-4;
+    @apply cursor-se-resize;
+  }
+
+  /* ========================================
+   * Keyboard Help
+   * ======================================== */
+
+  .fp-kbd {
+    @apply kbd kbd-sm;
+  }
+}
+
+/* === Utility Layer - Custom utilities === */
+@layer utilities {
+  /* Smooth transitions matching existing panel timing */
+  .transition-panel {
+    transition-property: transform, opacity, top, left, bottom, right;
+    transition-duration: 300ms;
+    transition-timing-function: ease;
+  }
+
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-base-200 rounded;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-base-300 rounded;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-neutral/50;
+  }
+}
+
+/* === Feature Flag: Legacy Style Fallback === */
+/* When VITE_USE_DAISYUI=false, these styles won't be loaded */
+/* Legacy shared-styles.css can be imported instead */

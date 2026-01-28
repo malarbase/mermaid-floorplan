@@ -17,6 +17,7 @@
 
 import { 
   createSignal, 
+  createEffect,
   onMount, 
   onCleanup, 
 } from 'solid-js';
@@ -138,6 +139,14 @@ const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('M
 
 export function FloorplanUI(props: FloorplanUIProps) {
   const state = createUIState(props);
+  
+  // Set data-theme attribute on document for DaisyUI theming
+  createEffect(() => {
+    const currentTheme = state.theme();
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    // Also maintain body.dark-theme for backward compatibility during migration
+    document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+  });
   
   // Subscribe to appCore events
   onMount(() => {
@@ -296,6 +305,14 @@ export function createFloorplanUI(
     setCommands = state.setCommands;
     setRecentFiles = state.setRecentFiles;
     setCommandPaletteOpen = state.setCommandPaletteOpen;
+    
+    // Set data-theme attribute on document for DaisyUI theming
+    createEffect(() => {
+      const currentTheme = state.theme();
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      // Also maintain body.dark-theme for backward compatibility during migration
+      document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+    });
     
     // Subscribe to appCore events
     const unsubFilename = appCore.on('filenameChange', ({ filename }) => {

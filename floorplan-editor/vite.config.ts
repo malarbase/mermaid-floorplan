@@ -6,17 +6,25 @@ import { fileURLToPath } from 'url';
 import { readFileSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const sharedStylesPath = resolve(__dirname, '../floorplan-viewer-core/src/ui/shared-styles.css');
 
-// Custom plugin to serve shared-styles.css during dev
-function serveSharedStyles(): Plugin {
+// Feature flag for DaisyUI migration (set VITE_USE_DAISYUI=false to use legacy styles)
+const useDaisyUI = process.env.VITE_USE_DAISYUI !== 'false';
+
+// Paths to style files
+const tailwindStylesPath = resolve(__dirname, '../floorplan-viewer-core/src/ui/tailwind-styles.css');
+const sharedStylesPath = resolve(__dirname, '../floorplan-viewer-core/src/ui/shared-styles.css');
+const stylesPath = useDaisyUI ? tailwindStylesPath : sharedStylesPath;
+
+// Custom plugin to serve styles during dev
+function serveStyles(): Plugin {
   return {
-    name: 'serve-shared-styles',
+    name: 'serve-styles',
     configureServer(server) {
       server.middlewares.use((req, res, next) => {
-        if (req.url === '/shared-styles.css') {
+        // Serve the appropriate styles file
+        if (req.url === '/shared-styles.css' || req.url === '/tailwind-styles.css') {
           res.setHeader('Content-Type', 'text/css');
-          res.end(readFileSync(sharedStylesPath, 'utf-8'));
+          res.end(readFileSync(stylesPath, 'utf-8'));
           return;
         }
         next();
@@ -44,16 +52,24 @@ export default defineConfig({
       // Transform JSX from floorplan-viewer-core
       extensions: ['jsx', 'tsx'],
     }),
-    serveSharedStyles(),
+    serveStyles(),
     viteStaticCopy({
       targets: [
         {
-          src: '../floorplan-viewer-core/src/ui/shared-styles.css',
-          dest: '.'  // copies to dist root
+          // Copy styles to dist - use Tailwind styles when enabled
+          src: useDaisyUI 
+            ? '../floorplan-viewer-core/src/ui/tailwind-styles.css'
+            : '../floorplan-viewer-core/src/ui/shared-styles.css',
+          dest: '.',
+          rename: 'shared-styles.css'  // Keep same filename for backward compatibility
         }
       ]
     })
   ],
+  css: {
+    // PostCSS will be auto-configured from postcss.config.js
+    devSourcemap: true,
+  },
   optimizeDeps: {
     include: ['three', 'monaco-editor', 'solid-js', 'solid-js/web'],
     // Don't pre-bundle viewer-core - let vite transform its JSX

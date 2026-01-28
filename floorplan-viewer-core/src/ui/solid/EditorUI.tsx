@@ -484,6 +484,14 @@ export type EditorUIState = ReturnType<typeof createEditorUIState>;
 export function EditorUI(props: EditorUIProps) {
   const state = createEditorUIState(props);
 
+  // Set data-theme attribute on document for DaisyUI theming
+  createEffect(() => {
+    const currentTheme = state.theme();
+    document.documentElement.setAttribute('data-theme', currentTheme);
+    // Also maintain body.dark-theme for backward compatibility during migration
+    document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+  });
+
   // Subscribe to editorCore events
   onMount(() => {
     const { editorCore } = props;
@@ -847,6 +855,14 @@ export function createEditorUI(
     setCommandPaletteOpen = state.setCommandPaletteOpen;
     setAddRoomDialogOpen = state.setAddRoomDialogOpen;
     setPropertiesPanelVisible = state.setPropertiesPanelVisible;
+
+    // Set data-theme attribute on document for DaisyUI theming
+    createEffect(() => {
+      const currentTheme = state.theme();
+      document.documentElement.setAttribute('data-theme', currentTheme);
+      // Also maintain body.dark-theme for backward compatibility during migration
+      document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+    });
 
     // Subscribe to editorCore events
     const unsubFilename = editorCore.on('filenameChange', ({ filename }) => {
