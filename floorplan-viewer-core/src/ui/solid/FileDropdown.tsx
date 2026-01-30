@@ -107,59 +107,47 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
     props.onClose();
   };
 
+  // Using Tailwind utility classes for theme-aware styling
+  // Classes like bg-base-200 have higher specificity than @layer components
+  // and work reliably with DaisyUI v5 theme switching
+
   return (
-    <>
+    <div class="flex flex-col gap-0.5 p-2 min-w-[220px] text-sm bg-base-200 text-base-content rounded-xl shadow-xl">
       {/* Open File */}
-      <button
-        class="fp-dropdown-item"
-        role="menuitem"
-        onClick={() => handleAction('open-file')}
-      >
-        <span class="fp-dropdown-item-label">Open File...</span>
-        <span class="fp-dropdown-item-shortcut">{modKey}O</span>
+      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('open-file')}>
+        <span>Open File...</span>
+        <span class="text-xs text-base-content/60 bg-base-300 px-1.5 py-0.5 rounded">{modKey}O</span>
       </button>
 
       {/* Open from URL */}
-      <button
-        class="fp-dropdown-item"
-        role="menuitem"
-        onClick={() => handleAction('open-url')}
-      >
-        <span class="fp-dropdown-item-label">Open from URL...</span>
+      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('open-url')}>
+        Open from URL...
       </button>
 
-      {/* Recent Files Submenu */}
+      {/* Recent Files */}
       <Show
         when={getRecentFiles().length > 0}
         fallback={
-          <div class="fp-dropdown-item fp-dropdown-item-disabled" role="menuitem">
-            <span class="fp-dropdown-item-label">Open Recent</span>
-            <span class="fp-dropdown-item-hint">(no recent files)</span>
+          <div class="flex justify-between items-center px-3 py-2 rounded-lg text-base-content text-sm w-full opacity-50 cursor-default">
+            <span>Open Recent</span>
+            <span class="text-xs text-base-content/60">(no recent files)</span>
           </div>
         }
       >
         <div
-          class="fp-dropdown-submenu"
+          class="relative"
           onMouseEnter={() => setHoveredSubmenu(true)}
           onMouseLeave={() => setHoveredSubmenu(false)}
         >
-          <button
-            class="fp-dropdown-item fp-dropdown-item-submenu"
-            role="menuitem"
-            aria-haspopup="true"
-          >
-            <span class="fp-dropdown-item-label">Open Recent</span>
-            <span class="fp-dropdown-item-arrow">▸</span>
-          </button>
+          <div class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer text-base-content text-sm w-full hover:bg-base-300">
+            <span>Open Recent</span>
+            <span>▸</span>
+          </div>
           <Show when={hoveredSubmenu()}>
-            <div class="fp-dropdown-submenu-content" role="menu">
+            <div class="absolute left-full top-0 ml-1 flex flex-col gap-0.5 p-2 min-w-[180px] text-sm bg-base-200 text-base-content rounded-xl shadow-xl">
               <For each={getRecentFiles().slice(0, 5)}>
                 {(file) => (
-                  <button
-                    class="fp-recent-file-item"
-                    role="menuitem"
-                    onClick={() => handleRecentFile(file.path)}
-                  >
+                  <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleRecentFile(file.path)}>
                     {file.name}
                   </button>
                 )}
@@ -170,57 +158,40 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
       </Show>
 
       {/* Divider */}
-      <div class="fp-dropdown-divider" />
+      <div class="h-px bg-base-300 mx-2 my-1" />
 
       {/* Save .floorplan */}
-      <button
-        class="fp-dropdown-item"
-        classList={{ 'fp-dropdown-item-locked': !getIsAuthenticated() }}
-        role="menuitem"
-        onClick={() => handleAction('save-floorplan')}
-      >
-        <span class="fp-dropdown-item-label">Save .floorplan</span>
-        <span class="fp-dropdown-item-right">
+      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('save-floorplan')}>
+        <span>Save .floorplan</span>
+        <span class="flex items-center gap-1">
           <Show when={!getIsAuthenticated()}>
-            <span class="fp-lock-icon">🔒</span>
+            <span>🔒</span>
           </Show>
-          <span class="fp-dropdown-item-shortcut">{modKey}S</span>
+          <span class="text-xs text-base-content/60 bg-base-300 px-1.5 py-0.5 rounded">{modKey}S</span>
         </span>
       </button>
 
       {/* Divider */}
-      <div class="fp-dropdown-divider" />
+      <div class="h-px bg-base-300 mx-2 my-1" />
 
       {/* Export JSON */}
-      <button
-        class="fp-dropdown-item"
-        role="menuitem"
-        onClick={() => handleAction('export-json')}
-      >
-        <span class="fp-dropdown-item-label">Export JSON</span>
-        <span class="fp-dropdown-item-ext">.json</span>
+      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('export-json')}>
+        <span>Export JSON</span>
+        <span class="text-xs text-base-content/60">.json</span>
       </button>
 
       {/* Export GLB */}
-      <button
-        class="fp-dropdown-item"
-        role="menuitem"
-        onClick={() => handleAction('export-glb')}
-      >
-        <span class="fp-dropdown-item-label">Export GLB</span>
-        <span class="fp-dropdown-item-ext">.glb</span>
+      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('export-glb')}>
+        <span>Export GLB</span>
+        <span class="text-xs text-base-content/60">.glb</span>
       </button>
 
       {/* Export GLTF */}
-      <button
-        class="fp-dropdown-item"
-        role="menuitem"
-        onClick={() => handleAction('export-gltf')}
-      >
-        <span class="fp-dropdown-item-label">Export GLTF</span>
-        <span class="fp-dropdown-item-ext">.gltf</span>
+      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('export-gltf')}>
+        <span>Export GLTF</span>
+        <span class="text-xs text-base-content/60">.gltf</span>
       </button>
-    </>
+    </div>
   );
 }
 
@@ -284,7 +255,7 @@ export function FileDropdown(props: FileDropdownProps) {
     <Show when={getIsOpen()}>
       <div
         ref={dropdownRef}
-        class="fp-file-dropdown"
+        class="z-[600]"
         role="menu"
         style={{
           position: 'fixed',

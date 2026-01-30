@@ -39,6 +39,7 @@
     "floorplan-editor"
   ],
   "dependencies": {
-    "@speclife/cli": "^0.6.1"
+    "@speclife/cli": "^0.6.1",
+    "@tailwindcss/vite": "^4.1.18"
   }
 }

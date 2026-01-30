@@ -6,6 +6,9 @@
 // Styles
 export { SHARED_STYLES, injectStyles, areStylesInjected } from './styles.js';
 
+// DaisyUI/Tailwind class names (centralized for maintainability)
+export { cls, type ClassNames } from './class-names.js';
+
 // Base components
 export {
   createControlPanel,

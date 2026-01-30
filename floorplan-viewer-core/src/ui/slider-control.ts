@@ -2,6 +2,7 @@
  * Reusable slider control component
  */
 import { injectStyles } from './styles.js';
+import { cls } from './class-names.js';
 
 export interface SliderControlOptions {
   id: string;
@@ -44,26 +45,26 @@ export function createSliderControl(options: SliderControlOptions): SliderContro
   container.id = `${id}-group`;
   
   const row = document.createElement('div');
-  row.className = 'fp-control-row';
+  row.className = cls.layout.between;
   
   const labelEl = document.createElement('label');
-  labelEl.className = 'fp-label';
+  labelEl.className = cls.text.label;
   labelEl.htmlFor = id;
   labelEl.textContent = label;
   
+  const valueDisplay = document.createElement('span');
+  valueDisplay.className = cls.text.xs;
+  valueDisplay.id = `${id}-value`;
+  valueDisplay.textContent = formatValue(value);
+  
   const slider = document.createElement('input');
   slider.type = 'range';
-  slider.className = 'fp-slider';
+  slider.className = cls.range.xs;
   slider.id = id;
   slider.min = String(min);
   slider.max = String(max);
   slider.step = String(step);
   slider.value = String(value);
-  
-  const valueDisplay = document.createElement('span');
-  valueDisplay.className = 'fp-slider-value';
-  valueDisplay.id = `${id}-value`;
-  valueDisplay.textContent = formatValue(value);
   
   slider.addEventListener('input', () => {
     const newValue = parseFloat(slider.value);
@@ -72,9 +73,9 @@ export function createSliderControl(options: SliderControlOptions): SliderContro
   });
   
   row.appendChild(labelEl);
-  row.appendChild(slider);
   row.appendChild(valueDisplay);
   container.appendChild(row);
+  container.appendChild(slider);
   
   return {
     element: container,

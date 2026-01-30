@@ -2,6 +2,7 @@
  * Selection mode toggle UI component
  */
 import { injectStyles } from './styles.js';
+import { cls } from './class-names.js';
 
 export interface SelectionModeToggleUIOptions {
   initialEnabled?: boolean;
@@ -50,16 +51,21 @@ export function createSelectionModeToggleUI(options: SelectionModeToggleUIOption
       break;
   }
   
+  // Checkbox row wrapper
+  const checkboxRow = document.createElement('label');
+  checkboxRow.className = cls.checkbox.wrapper;
+  
   // Checkbox
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
+  checkbox.className = cls.checkbox.input;
   checkbox.id = 'selection-mode-checkbox';
   checkbox.checked = initialEnabled;
   
-  // Label
-  const label = document.createElement('label');
-  label.htmlFor = 'selection-mode-checkbox';
-  label.textContent = 'Selection';
+  // Label text
+  const labelText = document.createElement('span');
+  labelText.className = cls.checkbox.label;
+  labelText.textContent = 'Selection';
   
   // Mode indicator
   const indicator = document.createElement('span');
@@ -73,9 +79,10 @@ export function createSelectionModeToggleUI(options: SelectionModeToggleUIOption
     onToggle?.(enabled);
   });
   
-  container.appendChild(checkbox);
-  container.appendChild(label);
-  container.appendChild(indicator);
+  checkboxRow.appendChild(checkbox);
+  checkboxRow.appendChild(labelText);
+  checkboxRow.appendChild(indicator);
+  container.appendChild(checkboxRow);
   
   return {
     element: container,

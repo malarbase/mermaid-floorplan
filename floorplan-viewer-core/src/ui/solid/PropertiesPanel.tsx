@@ -86,22 +86,22 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
   return (
     <Show when={props.isVisible}>
       <div class="fp-properties-panel visible">
-        <div class="fp-properties-panel-content">
+        <div class="p-3">
           {/* Title */}
-          <div class="fp-properties-panel-title">
+          <div class="text-xs font-semibold text-base-content/60 mb-3 pb-2 border-b border-base-content/10">
             {props.entityType}: {props.entityId}
           </div>
 
           {/* Property Form */}
-          <div class="fp-properties-panel-form">
+          <div class="space-y-2">
             <For each={props.properties}>
               {(prop) => (
-                <div class="fp-property-row">
-                  <span class="fp-property-label">{prop.label}</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs text-base-content/70 w-12 flex-shrink-0">{prop.label}</span>
 
                   {/* Readonly */}
                   <Show when={prop.type === 'readonly'}>
-                    <span class="fp-property-value readonly">
+                    <span class="text-xs text-base-content/50 flex-1">
                       {getValue(prop.name)}
                     </span>
                   </Show>
@@ -109,7 +109,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                   {/* Select */}
                   <Show when={prop.type === 'select' && prop.options}>
                     <select
-                      class="fp-property-input"
+                      class="select select-xs select-bordered flex-1 bg-base-200"
                       name={prop.name}
                       value={getValue(prop.name)}
                       onChange={(e) => handleChange(prop.name, e.currentTarget.value)}
@@ -125,7 +125,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                   {/* Text Input */}
                   <Show when={prop.type === 'text'}>
                     <input
-                      class="fp-property-input"
+                      class="input input-xs input-bordered flex-1 bg-base-200"
                       type="text"
                       name={prop.name}
                       value={getValue(prop.name)}
@@ -142,7 +142,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                   {/* Number Input */}
                   <Show when={prop.type === 'number'}>
                     <input
-                      class="fp-property-input"
+                      class="input input-xs input-bordered flex-1 bg-base-200 w-16"
                       type="number"
                       name={prop.name}
                       value={getValue(prop.name)}
@@ -164,10 +164,9 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
           </div>
 
           {/* Actions */}
-          <div class="fp-properties-panel-actions">
+          <div class="mt-3 pt-2 border-t border-base-content/10">
             <button
-              class="fp-dialog-btn danger"
-              style={{ padding: '6px 12px', 'font-size': '12px' }}
+              class="btn btn-xs btn-error w-full"
               onClick={() => props.onDelete?.()}
             >
               Delete

@@ -202,22 +202,31 @@ export function CommandPalette(props: CommandPaletteProps) {
     document.removeEventListener('keydown', handleGlobalKeyDown);
   });
 
+  // ============================================================================
+  // Render - Using inline Tailwind utilities + DaisyUI classes
+  // 
+  // With @source directives in tailwind-styles.css and resolve.alias in
+  // vite.config.ts pointing to source files, Tailwind v4 scans this file
+  // for utility classes. Using inline utilities is the recommended approach.
+  // ============================================================================
   return (
     <Show when={getIsOpen()}>
+      {/* Backdrop overlay - click to close */}
       <div
-        class="fp-command-palette-backdrop"
+        class="fixed inset-0 z-[500] flex items-start justify-center pt-[15vh] bg-black/50 backdrop-blur-sm"
         onClick={handleBackdropClick}
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
       >
-        <div class="fp-command-palette">
+        {/* Modal container */}
+        <div class="w-full max-w-xl max-h-[60vh] flex flex-col overflow-hidden rounded-2xl bg-base-100 border border-base-content/20 shadow-2xl">
           {/* Search Input */}
-          <div class="fp-command-palette-search">
+          <div class="p-4 border-b border-base-content/10">
             <input
               ref={inputRef}
               type="text"
-              class="fp-command-palette-input"
+              class="input input-bordered w-full text-base"
               placeholder={props.placeholder ?? 'Type a command...'}
               value={searchQuery()}
               onInput={(e) => handleSearchChange(e.currentTarget.value)}
@@ -232,23 +241,25 @@ export function CommandPalette(props: CommandPaletteProps) {
           <div
             ref={listRef}
             id="command-list"
-            class="fp-command-palette-list"
+            class="flex-1 overflow-y-auto p-2"
             role="listbox"
           >
             <Show
               when={flatCommands().length > 0}
               fallback={
-                <div class="fp-command-palette-empty">
+                <div class="py-6 text-center text-base-content/60 text-sm">
                   No commands found
                 </div>
               }
             >
               <For each={groupedCommands()}>
                 {(group) => (
-                  <div class="fp-command-palette-group">
-                    <div class="fp-command-palette-group-header">
+                  <div class="mb-2">
+                    {/* Group header */}
+                    <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-base-content/50">
                       {group.category}
                     </div>
+                    {/* Command items */}
                     <For each={group.commands}>
                       {(cmd) => {
                         const index = () => flatCommands().indexOf(cmd);
@@ -257,10 +268,11 @@ export function CommandPalette(props: CommandPaletteProps) {
 
                         return (
                           <div
-                            class="fp-command-palette-item"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors"
                             classList={{
-                              'selected': isSelected(),
-                              'disabled': isDisabled(),
+                              'bg-base-200': isSelected(),
+                              'hover:bg-base-200': !isSelected(),
+                              'opacity-50 cursor-not-allowed': isDisabled(),
                             }}
                             data-selected={isSelected()}
                             role="option"
@@ -271,32 +283,28 @@ export function CommandPalette(props: CommandPaletteProps) {
                           >
                             {/* Icon */}
                             <Show when={cmd.icon}>
-                              <span class="fp-command-palette-icon">{cmd.icon}</span>
+                              <span class="text-lg w-6 text-center flex-shrink-0">{cmd.icon}</span>
                             </Show>
 
                             {/* Label and Description */}
-                            <div class="fp-command-palette-content">
-                              <span class="fp-command-palette-label">
+                            <div class="flex-1 flex flex-col gap-0.5 min-w-0">
+                              <span class="font-medium text-sm text-base-content">
                                 {cmd.label}
                               </span>
                               <Show when={cmd.description}>
-                                <span class="fp-command-palette-description">
+                                <span class="text-xs text-base-content/60 truncate">
                                   {cmd.description}
                                 </span>
                               </Show>
                             </div>
 
                             {/* Right side: shortcut or lock icon */}
-                            <div class="fp-command-palette-right">
+                            <div class="flex items-center gap-2 flex-shrink-0">
                               <Show when={cmd.requiresAuth && !getIsAuthenticated()}>
-                                <span class="fp-command-palette-lock" title="Requires authentication">
-                                  🔒
-                                </span>
+                                <span class="text-sm" title="Requires authentication">🔒</span>
                               </Show>
                               <Show when={cmd.shortcut}>
-                                <span class="fp-command-palette-shortcut">
-                                  {cmd.shortcut}
-                                </span>
+                                <kbd class="kbd kbd-sm">{cmd.shortcut}</kbd>
                               </Show>
                             </div>
                           </div>
@@ -309,17 +317,11 @@ export function CommandPalette(props: CommandPaletteProps) {
             </Show>
           </div>
 
-          {/* Footer */}
-          <div class="fp-command-palette-footer">
-            <span>
-              <kbd>↑↓</kbd> Navigate
-            </span>
-            <span>
-              <kbd>↵</kbd> Select
-            </span>
-            <span>
-              <kbd>Esc</kbd> Close
-            </span>
+          {/* Footer - keyboard hints */}
+          <div class="flex gap-4 px-4 py-2.5 border-t border-base-content/10 text-xs text-base-content/60">
+            <span><kbd class="kbd kbd-xs mr-1">↑↓</kbd> Navigate</span>
+            <span><kbd class="kbd kbd-xs mr-1">↵</kbd> Select</span>
+            <span><kbd class="kbd kbd-xs mr-1">Esc</kbd> Close</span>
           </div>
         </div>
       </div>

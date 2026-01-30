@@ -15,9 +15,13 @@
  * FloorplanAppCore handles 3D rendering, FloorplanUI handles all 2D UI components.
  */
 
+// Import Tailwind CSS (processed by @tailwindcss/vite plugin)
+import '../../floorplan-viewer-core/src/ui/tailwind-styles.css';
+
 import { 
   FloorplanAppCore,
   injectStyles,
+  cls,
   createControlPanel,
   createCameraControlsUI,
   createLightControlsUI,
@@ -39,7 +43,7 @@ import {
 } from 'floorplan-viewer-core';
 import { createFloorplanUI, type FloorplanUIAPI } from 'floorplan-viewer-core/ui/solid';
 
-// Inject shared styles
+// Inject legacy styles for components not yet migrated to Tailwind
 injectStyles();
 
 // Initialize layout manager early so it can be used by UI components
@@ -505,11 +509,12 @@ document.body.appendChild(overlay2D.element);
 // Create checkbox control for overlay visibility
 let overlay2DCheckbox: HTMLInputElement | null = null;
 if (overlay2DContent) {
-  const checkboxRow = document.createElement('div');
-  checkboxRow.className = 'fp-checkbox-row';
+  const checkboxRow = document.createElement('label');
+  checkboxRow.className = cls.checkbox.wrapper;
   
   overlay2DCheckbox = document.createElement('input');
   overlay2DCheckbox.type = 'checkbox';
+  overlay2DCheckbox.className = cls.checkbox.input;
   overlay2DCheckbox.id = 'show-2d-overlay';
   overlay2DCheckbox.addEventListener('change', () => {
     if (overlay2DCheckbox?.checked) {
@@ -519,12 +524,12 @@ if (overlay2DContent) {
     }
   });
   
-  const label = document.createElement('label');
-  label.htmlFor = 'show-2d-overlay';
-  label.textContent = 'Show 2D Mini-map';
+  const labelText = document.createElement('span');
+  labelText.className = cls.checkbox.label;
+  labelText.textContent = 'Show 2D Mini-map';
   
   checkboxRow.appendChild(overlay2DCheckbox);
-  checkboxRow.appendChild(label);
+  checkboxRow.appendChild(labelText);
   overlay2DContent.appendChild(checkboxRow);
   
   // Opacity slider

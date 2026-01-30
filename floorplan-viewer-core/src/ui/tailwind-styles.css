@@ -3,11 +3,100 @@
  * 
  * This file replaces shared-styles.css with semantic DaisyUI components
  * and Tailwind utilities.
+ * 
+ * Uses Tailwind CSS v4 syntax with @tailwindcss/vite plugin
+ * 
+ * NOTE: DaisyUI v5 requires CSS-based configuration, not tailwind.config.js
+ * Custom themes are defined using @plugin "daisyui/theme" directive
  */
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+/* === DaisyUI v5 Configuration ===
+ * Configure DaisyUI with theme settings directly in CSS
+ * See: https://daisyui.com/docs/config/
+ */
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+  logs: true;
+}
+
+/* === Custom Light Theme ===
+ * Matches existing app colors from tailwind.config.js
+ * See: https://daisyui.com/docs/themes/#how-to-add-a-new-custom-theme
+ */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);           /* #ffffff - Main background */
+  --color-base-200: oklch(97.5% 0 0);          /* #f8f8f8 - Panel backgrounds */
+  --color-base-300: oklch(94% 0 0);            /* #f0f0f0 - Hover states */
+  --color-base-content: oklch(27% 0 0);        /* #333333 - Text color */
+  --color-primary: oklch(57% 0.13 248);        /* #4a90d9 - Accent color */
+  --color-primary-content: oklch(100% 0 0);    /* #ffffff */
+  --color-secondary: oklch(48% 0 0);           /* #666666 */
+  --color-secondary-content: oklch(100% 0 0);  /* #ffffff */
+  --color-accent: oklch(57% 0.13 248);         /* #4a90d9 */
+  --color-accent-content: oklch(100% 0 0);     /* #ffffff */
+  --color-neutral: oklch(27% 0 0);             /* #333333 */
+  --color-neutral-content: oklch(100% 0 0);    /* #ffffff */
+  --color-info: oklch(57% 0.13 248);           /* #4a90d9 */
+  --color-info-content: oklch(100% 0 0);       /* #ffffff */
+  --color-success: oklch(55% 0.2 145);         /* #4a4 */
+  --color-success-content: oklch(100% 0 0);    /* #ffffff */
+  --color-warning: oklch(73% 0.14 75);         /* #f5a623 */
+  --color-warning-content: oklch(27% 0 0);     /* #333333 */
+  --color-error: oklch(55% 0.2 27);            /* #f44336 */
+  --color-error-content: oklch(100% 0 0);      /* #ffffff */
+  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-box: 1rem;
+}
+
+/* === Custom Dark Theme ===
+ * Matches existing app dark mode colors
+ */
+@plugin "daisyui/theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: oklch(13% 0 0);            /* #1a1a1a - Main background */
+  --color-base-200: oklch(16.5% 0 0);          /* #252526 - Panel backgrounds */
+  --color-base-300: oklch(20% 0 0);            /* #2d2d2d - Hover states */
+  --color-base-content: oklch(88% 0 0);        /* #e0e0e0 - Text color */
+  --color-primary: oklch(57% 0.13 248);        /* #4a90d9 - Accent color */
+  --color-primary-content: oklch(100% 0 0);    /* #ffffff */
+  --color-secondary: oklch(48% 0 0);           /* #666666 */
+  --color-secondary-content: oklch(100% 0 0);  /* #ffffff */
+  --color-accent: oklch(57% 0.13 248);         /* #4a90d9 */
+  --color-accent-content: oklch(100% 0 0);     /* #ffffff */
+  --color-neutral: oklch(88% 0 0);             /* #e0e0e0 */
+  --color-neutral-content: oklch(13% 0 0);     /* #1a1a1a */
+  --color-info: oklch(57% 0.13 248);           /* #4a90d9 */
+  --color-info-content: oklch(100% 0 0);       /* #ffffff */
+  --color-success: oklch(75% 0.2 145);         /* #8f8 */
+  --color-success-content: oklch(13% 0 0);     /* #1a1a1a */
+  --color-warning: oklch(73% 0.14 75);         /* #f5a623 */
+  --color-warning-content: oklch(13% 0 0);     /* #1a1a1a */
+  --color-error: oklch(55% 0.2 27);            /* #f44336 */
+  --color-error-content: oklch(100% 0 0);      /* #ffffff */
+  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-box: 1rem;
+}
+
+/* === Source Registration for Monorepo ===
+ * Explicitly register source paths for Tailwind to scan.
+ * Paths are relative to this CSS file (floorplan-viewer-core/src/ui/).
+ * This is required in monorepos because Tailwind v4's automatic detection
+ * may not follow cross-package imports correctly.
+ */
+@source "./solid";                            /* Solid.js components (CommandPalette, etc.) */
+@source "../../";                             /* All floorplan-viewer-core source */
+@source "../../../floorplan-viewer/src";      /* Viewer app source */
+@source "../../../floorplan-editor/src";      /* Editor app source */
 
 /* === Layout CSS Variables (preserved from shared-styles.css) === */
 :root {
@@ -26,13 +115,8 @@
 @layer base {
   /* Body defaults */
   body {
-    @apply font-sans overflow-hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-  }
-
-  /* Keyboard shortcut styling */
-  kbd {
-    @apply kbd kbd-sm;
+    overflow: hidden;
   }
 }
 
@@ -47,40 +131,51 @@
     left: calc(var(--layout-editor-width) + 16px);
   }
 
-  /* Control panel - extends DaisyUI card */
+  /* Control panel */
   .fp-control-panel {
-    @apply card bg-base-100 shadow-lg;
-    @apply absolute right-2.5 w-64 max-h-[calc(100vh-var(--layout-header-offset)-20px)] overflow-y-auto;
+    position: absolute;
+    right: 10px;
+    width: 256px;
+    max-height: calc(100vh - var(--layout-header-offset) - 20px);
+    overflow-y: auto;
     top: calc(var(--layout-header-offset) + 10px);
     transition: top 0.3s ease, max-height 0.3s ease;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   }
 
-  /* When header is visible, shift control panel down */
   body.header-visible .fp-control-panel {
     top: calc(var(--layout-header-height) + 10px);
     max-height: calc(100vh - var(--layout-header-height) - 20px);
   }
 
-  /* Collapsible section - extends DaisyUI collapse */
+  /* Collapsible section */
   .fp-control-section {
-    @apply collapse collapse-arrow border-b border-base-300;
+    border-bottom: 1px solid oklch(var(--color-base-300));
   }
 
   .fp-control-section:last-child {
-    @apply border-b-0;
+    border-bottom: none;
   }
 
   .fp-control-section .collapse-title {
-    @apply text-sm font-semibold bg-base-200 min-h-0 py-3 px-4;
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: oklch(var(--color-base-200));
+    min-height: 0;
+    padding: 12px 16px;
   }
 
   .fp-control-section .collapse-content {
-    @apply px-4 py-3;
+    padding: 12px 16px;
   }
 
-  /* Header bar - uses fixed positioning to ensure it's at viewport top */
+  /* Header bar - uses DaisyUI theme variables with translucent background */
   .fp-header-bar {
-    @apply flex items-center justify-between;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     position: fixed;
     top: 0;
     left: 0;
@@ -88,35 +183,30 @@
     height: var(--layout-header-height);
     padding: 0 16px;
     z-index: 150;
-    background: rgba(255, 255, 255, 0.95);
-    border-bottom: 1px solid #e0e0e0;
+    background: color-mix(in oklch, oklch(var(--color-base-100)) 95%, transparent);
+    border-bottom: 1px solid oklch(var(--color-base-300));
     backdrop-filter: blur(8px);
     transition: transform 0.3s ease, opacity 0.3s ease;
   }
 
-  /* Dark theme header bar */
-  [data-theme="dark"] .fp-header-bar,
-  body.dark-theme .fp-header-bar {
-    background: rgba(30, 30, 30, 0.95);
-    border-bottom-color: #444;
-  }
-
   /* 2D Overlay panel */
   .fp-overlay-2d {
-    @apply card bg-base-100 shadow-lg;
-    @apply absolute;
+    position: absolute;
     left: calc(var(--layout-editor-width) + 16px);
     bottom: var(--layout-bottom-gap);
     min-width: 280px;
     max-width: 50vw;
     height: var(--layout-overlay-2d-height);
     transition: left 0.3s ease;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   }
 
   /* Floor summary panel */
   .fp-floor-summary-panel {
-    @apply card bg-base-100 shadow-lg;
-    @apply absolute p-3;
+    position: absolute;
+    padding: 12px;
     left: calc(var(--layout-editor-width) + 16px);
     bottom: calc(
       var(--layout-bottom-gap) +
@@ -124,184 +214,258 @@
     );
     min-width: 200px;
     transition: left 0.3s ease, bottom 0.3s ease;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   }
 
   /* Selection info badge */
   .fp-selection-info {
-    @apply badge badge-lg bg-base-100 shadow-md;
-    @apply fixed bottom-4 left-1/2 -translate-x-1/2;
-    @apply px-4 py-2;
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: oklch(var(--color-base-100));
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    border-radius: 9999px;
+    font-size: 0.875rem;
   }
 
-  /* Warnings panel - extends DaisyUI alert */
+  /* Warnings panel */
   .fp-warnings-panel {
-    @apply alert alert-warning;
-    @apply absolute top-[calc(var(--layout-header-offset)+10px)] left-4;
-    @apply max-w-sm;
+    position: absolute;
+    top: calc(var(--layout-header-offset) + 10px);
+    left: 16px;
+    max-width: 400px;
+    background: oklch(var(--color-warning));
+    color: oklch(var(--color-warning-content));
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 100;
   }
 
-  /* When header is visible, shift warnings panel down */
   body.header-visible .fp-warnings-panel {
     top: calc(var(--layout-header-height) + 10px);
   }
 
-  /* Properties panel - extends DaisyUI card */
+  /* Properties panel */
   .fp-properties-panel {
-    @apply card bg-base-100 shadow-lg;
-    @apply absolute p-0;
+    position: absolute;
+    padding: 0;
     top: calc(var(--layout-header-offset) + 10px);
     left: calc(var(--layout-editor-width) + 16px);
     min-width: 220px;
     max-width: 280px;
     transition: top 0.3s ease, left 0.3s ease;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
   }
 
   .fp-properties-panel .card-body {
-    @apply p-3;
+    padding: 12px;
   }
 
   /* Error banner */
   .fp-error-banner {
-    @apply alert alert-error;
-    @apply fixed top-0 left-0 right-0 z-[300];
-    @apply rounded-none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 300;
+    padding: 12px 16px;
+    background: oklch(var(--color-error));
+    color: oklch(var(--color-error-content));
+    border-radius: 0;
   }
 
   /* ========================================
    * Editor Panel (Monaco editor sidebar)
-   * Uses fixed positioning to ensure correct placement
-   * Uses width-based collapsed state, not transform
    * ======================================== */
   .fp-editor-panel {
-    @apply bg-base-100;
-    @apply flex flex-col;
+    display: flex;
+    flex-direction: column;
     position: fixed;
     top: 0;
     left: 0;
-    bottom: 0;
+    /* Removed bottom: 0 - conflicts with explicit height and prevents animation */
+    height: 100vh;
     z-index: 200;
-    transition: width 0.25s ease, top 0.3s ease;
-    border-right: 1px solid oklch(var(--b3));
+    transition: width 0.25s ease, top 0.3s ease, height 0.3s ease, transform 0.3s ease;
+    border-right: 1px solid oklch(var(--color-base-300));
+    background: oklch(var(--color-base-100));
   }
 
-  /* When header is visible, shift editor panel down */
   body.header-visible .fp-editor-panel {
     top: var(--layout-header-height);
+    height: calc(100vh - var(--layout-header-height));
   }
 
-  /* Collapsed state: shrink to 0 width, only collapse button remains visible */
   .fp-editor-panel--collapsed {
     width: 0 !important;
     border-right: none;
     background: transparent;
-    overflow: visible;  /* Allow collapse button to show outside */
+    overflow: visible;
   }
 
-  /* Hide all content when collapsed */
   .fp-editor-panel--collapsed .fp-editor-panel__editor,
   .fp-editor-panel--collapsed .fp-editor-panel__status,
   .fp-editor-panel--collapsed .fp-editor-panel__header {
     display: none;
   }
 
-  /* When collapsed, the resize handle is hidden */
   .fp-editor-panel--collapsed .fp-editor-panel__resize-handle {
     display: none;
   }
 
   .fp-editor-panel__header {
-    @apply flex items-center justify-between;
-    @apply px-3 py-2 bg-base-200 border-b border-base-300;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: oklch(var(--color-base-200));
+    border-bottom: 1px solid oklch(var(--color-base-300));
     min-height: 44px;
   }
 
   .fp-editor-panel__title-section {
-    @apply flex items-center gap-2.5;
+    display: flex;
+    align-items: center;
+    gap: 10px;
   }
 
   .fp-editor-panel__title {
-    @apply text-sm font-semibold text-base-content;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: oklch(var(--color-base-content));
   }
 
   .fp-editor-panel__mode-badge {
-    @apply badge badge-sm;
     font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    background: oklch(var(--color-base-300));
+    color: oklch(var(--color-base-content) / 0.7);
   }
 
   .fp-editor-panel__mode-badge--readonly {
-    @apply badge-ghost;
+    background: oklch(var(--color-base-300));
+    color: oklch(var(--color-base-content) / 0.7);
   }
 
   .fp-editor-panel__mode-badge--editable {
-    @apply badge-success badge-outline;
+    background: oklch(var(--color-success) / 0.2);
+    color: oklch(var(--color-success));
   }
 
   .fp-editor-panel__actions {
-    @apply flex items-center gap-2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .fp-editor-panel__login-btn {
-    @apply btn btn-ghost btn-xs;
-    @apply text-primary;
+    padding: 4px 10px;
+    background: oklch(var(--color-primary) / 0.1);
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: oklch(var(--color-primary));
+    cursor: pointer;
+    transition: background 0.15s;
   }
 
   .fp-editor-panel__login-btn:hover {
-    @apply bg-primary/20;
+    background: oklch(var(--color-primary) / 0.2);
   }
 
-  /* Collapse button - tab-like shape positioned on the panel edge */
   .fp-editor-panel__collapse-btn {
-    @apply absolute flex items-center justify-center;
-    @apply text-sm text-base-100 cursor-pointer;
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     right: 0;
     top: 50%;
     transform: translateX(100%) translateY(-50%);
     width: 28px;
     height: 56px;
     padding: 0;
-    background: oklch(var(--n));
+    /* Fallback for when DaisyUI variables aren't available */
+    background: #2d2d2d;
+    background: oklch(var(--color-base-300, 20% 0 0));
     border: none;
     border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    color: #e0e0e0;
+    color: oklch(var(--color-base-content, 88% 0 0));
+    cursor: pointer;
     transition: background 0.15s ease, right 0.25s ease;
     z-index: 210;
   }
 
   .fp-editor-panel__collapse-btn:hover {
-    background: oklch(var(--n) / 0.8);
+    background: #3d3d3d;
+    background: oklch(var(--color-base-300, 20% 0 0) / 0.8);
+  }
+
+  /* Light theme override for collapse button */
+  [data-theme="light"] .fp-editor-panel__collapse-btn,
+  body:not(.dark-theme) .fp-editor-panel__collapse-btn {
+    background: #f0f0f0;
+    background: oklch(var(--color-base-300, 94% 0 0));
+    color: #333;
+    color: oklch(var(--color-base-content, 27% 0 0));
+  }
+
+  [data-theme="light"] .fp-editor-panel__collapse-btn:hover,
+  body:not(.dark-theme) .fp-editor-panel__collapse-btn:hover {
+    background: #e0e0e0;
   }
 
   .fp-editor-panel__editor {
-    @apply flex-1 overflow-hidden;
+    flex: 1 1 0%;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
   }
 
   .fp-editor-panel__status {
-    @apply flex items-center;
-    @apply px-3 py-1.5 bg-base-200 border-t border-base-300;
-    @apply text-xs;
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: oklch(var(--color-base-200));
+    border-top: 1px solid oklch(var(--color-base-300));
+    font-size: 0.75rem;
   }
 
   .fp-editor-panel__status-text {
-    @apply text-base-content/60;
+    color: oklch(var(--color-base-content) / 0.6);
   }
 
   .fp-editor-panel__status-text--error {
-    @apply text-error;
+    color: oklch(var(--color-error));
   }
 
-  /* Editor Panel Resize Handle */
   .fp-editor-panel__resize-handle {
-    @apply absolute top-0 h-full cursor-ew-resize;
+    position: absolute;
+    top: 0;
+    height: 100%;
     right: -6px;
     width: 12px;
     background: transparent;
     z-index: 220;
+    cursor: ew-resize;
   }
 
   .fp-editor-panel__resize-handle::before {
     content: '';
-    @apply absolute top-0 h-full;
+    position: absolute;
+    top: 0;
+    height: 100%;
     left: 50%;
     transform: translateX(-50%);
     width: 4px;
@@ -311,46 +475,50 @@
 
   .fp-editor-panel__resize-handle:hover::before,
   .fp-editor-panel__resize-handle.active::before {
-    @apply bg-primary;
+    background: oklch(var(--color-primary));
   }
 
   .fp-editor-panel--resizing {
     transition: none !important;
   }
 
-  /* Shortcut info panel */
+  /* Shortcut info panel - positioned on the RIGHT side, offset from control panel */
   .fp-shortcut-info {
-    @apply card bg-base-100 shadow-md;
-    @apply fixed bottom-2.5 left-4;
-    @apply p-3 text-xs;
+    position: fixed;
+    bottom: 10px;
+    right: 280px;  /* Offset from control panel (256px + gap) */
+    padding: 12px;
+    font-size: 0.75rem;
     max-width: 280px;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
   }
 
   /* ========================================
    * Header Bar Components
    * ======================================== */
 
-  /* Hover zone at top to reveal auto-hidden header */
   .fp-header-hover-zone {
-    @apply fixed top-0 left-0 right-0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
     height: 10px;
     z-index: 299;
   }
 
-  /* Auto-hide mode: header slides up when not interacting */
   .fp-header-bar--auto-hide {
     transform: translateY(-100%);
     opacity: 0;
   }
 
-  /* Visible when hovering header OR when .fp-header-bar--visible is added */
   .fp-header-bar--auto-hide:hover,
   .fp-header-bar--auto-hide.fp-header-bar--visible {
     transform: translateY(0);
     opacity: 1;
   }
 
-  /* Hover zone triggers header visibility via sibling combinator */
   .fp-header-hover-zone:hover + .fp-header-bar--auto-hide,
   .fp-header-hover-zone:hover ~ .fp-header-bar--auto-hide {
     transform: translateY(0);
@@ -359,60 +527,250 @@
 
   .fp-header-left,
   .fp-header-right {
-    @apply flex items-center gap-3;
+    display: flex;
+    align-items: center;
+    gap: 12px;
   }
 
   .fp-header-center {
-    @apply absolute left-1/2 -translate-x-1/2;
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
   }
 
   .fp-header-logo {
-    @apply text-xl;
+    font-size: 1.25rem;
   }
 
   .fp-header-title {
-    @apply text-sm font-semibold text-base-content;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: oklch(var(--color-base-content));
   }
 
   .fp-file-dropdown-trigger {
-    @apply btn btn-ghost btn-sm gap-1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .fp-file-dropdown-trigger:hover {
+    background: oklch(var(--color-base-200));
   }
 
   .fp-filename {
-    @apply font-medium max-w-[200px] truncate;
+    font-weight: 500;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .fp-dropdown-arrow {
-    @apply text-xs opacity-60;
+    font-size: 0.75rem;
+    opacity: 0.6;
+  }
+
+  /* ==============================================
+   * File Dropdown Menu - Theme-aware dropdown styles
+   * ============================================== */
+
+  /* File dropdown menu container - guaranteed opaque background */
+  .fp-file-dropdown-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    min-width: 220px;
+    font-size: 14px;
+    /* DaisyUI v5: use --color-base-200 for theme-aware background */
+    background-color: oklch(var(--color-base-200));
+    color: oklch(var(--color-base-content));
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+
+  .fp-file-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    color: oklch(var(--color-base-content));
+    width: 100%;
+    text-align: left;
+    transition: background-color 0.15s ease;
+  }
+
+  .fp-file-dropdown-item:hover {
+    background-color: oklch(var(--color-base-300));
+  }
+
+  .fp-file-dropdown-item--disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .fp-file-dropdown-item--disabled:hover {
+    background-color: transparent;
+  }
+
+  .fp-file-dropdown-divider {
+    height: 1px;
+    background-color: oklch(var(--color-base-content) / 0.1);
+    margin: 4px 0;
+  }
+
+  .fp-file-dropdown-kbd {
+    padding: 2px 6px;
+    font-size: 11px;
+    background-color: oklch(var(--color-base-300));
+    border-radius: 4px;
+    font-family: monospace;
+  }
+
+  .fp-file-dropdown-secondary {
+    font-size: 12px;
+    opacity: 0.6;
+  }
+
+  /* DaisyUI menu styles for general use */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    padding: 0.5rem;
+    background-color: oklch(var(--color-base-200));
+    border-radius: var(--rounded-box, 1rem);
+  }
+
+  .menu :where(li) {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .menu :where(li:not(.menu-title)) > :where(*:not(ul, details, .menu-title, .btn)) {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    color: oklch(var(--color-base-content));
+    border-radius: var(--rounded-btn, 0.5rem);
+    cursor: pointer;
+    user-select: none;
+    text-align: left;
+  }
+
+  .menu :where(li:not(.menu-title)) > :where(*:not(ul, details, .menu-title, .btn)):hover {
+    background-color: oklch(var(--color-base-200));
+  }
+
+  .menu :where(li:not(.menu-title)) > :where(*:not(ul, details, .menu-title, .btn)):active,
+  .menu :where(li:not(.menu-title)) > :where(*:not(ul, details, .menu-title, .btn)).active {
+    background-color: oklch(var(--color-primary));
+    color: oklch(var(--color-primary-content));
+  }
+
+  .menu :where(li.disabled) > :where(*:not(ul, details, .menu-title, .btn)) {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .menu :where(li.divider) {
+    height: 1px;
+    background-color: oklch(var(--color-base-content) / 0.1);
+    margin: 0.25rem 0;
   }
 
   .fp-editor-toggle {
-    @apply btn btn-ghost btn-sm gap-1;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .fp-editor-toggle:hover {
+    background: oklch(var(--color-base-200));
   }
 
   .fp-editor-toggle.active {
-    @apply bg-primary/15 text-primary;
+    background: oklch(var(--color-primary) / 0.15);
+    color: oklch(var(--color-primary));
   }
 
   .fp-editor-toggle-icon,
   .fp-editor-toggle-label {
-    @apply text-sm;
+    font-size: 0.875rem;
   }
 
   .fp-theme-toggle {
-    @apply btn btn-ghost btn-sm btn-square;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    cursor: pointer;
+  }
+
+  .fp-theme-toggle:hover {
+    background: oklch(var(--color-base-200));
   }
 
   .fp-theme-toggle-icon {
-    @apply text-base;
+    font-size: 1rem;
   }
 
   .fp-command-palette-trigger {
-    @apply btn btn-ghost btn-sm;
+    padding: 4px 12px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    cursor: pointer;
   }
 
+  .fp-command-palette-trigger:hover {
+    background: oklch(var(--color-base-200));
+  }
+
+  /* Command Palette uses inline Tailwind utilities in CommandPalette.tsx
+   * Requires:
+   * 1. @source directives in this CSS file to scan solid/ folder
+   * 2. resolve.alias in vite.config.ts pointing to source files
+   * See SKILL.md for details on monorepo Tailwind v4 setup */
+
   .fp-kbd-hint {
-    @apply kbd kbd-sm bg-base-200;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: oklch(var(--color-base-200));
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: monospace;
   }
 
   /* ========================================
@@ -420,19 +778,53 @@
    * ======================================== */
 
   .fp-btn {
-    @apply btn btn-primary btn-sm;
+    padding: 6px 16px;
+    background: oklch(var(--color-primary));
+    color: oklch(var(--color-primary-content));
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .fp-btn:hover {
+    background: oklch(var(--color-primary) / 0.9);
   }
 
   .fp-btn-secondary {
-    @apply btn btn-neutral btn-sm;
+    padding: 6px 16px;
+    background: oklch(var(--color-neutral));
+    color: oklch(var(--color-neutral-content));
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .fp-btn-secondary:hover {
+    background: oklch(var(--color-neutral) / 0.9);
   }
 
   .fp-btn-group {
-    @apply join;
+    display: flex;
   }
 
   .fp-btn-group .fp-btn {
-    @apply join-item flex-1;
+    flex: 1;
+  }
+
+  .fp-btn-group .fp-btn:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .fp-btn-group .fp-btn:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
   }
 
   /* ========================================
@@ -440,39 +832,82 @@
    * ======================================== */
 
   .fp-label {
-    @apply text-xs font-medium text-base-content/70;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: oklch(var(--color-base-content) / 0.7);
   }
 
   .fp-slider {
-    @apply range range-primary range-xs;
+    width: 100%;
+    height: 8px;
+    background: oklch(var(--color-base-300));
+    border-radius: 4px;
+    appearance: none;
+  }
+
+  .fp-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: oklch(var(--color-primary));
+    border-radius: 50%;
+    cursor: pointer;
   }
 
   .fp-slider-value {
-    @apply text-xs text-base-content/60 min-w-[35px] text-right;
+    font-size: 0.75rem;
+    color: oklch(var(--color-base-content) / 0.6);
+    min-width: 35px;
+    text-align: right;
   }
 
   .fp-checkbox-row {
-    @apply flex items-center gap-2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .fp-checkbox-row input[type="checkbox"] {
-    @apply checkbox checkbox-sm checkbox-primary;
+    width: 16px;
+    height: 16px;
+    accent-color: oklch(var(--color-primary));
   }
 
   .fp-checkbox-row label {
-    @apply text-xs text-base-content/80 cursor-pointer flex-1;
+    font-size: 0.75rem;
+    color: oklch(var(--color-base-content) / 0.8);
+    cursor: pointer;
+    flex: 1;
   }
 
   .fp-select {
-    @apply select select-bordered select-sm;
+    height: 2rem;
+    min-height: 2rem;
+    padding-left: 0.75rem;
+    padding-right: 2rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    border-radius: var(--rounded-btn, 0.5rem);
+    border: 1px solid oklch(var(--color-base-content) / 0.2);
+    background-color: oklch(var(--color-base-100));
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
   }
 
   .fp-control-group {
-    @apply flex flex-col gap-1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .fp-control-row {
-    @apply flex items-center justify-between gap-2;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
 
   /* ========================================
@@ -480,27 +915,41 @@
    * ======================================== */
 
   .fp-floor-list {
-    @apply flex flex-col gap-1.5;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
   }
 
   .fp-floor-item {
-    @apply flex items-center gap-2 py-1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
   }
 
   .fp-floor-item input[type="checkbox"] {
-    @apply checkbox checkbox-sm;
+    width: 16px;
+    height: 16px;
   }
 
   .fp-floor-item label {
-    @apply text-xs text-base-content cursor-pointer flex-1;
+    font-size: 0.75rem;
+    color: oklch(var(--color-base-content));
+    cursor: pointer;
+    flex: 1;
   }
 
   .fp-floor-actions {
-    @apply flex gap-2 mt-2;
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
   }
 
   .fp-no-floors {
-    @apply text-xs text-base-content/50 italic py-2;
+    font-size: 0.75rem;
+    color: oklch(var(--color-base-content) / 0.5);
+    font-style: italic;
+    padding: 8px 0;
   }
 
   /* ========================================
@@ -508,19 +957,27 @@
    * ======================================== */
 
   .fp-section-header {
-    @apply flex items-center justify-between;
-    @apply py-3 px-4 cursor-pointer select-none;
-    @apply bg-base-200 font-semibold text-sm text-base-content;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    background: oklch(var(--color-base-200));
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: oklch(var(--color-base-content));
     transition: background 0.2s;
   }
 
   .fp-section-header:hover {
-    @apply bg-base-300;
+    background: oklch(var(--color-base-300));
   }
 
   .fp-section-header::after {
     content: '▼';
-    @apply text-xs transition-transform duration-200;
+    font-size: 0.75rem;
+    transition: transform 0.2s;
   }
 
   .fp-control-section.collapsed .fp-section-header::after {
@@ -528,11 +985,14 @@
   }
 
   .fp-section-content {
-    @apply px-4 py-3 flex flex-col gap-3;
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
   }
 
   .fp-control-section.collapsed .fp-section-content {
-    @apply hidden;
+    display: none;
   }
 
   /* ========================================
@@ -540,67 +1000,115 @@
    * ======================================== */
 
   .fp-dialog-overlay {
-    @apply modal modal-bottom sm:modal-middle;
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 400;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
   }
 
   .fp-dialog-overlay.visible {
-    @apply modal-open;
+    opacity: 1;
+    pointer-events: auto;
   }
 
   .fp-dialog {
-    @apply modal-box;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    padding: 24px;
+    max-width: 28rem;
+    width: 90%;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
   }
 
   .fp-dialog-title {
-    @apply text-lg font-bold mb-4;
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 16px;
   }
 
   .fp-dialog-field {
-    @apply form-control mb-3;
+    margin-bottom: 12px;
   }
 
   .fp-dialog-field label {
-    @apply label;
-  }
-
-  .fp-dialog-field label span {
-    @apply label-text;
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
   }
 
   .fp-dialog-field input {
-    @apply input input-bordered w-full;
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid oklch(var(--color-base-content) / 0.2);
+    border-radius: var(--rounded-btn, 0.5rem);
+    background: oklch(var(--color-base-100));
+    font-size: 0.875rem;
   }
 
   .fp-dialog-row {
-    @apply flex gap-3;
+    display: flex;
+    gap: 12px;
   }
 
   .fp-dialog-row .fp-dialog-field {
-    @apply flex-1;
+    flex: 1;
   }
 
   .fp-dialog-error {
-    @apply text-error text-sm mt-2;
+    color: oklch(var(--color-error));
+    font-size: 0.875rem;
+    margin-top: 8px;
   }
 
   .fp-dialog-buttons {
-    @apply modal-action;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 24px;
   }
 
   .fp-dialog-btn {
-    @apply btn;
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
   }
 
   .fp-dialog-btn-cancel {
-    @apply btn-ghost;
+    background: transparent;
+    color: oklch(var(--color-base-content));
+  }
+
+  .fp-dialog-btn-cancel:hover {
+    background: oklch(var(--color-base-200));
   }
 
   .fp-dialog-btn-primary {
-    @apply btn-primary;
+    background: oklch(var(--color-primary));
+    color: oklch(var(--color-primary-content));
+  }
+
+  .fp-dialog-btn-primary:hover {
+    background: oklch(var(--color-primary) / 0.9);
   }
 
   .fp-dialog-btn-danger {
-    @apply btn-error;
+    background: oklch(var(--color-error));
+    color: oklch(var(--color-error-content));
+  }
+
+  .fp-dialog-btn-danger:hover {
+    background: oklch(var(--color-error) / 0.9);
   }
 
   /* ========================================
@@ -608,27 +1116,35 @@
    * ======================================== */
 
   .fp-confirm-dialog {
-    @apply modal-box max-w-md;
+    max-width: 28rem;
   }
 
   .fp-confirm-dialog-title {
-    @apply text-lg font-bold;
+    font-size: 1.125rem;
+    font-weight: 700;
   }
 
   .fp-confirm-dialog-message {
-    @apply py-4 text-base-content/80;
+    padding: 16px 0;
+    color: oklch(var(--color-base-content) / 0.8);
   }
 
   .fp-confirm-dialog-warning {
-    @apply alert alert-warning mt-2;
+    padding: 12px;
+    background: oklch(var(--color-warning) / 0.2);
+    border-radius: var(--rounded-box, 0.5rem);
+    margin-top: 8px;
   }
 
   .fp-confirm-dialog-warning-title {
-    @apply font-semibold;
+    font-weight: 600;
   }
 
   .fp-confirm-dialog-warning-list {
-    @apply list-disc list-inside text-sm mt-1;
+    list-style: disc;
+    list-style-position: inside;
+    font-size: 0.875rem;
+    margin-top: 4px;
   }
 
   /* ========================================
@@ -636,27 +1152,55 @@
    * ======================================== */
 
   .fp-overlay-2d-header {
-    @apply flex items-center justify-between;
-    @apply px-3 py-2 bg-base-200 border-b border-base-300;
-    @apply text-sm font-medium;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: oklch(var(--color-base-200));
+    border-bottom: 1px solid oklch(var(--color-base-300));
+    font-size: 0.875rem;
+    font-weight: 500;
   }
 
   .fp-overlay-2d-close {
-    @apply btn btn-ghost btn-xs btn-circle;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .fp-overlay-2d-close:hover {
+    background: oklch(var(--color-base-300));
   }
 
   .fp-overlay-2d-content {
-    @apply flex-1 overflow-hidden relative;
+    flex: 1;
+    overflow: hidden;
+    position: relative;
   }
 
   .fp-overlay-2d-empty {
-    @apply absolute inset-0 flex items-center justify-center;
-    @apply text-base-content/50 text-sm;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: oklch(var(--color-base-content) / 0.5);
+    font-size: 0.875rem;
   }
 
   .fp-overlay-2d-resize {
-    @apply absolute bottom-0 right-0 w-4 h-4;
-    @apply cursor-se-resize;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: se-resize;
   }
 
   /* ========================================
@@ -664,20 +1208,25 @@
    * ======================================== */
 
   .fp-kbd {
-    @apply kbd kbd-sm;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: oklch(var(--color-base-200));
+    border: 1px solid oklch(var(--color-base-300));
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: monospace;
   }
 }
 
 /* === Utility Layer - Custom utilities === */
 @layer utilities {
-  /* Smooth transitions matching existing panel timing */
   .transition-panel {
     transition-property: transform, opacity, top, left, bottom, right;
     transition-duration: 300ms;
     transition-timing-function: ease;
   }
 
-  /* Hide scrollbar but keep functionality */
   .scrollbar-thin {
     scrollbar-width: thin;
   }
@@ -687,18 +1236,490 @@
   }
 
   .scrollbar-thin::-webkit-scrollbar-track {
-    @apply bg-base-200 rounded;
+    background: oklch(var(--color-base-200));
+    border-radius: 3px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-base-300 rounded;
+    background: oklch(var(--color-base-300));
+    border-radius: 3px;
   }
 
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-    @apply bg-neutral/50;
+    background: oklch(var(--color-neutral) / 0.5);
   }
 }
 
-/* === Feature Flag: Legacy Style Fallback === */
-/* When VITE_USE_DAISYUI=false, these styles won't be loaded */
-/* Legacy shared-styles.css can be imported instead */
+/* === High-specificity overrides (outside layers) === */
+/* These need to override Tailwind's base resets and ensure DaisyUI classes work */
+
+/* Collapse button overrides */
+.fp-editor-panel__collapse-btn {
+  background: #2d2d2d !important;
+  color: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__collapse-btn,
+body:not(.dark-theme) .fp-editor-panel__collapse-btn {
+  background: #e5e5e5 !important;
+  color: #333 !important;
+}
+
+.fp-editor-panel__collapse-btn:hover {
+  background: #3d3d3d !important;
+}
+
+[data-theme="light"] .fp-editor-panel__collapse-btn:hover,
+body:not(.dark-theme) .fp-editor-panel__collapse-btn:hover {
+  background: #d5d5d5 !important;
+}
+
+/* DaisyUI utility class overrides for dark theme (default) */
+.bg-base-100 { background-color: #1a1a1a !important; }
+.bg-base-200 { background-color: #252526 !important; }
+.bg-base-300 { background-color: #2d2d2d !important; }
+.text-base-content { color: #e0e0e0 !important; }
+.text-base-content\/60 { color: rgba(224, 224, 224, 0.6) !important; }
+.text-base-content\/50 { color: rgba(224, 224, 224, 0.5) !important; }
+.border-base-300 { border-color: #2d2d2d !important; }
+.border-base-content\/10 { border-color: rgba(224, 224, 224, 0.1) !important; }
+
+/* DaisyUI utility class overrides for light theme */
+[data-theme="light"] .bg-base-100,
+body:not(.dark-theme) .bg-base-100 { background-color: #ffffff !important; }
+
+[data-theme="light"] .bg-base-200,
+body:not(.dark-theme) .bg-base-200 { background-color: #f8f8f8 !important; }
+
+[data-theme="light"] .bg-base-300,
+body:not(.dark-theme) .bg-base-300 { background-color: #f0f0f0 !important; }
+
+[data-theme="light"] .text-base-content,
+body:not(.dark-theme) .text-base-content { color: #333333 !important; }
+
+[data-theme="light"] .text-base-content\/60,
+body:not(.dark-theme) .text-base-content\/60 { color: rgba(51, 51, 51, 0.6) !important; }
+
+[data-theme="light"] .text-base-content\/50,
+body:not(.dark-theme) .text-base-content\/50 { color: rgba(51, 51, 51, 0.5) !important; }
+
+[data-theme="light"] .border-base-300,
+body:not(.dark-theme) .border-base-300 { border-color: #f0f0f0 !important; }
+
+[data-theme="light"] .border-base-content\/10,
+body:not(.dark-theme) .border-base-content\/10 { border-color: rgba(51, 51, 51, 0.1) !important; }
+
+/* Hover state overrides */
+.hover\:bg-base-300:hover { background-color: #2d2d2d !important; }
+[data-theme="light"] .hover\:bg-base-300:hover,
+body:not(.dark-theme) .hover\:bg-base-300:hover { background-color: #f0f0f0 !important; }
+
+/* Warnings panel overrides */
+.fp-warnings-panel {
+  background: #3d3520 !important;
+  border: 1px solid #6b5c2d !important;
+  color: #e0d4b8 !important;
+}
+
+[data-theme="light"] .fp-warnings-panel,
+body:not(.dark-theme) .fp-warnings-panel {
+  background: #fff8e1 !important;
+  border-color: #ffd54f !important;
+  color: #5d4037 !important;
+}
+
+/* Editor panel status bar overrides */
+.fp-editor-panel__status {
+  background: #252526 !important;
+  border-top: 1px solid #404040 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__status,
+body:not(.dark-theme) .fp-editor-panel__status {
+  background: #f8f8f8 !important;
+  border-top-color: #e0e0e0 !important;
+}
+
+/* Properties panel overrides */
+.fp-properties-panel {
+  background: #1a1a1a !important;
+}
+
+[data-theme="light"] .fp-properties-panel,
+body:not(.dark-theme) .fp-properties-panel {
+  background: #ffffff !important;
+}
+
+/* Properties panel input/select overrides */
+.fp-properties-panel .input,
+.fp-properties-panel .select {
+  background: #252526 !important;
+}
+
+[data-theme="light"] .fp-properties-panel .input,
+[data-theme="light"] .fp-properties-panel .select,
+body:not(.dark-theme) .fp-properties-panel .input,
+body:not(.dark-theme) .fp-properties-panel .select {
+  background: #f8f8f8 !important;
+}
+
+/* Control panel overrides */
+.fp-control-panel {
+  background: #1a1a1a !important;
+}
+
+[data-theme="light"] .fp-control-panel,
+body:not(.dark-theme) .fp-control-panel {
+  background: #ffffff !important;
+}
+
+/* Control panel button overrides */
+.fp-control-panel .btn {
+  background: #3d3d3d !important;
+  color: #e0e0e0 !important;
+  border-color: #4d4d4d !important;
+}
+
+.fp-control-panel .btn:hover {
+  background: #4d4d4d !important;
+}
+
+.fp-control-panel .btn-ghost {
+  background: transparent !important;
+}
+
+.fp-control-panel .btn-ghost:hover {
+  background: #3d3d3d !important;
+}
+
+[data-theme="light"] .fp-control-panel .btn,
+body:not(.dark-theme) .fp-control-panel .btn {
+  background: #e8e8e8 !important;
+  color: #333333 !important;
+  border-color: #d0d0d0 !important;
+}
+
+[data-theme="light"] .fp-control-panel .btn:hover,
+body:not(.dark-theme) .fp-control-panel .btn:hover {
+  background: #d8d8d8 !important;
+}
+
+[data-theme="light"] .fp-control-panel .btn-ghost,
+body:not(.dark-theme) .fp-control-panel .btn-ghost {
+  background: transparent !important;
+}
+
+[data-theme="light"] .fp-control-panel .btn-ghost:hover,
+body:not(.dark-theme) .fp-control-panel .btn-ghost:hover {
+  background: #e8e8e8 !important;
+}
+
+/* Control panel select overrides */
+.fp-control-panel .select {
+  background: #252526 !important;
+  color: #e0e0e0 !important;
+  border-color: #4d4d4d !important;
+}
+
+[data-theme="light"] .fp-control-panel .select,
+body:not(.dark-theme) .fp-control-panel .select {
+  background: #f8f8f8 !important;
+  color: #333333 !important;
+  border-color: #d0d0d0 !important;
+}
+
+/* Control panel checkbox overrides */
+.fp-control-panel .checkbox {
+  border-color: #4d4d4d !important;
+}
+
+[data-theme="light"] .fp-control-panel .checkbox,
+body:not(.dark-theme) .fp-control-panel .checkbox {
+  border-color: #d0d0d0 !important;
+}
+
+/* ============================================================================
+ * COMPREHENSIVE HIGH-SPECIFICITY OVERRIDES
+ * These override Tailwind v4's base reset which sets transparent backgrounds
+ * ============================================================================ */
+
+/* --- Editor Panel --- */
+.fp-editor-panel {
+  background: #1a1a1a !important;
+  border-right-color: #404040 !important;
+}
+
+.fp-editor-panel__header {
+  background: #252526 !important;
+  border-bottom: 1px solid #404040 !important;
+}
+
+.fp-editor-panel__status {
+  background: #252526 !important;
+  border-top: 1px solid #404040 !important;
+}
+
+.fp-editor-panel__mode-badge {
+  background: #3d3d3d !important;
+}
+
+.fp-editor-panel__mode-badge--readonly {
+  background: #3d3d3d !important;
+}
+
+.fp-editor-panel__mode-badge--editable {
+  background: rgba(34, 197, 94, 0.2) !important;
+}
+
+.fp-editor-panel__login-btn {
+  background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.fp-editor-panel__login-btn:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-theme="light"] .fp-editor-panel,
+body:not(.dark-theme) .fp-editor-panel {
+  background: #ffffff !important;
+  border-right-color: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__header,
+body:not(.dark-theme) .fp-editor-panel__header {
+  background: #f0f0f0 !important;
+  border-bottom-color: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__status,
+body:not(.dark-theme) .fp-editor-panel__status {
+  background: #f8f8f8 !important;
+  border-top-color: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__mode-badge,
+[data-theme="light"] .fp-editor-panel__mode-badge--readonly,
+body:not(.dark-theme) .fp-editor-panel__mode-badge,
+body:not(.dark-theme) .fp-editor-panel__mode-badge--readonly {
+  background: #e0e0e0 !important;
+}
+
+/* --- 2D Overlay Panel --- */
+.fp-overlay-2d {
+  background: #1a1a1a !important;
+}
+
+.fp-overlay-2d-header {
+  background: #252526 !important;
+}
+
+.fp-overlay-2d-close:hover {
+  background: #3d3d3d !important;
+}
+
+[data-theme="light"] .fp-overlay-2d,
+body:not(.dark-theme) .fp-overlay-2d {
+  background: #ffffff !important;
+}
+
+[data-theme="light"] .fp-overlay-2d-header,
+body:not(.dark-theme) .fp-overlay-2d-header {
+  background: #f0f0f0 !important;
+}
+
+[data-theme="light"] .fp-overlay-2d-close:hover,
+body:not(.dark-theme) .fp-overlay-2d-close:hover {
+  background: #e0e0e0 !important;
+}
+
+/* --- Floor Summary Panel --- */
+.fp-floor-summary-panel {
+  background: #1a1a1a !important;
+}
+
+[data-theme="light"] .fp-floor-summary-panel,
+body:not(.dark-theme) .fp-floor-summary-panel {
+  background: #ffffff !important;
+}
+
+/* --- Selection Info Panel --- */
+.fp-selection-info {
+  background: #1a1a1a !important;
+}
+
+[data-theme="light"] .fp-selection-info,
+body:not(.dark-theme) .fp-selection-info {
+  background: #ffffff !important;
+}
+
+/* --- Section Headers/Content --- */
+.fp-section-header {
+  background: #252526 !important;
+}
+
+.fp-section-header:hover {
+  background: #3d3d3d !important;
+}
+
+.fp-control-section .collapse-title {
+  background: #252526 !important;
+}
+
+[data-theme="light"] .fp-section-header,
+[data-theme="light"] .fp-control-section .collapse-title,
+body:not(.dark-theme) .fp-section-header,
+body:not(.dark-theme) .fp-control-section .collapse-title {
+  background: #f0f0f0 !important;
+}
+
+[data-theme="light"] .fp-section-header:hover,
+body:not(.dark-theme) .fp-section-header:hover {
+  background: #e0e0e0 !important;
+}
+
+/* --- Dialog Elements --- */
+.fp-dialog {
+  background: #1a1a1a !important;
+}
+
+.fp-dialog-input {
+  background: #252526 !important;
+}
+
+.fp-dialog-btn-cancel:hover {
+  background: #3d3d3d !important;
+}
+
+.fp-dialog-btn-primary {
+  background: #3b82f6 !important;
+}
+
+.fp-dialog-btn-primary:hover {
+  background: rgba(59, 130, 246, 0.9) !important;
+}
+
+.fp-dialog-btn-danger {
+  background: #ef4444 !important;
+}
+
+.fp-dialog-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.9) !important;
+}
+
+.fp-confirm-dialog-warning {
+  background: rgba(234, 179, 8, 0.2) !important;
+}
+
+[data-theme="light"] .fp-dialog,
+body:not(.dark-theme) .fp-dialog {
+  background: #ffffff !important;
+}
+
+[data-theme="light"] .fp-dialog-input,
+body:not(.dark-theme) .fp-dialog-input {
+  background: #f8f8f8 !important;
+}
+
+[data-theme="light"] .fp-dialog-btn-cancel:hover,
+body:not(.dark-theme) .fp-dialog-btn-cancel:hover {
+  background: #e0e0e0 !important;
+}
+
+/* --- Header Bar Elements --- */
+.fp-file-dropdown-trigger:hover,
+.fp-editor-toggle:hover,
+.fp-theme-toggle:hover,
+.fp-command-palette-trigger:hover {
+  background: #3d3d3d !important;
+}
+
+.fp-editor-toggle.active {
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+.fp-shortcut-hint,
+.fp-shortcut-kbd {
+  background: #3d3d3d !important;
+}
+
+[data-theme="light"] .fp-file-dropdown-trigger:hover,
+[data-theme="light"] .fp-editor-toggle:hover,
+[data-theme="light"] .fp-theme-toggle:hover,
+[data-theme="light"] .fp-command-palette-trigger:hover,
+body:not(.dark-theme) .fp-file-dropdown-trigger:hover,
+body:not(.dark-theme) .fp-editor-toggle:hover,
+body:not(.dark-theme) .fp-theme-toggle:hover,
+body:not(.dark-theme) .fp-command-palette-trigger:hover {
+  background: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-shortcut-hint,
+[data-theme="light"] .fp-shortcut-kbd,
+body:not(.dark-theme) .fp-shortcut-hint,
+body:not(.dark-theme) .fp-shortcut-kbd {
+  background: #e0e0e0 !important;
+}
+
+/* --- Legacy Button Classes (fp-btn) --- */
+.fp-btn {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.fp-btn:hover {
+  background: rgba(59, 130, 246, 0.9) !important;
+}
+
+.fp-btn-secondary {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+}
+
+.fp-btn-secondary:hover {
+  background: rgba(107, 114, 128, 0.9) !important;
+}
+
+/* --- Slider/Range Elements --- */
+.fp-slider {
+  background: #3d3d3d !important;
+}
+
+.fp-slider::-webkit-slider-thumb {
+  background: #3b82f6 !important;
+}
+
+[data-theme="light"] .fp-slider,
+body:not(.dark-theme) .fp-slider {
+  background: #e0e0e0 !important;
+}
+
+/* --- Scrollbar Styling --- */
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #252526 !important;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #3d3d3d !important;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.5) !important;
+}
+
+[data-theme="light"] .scrollbar-thin::-webkit-scrollbar-track,
+body:not(.dark-theme) .scrollbar-thin::-webkit-scrollbar-track {
+  background: #f0f0f0 !important;
+}
+
+[data-theme="light"] .scrollbar-thin::-webkit-scrollbar-thumb,
+body:not(.dark-theme) .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d0d0d0 !important;
+}
+
+/* --- Error/Warning Banners --- */
+.fp-error-banner {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Note: .fp-warnings-panel already has overrides above */

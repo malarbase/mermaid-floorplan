@@ -3,6 +3,7 @@
  */
 import * as THREE from 'three';
 import type { JsonExport } from 'floorplan-3d-core';
+import { cls } from './ui/class-names.js';
 
 export interface FloorManagerCallbacks {
     getFloors: () => THREE.Group[];
@@ -67,23 +68,24 @@ export class FloorManager {
             const floorId = floor.id;
             const isVisible = this.floorVisibility.get(floorId) ?? true;
             
-            const floorItem = document.createElement('div');
-            floorItem.className = 'fp-floor-item';
+            const floorItem = document.createElement('label');
+            floorItem.className = cls.checkbox.wrapper;
             
             const checkbox = document.createElement('input');
             checkbox.type = 'checkbox';
+            checkbox.className = cls.checkbox.input;
             checkbox.id = `floor-toggle-${index}`;
             checkbox.checked = isVisible;
             checkbox.addEventListener('change', () => {
                 this.setFloorVisible(floorId, checkbox.checked);
             });
             
-            const label = document.createElement('label');
-            label.htmlFor = `floor-toggle-${index}`;
-            label.textContent = floorId;
+            const labelText = document.createElement('span');
+            labelText.className = cls.checkbox.label;
+            labelText.textContent = floorId;
             
             floorItem.appendChild(checkbox);
-            floorItem.appendChild(label);
+            floorItem.appendChild(labelText);
             floorListEl.appendChild(floorItem);
         });
     }

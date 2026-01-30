@@ -6,6 +6,7 @@
 import { injectStyles } from './styles.js';
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';
 import { createSliderControl, type SliderControl } from './slider-control.js';
+import { cls } from './class-names.js';
 
 export interface CameraControlsUIOptions {
   initialMode?: 'perspective' | 'orthographic';
@@ -49,7 +50,7 @@ export function createCameraControlsUI(options: CameraControlsUIOptions = {}): C
   
   // Camera mode toggle button
   const modeButton = document.createElement('button');
-  modeButton.className = 'fp-btn';
+  modeButton.className = cls.btn.full;
   modeButton.id = 'camera-mode-btn';
   modeButton.textContent = currentMode === 'perspective' 
     ? 'Switch to Orthographic' 
@@ -85,7 +86,7 @@ export function createCameraControlsUI(options: CameraControlsUIOptions = {}): C
   
   // Isometric button
   const isometricButton = document.createElement('button');
-  isometricButton.className = 'fp-btn fp-btn-secondary';
+  isometricButton.className = cls.btn.ghostFull;
   isometricButton.id = 'isometric-btn';
   isometricButton.textContent = 'Isometric View';
   isometricButton.addEventListener('click', () => onIsometric?.());
