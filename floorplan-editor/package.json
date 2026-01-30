@@ -1,6 +1,6 @@
 {
   "name": "floorplan-editor",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "description": "Interactive floorplan editor with full editing capabilities",
   "license": "GPL-3.0-or-later",
   "author": "Malar Kannan",
