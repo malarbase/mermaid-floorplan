@@ -81,13 +81,3 @@ The viewer UI components SHALL use DaisyUI semantic classes for consistent styli
 - **AND** checkboxes SHALL use `checkbox` or `toggle` class
 - **AND** selects SHALL use `select select-bordered` classes
 
-## REMOVED Requirements
-
-### Requirement: shared-styles.css Dependency
-
-**Reason**: Replaced by DaisyUI component classes and Tailwind utilities.
-
-**Migration**: 
-- All `.fp-*` class usages must be replaced with DaisyUI equivalents
-- `injectStyles()` must inject Tailwind CSS instead of shared-styles.css
-- Custom theme CSS variables are preserved for layout positioning only
