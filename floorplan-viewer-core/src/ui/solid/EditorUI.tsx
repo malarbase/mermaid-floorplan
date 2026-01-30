@@ -25,6 +25,7 @@ import {
   type JSX,
 } from 'solid-js';
 import { render } from 'solid-js/web';
+import { getUIThemeMode, type ViewerTheme } from 'floorplan-3d-core';
 import type { InteractiveEditorCore, EntityLocation } from '../../interactive-editor-core.js';
 import type { SelectableObject } from '../../scene-context.js';
 import { createDebugLogger } from '../../utils/debug.js';
@@ -505,7 +506,8 @@ export function EditorUI(props: EditorUIProps) {
     });
 
     const unsubTheme = editorCore.on('themeChange', ({ theme }) => {
-      state.setTheme(theme as Theme);
+      // Convert ViewerTheme (light/dark/blueprint) to UI Theme (light/dark)
+      state.setTheme(getUIThemeMode(theme as ViewerTheme));
     });
 
     const unsubAuth = editorCore.on('authChange', ({ isAuthenticated }) => {

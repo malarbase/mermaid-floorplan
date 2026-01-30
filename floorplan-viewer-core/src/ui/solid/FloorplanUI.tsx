@@ -26,6 +26,7 @@ import {
   For,
 } from 'solid-js';
 import { render } from 'solid-js/web';
+import { getUIThemeMode, type ViewerTheme } from 'floorplan-3d-core';
 import type { FloorplanAppCore } from '../../floorplan-app-core.js';
 import type { InteractiveEditorCore } from '../../interactive-editor-core.js';
 import type { SelectableObject } from '../../scene-context.js';
@@ -525,7 +526,8 @@ export function FloorplanUI(props: FloorplanUIProps) {
     });
     
     const unsubTheme = baseCore.on('themeChange', ({ theme }: { theme: string }) => {
-      state.setTheme(theme as Theme);
+      // Convert ViewerTheme (light/dark/blueprint) to UI Theme (light/dark)
+      state.setTheme(getUIThemeMode(theme as ViewerTheme));
     });
     
     const unsubAuth = baseCore.on('authChange', ({ isAuthenticated }: { isAuthenticated: boolean }) => {
@@ -877,7 +879,8 @@ export function createFloorplanUI(
     });
     
     const unsubTheme = baseCore.on('themeChange', ({ theme }: { theme: string }) => {
-      state.setTheme(theme as Theme);
+      // Convert ViewerTheme (light/dark/blueprint) to UI Theme (light/dark)
+      state.setTheme(getUIThemeMode(theme as ViewerTheme));
     });
     
     const unsubAuth = baseCore.on('authChange', ({ isAuthenticated }: { isAuthenticated: boolean }) => {

@@ -34,7 +34,7 @@ import { EmptyFileSystem, URI, type LangiumDocument } from 'langium';
 import { createFloorplansServices, convertFloorplanToJson, type Floorplan } from 'floorplan-language';
 import { EditorViewerSync } from './editor-viewer-sync.js';
 import { dslPropertyEditor } from './dsl-generator.js';
-import type { JsonExport, JsonRoom, JsonConnection } from 'floorplan-3d-core';
+import { getUIThemeMode, type JsonExport, type JsonRoom, type JsonConnection } from 'floorplan-3d-core';
 
 const log = createDebugLogger('[Editor]');
 
@@ -881,11 +881,11 @@ const themeToggleBtn = document.getElementById('theme-toggle-btn');
 
 // Update sidebar button text when theme changes (from any source)
 function updateThemeButton() {
-  const theme = editorCore.theme;
+  const uiTheme = getUIThemeMode(editorCore.theme);
   if (themeToggleBtn) {
-    themeToggleBtn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeToggleBtn.textContent = uiTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
   }
-  document.body.classList.toggle('dark-theme', theme === 'dark');
+  document.body.classList.toggle('dark-theme', uiTheme === 'dark');
 }
 
 // Update Monaco editor theme to match app theme
@@ -897,14 +897,14 @@ function updateEditorTheme(theme: 'light' | 'dark'): void {
 themeToggleBtn?.addEventListener('click', () => {
   editorCore.handleThemeToggle();
   updateThemeButton();
-  updateEditorTheme(editorCore.theme as 'light' | 'dark');
+  updateEditorTheme(getUIThemeMode(editorCore.theme));
   overlay2DManager.render();
 });
 
 // Listen for theme changes from other sources (e.g., header button)
 editorCore.on('themeChange', () => {
   updateThemeButton();
-  updateEditorTheme(editorCore.theme as 'light' | 'dark');
+  updateEditorTheme(getUIThemeMode(editorCore.theme));
   overlay2DManager.render();
 });
 

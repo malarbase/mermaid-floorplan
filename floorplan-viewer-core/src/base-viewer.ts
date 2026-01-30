@@ -16,7 +16,7 @@ import { CSS2DRenderer } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 import { Evaluator, Brush, SUBTRACTION } from 'three-bvh-csg';
 import type { JsonExport, JsonFloor, JsonConnection, JsonRoom, JsonConfig, JsonStyle } from 'floorplan-3d-core';
 import { 
-  COLORS, COLORS_DARK, getThemeColors,
+  COLORS, COLORS_DARK, getThemeColors, isDarkTheme,
   MaterialFactory, StairGenerator, normalizeToMeters,
   DIMENSIONS,
   type ViewerTheme, type MaterialStyle
@@ -289,8 +289,7 @@ export abstract class BaseViewer implements SceneContext {
    * Toggle between light and dark theme.
    */
   public toggleTheme(): void {
-    this.currentTheme = this.currentTheme === 'light' ? 'dark' : 'light';
-    this.applyTheme();
+    this.setTheme(this.currentTheme === 'light' ? 'dark' : 'light');
   }
   
   /**
@@ -308,12 +307,8 @@ export abstract class BaseViewer implements SceneContext {
     const colors = getThemeColors(this.currentTheme);
     this._scene.background = new THREE.Color(colors.BACKGROUND);
     
-    // Update body class for CSS theme selectors
-    if (this.currentTheme === 'dark') {
-      document.body.classList.add('dark-theme');
-    } else {
-      document.body.classList.remove('dark-theme');
-    }
+    // Update body class for CSS theme selectors (blueprint is also dark)
+    document.body.classList.toggle('dark-theme', isDarkTheme(this.currentTheme));
     
     // Update wall generator theme
     this.wallGenerator.setTheme(this.currentTheme);

@@ -43,8 +43,10 @@ export {
   isLengthUnit,
   resolveUnit,
   getThemeColors,
+  isDarkTheme,
+  getUIThemeMode,
 } from './constants.js';
-export type { LengthUnit, ViewerTheme, ThemeColors } from './constants.js';
+export type { LengthUnit, ViewerTheme, UIThemeMode, ThemeColors } from './constants.js';
 
 // Materials
 export {

@@ -154,6 +154,37 @@ export const COLORS_BLUEPRINT = {
 export type ViewerTheme = 'light' | 'dark' | 'blueprint';
 
 /**
+ * UI theme mode for components that only understand light/dark
+ * (e.g., Monaco editor, DaisyUI data-theme)
+ */
+export type UIThemeMode = 'light' | 'dark';
+
+/**
+ * Themes that should use dark UI styling (dark backgrounds, light text).
+ * Blueprint is considered dark because it has a dark blue background.
+ */
+const DARK_THEMES: ReadonlySet<ViewerTheme> = new Set(['dark', 'blueprint']);
+
+/**
+ * Check if a theme should use dark UI styling.
+ * @param theme The viewer theme to check
+ * @returns true if the theme requires dark UI styling
+ */
+export function isDarkTheme(theme: ViewerTheme): boolean {
+  return DARK_THEMES.has(theme);
+}
+
+/**
+ * Get the UI theme mode for a viewer theme.
+ * Maps viewer themes to the binary light/dark mode used by UI components.
+ * @param theme The viewer theme
+ * @returns 'dark' for dark/blueprint themes, 'light' otherwise
+ */
+export function getUIThemeMode(theme: ViewerTheme): UIThemeMode {
+  return isDarkTheme(theme) ? 'dark' : 'light';
+}
+
+/**
  * Color palette type
  */
 export interface ThemeColors {

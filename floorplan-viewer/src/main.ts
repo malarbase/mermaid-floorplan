@@ -42,6 +42,7 @@ import {
   createViewCommands,
 } from 'floorplan-viewer-core';
 import { createFloorplanUI, type FloorplanUIAPI } from 'floorplan-viewer-core/ui/solid';
+import { getUIThemeMode, type ViewerTheme } from 'floorplan-3d-core';
 
 // Inject legacy styles for components not yet migrated to Tailwind
 injectStyles();
@@ -298,9 +299,10 @@ uiRef = ui;
 
 // Theme change - sync Monaco editor and control panel button
 viewer.on('themeChange', ({ theme }) => {
-  updateEditorTheme(theme as 'light' | 'dark');
+  const uiTheme = getUIThemeMode(theme as ViewerTheme);
+  updateEditorTheme(uiTheme);
   if (themeBtnInControlPanel) {
-    themeBtnInControlPanel.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeBtnInControlPanel.textContent = uiTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
   }
 });
 
@@ -451,10 +453,10 @@ if (viewContent) {
   themeBtnInControlPanel.textContent = '🌙 Dark';
   themeBtnInControlPanel.addEventListener('click', () => {
     viewer.handleThemeToggle();
-    const theme = viewer.theme;
-    themeBtnInControlPanel!.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    const uiTheme = getUIThemeMode(viewer.theme);
+    themeBtnInControlPanel!.textContent = uiTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
     // Also sync Monaco editor
-    updateEditorTheme(theme as 'light' | 'dark');
+    updateEditorTheme(uiTheme);
   });
   themeRow.appendChild(themeBtnInControlPanel);
   viewContent.appendChild(themeRow);

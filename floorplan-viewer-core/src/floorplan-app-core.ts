@@ -367,11 +367,24 @@ export class FloorplanAppCore extends BaseViewer {
   }
   
   /**
-   * Handle theme toggle.
+   * Override setTheme to emit themeChange event.
+   * This ensures all theme changes (from DSL config, user toggle, or API) emit events.
+   */
+  public override setTheme(theme: ViewerTheme): void {
+    const previousTheme = this.currentTheme;
+    super.setTheme(theme);
+    
+    // Only emit if theme actually changed
+    if (this.currentTheme !== previousTheme) {
+      this.emit('themeChange', { theme: this.currentTheme });
+    }
+  }
+  
+  /**
+   * Handle theme toggle (convenience method for UI buttons).
    */
   public handleThemeToggle(): void {
     this.toggleTheme();
-    this.emit('themeChange', { theme: this.currentTheme });
   }
   
   /**
