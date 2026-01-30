@@ -34,6 +34,8 @@ export interface PropertyDefinition {
   max?: number;
   step?: number;
   options?: PropertyOption[];
+  /** Optional tooltip text to display on hover */
+  tooltip?: string;
 }
 
 export interface PropertiesPanelProps {
@@ -109,10 +111,13 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                   {/* Select */}
                   <Show when={prop.type === 'select' && prop.options}>
                     <select
-                      class="select select-xs select-bordered flex-1 bg-base-200"
+                      class="select select-xs select-bordered flex-1 bg-base-200 tooltip tooltip-left"
+                      classList={{ 'tooltip': Boolean(prop.tooltip) }}
+                      data-tip={prop.tooltip}
                       name={prop.name}
                       value={getValue(prop.name)}
                       onChange={(e) => handleChange(prop.name, e.currentTarget.value)}
+                      aria-label={prop.tooltip || `${prop.label} ${prop.name}`}
                     >
                       <For each={prop.options}>
                         {(opt) => (
@@ -125,7 +130,9 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                   {/* Text Input */}
                   <Show when={prop.type === 'text'}>
                     <input
-                      class="input input-xs input-bordered flex-1 bg-base-200"
+                      class="input input-xs input-bordered flex-1 bg-base-200 tooltip tooltip-left"
+                      classList={{ 'tooltip': Boolean(prop.tooltip) }}
+                      data-tip={prop.tooltip}
                       type="text"
                       name={prop.name}
                       value={getValue(prop.name)}
@@ -136,13 +143,16 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                           handleChange(prop.name, e.currentTarget.value);
                         }
                       }}
+                      aria-label={prop.tooltip || `${prop.label} ${prop.name}`}
                     />
                   </Show>
 
                   {/* Number Input */}
                   <Show when={prop.type === 'number'}>
                     <input
-                      class="input input-xs input-bordered flex-1 bg-base-200 w-16"
+                      class="input input-xs input-bordered flex-1 bg-base-200 w-16 tooltip tooltip-left"
+                      classList={{ 'tooltip': Boolean(prop.tooltip) }}
+                      data-tip={prop.tooltip}
                       type="number"
                       name={prop.name}
                       value={getValue(prop.name)}
@@ -156,6 +166,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                           handleChange(prop.name, e.currentTarget.value);
                         }
                       }}
+                      aria-label={prop.tooltip || `${prop.label} ${prop.name} (${prop.min} to ${prop.max})`}
                     />
                   </Show>
                 </div>

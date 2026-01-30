@@ -216,6 +216,45 @@ describe('DXF Exporter', () => {
     });
   });
 
+  describe('Unit normalization', () => {
+    it('should set units to Meters when config specifies m', () => {
+      const result = exportFloorToDxf(sampleFloor, [], { units: 'm' });
+      
+      // DXF should contain INSUNITS header variable for meters
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?6/); // 6 = Meters
+    });
+
+    it('should set units to Feet when config specifies ft', () => {
+      const result = exportFloorToDxf(sampleFloor, [], { units: 'ft' });
+      
+      // DXF should contain INSUNITS header variable for feet
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?2/); // 2 = Feet
+    });
+
+    it('should set units to Millimeters when config specifies mm', () => {
+      const result = exportFloorToDxf(sampleFloor, [], { units: 'mm' });
+      
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?4/); // 4 = Millimeters
+    });
+
+    it('should set units to Inches when config specifies in', () => {
+      const result = exportFloorToDxf(sampleFloor, [], { units: 'in' });
+      
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?1/); // 1 = Inches
+    });
+
+    it('should default to Feet when no units specified', () => {
+      const result = exportFloorToDxf(sampleFloor, []);
+      
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?2/); // 2 = Feet
+    });
+  });
+
   describe('Door and Window positions', () => {
     it('should position door on top wall', () => {
       const conn: JsonConnection = {

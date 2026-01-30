@@ -100,6 +100,9 @@ export function exportFloorToDxf(
     const warnings: string[] = [];
     const d = new Drawing();
 
+    // Set units based on configuration
+    setDxfUnits(d, opts.units || 'ft');
+
     // Set up layers
     d.addLayer(DXF_LAYERS.ROOMS, DXF_COLORS.WHITE, 'CONTINUOUS');
     d.addLayer(DXF_LAYERS.WALLS, DXF_COLORS.GRAY, 'CONTINUOUS');
@@ -376,6 +379,9 @@ export function exportFloorplanToDxf(
     const warnings: string[] = [];
     const d = new Drawing();
 
+    // Set units based on configuration
+    setDxfUnits(d, opts.units || 'ft');
+
     // Set up layers
     d.addLayer(DXF_LAYERS.ROOMS, DXF_COLORS.WHITE, 'CONTINUOUS');
     d.addLayer(DXF_LAYERS.WALLS, DXF_COLORS.GRAY, 'CONTINUOUS');
@@ -427,4 +433,32 @@ export function exportFloorplanToDxf(
         connectionCount: totalConnections,
         warnings,
     };
+}
+
+// ============================================================================
+// Unit Conversion
+// ============================================================================
+
+/**
+ * Map our unit names to dxf-writer unit names and set the DXF units.
+ * This sets the INSUNITS header variable in the DXF file.
+ *
+ * @param d - The Drawing instance
+ * @param unit - Unit string from floorplan config (m, ft, mm, in, cm)
+ */
+function setDxfUnits(d: Drawing, unit: string): void {
+    // Map floorplan units to dxf-writer units
+    const unitMap: Record<string, string> = {
+        'm': 'Meters',
+        'ft': 'Feet',
+        'mm': 'Millimeters',
+        'in': 'Inches',
+        'cm': 'Centimeters',
+        'km': 'Kilometers',
+        'mi': 'Miles',
+        'yd': 'Yards',
+    };
+
+    const dxfUnit = unitMap[unit.toLowerCase()] || 'Feet';
+    d.setUnits(dxfUnit as any); // dxf-writer's Unit type is not exported
 }

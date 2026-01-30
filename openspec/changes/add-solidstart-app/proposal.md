@@ -71,8 +71,8 @@ This approach aligns with the existing `add-solidjs-ui-framework` proposal and c
 - Future: `floorplan-viewer-core` may get auth context helpers
 
 ### Dependencies on Other Proposals
-- **`add-solidjs-ui-framework`**: Must be implemented first (Solid.js foundation)
-- This proposal builds on the Solid.js patterns established there
+- **`add-solidjs-ui-framework`**: ✅ **COMPLETED** (PRs #26, #27, #28 - archived 2026-01-30)
+- This proposal builds on the Solid.js + DaisyUI patterns now established in `floorplan-viewer-core`
 
 ### New Files
 ```
@@ -154,21 +154,23 @@ floorplan-app/
 | Better Auth learning curve | Low | Good docs, SolidStart integration is simple |
 | SolidStart maturity | Low | Official Solid.js framework, actively developed |
 
-## Relationship to Other Proposals
+## Supersedes
 
-### vs FastAPI Proposal (`add-fastapi-backend`)
+This proposal **supersedes** `add-fastapi-backend` (archived 2026-01-30).
 
-These are **alternative approaches** to backend services:
+**Decision rationale:**
 
 | Aspect | FastAPI + Wasmer | SolidStart + Convex |
 |--------|------------------|---------------------|
-| Language | Python + TypeScript | TypeScript only |
-| Auth | Custom (Authlib) | Better Auth (managed) |
-| Database | External (TBD) | Convex (built-in) |
-| Real-time | Manual | Automatic |
-| Deployment | Wasmer Edge | Vercel (SSR) |
+| Language | Python + TypeScript | **TypeScript only** ✓ |
+| Auth | Custom (Authlib) | **Better Auth (managed)** ✓ |
+| Database | External (TBD) | **Convex (built-in)** ✓ |
+| Real-time | Manual | **Automatic** ✓ |
+| Deployment | Wasmer Edge | **Vercel (SSR)** ✓ |
 
-**Recommendation:** Implement this proposal if prioritizing TypeScript consistency and real-time features.
+TypeScript consistency, managed authentication, and built-in real-time sync made SolidStart the preferred approach.
+
+## Relationship to Other Proposals
 
 ### Integration with Tauri Desktop App (`add-tauri-desktop-app`)
 

@@ -1,5 +1,11 @@
 # Add FastAPI Backend Service with Wasmer Edge Deployment
 
+> **SUPERSEDED** by [`add-solidstart-app`](../../add-solidstart-app/proposal.md) (2026-01-30)
+>
+> **Reason**: TypeScript consistency preferred over Python. SolidStart provides
+> authentication (Better Auth), real-time database (Convex), and SSR in a
+> single TypeScript codebase. See the SolidStart proposal for the chosen approach.
+
 ## Why
 
 The mermaid-floorplan project currently has a frontend-only architecture with authentication stubs (see `FloorplanApp.requestEditMode()` in `floorplan-viewer-core/src/floorplan-app.ts:600-612`). The `onAuthRequired` callback exists but has no real backend to authenticate against.
