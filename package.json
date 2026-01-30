@@ -1,7 +1,7 @@
 {
   "name": "floorplans-workspace",
   "description": "Base workspace package",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "type": "module",
   "private": true,
   "scripts": {
@@ -14,9 +14,14 @@
     "test": "npm run --workspace floorplan-language test && npm run --workspace floorplan-mcp-server test"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "autoprefixer": "^10.4.23",
+    "daisyui": "^5.5.14",
     "langium": "^4.0.0",
     "langium-cli": "^4.1.0",
+    "postcss": "^8.5.6",
     "shx": "~0.4.0",
+    "tailwindcss": "^4.1.18",
     "typescript": "~5.8.3",
     "vite": "^6.3.5"
   },
@@ -34,6 +39,7 @@
     "floorplan-editor"
   ],
   "dependencies": {
-    "@speclife/cli": "^0.6.1"
+    "@speclife/cli": "^0.6.1",
+    "@tailwindcss/vite": "^4.1.18"
   }
 }

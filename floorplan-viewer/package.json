@@ -1,6 +1,6 @@
 {
   "name": "floorplan-viewer",
-  "version": "0.10.1",
+  "version": "0.11.0",
   "private": true,
   "license": "GPL-3.0-or-later",
   "author": "Malar Kannan",
@@ -15,14 +15,17 @@
   "dependencies": {
     "floorplan-3d-core": "*",
     "floorplan-language": "*",
+    "floorplan-viewer-core": "*",
     "langium": "~4.0.0",
     "monaco-editor": "^0.52.2",
     "three": "^0.170.0",
-    "three-bvh-csg": "^0.0.16",
-    "floorplan-viewer-core": "*"
+    "three-bvh-csg": "^0.0.16"
   },
   "devDependencies": {
     "@types/three": "^0.170.0",
+    "autoprefixer": "^10.4.23",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5.2.2",
     "vite": "^6.3.5",
     "vite-plugin-solid": "^2.10.0",

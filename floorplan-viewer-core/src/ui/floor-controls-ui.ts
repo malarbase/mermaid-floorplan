@@ -3,6 +3,7 @@
  */
 import { injectStyles } from './styles.js';
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';
+import { cls } from './class-names.js';
 
 export interface FloorControlsUIOptions {
   onShowAll?: () => void;
@@ -39,7 +40,7 @@ export function createFloorControlsUI(options: FloorControlsUIOptions = {}): Flo
   floorList.id = 'floor-list';
   
   const noFloorsMsg = document.createElement('div');
-  noFloorsMsg.className = 'fp-no-floors';
+  noFloorsMsg.className = cls.text.muted;
   noFloorsMsg.textContent = 'Load a floorplan to see floors';
   floorList.appendChild(noFloorsMsg);
   
@@ -47,16 +48,16 @@ export function createFloorControlsUI(options: FloorControlsUIOptions = {}): Flo
   
   // Button group
   const buttonGroup = document.createElement('div');
-  buttonGroup.className = 'fp-floor-actions';
+  buttonGroup.className = cls.layout.gapMt;
   
   const showAllButton = document.createElement('button');
-  showAllButton.className = 'fp-btn';
+  showAllButton.className = cls.btn.ghostXsFlex;
   showAllButton.id = 'show-all-floors';
   showAllButton.textContent = 'Show All';
   showAllButton.addEventListener('click', () => onShowAll?.());
   
   const hideAllButton = document.createElement('button');
-  hideAllButton.className = 'fp-btn fp-btn-secondary';
+  hideAllButton.className = cls.btn.ghostXsFlex;
   hideAllButton.id = 'hide-all-floors';
   hideAllButton.textContent = 'Hide All';
   hideAllButton.addEventListener('click', () => onHideAll?.());
@@ -71,30 +72,31 @@ export function createFloorControlsUI(options: FloorControlsUIOptions = {}): Flo
     
     if (floors.length === 0) {
       const noFloorsMsg = document.createElement('div');
-      noFloorsMsg.className = 'fp-no-floors';
+      noFloorsMsg.className = cls.text.muted;
       noFloorsMsg.textContent = 'Load a floorplan to see floors';
       floorList.appendChild(noFloorsMsg);
       return;
     }
     
     floors.forEach((floor, index) => {
-      const item = document.createElement('div');
-      item.className = 'fp-floor-item';
+      const item = document.createElement('label');
+      item.className = cls.checkbox.wrapper;
       
       const checkbox = document.createElement('input');
       checkbox.type = 'checkbox';
+      checkbox.className = cls.checkbox.input;
       checkbox.id = `floor-toggle-${index}`;
       checkbox.checked = floor.visible;
       checkbox.addEventListener('change', () => {
         onFloorToggle?.(floor.id, checkbox.checked);
       });
       
-      const label = document.createElement('label');
-      label.htmlFor = `floor-toggle-${index}`;
-      label.textContent = floor.id;
+      const labelText = document.createElement('span');
+      labelText.className = cls.checkbox.label;
+      labelText.textContent = floor.id;
       
       item.appendChild(checkbox);
-      item.appendChild(label);
+      item.appendChild(labelText);
       floorList.appendChild(item);
     });
   };

@@ -1,35 +1,16 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig } from 'vite';
 import solidPlugin from 'vite-plugin-solid';
-import { viteStaticCopy } from 'vite-plugin-static-copy';
+import tailwindcss from '@tailwindcss/vite';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync } from 'fs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const sharedStylesPath = resolve(__dirname, '../floorplan-viewer-core/src/ui/shared-styles.css');
 
 // Paths to workspace packages for direct source imports during development
 const viewerCoreSrc = resolve(__dirname, '../floorplan-viewer-core/src');
 const languageSrc = resolve(__dirname, '../floorplan-language/src');
 const floorplan3DCoreSrc = resolve(__dirname, '../floorplan-3d-core/src');
 const floorplanCommonSrc = resolve(__dirname, '../floorplan-common/src');
-
-// Custom plugin to serve shared-styles.css during dev
-function serveSharedStyles(): Plugin {
-  return {
-    name: 'serve-shared-styles',
-    configureServer(server) {
-      server.middlewares.use((req, res, next) => {
-        if (req.url === '/shared-styles.css') {
-          res.setHeader('Content-Type', 'text/css');
-          res.end(readFileSync(sharedStylesPath, 'utf-8'));
-          return;
-        }
-        next();
-      });
-    }
-  };
-}
 
 export default defineConfig({
   root: '.',
@@ -51,17 +32,13 @@ export default defineConfig({
     },
   },
   plugins: [
+    // Tailwind CSS v4 Vite plugin - processes CSS with @apply and DaisyUI
+    tailwindcss(),
     solidPlugin(),
-    serveSharedStyles(),
-    viteStaticCopy({
-      targets: [
-        {
-          src: '../floorplan-viewer-core/src/ui/shared-styles.css',
-          dest: '.'  // copies to dist root
-        }
-      ]
-    })
   ],
+  css: {
+    devSourcemap: true,
+  },
   server: {
     open: true,
     fs: {

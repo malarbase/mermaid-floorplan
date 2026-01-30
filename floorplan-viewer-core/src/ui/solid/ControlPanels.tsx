@@ -129,15 +129,16 @@ export function Checkbox(props: CheckboxProps) {
   };
 
   return (
-    <div class="fp-checkbox-row">
+    <label class="label cursor-pointer justify-start gap-2">
       <input
         type="checkbox"
+        class="checkbox checkbox-xs"
         id={props.id}
         checked={props.checked}
         onChange={handleChange}
       />
-      <label for={props.id}>{props.label}</label>
-    </div>
+      <span class="label-text text-xs">{props.label}</span>
+    </label>
   );
 }
 

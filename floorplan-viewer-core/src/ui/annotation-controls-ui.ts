@@ -5,6 +5,7 @@
  */
 import { injectStyles } from './styles.js';
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';
+import { cls } from './class-names.js';
 
 export type AreaUnit = 'sqft' | 'sqm';
 export type LengthUnit = 'm' | 'ft' | 'cm' | 'in' | 'mm';
@@ -59,39 +60,41 @@ export function createAnnotationControlsUI(options: AnnotationControlsUIOptions 
   const content = getSectionContent(section)!;
   
   // Show area checkbox
-  const areaRow = document.createElement('div');
-  areaRow.className = 'fp-checkbox-row';
+  const areaRow = document.createElement('label');
+  areaRow.className = cls.checkbox.wrapper;
   
   const showAreaCheckbox = document.createElement('input');
   showAreaCheckbox.type = 'checkbox';
+  showAreaCheckbox.className = cls.checkbox.input;
   showAreaCheckbox.id = 'show-area';
   showAreaCheckbox.checked = initialShowArea;
   showAreaCheckbox.addEventListener('change', () => {
     onShowAreaChange?.(showAreaCheckbox.checked);
   });
   
-  const areaLabel = document.createElement('label');
-  areaLabel.htmlFor = 'show-area';
-  areaLabel.textContent = 'Show Area Labels';
+  const areaLabel = document.createElement('span');
+  areaLabel.className = cls.checkbox.label;
+  areaLabel.textContent = 'Show Room Areas';
   
   areaRow.appendChild(showAreaCheckbox);
   areaRow.appendChild(areaLabel);
   content.appendChild(areaRow);
   
   // Show dimensions checkbox
-  const dimRow = document.createElement('div');
-  dimRow.className = 'fp-checkbox-row';
+  const dimRow = document.createElement('label');
+  dimRow.className = cls.checkbox.wrapper;
   
   const showDimensionsCheckbox = document.createElement('input');
   showDimensionsCheckbox.type = 'checkbox';
+  showDimensionsCheckbox.className = cls.checkbox.input;
   showDimensionsCheckbox.id = 'show-dimensions';
   showDimensionsCheckbox.checked = initialShowDimensions;
   showDimensionsCheckbox.addEventListener('change', () => {
     onShowDimensionsChange?.(showDimensionsCheckbox.checked);
   });
   
-  const dimLabel = document.createElement('label');
-  dimLabel.htmlFor = 'show-dimensions';
+  const dimLabel = document.createElement('span');
+  dimLabel.className = cls.checkbox.label;
   dimLabel.textContent = 'Show Dimensions';
   
   dimRow.appendChild(showDimensionsCheckbox);
@@ -99,19 +102,20 @@ export function createAnnotationControlsUI(options: AnnotationControlsUIOptions 
   content.appendChild(dimRow);
   
   // Show floor summary checkbox
-  const summaryRow = document.createElement('div');
-  summaryRow.className = 'fp-checkbox-row';
+  const summaryRow = document.createElement('label');
+  summaryRow.className = cls.checkbox.wrapper;
   
   const showFloorSummaryCheckbox = document.createElement('input');
   showFloorSummaryCheckbox.type = 'checkbox';
+  showFloorSummaryCheckbox.className = cls.checkbox.input;
   showFloorSummaryCheckbox.id = 'show-floor-summary';
   showFloorSummaryCheckbox.checked = initialShowFloorSummary;
   showFloorSummaryCheckbox.addEventListener('change', () => {
     onShowFloorSummaryChange?.(showFloorSummaryCheckbox.checked);
   });
   
-  const summaryLabel = document.createElement('label');
-  summaryLabel.htmlFor = 'show-floor-summary';
+  const summaryLabel = document.createElement('span');
+  summaryLabel.className = cls.checkbox.label;
   summaryLabel.textContent = 'Show Floor Summary';
   
   summaryRow.appendChild(showFloorSummaryCheckbox);
@@ -120,15 +124,15 @@ export function createAnnotationControlsUI(options: AnnotationControlsUIOptions 
   
   // Area unit select
   const areaUnitRow = document.createElement('div');
-  areaUnitRow.className = 'fp-control-row';
+  areaUnitRow.className = cls.layout.betweenCenter + ' mt-2';
   
   const areaUnitLabel = document.createElement('label');
-  areaUnitLabel.className = 'fp-label';
+  areaUnitLabel.className = cls.text.label;
   areaUnitLabel.htmlFor = 'area-unit';
   areaUnitLabel.textContent = 'Area Unit';
   
   const areaUnitSelect = document.createElement('select');
-  areaUnitSelect.className = 'fp-select';
+  areaUnitSelect.className = cls.select.xsFixed;
   areaUnitSelect.id = 'area-unit';
   areaUnitSelect.innerHTML = `
     <option value="sqft">sq ft</option>
@@ -145,15 +149,15 @@ export function createAnnotationControlsUI(options: AnnotationControlsUIOptions 
   
   // Length unit select
   const lengthUnitRow = document.createElement('div');
-  lengthUnitRow.className = 'fp-control-row';
+  lengthUnitRow.className = cls.layout.betweenCenter + ' mt-2';
   
   const lengthUnitLabel = document.createElement('label');
-  lengthUnitLabel.className = 'fp-label';
+  lengthUnitLabel.className = cls.text.label;
   lengthUnitLabel.htmlFor = 'length-unit';
   lengthUnitLabel.textContent = 'Length Unit';
   
   const lengthUnitSelect = document.createElement('select');
-  lengthUnitSelect.className = 'fp-select';
+  lengthUnitSelect.className = cls.select.xsFixed;
   lengthUnitSelect.id = 'length-unit';
   lengthUnitSelect.innerHTML = `
     <option value="ft">feet</option>

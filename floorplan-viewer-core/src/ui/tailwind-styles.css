@@ -1,0 +1,1725 @@
+/**
+ * Tailwind CSS + DaisyUI styles for floorplan viewer/editor
+ * 
+ * This file replaces shared-styles.css with semantic DaisyUI components
+ * and Tailwind utilities.
+ * 
+ * Uses Tailwind CSS v4 syntax with @tailwindcss/vite plugin
+ * 
+ * NOTE: DaisyUI v5 requires CSS-based configuration, not tailwind.config.js
+ * Custom themes are defined using @plugin "daisyui/theme" directive
+ */
+
+@import "tailwindcss";
+
+/* === DaisyUI v5 Configuration ===
+ * Configure DaisyUI with theme settings directly in CSS
+ * See: https://daisyui.com/docs/config/
+ */
+@plugin "daisyui" {
+  themes: light --default, dark --prefersdark;
+  logs: true;
+}
+
+/* === Custom Light Theme ===
+ * Matches existing app colors from tailwind.config.js
+ * See: https://daisyui.com/docs/themes/#how-to-add-a-new-custom-theme
+ */
+@plugin "daisyui/theme" {
+  name: "light";
+  default: true;
+  color-scheme: light;
+  --color-base-100: oklch(100% 0 0);           /* #ffffff - Main background */
+  --color-base-200: oklch(97.5% 0 0);          /* #f8f8f8 - Panel backgrounds */
+  --color-base-300: oklch(94% 0 0);            /* #f0f0f0 - Hover states */
+  --color-base-content: oklch(27% 0 0);        /* #333333 - Text color */
+  --color-primary: oklch(57% 0.13 248);        /* #4a90d9 - Accent color */
+  --color-primary-content: oklch(100% 0 0);    /* #ffffff */
+  --color-secondary: oklch(48% 0 0);           /* #666666 */
+  --color-secondary-content: oklch(100% 0 0);  /* #ffffff */
+  --color-accent: oklch(57% 0.13 248);         /* #4a90d9 */
+  --color-accent-content: oklch(100% 0 0);     /* #ffffff */
+  --color-neutral: oklch(27% 0 0);             /* #333333 */
+  --color-neutral-content: oklch(100% 0 0);    /* #ffffff */
+  --color-info: oklch(57% 0.13 248);           /* #4a90d9 */
+  --color-info-content: oklch(100% 0 0);       /* #ffffff */
+  --color-success: oklch(55% 0.2 145);         /* #4a4 */
+  --color-success-content: oklch(100% 0 0);    /* #ffffff */
+  --color-warning: oklch(73% 0.14 75);         /* #f5a623 */
+  --color-warning-content: oklch(27% 0 0);     /* #333333 */
+  --color-error: oklch(55% 0.2 27);            /* #f44336 */
+  --color-error-content: oklch(100% 0 0);      /* #ffffff */
+  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-box: 1rem;
+}
+
+/* === Custom Dark Theme ===
+ * Matches existing app dark mode colors
+ */
+@plugin "daisyui/theme" {
+  name: "dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: oklch(13% 0 0);            /* #1a1a1a - Main background */
+  --color-base-200: oklch(16.5% 0 0);          /* #252526 - Panel backgrounds */
+  --color-base-300: oklch(20% 0 0);            /* #2d2d2d - Hover states */
+  --color-base-content: oklch(88% 0 0);        /* #e0e0e0 - Text color */
+  --color-primary: oklch(57% 0.13 248);        /* #4a90d9 - Accent color */
+  --color-primary-content: oklch(100% 0 0);    /* #ffffff */
+  --color-secondary: oklch(48% 0 0);           /* #666666 */
+  --color-secondary-content: oklch(100% 0 0);  /* #ffffff */
+  --color-accent: oklch(57% 0.13 248);         /* #4a90d9 */
+  --color-accent-content: oklch(100% 0 0);     /* #ffffff */
+  --color-neutral: oklch(88% 0 0);             /* #e0e0e0 */
+  --color-neutral-content: oklch(13% 0 0);     /* #1a1a1a */
+  --color-info: oklch(57% 0.13 248);           /* #4a90d9 */
+  --color-info-content: oklch(100% 0 0);       /* #ffffff */
+  --color-success: oklch(75% 0.2 145);         /* #8f8 */
+  --color-success-content: oklch(13% 0 0);     /* #1a1a1a */
+  --color-warning: oklch(73% 0.14 75);         /* #f5a623 */
+  --color-warning-content: oklch(13% 0 0);     /* #1a1a1a */
+  --color-error: oklch(55% 0.2 27);            /* #f44336 */
+  --color-error-content: oklch(100% 0 0);      /* #ffffff */
+  --radius-selector: 0.5rem;
+  --radius-field: 0.25rem;
+  --radius-box: 1rem;
+}
+
+/* === Source Registration for Monorepo ===
+ * Explicitly register source paths for Tailwind to scan.
+ * Paths are relative to this CSS file (floorplan-viewer-core/src/ui/).
+ * This is required in monorepos because Tailwind v4's automatic detection
+ * may not follow cross-package imports correctly.
+ */
+@source "./solid";                            /* Solid.js components (CommandPalette, etc.) */
+@source "../../";                             /* All floorplan-viewer-core source */
+@source "../../../floorplan-viewer/src";      /* Viewer app source */
+@source "../../../floorplan-editor/src";      /* Editor app source */
+
+/* === Layout CSS Variables (preserved from shared-styles.css) === */
+:root {
+  --layout-header-height: 40px;
+  --layout-header-offset: 40px;
+  --layout-editor-width: 0px;
+  --layout-editor-width-open: 450px;
+  --layout-overlay-2d-height: 220px;
+  --layout-bottom-gap: 10px;
+  --layout-bottom-stack-offset: 0px;
+  --layout-overlay-2d-visible: 0;
+  --layout-floor-summary-visible: 0;
+}
+
+/* === Base Layer Customizations === */
+@layer base {
+  /* Body defaults */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    overflow: hidden;
+  }
+}
+
+/* === Component Layer - Custom component patterns === */
+@layer components {
+  /* Panel positioning utilities */
+  .fp-panel-top {
+    top: calc(var(--layout-header-offset) + 10px);
+  }
+
+  .fp-panel-left-offset {
+    left: calc(var(--layout-editor-width) + 16px);
+  }
+
+  /* Control panel */
+  .fp-control-panel {
+    position: absolute;
+    right: 10px;
+    width: 256px;
+    max-height: calc(100vh - var(--layout-header-offset) - 20px);
+    overflow-y: auto;
+    top: calc(var(--layout-header-offset) + 10px);
+    transition: top 0.3s ease, max-height 0.3s ease;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+
+  body.header-visible .fp-control-panel {
+    top: calc(var(--layout-header-height) + 10px);
+    max-height: calc(100vh - var(--layout-header-height) - 20px);
+  }
+
+  /* Collapsible section */
+  .fp-control-section {
+    border-bottom: 1px solid oklch(var(--color-base-300));
+  }
+
+  .fp-control-section:last-child {
+    border-bottom: none;
+  }
+
+  .fp-control-section .collapse-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    background: oklch(var(--color-base-200));
+    min-height: 0;
+    padding: 12px 16px;
+  }
+
+  .fp-control-section .collapse-content {
+    padding: 12px 16px;
+  }
+
+  /* Header bar - uses DaisyUI theme variables with translucent background */
+  .fp-header-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--layout-header-height);
+    padding: 0 16px;
+    z-index: 150;
+    background: color-mix(in oklch, oklch(var(--color-base-100)) 95%, transparent);
+    border-bottom: 1px solid oklch(var(--color-base-300));
+    backdrop-filter: blur(8px);
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  /* 2D Overlay panel */
+  .fp-overlay-2d {
+    position: absolute;
+    left: calc(var(--layout-editor-width) + 16px);
+    bottom: var(--layout-bottom-gap);
+    min-width: 280px;
+    max-width: 50vw;
+    height: var(--layout-overlay-2d-height);
+    transition: left 0.3s ease;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+
+  /* Floor summary panel */
+  .fp-floor-summary-panel {
+    position: absolute;
+    padding: 12px;
+    left: calc(var(--layout-editor-width) + 16px);
+    bottom: calc(
+      var(--layout-bottom-gap) +
+      (var(--layout-overlay-2d-visible) * (var(--layout-overlay-2d-height) + 10px))
+    );
+    min-width: 200px;
+    transition: left 0.3s ease, bottom 0.3s ease;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+
+  /* Selection info badge */
+  .fp-selection-info {
+    position: fixed;
+    bottom: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px 16px;
+    background: oklch(var(--color-base-100));
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    border-radius: 9999px;
+    font-size: 0.875rem;
+  }
+
+  /* Warnings panel */
+  .fp-warnings-panel {
+    position: absolute;
+    top: calc(var(--layout-header-offset) + 10px);
+    left: 16px;
+    max-width: 400px;
+    background: oklch(var(--color-warning));
+    color: oklch(var(--color-warning-content));
+    border-radius: 8px;
+    font-size: 13px;
+    z-index: 100;
+  }
+
+  body.header-visible .fp-warnings-panel {
+    top: calc(var(--layout-header-height) + 10px);
+  }
+
+  /* Properties panel */
+  .fp-properties-panel {
+    position: absolute;
+    padding: 0;
+    top: calc(var(--layout-header-offset) + 10px);
+    left: calc(var(--layout-editor-width) + 16px);
+    min-width: 220px;
+    max-width: 280px;
+    transition: top 0.3s ease, left 0.3s ease;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+
+  .fp-properties-panel .card-body {
+    padding: 12px;
+  }
+
+  /* Error banner */
+  .fp-error-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 300;
+    padding: 12px 16px;
+    background: oklch(var(--color-error));
+    color: oklch(var(--color-error-content));
+    border-radius: 0;
+  }
+
+  /* ========================================
+   * Editor Panel (Monaco editor sidebar)
+   * ======================================== */
+  .fp-editor-panel {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    top: 0;
+    left: 0;
+    /* Removed bottom: 0 - conflicts with explicit height and prevents animation */
+    height: 100vh;
+    z-index: 200;
+    transition: width 0.25s ease, top 0.3s ease, height 0.3s ease, transform 0.3s ease;
+    border-right: 1px solid oklch(var(--color-base-300));
+    background: oklch(var(--color-base-100));
+  }
+
+  body.header-visible .fp-editor-panel {
+    top: var(--layout-header-height);
+    height: calc(100vh - var(--layout-header-height));
+  }
+
+  .fp-editor-panel--collapsed {
+    width: 0 !important;
+    border-right: none;
+    background: transparent;
+    overflow: visible;
+  }
+
+  .fp-editor-panel--collapsed .fp-editor-panel__editor,
+  .fp-editor-panel--collapsed .fp-editor-panel__status,
+  .fp-editor-panel--collapsed .fp-editor-panel__header {
+    display: none;
+  }
+
+  .fp-editor-panel--collapsed .fp-editor-panel__resize-handle {
+    display: none;
+  }
+
+  .fp-editor-panel__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: oklch(var(--color-base-200));
+    border-bottom: 1px solid oklch(var(--color-base-300));
+    min-height: 44px;
+  }
+
+  .fp-editor-panel__title-section {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .fp-editor-panel__title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: oklch(var(--color-base-content));
+  }
+
+  .fp-editor-panel__mode-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background: oklch(var(--color-base-300));
+    color: oklch(var(--color-base-content) / 0.7);
+  }
+
+  .fp-editor-panel__mode-badge--readonly {
+    background: oklch(var(--color-base-300));
+    color: oklch(var(--color-base-content) / 0.7);
+  }
+
+  .fp-editor-panel__mode-badge--editable {
+    background: oklch(var(--color-success) / 0.2);
+    color: oklch(var(--color-success));
+  }
+
+  .fp-editor-panel__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .fp-editor-panel__login-btn {
+    padding: 4px 10px;
+    background: oklch(var(--color-primary) / 0.1);
+    border: none;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: oklch(var(--color-primary));
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .fp-editor-panel__login-btn:hover {
+    background: oklch(var(--color-primary) / 0.2);
+  }
+
+  .fp-editor-panel__collapse-btn {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    right: 0;
+    top: 50%;
+    transform: translateX(100%) translateY(-50%);
+    width: 28px;
+    height: 56px;
+    padding: 0;
+    /* Fallback for when DaisyUI variables aren't available */
+    background: #2d2d2d;
+    background: oklch(var(--color-base-300, 20% 0 0));
+    border: none;
+    border-radius: 0 8px 8px 0;
+    font-size: 14px;
+    color: #e0e0e0;
+    color: oklch(var(--color-base-content, 88% 0 0));
+    cursor: pointer;
+    transition: background 0.15s ease, right 0.25s ease;
+    z-index: 210;
+  }
+
+  .fp-editor-panel__collapse-btn:hover {
+    background: #3d3d3d;
+    background: oklch(var(--color-base-300, 20% 0 0) / 0.8);
+  }
+
+  /* Light theme override for collapse button */
+  [data-theme="light"] .fp-editor-panel__collapse-btn,
+  body:not(.dark-theme) .fp-editor-panel__collapse-btn {
+    background: #f0f0f0;
+    background: oklch(var(--color-base-300, 94% 0 0));
+    color: #333;
+    color: oklch(var(--color-base-content, 27% 0 0));
+  }
+
+  [data-theme="light"] .fp-editor-panel__collapse-btn:hover,
+  body:not(.dark-theme) .fp-editor-panel__collapse-btn:hover {
+    background: #e0e0e0;
+  }
+
+  .fp-editor-panel__editor {
+    flex: 1 1 0%;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+  }
+
+  .fp-editor-panel__status {
+    display: flex;
+    align-items: center;
+    padding: 6px 12px;
+    background: oklch(var(--color-base-200));
+    border-top: 1px solid oklch(var(--color-base-300));
+    font-size: 0.75rem;
+  }
+
+  .fp-editor-panel__status-text {
+    color: oklch(var(--color-base-content) / 0.6);
+  }
+
+  .fp-editor-panel__status-text--error {
+    color: oklch(var(--color-error));
+  }
+
+  .fp-editor-panel__resize-handle {
+    position: absolute;
+    top: 0;
+    height: 100%;
+    right: -6px;
+    width: 12px;
+    background: transparent;
+    z-index: 220;
+    cursor: ew-resize;
+  }
+
+  .fp-editor-panel__resize-handle::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    height: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 4px;
+    background: transparent;
+    transition: background 0.2s;
+  }
+
+  .fp-editor-panel__resize-handle:hover::before,
+  .fp-editor-panel__resize-handle.active::before {
+    background: oklch(var(--color-primary));
+  }
+
+  .fp-editor-panel--resizing {
+    transition: none !important;
+  }
+
+  /* Shortcut info panel - positioned on the RIGHT side, offset from control panel */
+  .fp-shortcut-info {
+    position: fixed;
+    bottom: 10px;
+    right: 280px;  /* Offset from control panel (256px + gap) */
+    padding: 12px;
+    font-size: 0.75rem;
+    max-width: 280px;
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+  }
+
+  /* ========================================
+   * Header Bar Components
+   * ======================================== */
+
+  .fp-header-hover-zone {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 10px;
+    z-index: 299;
+  }
+
+  .fp-header-bar--auto-hide {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+
+  .fp-header-bar--auto-hide:hover,
+  .fp-header-bar--auto-hide.fp-header-bar--visible {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .fp-header-hover-zone:hover + .fp-header-bar--auto-hide,
+  .fp-header-hover-zone:hover ~ .fp-header-bar--auto-hide {
+    transform: translateY(0);
+    opacity: 1;
+  }
+
+  .fp-header-left,
+  .fp-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .fp-header-center {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+
+  .fp-header-logo {
+    font-size: 1.25rem;
+  }
+
+  .fp-header-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: oklch(var(--color-base-content));
+  }
+
+  .fp-file-dropdown-trigger {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .fp-file-dropdown-trigger:hover {
+    background: oklch(var(--color-base-200));
+  }
+
+  .fp-filename {
+    font-weight: 500;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .fp-dropdown-arrow {
+    font-size: 0.75rem;
+    opacity: 0.6;
+  }
+
+  /* ==============================================
+   * File Dropdown Menu - Theme-aware dropdown styles
+   * ============================================== */
+
+  /* File dropdown menu container - guaranteed opaque background */
+  .fp-file-dropdown-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 8px;
+    min-width: 220px;
+    font-size: 14px;
+    /* DaisyUI v5: use --color-base-200 for theme-aware background */
+    background-color: oklch(var(--color-base-200));
+    color: oklch(var(--color-base-content));
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+  }
+
+  .fp-file-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    background-color: transparent;
+    border: none;
+    color: oklch(var(--color-base-content));
+    width: 100%;
+    text-align: left;
+    transition: background-color 0.15s ease;
+  }
+
+  .fp-file-dropdown-item:hover {
+    background-color: oklch(var(--color-base-300));
+  }
+
+  .fp-file-dropdown-item--disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+
+  .fp-file-dropdown-item--disabled:hover {
+    background-color: transparent;
+  }
+
+  .fp-file-dropdown-divider {
+    height: 1px;
+    background-color: oklch(var(--color-base-content) / 0.1);
+    margin: 4px 0;
+  }
+
+  .fp-file-dropdown-kbd {
+    padding: 2px 6px;
+    font-size: 11px;
+    background-color: oklch(var(--color-base-300));
+    border-radius: 4px;
+    font-family: monospace;
+  }
+
+  .fp-file-dropdown-secondary {
+    font-size: 12px;
+    opacity: 0.6;
+  }
+
+  /* DaisyUI menu styles for general use */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    flex-wrap: wrap;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    padding: 0.5rem;
+    background-color: oklch(var(--color-base-200));
+    border-radius: var(--rounded-box, 1rem);
+  }
+
+  .menu :where(li) {
+    position: relative;
+    display: flex;
+    flex-shrink: 0;
+    flex-direction: column;
+    flex-wrap: wrap;
+    align-items: stretch;
+  }
+
+  .menu :where(li:not(.menu-title)) > :where(*:not(ul, details, .menu-title, .btn)) {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 1rem;
+    color: oklch(var(--color-base-content));
+    border-radius: var(--rounded-btn, 0.5rem);
+    cursor: pointer;
+    user-select: none;
+    text-align: left;
+  }
+
+  .menu :where(li:not(.menu-title)) > :where(*:not(ul, details, .menu-title, .btn)):hover {
+    background-color: oklch(var(--color-base-200));
+  }
+
+  .menu :where(li:not(.menu-title)) > :where(*:not(ul, details, .menu-title, .btn)):active,
+  .menu :where(li:not(.menu-title)) > :where(*:not(ul, details, .menu-title, .btn)).active {
+    background-color: oklch(var(--color-primary));
+    color: oklch(var(--color-primary-content));
+  }
+
+  .menu :where(li.disabled) > :where(*:not(ul, details, .menu-title, .btn)) {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .menu :where(li.divider) {
+    height: 1px;
+    background-color: oklch(var(--color-base-content) / 0.1);
+    margin: 0.25rem 0;
+  }
+
+  .fp-editor-toggle {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 12px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .fp-editor-toggle:hover {
+    background: oklch(var(--color-base-200));
+  }
+
+  .fp-editor-toggle.active {
+    background: oklch(var(--color-primary) / 0.15);
+    color: oklch(var(--color-primary));
+  }
+
+  .fp-editor-toggle-icon,
+  .fp-editor-toggle-label {
+    font-size: 0.875rem;
+  }
+
+  .fp-theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    cursor: pointer;
+  }
+
+  .fp-theme-toggle:hover {
+    background: oklch(var(--color-base-200));
+  }
+
+  .fp-theme-toggle-icon {
+    font-size: 1rem;
+  }
+
+  .fp-command-palette-trigger {
+    padding: 4px 12px;
+    background: transparent;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    cursor: pointer;
+  }
+
+  .fp-command-palette-trigger:hover {
+    background: oklch(var(--color-base-200));
+  }
+
+  /* Command Palette uses inline Tailwind utilities in CommandPalette.tsx
+   * Requires:
+   * 1. @source directives in this CSS file to scan solid/ folder
+   * 2. resolve.alias in vite.config.ts pointing to source files
+   * See SKILL.md for details on monorepo Tailwind v4 setup */
+
+  .fp-kbd-hint {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: oklch(var(--color-base-200));
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: monospace;
+  }
+
+  /* ========================================
+   * Button Components
+   * ======================================== */
+
+  .fp-btn {
+    padding: 6px 16px;
+    background: oklch(var(--color-primary));
+    color: oklch(var(--color-primary-content));
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .fp-btn:hover {
+    background: oklch(var(--color-primary) / 0.9);
+  }
+
+  .fp-btn-secondary {
+    padding: 6px 16px;
+    background: oklch(var(--color-neutral));
+    color: oklch(var(--color-neutral-content));
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .fp-btn-secondary:hover {
+    background: oklch(var(--color-neutral) / 0.9);
+  }
+
+  .fp-btn-group {
+    display: flex;
+  }
+
+  .fp-btn-group .fp-btn {
+    flex: 1;
+  }
+
+  .fp-btn-group .fp-btn:not(:last-child) {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+  }
+
+  .fp-btn-group .fp-btn:not(:first-child) {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+  }
+
+  /* ========================================
+   * Form Controls
+   * ======================================== */
+
+  .fp-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: oklch(var(--color-base-content) / 0.7);
+  }
+
+  .fp-slider {
+    width: 100%;
+    height: 8px;
+    background: oklch(var(--color-base-300));
+    border-radius: 4px;
+    appearance: none;
+  }
+
+  .fp-slider::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    background: oklch(var(--color-primary));
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .fp-slider-value {
+    font-size: 0.75rem;
+    color: oklch(var(--color-base-content) / 0.6);
+    min-width: 35px;
+    text-align: right;
+  }
+
+  .fp-checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .fp-checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: oklch(var(--color-primary));
+  }
+
+  .fp-checkbox-row label {
+    font-size: 0.75rem;
+    color: oklch(var(--color-base-content) / 0.8);
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .fp-select {
+    height: 2rem;
+    min-height: 2rem;
+    padding-left: 0.75rem;
+    padding-right: 2rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    border-radius: var(--rounded-btn, 0.5rem);
+    border: 1px solid oklch(var(--color-base-content) / 0.2);
+    background-color: oklch(var(--color-base-100));
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 0.5rem center;
+    background-repeat: no-repeat;
+    background-size: 1.5em 1.5em;
+  }
+
+  .fp-control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .fp-control-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  /* ========================================
+   * Floor List
+   * ======================================== */
+
+  .fp-floor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .fp-floor-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 0;
+  }
+
+  .fp-floor-item input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+  }
+
+  .fp-floor-item label {
+    font-size: 0.75rem;
+    color: oklch(var(--color-base-content));
+    cursor: pointer;
+    flex: 1;
+  }
+
+  .fp-floor-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 8px;
+  }
+
+  .fp-no-floors {
+    font-size: 0.75rem;
+    color: oklch(var(--color-base-content) / 0.5);
+    font-style: italic;
+    padding: 8px 0;
+  }
+
+  /* ========================================
+   * Section Content
+   * ======================================== */
+
+  .fp-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    cursor: pointer;
+    user-select: none;
+    background: oklch(var(--color-base-200));
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: oklch(var(--color-base-content));
+    transition: background 0.2s;
+  }
+
+  .fp-section-header:hover {
+    background: oklch(var(--color-base-300));
+  }
+
+  .fp-section-header::after {
+    content: '▼';
+    font-size: 0.75rem;
+    transition: transform 0.2s;
+  }
+
+  .fp-control-section.collapsed .fp-section-header::after {
+    transform: rotate(-90deg);
+  }
+
+  .fp-section-content {
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .fp-control-section.collapsed .fp-section-content {
+    display: none;
+  }
+
+  /* ========================================
+   * Dialog Components
+   * ======================================== */
+
+  .fp-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 400;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+
+  .fp-dialog-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .fp-dialog {
+    background: oklch(var(--color-base-100));
+    border-radius: var(--rounded-box, 1rem);
+    padding: 24px;
+    max-width: 28rem;
+    width: 90%;
+    box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  }
+
+  .fp-dialog-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+  }
+
+  .fp-dialog-field {
+    margin-bottom: 12px;
+  }
+
+  .fp-dialog-field label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .fp-dialog-field input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid oklch(var(--color-base-content) / 0.2);
+    border-radius: var(--rounded-btn, 0.5rem);
+    background: oklch(var(--color-base-100));
+    font-size: 0.875rem;
+  }
+
+  .fp-dialog-row {
+    display: flex;
+    gap: 12px;
+  }
+
+  .fp-dialog-row .fp-dialog-field {
+    flex: 1;
+  }
+
+  .fp-dialog-error {
+    color: oklch(var(--color-error));
+    font-size: 0.875rem;
+    margin-top: 8px;
+  }
+
+  .fp-dialog-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 24px;
+  }
+
+  .fp-dialog-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: var(--rounded-btn, 0.5rem);
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+
+  .fp-dialog-btn-cancel {
+    background: transparent;
+    color: oklch(var(--color-base-content));
+  }
+
+  .fp-dialog-btn-cancel:hover {
+    background: oklch(var(--color-base-200));
+  }
+
+  .fp-dialog-btn-primary {
+    background: oklch(var(--color-primary));
+    color: oklch(var(--color-primary-content));
+  }
+
+  .fp-dialog-btn-primary:hover {
+    background: oklch(var(--color-primary) / 0.9);
+  }
+
+  .fp-dialog-btn-danger {
+    background: oklch(var(--color-error));
+    color: oklch(var(--color-error-content));
+  }
+
+  .fp-dialog-btn-danger:hover {
+    background: oklch(var(--color-error) / 0.9);
+  }
+
+  /* ========================================
+   * Confirm Dialog
+   * ======================================== */
+
+  .fp-confirm-dialog {
+    max-width: 28rem;
+  }
+
+  .fp-confirm-dialog-title {
+    font-size: 1.125rem;
+    font-weight: 700;
+  }
+
+  .fp-confirm-dialog-message {
+    padding: 16px 0;
+    color: oklch(var(--color-base-content) / 0.8);
+  }
+
+  .fp-confirm-dialog-warning {
+    padding: 12px;
+    background: oklch(var(--color-warning) / 0.2);
+    border-radius: var(--rounded-box, 0.5rem);
+    margin-top: 8px;
+  }
+
+  .fp-confirm-dialog-warning-title {
+    font-weight: 600;
+  }
+
+  .fp-confirm-dialog-warning-list {
+    list-style: disc;
+    list-style-position: inside;
+    font-size: 0.875rem;
+    margin-top: 4px;
+  }
+
+  /* ========================================
+   * 2D Overlay Components
+   * ======================================== */
+
+  .fp-overlay-2d-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: oklch(var(--color-base-200));
+    border-bottom: 1px solid oklch(var(--color-base-300));
+    font-size: 0.875rem;
+    font-weight: 500;
+  }
+
+  .fp-overlay-2d-close {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 50%;
+    cursor: pointer;
+  }
+
+  .fp-overlay-2d-close:hover {
+    background: oklch(var(--color-base-300));
+  }
+
+  .fp-overlay-2d-content {
+    flex: 1;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .fp-overlay-2d-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: oklch(var(--color-base-content) / 0.5);
+    font-size: 0.875rem;
+  }
+
+  .fp-overlay-2d-resize {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 16px;
+    height: 16px;
+    cursor: se-resize;
+  }
+
+  /* ========================================
+   * Keyboard Help
+   * ======================================== */
+
+  .fp-kbd {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    background: oklch(var(--color-base-200));
+    border: 1px solid oklch(var(--color-base-300));
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-family: monospace;
+  }
+}
+
+/* === Utility Layer - Custom utilities === */
+@layer utilities {
+  .transition-panel {
+    transition-property: transform, opacity, top, left, bottom, right;
+    transition-duration: 300ms;
+    transition-timing-function: ease;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: oklch(var(--color-base-200));
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: oklch(var(--color-base-300));
+    border-radius: 3px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: oklch(var(--color-neutral) / 0.5);
+  }
+}
+
+/* === High-specificity overrides (outside layers) === */
+/* These need to override Tailwind's base resets and ensure DaisyUI classes work */
+
+/* Collapse button overrides */
+.fp-editor-panel__collapse-btn {
+  background: #2d2d2d !important;
+  color: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__collapse-btn,
+body:not(.dark-theme) .fp-editor-panel__collapse-btn {
+  background: #e5e5e5 !important;
+  color: #333 !important;
+}
+
+.fp-editor-panel__collapse-btn:hover {
+  background: #3d3d3d !important;
+}
+
+[data-theme="light"] .fp-editor-panel__collapse-btn:hover,
+body:not(.dark-theme) .fp-editor-panel__collapse-btn:hover {
+  background: #d5d5d5 !important;
+}
+
+/* DaisyUI utility class overrides for dark theme (default) */
+.bg-base-100 { background-color: #1a1a1a !important; }
+.bg-base-200 { background-color: #252526 !important; }
+.bg-base-300 { background-color: #2d2d2d !important; }
+.text-base-content { color: #e0e0e0 !important; }
+.text-base-content\/60 { color: rgba(224, 224, 224, 0.6) !important; }
+.text-base-content\/50 { color: rgba(224, 224, 224, 0.5) !important; }
+.border-base-300 { border-color: #2d2d2d !important; }
+.border-base-content\/10 { border-color: rgba(224, 224, 224, 0.1) !important; }
+
+/* DaisyUI utility class overrides for light theme */
+[data-theme="light"] .bg-base-100,
+body:not(.dark-theme) .bg-base-100 { background-color: #ffffff !important; }
+
+[data-theme="light"] .bg-base-200,
+body:not(.dark-theme) .bg-base-200 { background-color: #f8f8f8 !important; }
+
+[data-theme="light"] .bg-base-300,
+body:not(.dark-theme) .bg-base-300 { background-color: #f0f0f0 !important; }
+
+[data-theme="light"] .text-base-content,
+body:not(.dark-theme) .text-base-content { color: #333333 !important; }
+
+[data-theme="light"] .text-base-content\/60,
+body:not(.dark-theme) .text-base-content\/60 { color: rgba(51, 51, 51, 0.6) !important; }
+
+[data-theme="light"] .text-base-content\/50,
+body:not(.dark-theme) .text-base-content\/50 { color: rgba(51, 51, 51, 0.5) !important; }
+
+[data-theme="light"] .border-base-300,
+body:not(.dark-theme) .border-base-300 { border-color: #f0f0f0 !important; }
+
+[data-theme="light"] .border-base-content\/10,
+body:not(.dark-theme) .border-base-content\/10 { border-color: rgba(51, 51, 51, 0.1) !important; }
+
+/* Hover state overrides */
+.hover\:bg-base-300:hover { background-color: #2d2d2d !important; }
+[data-theme="light"] .hover\:bg-base-300:hover,
+body:not(.dark-theme) .hover\:bg-base-300:hover { background-color: #f0f0f0 !important; }
+
+/* Warnings panel overrides */
+.fp-warnings-panel {
+  background: #3d3520 !important;
+  border: 1px solid #6b5c2d !important;
+  color: #e0d4b8 !important;
+}
+
+[data-theme="light"] .fp-warnings-panel,
+body:not(.dark-theme) .fp-warnings-panel {
+  background: #fff8e1 !important;
+  border-color: #ffd54f !important;
+  color: #5d4037 !important;
+}
+
+/* Editor panel status bar overrides */
+.fp-editor-panel__status {
+  background: #252526 !important;
+  border-top: 1px solid #404040 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__status,
+body:not(.dark-theme) .fp-editor-panel__status {
+  background: #f8f8f8 !important;
+  border-top-color: #e0e0e0 !important;
+}
+
+/* Properties panel overrides */
+.fp-properties-panel {
+  background: #1a1a1a !important;
+}
+
+[data-theme="light"] .fp-properties-panel,
+body:not(.dark-theme) .fp-properties-panel {
+  background: #ffffff !important;
+}
+
+/* Properties panel input/select overrides */
+.fp-properties-panel .input,
+.fp-properties-panel .select {
+  background: #252526 !important;
+}
+
+[data-theme="light"] .fp-properties-panel .input,
+[data-theme="light"] .fp-properties-panel .select,
+body:not(.dark-theme) .fp-properties-panel .input,
+body:not(.dark-theme) .fp-properties-panel .select {
+  background: #f8f8f8 !important;
+}
+
+/* Control panel overrides */
+.fp-control-panel {
+  background: #1a1a1a !important;
+}
+
+[data-theme="light"] .fp-control-panel,
+body:not(.dark-theme) .fp-control-panel {
+  background: #ffffff !important;
+}
+
+/* Control panel button overrides */
+.fp-control-panel .btn {
+  background: #3d3d3d !important;
+  color: #e0e0e0 !important;
+  border-color: #4d4d4d !important;
+}
+
+.fp-control-panel .btn:hover {
+  background: #4d4d4d !important;
+}
+
+.fp-control-panel .btn-ghost {
+  background: transparent !important;
+}
+
+.fp-control-panel .btn-ghost:hover {
+  background: #3d3d3d !important;
+}
+
+[data-theme="light"] .fp-control-panel .btn,
+body:not(.dark-theme) .fp-control-panel .btn {
+  background: #e8e8e8 !important;
+  color: #333333 !important;
+  border-color: #d0d0d0 !important;
+}
+
+[data-theme="light"] .fp-control-panel .btn:hover,
+body:not(.dark-theme) .fp-control-panel .btn:hover {
+  background: #d8d8d8 !important;
+}
+
+[data-theme="light"] .fp-control-panel .btn-ghost,
+body:not(.dark-theme) .fp-control-panel .btn-ghost {
+  background: transparent !important;
+}
+
+[data-theme="light"] .fp-control-panel .btn-ghost:hover,
+body:not(.dark-theme) .fp-control-panel .btn-ghost:hover {
+  background: #e8e8e8 !important;
+}
+
+/* Control panel select overrides */
+.fp-control-panel .select {
+  background: #252526 !important;
+  color: #e0e0e0 !important;
+  border-color: #4d4d4d !important;
+}
+
+[data-theme="light"] .fp-control-panel .select,
+body:not(.dark-theme) .fp-control-panel .select {
+  background: #f8f8f8 !important;
+  color: #333333 !important;
+  border-color: #d0d0d0 !important;
+}
+
+/* Control panel checkbox overrides */
+.fp-control-panel .checkbox {
+  border-color: #4d4d4d !important;
+}
+
+[data-theme="light"] .fp-control-panel .checkbox,
+body:not(.dark-theme) .fp-control-panel .checkbox {
+  border-color: #d0d0d0 !important;
+}
+
+/* ============================================================================
+ * COMPREHENSIVE HIGH-SPECIFICITY OVERRIDES
+ * These override Tailwind v4's base reset which sets transparent backgrounds
+ * ============================================================================ */
+
+/* --- Editor Panel --- */
+.fp-editor-panel {
+  background: #1a1a1a !important;
+  border-right-color: #404040 !important;
+}
+
+.fp-editor-panel__header {
+  background: #252526 !important;
+  border-bottom: 1px solid #404040 !important;
+}
+
+.fp-editor-panel__status {
+  background: #252526 !important;
+  border-top: 1px solid #404040 !important;
+}
+
+.fp-editor-panel__mode-badge {
+  background: #3d3d3d !important;
+}
+
+.fp-editor-panel__mode-badge--readonly {
+  background: #3d3d3d !important;
+}
+
+.fp-editor-panel__mode-badge--editable {
+  background: rgba(34, 197, 94, 0.2) !important;
+}
+
+.fp-editor-panel__login-btn {
+  background: rgba(59, 130, 246, 0.1) !important;
+}
+
+.fp-editor-panel__login-btn:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+}
+
+[data-theme="light"] .fp-editor-panel,
+body:not(.dark-theme) .fp-editor-panel {
+  background: #ffffff !important;
+  border-right-color: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__header,
+body:not(.dark-theme) .fp-editor-panel__header {
+  background: #f0f0f0 !important;
+  border-bottom-color: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__status,
+body:not(.dark-theme) .fp-editor-panel__status {
+  background: #f8f8f8 !important;
+  border-top-color: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-editor-panel__mode-badge,
+[data-theme="light"] .fp-editor-panel__mode-badge--readonly,
+body:not(.dark-theme) .fp-editor-panel__mode-badge,
+body:not(.dark-theme) .fp-editor-panel__mode-badge--readonly {
+  background: #e0e0e0 !important;
+}
+
+/* --- 2D Overlay Panel --- */
+.fp-overlay-2d {
+  background: #1a1a1a !important;
+}
+
+.fp-overlay-2d-header {
+  background: #252526 !important;
+}
+
+.fp-overlay-2d-close:hover {
+  background: #3d3d3d !important;
+}
+
+[data-theme="light"] .fp-overlay-2d,
+body:not(.dark-theme) .fp-overlay-2d {
+  background: #ffffff !important;
+}
+
+[data-theme="light"] .fp-overlay-2d-header,
+body:not(.dark-theme) .fp-overlay-2d-header {
+  background: #f0f0f0 !important;
+}
+
+[data-theme="light"] .fp-overlay-2d-close:hover,
+body:not(.dark-theme) .fp-overlay-2d-close:hover {
+  background: #e0e0e0 !important;
+}
+
+/* --- Floor Summary Panel --- */
+.fp-floor-summary-panel {
+  background: #1a1a1a !important;
+}
+
+[data-theme="light"] .fp-floor-summary-panel,
+body:not(.dark-theme) .fp-floor-summary-panel {
+  background: #ffffff !important;
+}
+
+/* --- Selection Info Panel --- */
+.fp-selection-info {
+  background: #1a1a1a !important;
+}
+
+[data-theme="light"] .fp-selection-info,
+body:not(.dark-theme) .fp-selection-info {
+  background: #ffffff !important;
+}
+
+/* --- Section Headers/Content --- */
+.fp-section-header {
+  background: #252526 !important;
+}
+
+.fp-section-header:hover {
+  background: #3d3d3d !important;
+}
+
+.fp-control-section .collapse-title {
+  background: #252526 !important;
+}
+
+[data-theme="light"] .fp-section-header,
+[data-theme="light"] .fp-control-section .collapse-title,
+body:not(.dark-theme) .fp-section-header,
+body:not(.dark-theme) .fp-control-section .collapse-title {
+  background: #f0f0f0 !important;
+}
+
+[data-theme="light"] .fp-section-header:hover,
+body:not(.dark-theme) .fp-section-header:hover {
+  background: #e0e0e0 !important;
+}
+
+/* --- Dialog Elements --- */
+.fp-dialog {
+  background: #1a1a1a !important;
+}
+
+.fp-dialog-input {
+  background: #252526 !important;
+}
+
+.fp-dialog-btn-cancel:hover {
+  background: #3d3d3d !important;
+}
+
+.fp-dialog-btn-primary {
+  background: #3b82f6 !important;
+}
+
+.fp-dialog-btn-primary:hover {
+  background: rgba(59, 130, 246, 0.9) !important;
+}
+
+.fp-dialog-btn-danger {
+  background: #ef4444 !important;
+}
+
+.fp-dialog-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.9) !important;
+}
+
+.fp-confirm-dialog-warning {
+  background: rgba(234, 179, 8, 0.2) !important;
+}
+
+[data-theme="light"] .fp-dialog,
+body:not(.dark-theme) .fp-dialog {
+  background: #ffffff !important;
+}
+
+[data-theme="light"] .fp-dialog-input,
+body:not(.dark-theme) .fp-dialog-input {
+  background: #f8f8f8 !important;
+}
+
+[data-theme="light"] .fp-dialog-btn-cancel:hover,
+body:not(.dark-theme) .fp-dialog-btn-cancel:hover {
+  background: #e0e0e0 !important;
+}
+
+/* --- Header Bar Elements --- */
+.fp-file-dropdown-trigger:hover,
+.fp-editor-toggle:hover,
+.fp-theme-toggle:hover,
+.fp-command-palette-trigger:hover {
+  background: #3d3d3d !important;
+}
+
+.fp-editor-toggle.active {
+  background: rgba(59, 130, 246, 0.15) !important;
+}
+
+.fp-shortcut-hint,
+.fp-shortcut-kbd {
+  background: #3d3d3d !important;
+}
+
+[data-theme="light"] .fp-file-dropdown-trigger:hover,
+[data-theme="light"] .fp-editor-toggle:hover,
+[data-theme="light"] .fp-theme-toggle:hover,
+[data-theme="light"] .fp-command-palette-trigger:hover,
+body:not(.dark-theme) .fp-file-dropdown-trigger:hover,
+body:not(.dark-theme) .fp-editor-toggle:hover,
+body:not(.dark-theme) .fp-theme-toggle:hover,
+body:not(.dark-theme) .fp-command-palette-trigger:hover {
+  background: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-shortcut-hint,
+[data-theme="light"] .fp-shortcut-kbd,
+body:not(.dark-theme) .fp-shortcut-hint,
+body:not(.dark-theme) .fp-shortcut-kbd {
+  background: #e0e0e0 !important;
+}
+
+/* --- Legacy Button Classes (fp-btn) --- */
+.fp-btn {
+  background: #3b82f6 !important;
+  color: #ffffff !important;
+}
+
+.fp-btn:hover {
+  background: rgba(59, 130, 246, 0.9) !important;
+}
+
+.fp-btn-secondary {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+}
+
+.fp-btn-secondary:hover {
+  background: rgba(107, 114, 128, 0.9) !important;
+}
+
+/* --- Slider/Range Elements --- */
+.fp-slider {
+  background: #3d3d3d !important;
+}
+
+.fp-slider::-webkit-slider-thumb {
+  background: #3b82f6 !important;
+}
+
+[data-theme="light"] .fp-slider,
+body:not(.dark-theme) .fp-slider {
+  background: #e0e0e0 !important;
+}
+
+/* --- Scrollbar Styling --- */
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #252526 !important;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #3d3d3d !important;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 114, 128, 0.5) !important;
+}
+
+[data-theme="light"] .scrollbar-thin::-webkit-scrollbar-track,
+body:not(.dark-theme) .scrollbar-thin::-webkit-scrollbar-track {
+  background: #f0f0f0 !important;
+}
+
+[data-theme="light"] .scrollbar-thin::-webkit-scrollbar-thumb,
+body:not(.dark-theme) .scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #d0d0d0 !important;
+}
+
+/* --- Error/Warning Banners --- */
+.fp-error-banner {
+  background: #ef4444 !important;
+  color: #ffffff !important;
+}
+
+/* Note: .fp-warnings-panel already has overrides above */

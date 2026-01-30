@@ -126,6 +126,7 @@ export function createDslEditor(config: DslEditorConfig): DslEditorInstance {
     theme: config.theme ?? 'vs-dark',
     fontSize: config.fontSize ?? 13,
     lineNumbers: 'on',
+    lineNumbersMinChars: 1, // Dynamic width based on actual line count
     wordWrap: 'on',
     tabSize: 2,
     insertSpaces: true,
@@ -133,7 +134,7 @@ export function createDslEditor(config: DslEditorConfig): DslEditorInstance {
     folding: true,
     foldingStrategy: 'indentation',
     glyphMargin: true, // For error markers
-    lineDecorationsWidth: 8,
+    lineDecorationsWidth: 4,
   });
   
   // Setup change callback

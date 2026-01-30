@@ -74,7 +74,7 @@ This project separates 3D rendering from 2D UI via core classes and Solid.js com
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ For Viewer (read-only)                                       │
+│ For Viewer (read-only): mode: 'viewer'                       │
 ├─────────────────────────────────────────────────────────────┤
 │ FloorplanAppCore (3D-only)                                   │
 │ ├── BaseViewer (Three.js scene, camera, renderer, controls) │
@@ -87,17 +87,17 @@ This project separates 3D rendering from 2D UI via core classes and Solid.js com
 └─────────────────────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────┐
-│ For Editor (full editing capabilities)                       │
+│ For Editor (full editing): mode: 'editor'                    │
 ├─────────────────────────────────────────────────────────────┤
 │ InteractiveEditorCore extends FloorplanAppCore               │
 │ ├── Selection → DSL bidirectional sync                      │
 │ ├── Parse error state management                            │
 │ └── Editor-specific events (selectionChange, parseError)    │
 │                                                             │
-│ EditorUI (Solid.js root via createEditorUI)                 │
+│ FloorplanUI (Solid.js root via createFloorplanUI)           │
 │ ├── HeaderBar, FileDropdown, CommandPalette                 │
 │ ├── PropertiesPanel for single selection editing            │
-│ ├── AddRoomDialog, DeleteConfirmDialog, ExportMenu          │
+│ ├── AddRoomDialog, DeleteConfirmDialog (editor mode only)   │
 │ └── Parse error banner                                      │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -140,10 +140,11 @@ appCore.loadFromDsl(newContent);  // UI filename signal updates
 appCore.handleThemeToggle();       // UI theme signal updates
 ```
 
-### Using InteractiveEditorCore + EditorUI (Editor)
+### Using InteractiveEditorCore + Unified createFloorplanUI (Editor)
 
 ```typescript
-import { InteractiveEditorCore, createEditorUI } from 'floorplan-viewer-core';
+import { InteractiveEditorCore } from 'floorplan-viewer-core';
+import { createFloorplanUI } from 'floorplan-viewer-core/ui/solid';
 
 const editorCore = new InteractiveEditorCore({
   containerId: 'app',
@@ -151,19 +152,39 @@ const editorCore = new InteractiveEditorCore({
   selectionDebug: false,
 });
 
-const editorUI = createEditorUI(editorCore, {
+// Use unified factory with mode: 'editor'
+const editorUI = createFloorplanUI(editorCore, {
+  mode: 'editor',  // Enables editor-specific features
   initialFilename: 'Untitled.floorplan',
   initialEditorOpen: true,
   commands: [...],
   onPropertyChange: (entityType, entityId, property, value) => { ... },
   onDelete: (entityType, entityId) => { ... },
   getEntityData: (entityType, entityId) => { ... },
+  onAddRoom: (room) => { ... },
 });
 
 // Editor-specific events
 editorCore.on('selectionChange', ({ selection }) => { ... });
 editorCore.on('parseError', ({ hasError, errorMessage }) => { ... });
 ```
+
+### DaisyUI Theming
+
+The UI uses DaisyUI v5 with Tailwind CSS v4 for theming. Theme switching works via `data-theme` attribute:
+
+```typescript
+// Theme is set on document.documentElement by FloorplanUI
+document.documentElement.setAttribute('data-theme', 'dark'); // or 'light'
+
+// CSS uses DaisyUI semantic color variables
+.my-panel {
+  background: oklch(var(--color-base-100));  // Theme-aware background
+  color: oklch(var(--color-base-content));   // Theme-aware text
+}
+```
+
+For DaisyUI component patterns and gotchas, see `.cursor/skills/solidjs-daisyui/SKILL.md`.
 
 ### File Structure
 
@@ -172,8 +193,8 @@ floorplan-viewer-core/src/
 ├── floorplan-app-core.ts        # 3D viewer core with event emitter
 ├── interactive-editor-core.ts   # Editor core (extends FloorplanAppCore)
 └── ui/solid/
-    ├── FloorplanUI.tsx          # Viewer Solid root component
-    ├── EditorUI.tsx             # Editor Solid root component
+    ├── FloorplanUI.tsx          # Unified Solid root (mode: 'viewer' | 'editor')
+    ├── EditorUI.tsx             # DEPRECATED: delegates to FloorplanUI
     ├── CommandPalette.tsx       # Standalone component
     ├── FileDropdown.tsx         # Standalone component
     ├── HeaderBar.tsx            # Standalone component

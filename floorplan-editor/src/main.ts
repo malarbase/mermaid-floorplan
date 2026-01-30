@@ -13,6 +13,9 @@
  * - Export to multiple formats
  */
 
+// Import Tailwind CSS (processed by @tailwindcss/vite plugin)
+import '../../floorplan-viewer-core/src/ui/tailwind-styles.css';
+
 import { 
   createDslEditor, 
   Overlay2DManager,
@@ -20,20 +23,22 @@ import {
   createShortcutInfoUI,
   injectStyles,
   InteractiveEditorCore,
-  createEditorUI,
   createDebugLogger,
   getLayoutManager,
-  type EditorUIAPI,
+  createFileCommands,
+  createViewCommands,
+  cls,
 } from 'floorplan-viewer-core';
+import { createFloorplanUI, type FloorplanUIAPI } from 'floorplan-viewer-core/ui/solid';
 import { EmptyFileSystem, URI, type LangiumDocument } from 'langium';
 import { createFloorplansServices, convertFloorplanToJson, type Floorplan } from 'floorplan-language';
 import { EditorViewerSync } from './editor-viewer-sync.js';
 import { dslPropertyEditor } from './dsl-generator.js';
-import type { JsonExport, JsonRoom, JsonConnection } from 'floorplan-3d-core';
+import { getUIThemeMode, type JsonExport, type JsonRoom, type JsonConnection } from 'floorplan-3d-core';
 
 const log = createDebugLogger('[Editor]');
 
-// Inject shared styles
+// Inject legacy styles for components not yet migrated to Tailwind
 injectStyles();
 
 // Initialize layout manager for coordinating panel positions
@@ -170,66 +175,82 @@ document.body.appendChild(shortcutInfoUI.element);
 // Editor UI (Solid.js)
 // ============================================================================
 
-let editorUI: EditorUIAPI;
+let editorUI: FloorplanUIAPI;
 
 function initEditorUI() {
-  editorUI = createEditorUI(editorCore, {
+  // Build commands using shared utilities (with icons, descriptions, execute callbacks)
+  const fileCommands = createFileCommands({
+    onOpenFile: () => editorCore.handleFileAction('open-file'),
+    onSave: () => editorCore.handleFileAction('save-floorplan'),
+    onExportJson: () => editorCore.handleFileAction('export-json'),
+    onExportGlb: () => editorCore.handleFileAction('export-glb'),
+  });
+
+  const viewCommands = createViewCommands({
+    onToggleTheme: () => editorCore.handleThemeToggle(),
+  });
+
+  // Editor-specific commands
+  const editorSpecificCommands = [
+    {
+      id: 'view.toggle-editor',
+      label: 'Toggle Editor Panel',
+      description: 'Show/hide code editor',
+      category: 'View',
+      shortcut: 'E',
+      icon: '📝',
+      execute: () => {
+        editorCore.toggleEditorPanel();
+        updateEditorPanelPosition();
+      },
+    },
+    {
+      id: 'view.toggle-2d-overlay',
+      label: 'Toggle 2D Overlay',
+      description: 'Show/hide mini-map',
+      category: 'View',
+      shortcut: 'M',
+      icon: '🗺️',
+      execute: () => {
+        const overlay2d = document.getElementById('overlay-2d');
+        const show2dOverlay = document.getElementById('show-2d-overlay') as HTMLInputElement;
+        if (overlay2d && show2dOverlay) {
+          show2dOverlay.checked = !show2dOverlay.checked;
+          const isVisible = show2dOverlay.checked;
+          overlay2d.classList.toggle('visible', isVisible);
+          layoutManager.setOverlay2DVisible(isVisible);
+          if (isVisible) overlay2DManager.render();
+        }
+      },
+    },
+    {
+      id: 'help.shortcuts',
+      label: 'Show Keyboard Shortcuts',
+      category: 'Help',
+      shortcut: 'H',
+      icon: '⌨️',
+      execute: () => {
+        const keyboardHelpOverlay = document.getElementById('keyboard-help-overlay');
+        if (keyboardHelpOverlay) keyboardHelpOverlay.style.display = 'flex';
+      },
+    },
+  ];
+
+  // Combine all commands
+  const commands = [
+    ...fileCommands,
+    ...viewCommands,
+    ...editorSpecificCommands,
+  ];
+
+  // Use unified createFloorplanUI with mode: 'editor'
+  editorUI = createFloorplanUI(editorCore, {
+    mode: 'editor',
     initialFilename: 'Untitled.floorplan',
     initialEditorOpen: true,  // Editor panel is open by default
     initialTheme: 'dark',
     headerAutoHide: true,  // Enable auto-hide like viewer
-    
-    // Commands for command palette (organized by category)
-    commands: [
-      { id: 'open', label: 'Open File', shortcut: '⌘O', category: 'File' },
-      { id: 'save', label: 'Save Floorplan', shortcut: '⌘S', category: 'File' },
-      { id: 'export-json', label: 'Export as JSON', category: 'File' },
-      { id: 'export-glb', label: 'Export as GLB', category: 'File' },
-      { id: 'toggle-theme', label: 'Toggle Theme', shortcut: 'T', category: 'View' },
-      { id: 'toggle-editor', label: 'Toggle Editor Panel', shortcut: 'E', category: 'View' },
-      { id: 'toggle-2d-overlay', label: 'Toggle 2D Overlay', shortcut: 'M', category: 'View' },
-      { id: 'help', label: 'Show Keyboard Shortcuts', shortcut: 'H', category: 'Help' },
-    ],
-    
-    // Command execution callback
-    onCommandExecute: (commandId) => {
-      switch (commandId) {
-        case 'toggle-theme':
-          editorCore.handleThemeToggle();
-          break;
-        case 'toggle-editor':
-          editorCore.toggleEditorPanel();
-          updateEditorPanelPosition();
-          break;
-        case 'toggle-2d-overlay':
-          const overlay2d = document.getElementById('overlay-2d');
-          const show2dOverlay = document.getElementById('show-2d-overlay') as HTMLInputElement;
-          if (overlay2d && show2dOverlay) {
-            show2dOverlay.checked = !show2dOverlay.checked;
-            const isVisible = show2dOverlay.checked;
-            overlay2d.classList.toggle('visible', isVisible);
-            layoutManager.setOverlay2DVisible(isVisible);
-            if (isVisible) overlay2DManager.render();
-          }
-          break;
-        case 'save':
-          editorCore.handleFileAction('save-floorplan');
-          break;
-        case 'open':
-          editorCore.handleFileAction('open-file');
-          break;
-        case 'export-json':
-          editorCore.handleFileAction('export-json');
-          break;
-        case 'export-glb':
-          editorCore.handleFileAction('export-glb');
-          break;
-        case 'help':
-          const keyboardHelpOverlay = document.getElementById('keyboard-help-overlay');
-          if (keyboardHelpOverlay) keyboardHelpOverlay.style.display = 'flex';
-          break;
-      }
-    },
+    commands,
     
     // Property change callback
     onPropertyChange: (entityType, _entityId, property, value) => {
@@ -320,6 +341,47 @@ function initEditorUI() {
       }
       
       return {};
+    },
+    
+    // Add room callback - inserts room DSL into the editor
+    onAddRoom: (room) => {
+      const currentContent = dslEditor.getValue();
+      
+      // Find the first floor block to add the room to
+      const floorMatch = currentContent.match(/floor\s+(\w+)\s*\{/);
+      if (!floorMatch) {
+        console.warn('No floor found in DSL');
+        return;
+      }
+      
+      // Find the position to insert (before the closing brace of the floor)
+      const floorStartIndex = currentContent.indexOf(floorMatch[0]);
+      
+      // Find matching closing brace
+      let braceCount = 0;
+      let insertIndex = -1;
+      for (let i = floorStartIndex + floorMatch[0].length; i < currentContent.length; i++) {
+        if (currentContent[i] === '{') braceCount++;
+        if (currentContent[i] === '}') {
+          if (braceCount === 0) {
+            insertIndex = i;
+            break;
+          }
+          braceCount--;
+        }
+      }
+      
+      if (insertIndex === -1) {
+        console.warn('Could not find insertion point');
+        return;
+      }
+      
+      // Generate room DSL
+      const roomDsl = `    room ${room.name} at (${room.x}, ${room.y}) size (${room.width} x ${room.height}) walls [top: solid, right: solid, bottom: solid, left: solid]\n  `;
+      
+      // Insert the room
+      const newContent = currentContent.slice(0, insertIndex) + roomDsl + currentContent.slice(insertIndex);
+      dslEditor.setValue(newContent);
     },
   });
 }
@@ -682,16 +744,19 @@ function updateEditorPanelPosition() {
   if (!editorPanel) return;
   editorPanel.style.width = editorPanelWidth + 'px';
   
+  // Set transform for panel visibility
   if (editorPanelOpen) {
     editorPanel.classList.add('open');
     editorPanel.style.transform = 'translateX(0)';
   } else {
     editorPanel.classList.remove('open');
-    editorPanel.style.transform = `translateX(-${editorPanelWidth}px)`;
+    editorPanel.style.transform = `translateX(-100%)`;
   }
   
+  // Update toggle button text/title (button is positioned by CSS)
   if (editorToggle) {
     editorToggle.textContent = editorPanelOpen ? '◀' : '▶';
+    editorToggle.title = editorPanelOpen ? 'Collapse panel' : 'Expand panel';
   }
   
   // Toggle body class and set CSS variables
@@ -738,7 +803,10 @@ document.addEventListener('mousemove', (e) => {
   const newWidth = Math.max(300, Math.min(window.innerWidth * 0.8, e.clientX));
   editorPanelWidth = newWidth;
   editorPanel.style.width = newWidth + 'px';
-  editorPanel.style.transform = 'translateX(0)';
+  // Keep toggle button at panel edge during resize (using transform)
+  if (editorToggle) {
+    editorToggle.style.transform = `translateX(${newWidth}px) translateY(-50%)`;
+  }
   document.documentElement.style.setProperty('--editor-width', `${newWidth}px`);
   // Update layout manager to reposition all panels during resize
   layoutManager.setEditorWidth(newWidth);
@@ -813,11 +881,11 @@ const themeToggleBtn = document.getElementById('theme-toggle-btn');
 
 // Update sidebar button text when theme changes (from any source)
 function updateThemeButton() {
-  const theme = editorCore.theme;
+  const uiTheme = getUIThemeMode(editorCore.theme);
   if (themeToggleBtn) {
-    themeToggleBtn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+    themeToggleBtn.textContent = uiTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
   }
-  document.body.classList.toggle('dark-theme', theme === 'dark');
+  document.body.classList.toggle('dark-theme', uiTheme === 'dark');
 }
 
 // Update Monaco editor theme to match app theme
@@ -829,14 +897,14 @@ function updateEditorTheme(theme: 'light' | 'dark'): void {
 themeToggleBtn?.addEventListener('click', () => {
   editorCore.handleThemeToggle();
   updateThemeButton();
-  updateEditorTheme(editorCore.theme as 'light' | 'dark');
+  updateEditorTheme(getUIThemeMode(editorCore.theme));
   overlay2DManager.render();
 });
 
 // Listen for theme changes from other sources (e.g., header button)
 editorCore.on('themeChange', () => {
   updateThemeButton();
-  updateEditorTheme(editorCore.theme as 'light' | 'dark');
+  updateEditorTheme(getUIThemeMode(editorCore.theme));
   overlay2DManager.render();
 });
 
@@ -869,11 +937,12 @@ function updateFloorListUI() {
     const floorId = floor.name || `floor-${index}`;
     const visible = floorManager ? floorManager.getFloorVisibility(floorId) : true;
     
-    const item = document.createElement('div');
-    item.className = 'fp-floor-item';
+    const item = document.createElement('label');
+    item.className = cls.checkbox.wrapper;
     
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
+    checkbox.className = cls.checkbox.input;
     checkbox.id = `floor-toggle-${index}`;
     checkbox.checked = visible;
     checkbox.addEventListener('change', () => {
@@ -883,12 +952,12 @@ function updateFloorListUI() {
       }
     });
     
-    const label = document.createElement('label');
-    label.htmlFor = `floor-toggle-${index}`;
-    label.textContent = floorId;
+    const labelText = document.createElement('span');
+    labelText.className = cls.checkbox.label;
+    labelText.textContent = floorId;
     
     item.appendChild(checkbox);
-    item.appendChild(label);
+    item.appendChild(labelText);
     floorList.appendChild(item);
   });
 }
@@ -1045,132 +1114,24 @@ initEditorUI();
 initEditorViewerSync();
 
 // ============================================================================
-// Add Room Button Wiring
+// Add Room Button Wiring (uses Solid.js dialog from unified UI)
 // ============================================================================
 
 const addRoomBtn = document.getElementById('add-room-btn');
-const addRoomDialog = document.getElementById('add-room-dialog');
-const addRoomCancel = document.getElementById('add-room-cancel');
-const addRoomConfirm = document.getElementById('add-room-confirm');
-const addRoomError = document.getElementById('add-room-error');
-const roomNameInput = document.getElementById('room-name') as HTMLInputElement;
-const roomXInput = document.getElementById('room-x') as HTMLInputElement;
-const roomYInput = document.getElementById('room-y') as HTMLInputElement;
-const roomWidthInput = document.getElementById('room-width') as HTMLInputElement;
-const roomHeightInput = document.getElementById('room-height') as HTMLInputElement;
 
-function showAddRoomDialog() {
-  if (!addRoomDialog) return;
-  addRoomDialog.classList.add('visible');
-  roomNameInput?.focus();
-  if (addRoomError) addRoomError.textContent = '';
-}
-
-function hideAddRoomDialog() {
-  addRoomDialog?.classList.remove('visible');
-  if (roomNameInput) roomNameInput.value = '';
-  if (roomXInput) roomXInput.value = '0';
-  if (roomYInput) roomYInput.value = '0';
-  if (roomWidthInput) roomWidthInput.value = '4';
-  if (roomHeightInput) roomHeightInput.value = '4';
-}
-
-function getExistingRoomNames(): Set<string> {
-  const names = new Set<string>();
+// Wire up the HTML Add Room button to show the Solid.js dialog
+addRoomBtn?.addEventListener('click', () => {
+  // Update existing room names for validation before showing dialog
   if (currentJsonData) {
+    const names = new Set<string>();
     for (const floor of currentJsonData.floors) {
       for (const room of floor.rooms) {
         names.add(room.name);
       }
     }
+    editorUI.setExistingRoomNames(names);
   }
-  return names;
-}
-
-function addRoomToDsl(roomName: string, x: number, y: number, width: number, height: number) {
-  const currentContent = dslEditor.getValue();
-  
-  // Find the first floor block to add the room to
-  const floorMatch = currentContent.match(/floor\s+(\w+)\s*\{/);
-  if (!floorMatch) {
-    if (addRoomError) addRoomError.textContent = 'No floor found in DSL';
-    return;
-  }
-  
-  // Find the position to insert (before the closing brace of the floor)
-  const floorStartIndex = currentContent.indexOf(floorMatch[0]);
-  
-  // Find matching closing brace (simple approach - find next floor or end of floors section)
-  let braceCount = 0;
-  let insertIndex = -1;
-  for (let i = floorStartIndex + floorMatch[0].length; i < currentContent.length; i++) {
-    if (currentContent[i] === '{') braceCount++;
-    if (currentContent[i] === '}') {
-      if (braceCount === 0) {
-        insertIndex = i;
-        break;
-      }
-      braceCount--;
-    }
-  }
-  
-  if (insertIndex === -1) {
-    if (addRoomError) addRoomError.textContent = 'Could not find insertion point';
-    return;
-  }
-  
-  // Generate room DSL
-  const roomDsl = `    room ${roomName} at (${x}, ${y}) size (${width} x ${height}) walls [top: solid, right: solid, bottom: solid, left: solid]\n  `;
-  
-  // Insert the room
-  const newContent = currentContent.slice(0, insertIndex) + roomDsl + currentContent.slice(insertIndex);
-  
-  dslEditor.setValue(newContent);
-  hideAddRoomDialog();
-}
-
-addRoomBtn?.addEventListener('click', showAddRoomDialog);
-addRoomCancel?.addEventListener('click', hideAddRoomDialog);
-
-addRoomConfirm?.addEventListener('click', () => {
-  const roomName = roomNameInput?.value.trim() ?? '';
-  const x = parseFloat(roomXInput?.value ?? '0') || 0;
-  const y = parseFloat(roomYInput?.value ?? '0') || 0;
-  const width = parseFloat(roomWidthInput?.value ?? '4') || 4;
-  const height = parseFloat(roomHeightInput?.value ?? '4') || 4;
-  
-  // Validate room name
-  if (!roomName) {
-    if (addRoomError) addRoomError.textContent = 'Room name is required';
-    return;
-  }
-  
-  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(roomName)) {
-    if (addRoomError) addRoomError.textContent = 'Room name must start with a letter and contain only letters, numbers, and underscores';
-    return;
-  }
-  
-  const existingNames = getExistingRoomNames();
-  if (existingNames.has(roomName)) {
-    if (addRoomError) addRoomError.textContent = `Room '${roomName}' already exists`;
-    return;
-  }
-  
-  if (width < 0.5 || height < 0.5) {
-    if (addRoomError) addRoomError.textContent = 'Width and height must be at least 0.5';
-    return;
-  }
-  
-  addRoomToDsl(roomName, x, y, width, height);
-});
-
-// Close dialog on Escape
-addRoomDialog?.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') hideAddRoomDialog();
-  if (e.key === 'Enter' && e.target !== addRoomConfirm) {
-    e.preventDefault();
-    addRoomConfirm?.click();
-  }
+  editorUI.showAddRoomDialog();
 });
 
 // ============================================================================

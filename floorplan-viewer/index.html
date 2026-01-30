@@ -5,21 +5,11 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Floorplan 3D Viewer</title>
-    <link rel="stylesheet" href="./shared-styles.css">
+    <!-- CSS is imported via main.ts and processed by @tailwindcss/vite -->
     <style>
-      /* Minimal base styles - UI components add their own via viewer-core */
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-        overflow: hidden;
-        background: #f5f5f5;  /* Light theme default background */
-        transition: background 0.3s ease;
-      }
-      body.dark-theme {
-        background: #1a1a1a;
-      }
+      /* Minimal base styles before Tailwind loads */
       #app {
-        position: relative; /* Required for absolute children like header bar */
+        position: relative;
         width: 100vw;
         height: 100vh;
       }

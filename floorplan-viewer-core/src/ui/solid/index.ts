@@ -21,6 +21,8 @@ export {
   type FloorplanUIAPI,
   type UIState,
   type Theme as UITheme,
+  type UIMode,
+  type AppCore,
 } from './FloorplanUI.jsx';
 
 // ============================================================================
