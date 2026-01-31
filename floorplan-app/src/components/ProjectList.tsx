@@ -1,17 +1,9 @@
 import { createMemo, Show, For } from "solid-js";
 import { A } from "@solidjs/router";
 import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import { api } from "../../convex/_generated/api";
 import { DeleteProjectButton } from "./DeleteProjectButton";
 import { VisibilityToggle } from "./VisibilityToggle";
-
-// Type-safe API reference builder for when generated files don't exist yet
-// This will be replaced with proper imports once `npx convex dev` generates the API
-const api = {
-  projects: {
-    list: "projects:list" as unknown as FunctionReference<"query">,
-  },
-};
 
 // Project type from Convex schema
 interface Project {
@@ -36,11 +28,12 @@ interface ProjectListProps {
  * Fetches and displays all projects for the current authenticated user.
  */
 export function ProjectList(props: ProjectListProps) {
-  // Query user's projects from Convex
-  const projectsQuery = useQuery(api.projects.list, () => ({}));
+  // Query user's projects using standard Convex hook
+  const projectsQuery = useQuery(api.projects.list, {});
 
   const projects = createMemo(() => {
-    return (projectsQuery.data() as Project[] | undefined) ?? [];
+    const data = projectsQuery.data();
+    return (data as unknown as Project[] | undefined) ?? [];
   });
 
   const isLoading = createMemo(() => {

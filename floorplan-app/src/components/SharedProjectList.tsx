@@ -1,15 +1,8 @@
 import { createMemo, Show, For, createSignal } from "solid-js";
 import { A } from "@solidjs/router";
 import { useQuery, useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
-
-// Type-safe API reference
-const api = {
-  sharing: {
-    getSharedWithMe: "sharing:getSharedWithMe" as unknown as FunctionReference<"query">,
-    leaveProject: "sharing:leaveProject" as unknown as FunctionReference<"mutation">,
-  },
-};
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 // Shared project type from getSharedWithMe query
 interface SharedProject {
@@ -42,13 +35,15 @@ export function SharedProjectList(props: SharedProjectListProps) {
   const [leavingProjectId, setLeavingProjectId] = createSignal<string | null>(null);
   const [confirmLeave, setConfirmLeave] = createSignal<SharedProject | null>(null);
 
-  // Query shared projects
-  const sharedQuery = useQuery(api.sharing.getSharedWithMe, () => ({}));
+  // Query shared projects using standard Convex hook
+  const sharedQuery = useQuery(api.sharing.getSharedWithMe, {});
 
-  const leaveProject = useMutation(api.sharing.leaveProject);
+  // Standard Convex mutation
+  const leaveProjectMutation = useMutation(api.sharing.leaveProject);
 
   const sharedProjects = createMemo(() => {
-    return (sharedQuery.data() as SharedProject[] | undefined) ?? [];
+    const data = sharedQuery.data();
+    return (data as unknown as SharedProject[] | undefined) ?? [];
   });
 
   const isLoading = createMemo(() => {
@@ -85,7 +80,7 @@ export function SharedProjectList(props: SharedProjectListProps) {
   const handleLeave = async (project: SharedProject) => {
     setLeavingProjectId(project.project._id);
     try {
-      await leaveProject.mutate({ projectId: project.project._id as unknown as any });
+      await leaveProjectMutation.mutate({ projectId: project.project._id as Id<"projects"> });
       setConfirmLeave(null);
     } catch (err) {
       console.error("Failed to leave project:", err);

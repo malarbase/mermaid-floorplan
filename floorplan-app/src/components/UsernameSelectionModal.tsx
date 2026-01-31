@@ -1,17 +1,6 @@
 import { createSignal, createMemo, Show, For, createEffect, type Accessor } from "solid-js";
 import { useQuery, useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
-
-// Type-safe API reference builder for when generated files don't exist yet
-// This will be replaced with proper imports once `npx convex dev` generates the API
-const api = {
-  users: {
-    suggestUsername: "users:suggestUsername" as unknown as FunctionReference<"query">,
-    isUsernameAvailable: "users:isUsernameAvailable" as unknown as FunctionReference<"query">,
-    setUsername: "users:setUsername" as unknown as FunctionReference<"mutation">,
-    hasTempUsername: "users:hasTempUsername" as unknown as FunctionReference<"query">,
-  },
-};
+import { api } from "../../convex/_generated/api";
 
 interface UsernameSelectionModalProps {
   isOpen: boolean;
@@ -32,19 +21,16 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
   const [isChecking, setIsChecking] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
-  // Get suggested usernames from Convex
-  const suggestionsQuery = useQuery(
-    api.users.suggestUsername,
-    () => ({})
-  );
+  // Get suggested usernames using standard Convex hook
+  const suggestionsQuery = useQuery(api.users.suggestUsername, {});
   
-  // Check if username is available
+  // Check if username is available - skip if username too short
   const availabilityQuery = useQuery(
     api.users.isUsernameAvailable,
-    () => username().length >= 3 ? { username: username() } : ({ _skip: true } as never)
+    () => username().length >= 3 ? { username: username() } : "skip" as const
   );
   
-  // Mutation to set username
+  // Mutation to set username using standard Convex hook
   const setUsernameMutation = useMutation(api.users.setUsername);
 
   // Debounce username availability check
@@ -125,8 +111,8 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
 
   // Get suggestions data
   const suggestions = createMemo(() => {
-    const data = suggestionsQuery.data() as string[] | undefined;
-    return data ?? [];
+    const data = suggestionsQuery.data();
+    return (data as string[] | undefined) ?? [];
   });
 
   // Set first suggestion as default when loaded
@@ -281,7 +267,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
  */
 export function useUsernameSelectionModal() {
   const [isOpen, setIsOpen] = createSignal(false);
-  const hasTempUsernameQuery = useQuery(api.users.hasTempUsername, () => ({}));
+  const hasTempUsernameQuery = useQuery(api.users.hasTempUsername, {});
   
   // Get the actual boolean value
   const hasTempUsername = createMemo(() => {

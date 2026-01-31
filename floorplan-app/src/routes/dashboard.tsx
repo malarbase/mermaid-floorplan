@@ -2,23 +2,13 @@ import { Title } from "@solidjs/meta";
 import { A, useNavigate } from "@solidjs/router";
 import { Show, createMemo, createEffect, createSignal } from "solid-js";
 import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import { api } from "../../convex/_generated/api";
 import { useSession } from "~/lib/auth-client";
 import { Header } from "~/components/Header";
 import { TempUsernameNudge } from "~/components/TempUsernameNudge";
 import { UsernameSelectionModal } from "~/components/UsernameSelectionModal";
 import { ProjectList } from "~/components/ProjectList";
 import { SharedProjectList } from "~/components/SharedProjectList";
-
-// Type-safe API reference
-const api = {
-  projects: {
-    list: "projects:list" as unknown as FunctionReference<"query">,
-  },
-  sharing: {
-    getSharedWithMe: "sharing:getSharedWithMe" as unknown as FunctionReference<"query">,
-  },
-};
 
 /**
  * User dashboard - shows user's projects (protected route).
@@ -33,9 +23,9 @@ export default function Dashboard() {
   const isLoading = createMemo(() => session()?.isPending ?? true);
   const user = createMemo(() => session()?.data?.user);
 
-  // Queries for stats
-  const projectsQuery = useQuery(api.projects.list, () => ({}));
-  const sharedQuery = useQuery(api.sharing.getSharedWithMe, () => ({}));
+  // Queries for stats using standard Convex hooks
+  const projectsQuery = useQuery(api.projects.list, {});
+  const sharedQuery = useQuery(api.sharing.getSharedWithMe, {});
 
   // Stats computed values
   const totalProjects = createMemo(() => {

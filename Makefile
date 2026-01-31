@@ -199,3 +199,55 @@ watch: ## Start langium watch + vite dev server
 	@echo "Starting langium watch in background..."
 	npm run langium:watch &
 	npm run dev
+
+# ===============================
+# Docker Development
+# ===============================
+
+docker-build: ## Build Docker images
+	docker compose build
+
+docker-up: ## Start all services in Docker
+	docker compose up -d
+
+docker-down: ## Stop all Docker services
+	docker compose down
+
+docker-logs: ## View Docker logs
+	docker compose logs -f
+
+docker-shell: ## Open shell in app container
+	docker compose exec app sh
+
+docker-clean: ## Remove Docker containers, volumes, and images
+	docker compose down -v
+	docker rmi mermaid-floorplan-app 2>/dev/null || true
+
+docker-dev: ## Start development with Docker (interactive logs)
+	docker compose up
+
+docker-restart: ## Restart Docker services
+	docker compose restart
+
+# ===============================
+# SolidStart App
+# ===============================
+
+app-dev: ## Start floorplan-app dev server (local)
+	npm run --workspace floorplan-app dev
+
+app-build: ## Build floorplan-app for production
+	npm run --workspace floorplan-app build
+
+app-start: ## Start floorplan-app production server
+	npm run --workspace floorplan-app start
+
+app-test: ## Run floorplan-app tests
+	npm run --workspace floorplan-app test
+
+# ===============================
+# Mock Auth Setup
+# ===============================
+
+setup-mock-auth: ## Set up mock authentication for development
+	@./scripts/setup-mock-auth.sh

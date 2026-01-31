@@ -1,14 +1,6 @@
 import { createSignal, Show, createMemo } from "solid-js";
 import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
-
-// Type-safe API reference builder for when generated files don't exist yet
-// This will be replaced with proper imports once `npx convex dev` generates the API
-const api = {
-  users: {
-    hasTempUsername: "users:hasTempUsername" as unknown as FunctionReference<"query">,
-  },
-};
+import { api } from "../../convex/_generated/api";
 
 interface TempUsernameNudgeProps {
   onSetUsername: () => void;
@@ -21,8 +13,8 @@ interface TempUsernameNudgeProps {
 export function TempUsernameNudge(props: TempUsernameNudgeProps) {
   const [isDismissed, setIsDismissed] = createSignal(false);
   
-  // Query to check if user has a temp username
-  const hasTempUsernameQuery = useQuery(api.users.hasTempUsername, () => ({}));
+  // Query to check if user has a temp username using standard Convex hook
+  const hasTempUsernameQuery = useQuery(api.users.hasTempUsername, {});
   
   const hasTempUsername = createMemo(() => {
     return hasTempUsernameQuery.data() as boolean | undefined;

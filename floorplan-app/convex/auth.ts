@@ -1,31 +1,18 @@
-import { createClient } from "@convex-dev/better-auth";
-import { components } from "./_generated/api";
+// Better Auth temporarily disabled for self-hosted deployment testing
+// import { createClient } from "@convex-dev/better-auth";
+// import { components } from "./_generated/api";
 
 /**
- * Better Auth client for Convex.
+ * Better Auth client for Convex - TEMPORARILY DISABLED
  * 
- * This integrates Better Auth with Convex as the database backend.
- * The auth schema is managed by the Better Auth component.
- * 
- * Required environment variables:
- * - GOOGLE_CLIENT_ID: Google OAuth client ID
- * - GOOGLE_CLIENT_SECRET: Google OAuth client secret
- * - BETTER_AUTH_SECRET: Secret for session encryption
- * 
- * Usage in Convex functions:
- * ```ts
- * import { betterAuth } from "./auth";
- * 
- * export const myQuery = query({
- *   handler: async (ctx) => {
- *     const user = await betterAuth.getAuthUser(ctx);
- *     if (!user) throw new Error("Unauthenticated");
- *     // ... use user
- *   },
- * });
- * ```
+ * Re-enable after self-hosted auth configuration is working.
  */
-export const betterAuth = createClient(components.betterAuth);
 
-// Re-export useful utilities for Convex functions
-export const { getAuthUser, safeGetAuthUser } = betterAuth;
+// Stub exports for compatibility
+export const betterAuth = {
+  getAuthUser: async () => null,
+  safeGetAuthUser: async () => null,
+};
+
+export const getAuthUser = async () => null;
+export const safeGetAuthUser = async () => null;

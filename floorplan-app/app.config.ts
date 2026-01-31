@@ -29,14 +29,35 @@ export default defineConfig({
         "floorplan-3d-core": floorplan3DCoreSrc,
         "floorplan-common": floorplanCommonSrc,
       },
+      // Prefer ESM over CommonJS to avoid "require is not defined" errors
+      conditions: ["import", "module", "browser", "default"],
+      mainFields: ["module", "jsnext:main", "jsnext", "browser", "main"],
     },
     ssr: {
       // External packages that shouldn't be bundled for SSR
       external: ["three"],
+      // Don't externalize better-auth - let it be bundled
+      noExternal: ["better-auth"],
+    },
+    build: {
+      // For client builds, provide a shim for require
+      rollupOptions: {
+        output: {
+          // Ensure proper ESM output
+          format: "es",
+        },
+      },
     },
     optimizeDeps: {
       // Include packages that need pre-bundling
-      include: ["solid-js", "@solidjs/router"],
+      include: [
+        "solid-js", 
+        "@solidjs/router",
+        "better-auth/solid",
+        "better-auth/client",
+        "convex/browser",
+        "convex-solidjs",
+      ],
     },
     css: {
       devSourcemap: true,

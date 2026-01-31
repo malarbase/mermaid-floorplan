@@ -1,0 +1,130 @@
+version: '3.8'
+
+services:
+  # SolidStart Application (floorplan-app)
+  app:
+    build:
+      context: .
+      dockerfile: floorplan-app/Dockerfile.dev
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source for hot-reload
+      - ./floorplan-app/src:/app/floorplan-app/src
+      - ./floorplan-app/convex:/app/floorplan-app/convex
+      - ./floorplan-app/app.config.ts:/app/floorplan-app/app.config.ts
+      - ./floorplan-app/package.json:/app/floorplan-app/package.json
+      # Mount .env files so Vite reads updated environment
+      - ./floorplan-app/.env:/app/floorplan-app/.env:ro
+      - ./floorplan-app/.env.local:/app/floorplan-app/.env.local:ro
+      # Mount shared packages for development
+      - ./floorplan-viewer-core/src:/app/floorplan-viewer-core/src
+      - ./floorplan-3d-core/src:/app/floorplan-3d-core/src
+      - ./floorplan-common:/app/floorplan-common
+      # Preserve node_modules
+      - app-node-modules:/app/node_modules
+      - app-floorplan-app-node-modules:/app/floorplan-app/node_modules
+    environment:
+      # Convex (uses self-hosted by default, or cloud if VITE_CONVEX_URL is set)
+      - VITE_CONVEX_URL=${VITE_CONVEX_URL:-http://localhost:3210}
+      - CONVEX_DEPLOYMENT=dev:local
+      # Mock Mode (set to "true" to use local mock data instead of Convex)
+      - VITE_MOCK_MODE=${VITE_MOCK_MODE:-false}
+      # Better Auth
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev-secret-change-in-production}
+      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
+      # Google OAuth (optional - only needed if testing real OAuth)
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      # Development Auth Bypass
+      - DEV_AUTH_BYPASS=${DEV_AUTH_BYPASS:-true}
+      - DEV_USER_EMAIL=${DEV_USER_EMAIL:-dev@example.com}
+      - DEV_USER_NAME=${DEV_USER_NAME:-Dev User}
+      - DEV_USER_USERNAME=${DEV_USER_USERNAME:-devuser}
+      # Mock Mode
+      - VITE_MOCK_MODE=${VITE_MOCK_MODE:-false}
+      # Node environment
+      - NODE_ENV=development
+    command: npm run --workspace floorplan-app dev
+    networks:
+      - floorplan-network
+    depends_on:
+      convex:
+        condition: service_healthy
+    stdin_open: true
+    tty: true
+
+  # Self-hosted Convex Backend
+  convex:
+    image: ghcr.io/get-convex/convex-backend:latest
+    ports:
+      - "3210:3210"  # Backend port
+      - "3211:3211"  # Site proxy port
+    environment:
+      - CONVEX_CLOUD_ORIGIN=http://localhost:3210
+      - CONVEX_SITE_ORIGIN=http://localhost:3211
+      - RUST_LOG=info
+      - DISABLE_BEACON=true
+      - DO_NOT_REQUIRE_SSL=true
+      - INSTANCE_NAME=local-dev
+      # INSTANCE_SECRET must be a 64-character hex string (32 bytes)
+      # Generate a new one with: openssl rand -hex 32
+      - INSTANCE_SECRET=${CONVEX_INSTANCE_SECRET:-f09103996388e6f03d94e555c01ad0cd2deae9bab89023ff9b9f4ce11c988e0a}
+    volumes:
+      - convex-data:/convex/data
+      # Mount convex functions for automatic deployment
+      - ./floorplan-app/convex:/convex/functions:ro
+    networks:
+      - floorplan-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3210/version"]
+      interval: 5s
+      start_period: 10s
+      retries: 5
+    stop_signal: SIGINT
+    stop_grace_period: 10s
+
+  # Convex Dashboard (optional, for visual database management)
+  convex-dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    ports:
+      - "6791:6791"
+    environment:
+      - NEXT_PUBLIC_DEPLOYMENT_URL=http://localhost:3210
+      - NEXT_PUBLIC_LOAD_MONACO_INTERNALLY=true
+    networks:
+      - floorplan-network
+    depends_on:
+      convex:
+        condition: service_healthy
+    stop_signal: SIGINT
+    stop_grace_period: 10s
+    profiles:
+      - dashboard  # Only start if explicitly requested
+
+  # Optional: PostgreSQL for future local auth testing
+  # (Currently Better Auth uses Convex, but this is here for flexibility)
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=floorplan_dev
+      - POSTGRES_USER=floorplan
+      - POSTGRES_PASSWORD=floorplan_dev_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - floorplan-network
+    profiles:
+      - postgres  # Only start if explicitly requested
+
+volumes:
+  app-node-modules:
+  app-floorplan-app-node-modules:
+  convex-data:
+  postgres-data:
+
+networks:
+  floorplan-network:
+    driver: bridge
