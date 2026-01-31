@@ -95,13 +95,11 @@ export default function ProjectView() {
   // Query version data (default version)
   const versionQuery = useQuery(
     api.projects.getVersion,
-    () =>
-      project()
-        ? {
-            projectId: project()!._id,
-            versionName: project()!.defaultVersion,
-          }
-        : "skip"
+    () => ({
+      projectId: project()?._id ?? "",
+      versionName: project()?.defaultVersion ?? "main",
+    }),
+    { enabled: !!project() }
   );
 
   const versionData = createMemo(() => {

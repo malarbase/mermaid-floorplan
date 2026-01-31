@@ -66,23 +66,50 @@ test('seed', async ({ page }) => {
 ```
 floorplan-app/
 ├── tests/
-│   ├── seed.spec.ts          # Authentication seed
+│   ├── seed.spec.ts              # Authentication seed
 │   ├── landing/
 │   │   └── landing.spec.ts
 │   ├── auth/
 │   │   └── auth-flow.spec.ts
 │   ├── dashboard/
 │   │   └── dashboard.spec.ts
+│   ├── projects/
+│   │   ├── project-operations.spec.ts
+│   │   ├── version-management.spec.ts
+│   │   ├── snapshot-permalinks.spec.ts
+│   │   ├── project-sharing.spec.ts
+│   │   ├── collaboration.spec.ts
+│   │   └── project-forking.spec.ts
+│   ├── username/
+│   │   └── username-management.spec.ts
 │   └── viewer/
-│       └── 3d-viewer.spec.ts
-├── specs/                     # Markdown test plans
+│       ├── 3d-viewer.spec.ts
+│       ├── camera-modes.spec.ts
+│       ├── keyboard-controls.spec.ts
+│       ├── selection.spec.ts
+│       ├── floor-visibility.spec.ts
+│       ├── annotations.spec.ts
+│       └── theme.spec.ts
+├── specs/                         # Markdown test plans (AI-generated)
 │   ├── landing-page.md
 │   ├── auth-flow.md
 │   ├── dashboard.md
-│   └── project-operations.md
+│   ├── project-operations.md
+│   ├── version-management.md
+│   ├── snapshot-permalinks.md
+│   ├── username-management.md
+│   ├── project-sharing.md
+│   ├── collaboration.md
+│   ├── project-forking.md
+│   ├── viewer-camera-modes.md
+│   ├── viewer-keyboard-controls.md
+│   ├── viewer-selection.md
+│   ├── viewer-floor-visibility.md
+│   ├── viewer-annotations.md
+│   └── viewer-theme.md
 ├── playwright.config.ts
 └── .github/
-    └── agent-definitions/     # Playwright test agent prompts
+    └── agent-definitions/         # Playwright test agent prompts
 ```
 
 ## Risks / Trade-offs
@@ -94,8 +121,52 @@ floorplan-app/
 | 3D viewer tests hard to assert | Focus on canvas existence and control interactions, not visual output |
 | CI takes too long | Run tests in parallel, shard across workers |
 
-## Open Questions
+### Decision 5: Commit Generated Test Plans
 
-- Should we commit generated test plans (`specs/`) or regenerate them in CI?
-- What's the tolerance for flaky tests before we skip them?
-- Should visual snapshots be committed or generated per-run?
+**Why:** AI-generated test plans may vary between runs. Committing `specs/` ensures:
+- Reproducible CI runs
+- Human review of planned coverage
+- Git history of test evolution
+
+**Implementation:**
+```bash
+# Regenerate when UI changes significantly
+npx playwright test --planner
+git add specs/
+git commit -m "chore: update AI-generated test plans"
+```
+
+### Decision 6: Flaky Test Policy
+
+**Why:** E2E tests can be flaky due to timing, network, animations. Need a policy to maintain CI reliability.
+
+**Implementation:**
+```typescript
+// playwright.config.ts
+export default defineConfig({
+  retries: 2,  // Retry failed tests twice before marking failed
+  expect: {
+    timeout: 10000,  // Generous timeout for assertions
+  },
+});
+```
+
+**Quarantine policy:** If a test fails intermittently >3 times in a week despite retries, move it to `tests/quarantine/` and investigate. Don't delete - fix or replace.
+
+### Decision 7: Visual Debugging in Development
+
+**Why:** Developers need to see what tests are doing for debugging and confidence.
+
+**Implementation:**
+```bash
+# Watch tests run in real browser
+npx playwright test --headed
+
+# Interactive UI with step-through debugging
+npx playwright test --ui
+
+# Generate trace for post-mortem debugging (enabled on retry by default)
+npx playwright test --trace on
+```
+
+CI runs headless for speed; local development uses headed/UI mode for visibility.

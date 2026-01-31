@@ -45,12 +45,11 @@ export function ForkButton(props: ForkButtonProps) {
   const session = createMemo(() => sessionSignal());
   const currentUser = createMemo(() => session()?.data?.user);
   const isLoggedIn = createMemo(() => !!currentUser());
-  const currentUsername = createMemo(() => currentUser()?.name ?? "");
+  const currentUsername = createMemo(() => currentUser()?.username ?? currentUser()?.name ?? "");
 
-  // Check if user is viewing their own project
   const isOwnProject = createMemo(() => {
     const user = currentUser();
-    return user?.name === props.ownerUsername;
+    return (user?.username ?? user?.name) === props.ownerUsername;
   });
 
   const sizeClass = createMemo(() => {

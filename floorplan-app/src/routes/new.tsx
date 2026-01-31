@@ -27,8 +27,8 @@ export default function NewProject() {
     }
   });
 
-  // Get username for URL preview
-  const username = createMemo(() => user()?.name ?? "you");
+  // Get username for URL (use username field, not display name)
+  const username = createMemo(() => user()?.username ?? user()?.name ?? "you");
 
   // Handle successful project creation
   const handleSuccess = (projectId: string, slug?: string) => {

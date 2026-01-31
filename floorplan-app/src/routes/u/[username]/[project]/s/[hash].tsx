@@ -96,13 +96,11 @@ export default function SnapshotView() {
   // Query snapshot data
   const snapshotQuery = useQuery(
     api.projects.getByHash,
-    () =>
-      project()
-        ? {
-            projectId: project()!._id,
-            hash: hash(),
-          }
-        : "skip"
+    () => ({
+      projectId: project()?._id ?? "",
+      hash: hash(),
+    }),
+    { enabled: !!project() }
   );
 
   const snapshot = createMemo(() => {

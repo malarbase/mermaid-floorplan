@@ -24,11 +24,12 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
   // Get suggested usernames using standard Convex hook
   const suggestionsQuery = useQuery(api.users.suggestUsername, {});
   
-  // Check if username is available - skip if username too short
-  const availabilityQuery = useQuery(
-    api.users.isUsernameAvailable,
-    () => username().length >= 3 ? { username: username() } : "skip" as const
-  );
+   // Check if username is available - skip if username too short
+   const availabilityQuery = useQuery(
+     api.users.isUsernameAvailable,
+     () => ({ username: username() }),
+     () => ({ enabled: username().length >= 3 })
+   );
   
   // Mutation to set username using standard Convex hook
   const setUsernameMutation = useMutation(api.users.setUsername);

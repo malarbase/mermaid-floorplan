@@ -97,13 +97,11 @@ export default function VersionView() {
   // Query version data
   const versionQuery = useQuery(
     api.projects.getVersion,
-    () =>
-      project()
-        ? {
-            projectId: project()!._id,
-            versionName: versionName(),
-          }
-        : "skip"
+    () => ({
+      projectId: project()?._id ?? "",
+      versionName: versionName(),
+    }),
+    { enabled: !!project() }
   );
 
   const versionData = createMemo(() => {

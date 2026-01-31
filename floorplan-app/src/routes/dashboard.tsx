@@ -50,8 +50,7 @@ export default function Dashboard() {
     }
   });
 
-  // Get username for project URLs (use user name or fallback)
-  const username = createMemo(() => user()?.name ?? "me");
+  const username = createMemo(() => user()?.username ?? user()?.name ?? "me");
 
   return (
     <main class="dashboard-bg">

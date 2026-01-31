@@ -40,6 +40,24 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
     if (convexUrl) {
       console.log("Connecting to Convex at:", convexUrl);
       const convexClient = new ConvexClient(convexUrl);
+      
+      // Add mock auth token for development
+      if (import.meta.env.DEV) {
+        const mockSession = localStorage.getItem("mock-dev-session");
+        if (mockSession) {
+          try {
+            const session = JSON.parse(mockSession);
+            // Set a custom header with the mock session token
+            (convexClient as any).requestHeaders = {
+              "x-mock-auth-token": JSON.stringify(session.user),
+            };
+            console.log("[DEV] Mock auth token set for Convex client");
+          } catch (e) {
+            console.error("[DEV] Failed to parse mock session", e);
+          }
+        }
+      }
+      
       setClient(convexClient);
       setIsReady(true);
     } else {
@@ -57,21 +75,29 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
         </div>
       }
     >
-      <Show when={client() || isMockMode()} fallback={props.children}>
-        {(resolvedClient) => {
-          // If mock mode, render children without provider
-          if (isMockMode()) {
-            return props.children;
-          }
-          
-          // Otherwise wrap with real ConvexProvider
-          return (
-            <ConvexProvider client={resolvedClient() as ConvexClient}>
-              {props.children}
-            </ConvexProvider>
-          );
-        }}
-      </Show>
+       <Show 
+         when={client() || isMockMode()} 
+         fallback={
+           <div class="min-h-screen flex items-center justify-center bg-base-200">
+             <div class="loading loading-spinner loading-lg text-primary"></div>
+           </div>
+         }
+       >
+         {(resolvedClient) => {
+           // If mock mode, render children without provider
+           if (isMockMode()) {
+             return props.children;
+           }
+           
+           // Otherwise wrap with real ConvexProvider
+           // resolvedClient is an accessor, call it to get the value
+           return (
+             <ConvexProvider client={resolvedClient() as ConvexClient}>
+               {props.children}
+             </ConvexProvider>
+           );
+         }}
+       </Show>
     </Show>
   );
 }

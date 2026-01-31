@@ -88,8 +88,8 @@ export const Header: Component<HeaderProps> = (props) => {
     }
   };
   
-  // Get username for profile link
-  const username = createMemo(() => user()?.name ?? "");
+  // Get username for profile link (use username field, not display name)
+  const username = createMemo(() => user()?.username ?? user()?.name ?? "");
 
   return (
     <header class={`navbar ${getVariantClasses()} ${props.class ?? ""}`}>

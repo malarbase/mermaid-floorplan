@@ -35,5 +35,10 @@ RUN npm run build --workspace floorplan-viewer-core
 # Expose dev server port
 EXPOSE 3000
 
-# Start dev server (will be overridden by docker-compose command)
+# Copy entrypoint script
+COPY floorplan-app/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Start via entrypoint (deploys Convex functions, then starts dev server)
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
 CMD ["npm", "run", "--workspace", "floorplan-app", "dev"]

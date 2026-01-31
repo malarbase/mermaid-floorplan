@@ -1,4 +1,5 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
+import { Portal } from "solid-js/web";
 import { useMutation } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
 
@@ -88,89 +89,86 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
         </svg>
       </button>
 
-      {/* Confirmation Modal */}
-      <dialog class={`modal ${isModalOpen() ? "modal-open" : ""}`}>
-        <div class="modal-box">
-          <h3 class="font-bold text-lg text-error">Delete Project</h3>
-          <p class="py-4">
-            Are you sure you want to delete{" "}
-            <strong class="text-error">{props.projectName}</strong>? This action
-            cannot be undone.
-          </p>
-          <p class="text-sm text-base-content/70 mb-4">
-            All versions, snapshots, and collaborator access will be permanently
-            deleted.
-          </p>
+      <Show when={isModalOpen()}>
+        <Portal>
+          <dialog class="modal modal-open">
+            <div class="modal-box">
+              <h3 class="font-bold text-lg text-error">Delete Project</h3>
+              <p class="py-4">
+                Are you sure you want to delete{" "}
+                <strong class="text-error">{props.projectName}</strong>? This action
+                cannot be undone.
+              </p>
+              <p class="text-sm text-base-content/70 mb-4">
+                All versions, snapshots, and collaborator access will be permanently
+                deleted.
+              </p>
 
-          {/* Confirmation Input */}
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text">
-                Type <strong>{props.projectName}</strong> to confirm:
-              </span>
-            </label>
-            <input
-              type="text"
-              class="input input-bordered w-full"
-              placeholder="Project name"
-              value={confirmText()}
-              onInput={(e) => setConfirmText(e.currentTarget.value)}
-              disabled={isDeleting()}
-            />
-          </div>
-
-          {/* Error Message */}
-          {error() && (
-            <div class="alert alert-error mt-4">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                class="stroke-current shrink-0 h-6 w-6"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text">
+                    Type <strong>{props.projectName}</strong> to confirm:
+                  </span>
+                </label>
+                <input
+                  type="text"
+                  class="input input-bordered w-full"
+                  placeholder="Project name"
+                  value={confirmText()}
+                  onInput={(e) => setConfirmText(e.currentTarget.value)}
+                  disabled={isDeleting()}
                 />
-              </svg>
-              <span>{error()}</span>
-            </div>
-          )}
+              </div>
 
-          <div class="modal-action">
-            <button
-              type="button"
-              class="btn btn-ghost"
-              onClick={handleCloseModal}
-              disabled={isDeleting()}
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              class="btn btn-error"
-              onClick={handleDelete}
-              disabled={!canDelete() || isDeleting()}
-            >
-              {isDeleting() ? (
-                <>
-                  <span class="loading loading-spinner loading-sm"></span>
-                  Deleting...
-                </>
-              ) : (
-                "Delete Project"
-              )}
-            </button>
-          </div>
-        </div>
-        <form method="dialog" class="modal-backdrop">
-          <button type="button" onClick={handleCloseModal}>
-            close
-          </button>
-        </form>
-      </dialog>
+              <Show when={error()}>
+                <div class="alert alert-error mt-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="stroke-current shrink-0 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <span>{error()}</span>
+                </div>
+              </Show>
+
+              <div class="modal-action">
+                <button
+                  type="button"
+                  class="btn btn-ghost"
+                  onClick={handleCloseModal}
+                  disabled={isDeleting()}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-error"
+                  onClick={handleDelete}
+                  disabled={!canDelete() || isDeleting()}
+                >
+                  {isDeleting() ? (
+                    <>
+                      <span class="loading loading-spinner loading-sm"></span>
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete Project"
+                  )}
+                </button>
+              </div>
+            </div>
+            <div class="modal-backdrop" onClick={handleCloseModal} />
+          </dialog>
+        </Portal>
+      </Show>
     </>
   );
 }

@@ -96,6 +96,91 @@ The system SHALL include E2E tests for core user journeys.
 - **AND** camera controls (rotate, zoom) are interactive
 - **AND** no WebGL errors appear in console
 
+#### Scenario: Version management tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify creating a named version works
+- **AND** switching between versions loads correct content
+- **AND** version URL shows updated content after save
+
+#### Scenario: Snapshot permalink tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify snapshot permalinks are generated
+- **AND** "Copy Permalink" copies URL to clipboard
+- **AND** permalink URL shows original content after edits
+
+#### Scenario: Username management tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify username selection modal on first login
+- **AND** username availability check works in real-time
+- **AND** "Skip for now" assigns temporary username with nudge banner
+
+#### Scenario: Project sharing tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify toggling "Make Public" works
+- **AND** public projects are viewable without authentication
+- **AND** private projects return 404 for unauthenticated users
+
+#### Scenario: Collaboration tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify inviting collaborator by username works
+- **AND** shared projects appear in collaborator's list
+- **AND** removing collaborator revokes access immediately
+
+#### Scenario: Project forking tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify forking a public project creates a copy
+- **AND** fork shows "Forked from @owner/project" attribution
+- **AND** forking inaccessible project is denied
+
+### Requirement: Viewer-Core E2E Tests
+
+The system SHALL include E2E tests for floorplan-viewer-core functionality.
+
+#### Scenario: Camera mode switching tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify switching between perspective, orthographic, and isometric modes
+- **AND** each mode renders correctly with appropriate controls
+
+#### Scenario: Keyboard controls tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify WASD navigation moves the camera
+- **AND** keyboard zoom (E/Q or +/-) works
+- **AND** view presets (1-9 keys) switch camera positions
+
+#### Scenario: Selection interaction tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify clicking a room selects it
+- **AND** Shift+click adds to selection
+- **AND** marquee selection (drag) selects multiple objects
+
+#### Scenario: Floor visibility tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify floor visibility controls work
+- **AND** toggling floors shows/hides respective floor geometry
+
+#### Scenario: Annotation toggle tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify toggling annotations shows/hides labels
+- **AND** area labels display correct measurements
+
+#### Scenario: Theme switching tests exist
+
+- **WHEN** E2E tests are executed
+- **THEN** tests verify toggling between light and dark themes
+- **AND** UI components update to match the selected theme
+- **AND** 3D scene materials reflect theme changes
+
 ### Requirement: CI/CD Integration
 
 The system SHALL run E2E tests in continuous integration.

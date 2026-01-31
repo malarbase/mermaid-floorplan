@@ -1,6 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
+import { requireUserForMutation, requireUserForQuery } from "./devAuth";
 
 /**
  * Generate content hash (first 8 chars of SHA256)
@@ -15,21 +16,10 @@ async function contentHash(content: string): Promise<string> {
   return hashHex.slice(0, 8);
 }
 
-/**
- * List user's projects
- */
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    // Find user by authId
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
+    const user = await requireUserForQuery(ctx);
     if (!user) return [];
 
     return ctx.db
@@ -46,7 +36,6 @@ export const list = query({
 export const getBySlug = query({
   args: { username: v.string(), projectSlug: v.string() },
   handler: async (ctx, args) => {
-    // Look up user by username
     const user = await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", args.username))
@@ -54,7 +43,6 @@ export const getBySlug = query({
 
     if (!user) return null;
 
-    // Find project by user and slug
     const project = await ctx.db
       .query("projects")
       .withIndex("by_user_slug", (q) =>
@@ -64,22 +52,15 @@ export const getBySlug = query({
 
     if (!project) return null;
 
-    // Check access
     if (!project.isPublic) {
-      const identity = await ctx.auth.getUserIdentity();
-      if (!identity) return null;
+      const currentUser = await requireUserForQuery(ctx);
+      if (!currentUser) return null;
 
-      const currentUser = await ctx.db
-        .query("users")
-        .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-        .first();
-
-      if (!currentUser || currentUser._id !== project.userId) {
-        // Check if user has access via projectAccess
+      if (currentUser._id !== project.userId) {
         const access = await ctx.db
           .query("projectAccess")
           .withIndex("by_project", (q) => q.eq("projectId", project._id))
-          .filter((q) => q.eq(q.field("userId"), currentUser?._id))
+          .filter((q) => q.eq(q.field("userId"), currentUser._id))
           .first();
 
         if (!access) return null;
@@ -114,16 +95,7 @@ export const create = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
-    // Find user
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
+    const user = await requireUserForMutation(ctx);
 
     // Check slug uniqueness for this user
     const existing = await ctx.db
@@ -158,7 +130,7 @@ export const create = mutation({
       contentHash: hash,
       content: args.content,
       message: "Initial version",
-      authorId: identity.subject,
+      authorId: user.authId,
       createdAt: now,
     });
 
@@ -258,25 +230,16 @@ export const save = mutation({
   },
 });
 
-/**
- * Delete a project and all its data
- */
 export const remove = mutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const user = await requireUserForMutation(ctx);
+    if (!user) throw new Error("Unauthenticated");
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
 
-    // Only owner can delete
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user || project.userId !== user._id) {
+    if (project.userId !== user._id) {
       throw new Error("Not authorized");
     }
 

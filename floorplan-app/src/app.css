@@ -61,16 +61,12 @@
   animation: shimmer 1.5s infinite;
 }
 
-/* Modal backdrop */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background-color: rgb(0 0 0 / 0.5);
-  backdrop-filter: blur(2px);
-  z-index: 50;
+
+
+.modal.modal-open {
+  z-index: 1000;
 }
 
-/* Toast notifications container */
 .toast-container {
   position: fixed;
   bottom: 1rem;

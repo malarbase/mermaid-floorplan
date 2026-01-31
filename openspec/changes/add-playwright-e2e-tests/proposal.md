@@ -16,6 +16,18 @@ The floorplan-app SolidStart application lacks automated end-to-end UI testing. 
   - Project creation and editing
   - 3D viewer interaction
   - Username selection flow
+  - Version management (create, switch, mutable URLs)
+  - Snapshot permalinks (immutable URLs, copy to clipboard)
+  - Project sharing (public/private toggle, unauthenticated access)
+  - Collaboration (invite by username, share links, revoke access)
+  - Project forking (fork public/shared projects)
+- Generate test plans for floorplan-viewer-core:
+  - Camera modes (perspective, orthographic, isometric)
+  - Keyboard controls (WASD navigation, zoom, view presets)
+  - Selection interactions (click, shift-click, marquee)
+  - Floor visibility controls
+  - Annotation toggle and display
+  - Theme switching (light/dark)
 - Establish E2E test directory structure and conventions
 - Add npm scripts for running E2E tests
 - Configure CI/CD integration for E2E tests

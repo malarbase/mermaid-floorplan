@@ -119,7 +119,8 @@ export default function ProjectSettings() {
   // Query collaborators
   const collaboratorsQuery = useQuery(
     api.sharing.getCollaborators,
-    () => (project() ? { projectId: project()!._id } : "skip")
+    () => ({ projectId: project()?._id ?? "" }),
+    { enabled: !!project() }
   );
 
   const collaborators = createMemo(
@@ -129,7 +130,8 @@ export default function ProjectSettings() {
   // Query share links
   const shareLinksQuery = useQuery(
     api.sharing.getShareLinks,
-    () => (project() ? { projectId: project()!._id } : "skip")
+    () => ({ projectId: project()?._id ?? "" }),
+    { enabled: !!project() }
   );
 
   const shareLinks = createMemo(

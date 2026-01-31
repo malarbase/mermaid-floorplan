@@ -258,15 +258,23 @@ export function createMockMutation<TArgs, TResult>(
  * 
  * Usage:
  * ```tsx
- * const projects = useMockableQuery("projects:list", {});
+ * const projects = useMockableQuery("projects:list", () => ({}));
  * // projects.data() returns the data
  * // projects.isLoading() returns loading state
  * // projects.error() returns any error
+ * 
+ * // To conditionally skip a query, use the enabled option:
+ * const version = useMockableQuery(
+ *   "projects:getVersion", 
+ *   () => ({ projectId: project()?._id ?? "" }),
+ *   { enabled: !!project() }
+ * );
  * ```
  */
 export function useMockableQuery<T = unknown>(
   queryName: keyof typeof mockConvexQueries,
-  args: () => Record<string, unknown> | "skip"
+  args: () => Record<string, unknown>,
+  options?: { enabled?: boolean }
 ): {
   data: () => T | undefined;
   isLoading: () => boolean;
@@ -281,12 +289,13 @@ export function useMockableQuery<T = unknown>(
     // Simulate async data loading
     setTimeout(() => {
       try {
-        const currentArgs = args();
-        if (currentArgs === "skip") {
+        // Check if query is enabled (defaults to true)
+        if (options?.enabled === false) {
           setIsLoading(false);
           return;
         }
         
+        const currentArgs = args();
         const mockFn = mockConvexQueries[queryName];
         if (mockFn) {
           const result = mockFn(currentArgs as any) as T;
@@ -306,7 +315,7 @@ export function useMockableQuery<T = unknown>(
   // Real mode - use actual Convex useQuery
   // Dynamic import to avoid SSR issues
   const { useQuery } = require("convex-solidjs");
-  const query = useQuery(queryName as any, args);
+  const query = useQuery(queryName as any, args, options);
   
   return {
     data: () => query.data() as T | undefined,
