@@ -36,7 +36,8 @@
     "floorplan-viewer-core",
     "floorplan-mcp-server",
     "floorplan-viewer",
-    "floorplan-editor"
+    "floorplan-editor",
+    "floorplan-app"
   ],
   "dependencies": {
     "@speclife/cli": "^0.6.1",

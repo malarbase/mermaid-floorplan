@@ -1,11 +1,11 @@
 ## 1. Project Setup
 
-- [ ] 1.1 Create `floorplan-app/` directory at workspace root
-- [ ] 1.2 Initialize SolidStart project with `npm create solid@latest`
-- [ ] 1.3 Configure `app.config.ts` with SSR settings
-- [ ] 1.4 Add workspace dependency on `floorplan-viewer-core`
-- [ ] 1.5 Configure TypeScript for Solid JSX
-- [ ] 1.6 Create `floorplan-app/README.md` with development instructions
+- [x] 1.1 Create `floorplan-app/` directory at workspace root
+- [x] 1.2 Initialize SolidStart project with `npm create solid@latest`
+- [x] 1.3 Configure `app.config.ts` with SSR settings
+- [x] 1.4 Add workspace dependency on `floorplan-viewer-core`
+- [x] 1.5 Configure TypeScript for Solid JSX
+- [x] 1.6 Create `floorplan-app/README.md` with development instructions
 
 ## 2. Convex Setup
 

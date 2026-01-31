@@ -1,0 +1,51 @@
+import { defineConfig } from "@solidjs/start/config";
+import tailwindcss from "@tailwindcss/vite";
+import { resolve, dirname } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+// Paths to workspace packages for direct source imports during development
+const viewerCoreSrc = resolve(__dirname, "../floorplan-viewer-core/src");
+const languageSrc = resolve(__dirname, "../floorplan-language/src");
+const floorplan3DCoreSrc = resolve(__dirname, "../floorplan-3d-core/src");
+const floorplanCommonSrc = resolve(__dirname, "../floorplan-common/src");
+
+export default defineConfig({
+  server: {
+    preset: "vercel",
+  },
+  ssr: true,
+  vite: {
+    plugins: [
+      // Tailwind CSS v4 Vite plugin - processes CSS with DaisyUI
+      tailwindcss(),
+    ],
+    resolve: {
+      alias: {
+        // During development, import directly from source files for hot reload
+        "floorplan-viewer-core": viewerCoreSrc,
+        "floorplan-language": languageSrc,
+        "floorplan-3d-core": floorplan3DCoreSrc,
+        "floorplan-common": floorplanCommonSrc,
+      },
+    },
+    ssr: {
+      // External packages that shouldn't be bundled for SSR
+      external: ["three"],
+    },
+    optimizeDeps: {
+      // Include packages that need pre-bundling
+      include: ["solid-js", "@solidjs/router"],
+    },
+    css: {
+      devSourcemap: true,
+    },
+    server: {
+      fs: {
+        // Allow serving files from the parent project (for workspace dependencies)
+        allow: ["..", "../.."],
+      },
+    },
+  },
+});
