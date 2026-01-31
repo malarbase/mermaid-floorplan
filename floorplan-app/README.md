@@ -327,6 +327,69 @@ npm start
 
 The production build will be in `.output/`.
 
+## Troubleshooting
+
+### Build Errors
+
+**"Cannot find module './_generated/server'"**
+- Run `npx convex dev` to generate TypeScript types from your schema
+- Alternatively, run `npx convex codegen` for a one-time generation
+
+**TypeScript errors in convex/ directory**
+- The Convex types are generated at runtime by `npx convex dev`
+- The build will succeed even with IDE errors before running Convex
+
+### 3D Viewer Issues
+
+**Viewer shows loading spinner indefinitely**
+- Check browser console for JavaScript errors
+- Ensure `floorplan-viewer-core` is built: `npm run build` from workspace root
+- Try hard refresh (Cmd+Shift+R / Ctrl+Shift+R)
+
+**Three.js errors or blank canvas**
+- WebGL might not be supported or disabled in your browser
+- Check if hardware acceleration is enabled
+- Try a different browser (Chrome recommended)
+
+### Authentication Issues
+
+**Google OAuth returns error**
+- Verify redirect URIs match exactly in Google Cloud Console
+- Check that GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set
+- For local dev, use `http://localhost:3000/api/auth/callback/google`
+
+**Session not persisting**
+- Ensure BETTER_AUTH_SECRET is set and consistent
+- Check that cookies are enabled in your browser
+
+### Convex Connection Issues
+
+**"Unable to connect to Convex"**
+- Verify CONVEX_URL is correct in your .env file
+- Run `npx convex dev` to start local development server
+- Check Convex dashboard for deployment status
+
+**Functions not updating**
+- Hot reload may need a manual refresh
+- Run `npx convex dev --clear` to reset local state
+
+### Development Server Issues
+
+**Port 3000 already in use**
+```bash
+# Find and kill the process
+lsof -i :3000
+kill -9 <PID>
+
+# Or use a different port
+npm run dev -- --port 3001
+```
+
+**SSR hydration mismatch**
+- Clear browser cache and local storage
+- Ensure client and server render the same content
+- Check for browser-only APIs used during SSR (wrap in `isServer` check)
+
 ## Related Packages
 
 - `floorplan-viewer-core` - 3D viewer and UI components
