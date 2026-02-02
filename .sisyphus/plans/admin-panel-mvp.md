@@ -447,7 +447,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ### Phase 2: Featured Projects & User Management
 
-- [ ] 8. Create /admin overview dashboard
+- [x] 8. Create /admin overview dashboard
 
   **What to do**:
   - Create `src/routes/admin/index.tsx`
@@ -493,7 +493,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 9. Create /admin/featured page
+- [x] 9. Create /admin/featured page
 
   **What to do**:
   - Create `src/routes/admin/featured.tsx`
