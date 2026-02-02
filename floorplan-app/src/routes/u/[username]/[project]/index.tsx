@@ -17,6 +17,9 @@ import { ForkButton } from "~/components/ForkButton";
 const FloorplanEditor = clientOnly(
   () => import("~/components/FloorplanEditor")
 );
+const AuthGatedEditorPanel = clientOnly(
+  () => import("~/components/AuthGatedEditorPanel")
+);
 
 // Type-safe API reference builder for when generated files don't exist yet
 const api = {
@@ -335,18 +338,32 @@ export default function ProjectView() {
                 </div>
               }
             >
-              <FloorplanEditor
-                initialContent={content()!}
-                projectId={project()?._id}
-                versionName={project()?.defaultVersion}
-                editable={isOwner()}
-                theme="dark"
-                projectName={project()?.displayName}
-                username={username()}
-                projectSlug={projectSlug()}
-                currentHash={currentHash()}
-                onSave={handleSaveSuccess}
-              />
+              <Show
+                when={isOwner()}
+                fallback={
+                  <AuthGatedEditorPanel
+                    initialContent={content()!}
+                    projectId={project()!._id}
+                    projectSlug={projectSlug()!}
+                    projectName={project()!.displayName}
+                    ownerUsername={username()!}
+                    theme="dark"
+                  />
+                }
+              >
+                <FloorplanEditor
+                  initialContent={content()!}
+                  projectId={project()?._id}
+                  versionName={project()?.defaultVersion}
+                  editable={true}
+                  theme="dark"
+                  projectName={project()?.displayName}
+                  username={username()}
+                  projectSlug={projectSlug()}
+                  currentHash={currentHash()}
+                  onSave={handleSaveSuccess}
+                />
+              </Show>
             </Show>
           </div>
         </Show>

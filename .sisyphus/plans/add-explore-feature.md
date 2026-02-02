@@ -596,7 +596,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 13. Add auth-gated editor panel
+- [x] 13. Add auth-gated editor panel
 
   **What to do**:
   - Create `AuthGatedEditorPanel` component
