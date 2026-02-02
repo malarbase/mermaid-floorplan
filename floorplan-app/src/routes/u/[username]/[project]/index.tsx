@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { useParams, A } from "@solidjs/router";
+import { useParams, A, useNavigate, useLocation } from "@solidjs/router";
 import { Show, createMemo, createSignal } from "solid-js";
 import { clientOnly } from "@solidjs/start";
 import { useQuery } from "convex-solidjs";
@@ -26,6 +26,7 @@ const api = {
   projects: {
     getBySlug: "projects:getBySlug" as unknown as FunctionReference<"query">,
     getVersion: "projects:getVersion" as unknown as FunctionReference<"query">,
+    resolveSlug: "projects:resolveSlug" as unknown as FunctionReference<"query">,
   },
 };
 
@@ -71,11 +72,32 @@ interface VersionData {
  */
 export default function ProjectView() {
   const params = useParams();
+  const navigate = useNavigate();
+  const location = useLocation();
   const sessionSignal = useSession();
   const [showCreateVersionModal, setShowCreateVersionModal] = createSignal(false);
 
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
+
+  // Check for slug redirects before loading project
+  const slugResolveQuery = useQuery(
+    api.projects.resolveSlug,
+    () => ({
+      username: username(),
+      slug: projectSlug(),
+    })
+  );
+
+  // Handle redirect if slug has changed
+  createMemo(() => {
+    const resolved = slugResolveQuery.data();
+    if (resolved && resolved.wasRedirected) {
+      // Build new URL with new slug, preserving query params and hash
+      const newUrl = `/u/${username()}/${resolved.currentSlug}${location.search}${location.hash}`;
+      navigate(newUrl, { replace: true });
+    }
+  });
 
   // Get current user session
   const session = createMemo(() => sessionSignal());

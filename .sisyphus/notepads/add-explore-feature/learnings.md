@@ -52,3 +52,15 @@
 00051| - **Gotcha**: TypeScript error with `useParams` values being potentially undefined led to `setNewSlug(projectSlug())` error. Fixed with fallback `|| ""`.
 00052| - **UX**: Added warning about redirects since changing slug breaks old links (though we have redirects, it's good to warn).
 </file>
+## Task 16: Slug Redirect Handling in Routing
+- **Implementation Strategy**: Added `resolveSlug` query check BEFORE main project load to intercept redirects early.
+- **Pattern**: Use `createMemo` to watch for redirect result and call `navigate(newUrl, { replace: true })` to avoid adding history entries.
+- **Key Code Flow**:
+  1. `slugResolveQuery` calls `api.projects.resolveSlug({ username, slug })`
+  2. Returns `{ projectId, currentSlug, wasRedirected: boolean }`
+  3. If `wasRedirected === true`, construct new URL preserving `location.search` and `location.hash`
+  4. Use `replace: true` to replace current history entry (not add new entry)
+- **Query Result Handling**: Must check `slugResolveQuery.data()` since Convex queries return `undefined` during loading, then the actual result.
+- **URL Preservation**: Used `location.search` (query params) and `location.hash` (fragments) to preserve original request intent.
+- **No LSP Errors**: Verified clean TypeScript compilation.
+- **Next Task**: Original project loading (getBySlug) will continue normally if no redirect, or user gets redirected before that query runs.
