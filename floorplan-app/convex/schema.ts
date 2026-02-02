@@ -19,6 +19,7 @@ export default defineSchema({
     displayName: v.optional(v.string()), // "Alice Smith"
     avatarUrl: v.optional(v.string()),
     usernameSetAt: v.optional(v.number()), // null = still using temp ID
+    isAdmin: v.optional(v.boolean()), // Discovery feature - admin users
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -43,12 +44,19 @@ export default defineSchema({
     defaultVersion: v.string(), // "main" - like default branch
     thumbnail: v.optional(v.string()),
     forkedFrom: v.optional(v.id("projects")), // Source project if forked
+    viewCount: v.optional(v.number()), // Discovery feature
+    forkCount: v.optional(v.number()), // Discovery feature
+    isFeatured: v.optional(v.boolean()), // Discovery feature
+    trendingScore: v.optional(v.number()), // Discovery feature
+    lastTrendingCalc: v.optional(v.number()), // Discovery feature - timestamp
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index("by_user_slug", ["userId", "slug"])
     .index("by_user", ["userId", "updatedAt"])
-    .index("by_public", ["isPublic", "updatedAt"]),
+    .index("by_public", ["isPublic", "updatedAt"])
+    .index("by_trending", ["trendingScore", "updatedAt"])
+    .index("by_featured", ["isFeatured", "updatedAt"]),
 
   // Versions (like Git branches - mutable pointers)
   versions: defineTable({
@@ -94,4 +102,47 @@ export default defineSchema({
   })
     .index("by_token", ["token"])
     .index("by_project", ["projectId"]),
+
+  // Topics (for project discovery and categorization)
+  topics: defineTable({
+    slug: v.string(), // URL-safe: "modern-design", "scandinavian"
+    displayName: v.string(), // "Modern Design"
+    description: v.optional(v.string()),
+    color: v.optional(v.string()), // Hex color for display
+    isFeatured: v.optional(v.boolean()), // Show in discovery UI
+    projectCount: v.optional(v.number()), // Cached count
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"]),
+
+  // Junction table: projects linked to topics
+  projectTopics: defineTable({
+    projectId: v.id("projects"),
+    topicId: v.id("topics"),
+    createdAt: v.number(),
+  })
+    .index("by_project", ["projectId"])
+    .index("by_topic", ["topicId"]),
+
+  // Collections (curated groups of projects)
+  collections: defineTable({
+    slug: v.string(), // URL-safe: "featured-homes"
+    displayName: v.string(), // "Featured Home Designs"
+    description: v.optional(v.string()),
+    projectIds: v.array(v.id("projects")), // Ordered array of project IDs
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_slug", ["slug"]),
+
+  // Slug redirects (for URL migration history)
+  slugRedirects: defineTable({
+    fromSlug: v.string(), // Old slug
+    toSlug: v.string(), // New slug
+    userId: v.id("users"), // User who owns the project
+    createdAt: v.number(),
+  })
+    .index("by_from_slug", ["fromSlug"])
+    .index("by_user", ["userId"]),
 });
