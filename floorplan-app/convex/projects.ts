@@ -2,7 +2,6 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { requireUserForMutation, requireUserForQuery } from "./devAuth";
-import * as crypto from "crypto";
 
 /**
  * Generate content hash (first 8 chars of SHA256)
@@ -117,7 +116,10 @@ export const create = mutation({
   handler: async (ctx, args) => {
     const user = await requireUserForMutation(ctx);
 
-    // Check slug uniqueness for this user
+    if (!/^[a-z0-9-]+$/.test(args.slug)) {
+      throw new Error("Slug must contain only lowercase letters, numbers, and hyphens");
+    }
+
     const existing = await ctx.db
       .query("projects")
       .withIndex("by_user_slug", (q) =>
@@ -129,10 +131,19 @@ export const create = mutation({
       throw new Error("Project with this slug already exists");
     }
 
+    const redirectsWithSlug = await ctx.db
+      .query("slugRedirects")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("fromSlug"), args.slug))
+      .collect();
+
+    for (const redirect of redirectsWithSlug) {
+      await ctx.db.delete(redirect._id);
+    }
+
     const now = Date.now();
     const hash = await contentHash(args.content);
 
-    // Create project
     const projectId = await ctx.db.insert("projects", {
       userId: user._id,
       slug: args.slug,
@@ -144,7 +155,6 @@ export const create = mutation({
       updatedAt: now,
     });
 
-    // Create initial snapshot
     const snapshotId = await ctx.db.insert("snapshots", {
       projectId,
       contentHash: hash,
@@ -154,7 +164,6 @@ export const create = mutation({
       createdAt: now,
     });
 
-    // Create "main" version pointing to snapshot
     await ctx.db.insert("versions", {
       projectId,
       name: "main",
@@ -358,10 +367,11 @@ export const trackView = mutation({
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
 
-    const sessionHash = crypto
-      .createHash("sha256")
-      .update(args.sessionToken)
-      .digest("hex");
+    const encoder = new TextEncoder();
+    const data = encoder.encode(args.sessionToken);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    const sessionHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
     const cacheKey = `${args.projectId}-${sessionHash}`;
     const now = Date.now();
 
@@ -466,7 +476,6 @@ export const createVersion = mutation({
       if (!access) throw new Error("Not authorized");
     }
 
-    // Check version name doesn't exist
     const existing = await ctx.db
       .query("versions")
       .withIndex("by_project_name", (q) =>
@@ -476,7 +485,6 @@ export const createVersion = mutation({
 
     if (existing) throw new Error("Version with this name already exists");
 
-    // Get source version
     const sourceVersionName = args.fromVersion ?? project.defaultVersion;
     const sourceVersion = await ctx.db
       .query("versions")
@@ -489,7 +497,6 @@ export const createVersion = mutation({
 
     const now = Date.now();
 
-    // Create new version pointing to same snapshot
     const versionId = await ctx.db.insert("versions", {
       projectId: args.projectId,
       name: args.name,
@@ -500,5 +507,107 @@ export const createVersion = mutation({
     });
 
     return versionId;
+  },
+});
+
+/**
+ * Update project slug and create redirect from old slug
+ */
+export const updateSlug = mutation({
+  args: {
+    projectId: v.id("projects"),
+    newSlug: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUserForMutation(ctx);
+
+    if (!/^[a-z0-9-]+$/.test(args.newSlug)) {
+      throw new Error("Slug must contain only lowercase letters, numbers, and hyphens");
+    }
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    if (project.userId !== user._id) {
+      throw new Error("Not authorized");
+    }
+
+    if (project.slug === args.newSlug) {
+      throw new Error("New slug is the same as current slug");
+    }
+
+    const existing = await ctx.db
+      .query("projects")
+      .withIndex("by_user_slug", (q) =>
+        q.eq("userId", user._id).eq("slug", args.newSlug)
+      )
+      .first();
+
+    if (existing) {
+      throw new Error("A project with this slug already exists");
+    }
+
+    const now = Date.now();
+    const oldSlug = project.slug;
+
+    await ctx.db.insert("slugRedirects", {
+      fromSlug: oldSlug,
+      toSlug: args.newSlug,
+      userId: user._id,
+      createdAt: now,
+    });
+
+    await ctx.db.patch(args.projectId, {
+      slug: args.newSlug,
+      updatedAt: now,
+    });
+
+    return { success: true, oldSlug, newSlug: args.newSlug };
+  },
+});
+
+/**
+ * Resolve a slug to a project, checking redirects if needed
+ * Returns the current slug if a redirect exists, null otherwise
+ */
+export const resolveSlug = query({
+  args: { username: v.string(), slug: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .first();
+
+    if (!user) return null;
+
+    const project = await ctx.db
+      .query("projects")
+      .withIndex("by_user_slug", (q) =>
+        q.eq("userId", user._id).eq("slug", args.slug)
+      )
+      .first();
+
+    if (project) {
+      return { projectId: project._id, currentSlug: args.slug, wasRedirected: false };
+    }
+
+    const redirect = await ctx.db
+      .query("slugRedirects")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("fromSlug"), args.slug))
+      .first();
+
+    if (!redirect) return null;
+
+    const targetProject = await ctx.db
+      .query("projects")
+      .withIndex("by_user_slug", (q) =>
+        q.eq("userId", user._id).eq("slug", redirect.toSlug)
+      )
+      .first();
+
+    if (!targetProject) return null;
+
+    return { projectId: targetProject._id, currentSlug: redirect.toSlug, wasRedirected: true };
   },
 });

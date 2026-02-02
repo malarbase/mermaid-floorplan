@@ -14,6 +14,7 @@ import type * as devAuth from "../devAuth.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as projects from "../projects.js";
 import type * as sharing from "../sharing.js";
+import type * as trending from "../trending.js";
 import type * as users from "../users.js";
 
 import type {
@@ -29,6 +30,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   projects: typeof projects;
   sharing: typeof sharing;
+  trending: typeof trending;
   users: typeof users;
 }>;
 

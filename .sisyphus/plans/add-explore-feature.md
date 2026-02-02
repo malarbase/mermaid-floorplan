@@ -232,7 +232,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 3. Implement fork count denormalization
+- [x] 3. Implement fork count denormalization
 
   **What to do**:
   - Modify `sharing.forkProject` to increment source project's forkCount
@@ -262,7 +262,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 4. Implement trending score calculation cron
+- [x] 4. Implement trending score calculation cron
 
   **What to do**:
   - Create `crons.calculateTrendingScores` function
@@ -298,7 +298,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 5. Implement slug redirect logic
+- [x] 5. Implement slug redirect logic
 
   **What to do**:
   - Create `projects.updateSlug` mutation
