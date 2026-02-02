@@ -483,7 +483,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 10. Create /explore/topics/[slug] route
+- [x] 10. Create /explore/topics/[slug] route
 
   **What to do**:
   - Create `src/routes/explore/topics/[slug].tsx`
@@ -518,7 +518,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 11. Create /explore/collections/[slug] route
+- [x] 11. Create /explore/collections/[slug] route
 
   **What to do**:
   - Create `src/routes/explore/collections/[slug].tsx`
