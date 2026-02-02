@@ -39,6 +39,7 @@ export interface SessionUser {
   name: string;
   image?: string | null;
   username?: string;
+  isAdmin?: boolean;
 }
 
 export interface SessionData {
