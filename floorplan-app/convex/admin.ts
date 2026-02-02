@@ -1,6 +1,10 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation as rawMutation, query } from "./_generated/server";
 import { requireAdmin, requireSuperAdmin, isSuperAdmin } from "./lib/auth";
+import { customMutation, customCtx } from "convex-helpers/server/customFunctions";
+import { triggers } from "./lib/auditLog";
+
+const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
 
 export const setFeatured = mutation({
   args: {
@@ -18,8 +22,6 @@ export const setFeatured = mutation({
     await ctx.db.patch(args.projectId, {
       isFeatured: args.isFeatured,
     });
-    
-    // TODO: Audit log (Task 7)
     
     return { success: true };
   },
@@ -44,8 +46,6 @@ export const promoteToAdmin = mutation({
     await ctx.db.patch(args.userId, {
       isAdmin: true,
     });
-    
-    // TODO: Audit log (Task 7)
     
     return { success: true };
   },
@@ -78,8 +78,6 @@ export const demoteFromAdmin = mutation({
     await ctx.db.patch(args.userId, {
       isAdmin: false,
     });
-    
-    // TODO: Audit log (Task 7)
     
     return { success: true };
   },

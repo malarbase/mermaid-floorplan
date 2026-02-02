@@ -276,7 +276,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 4. Create admin.ts mutations
+- [x] 4. Create admin.ts mutations
 
   **What to do**:
   - Create `convex/admin.ts` with mutations:
@@ -317,7 +317,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 5. Create admin.ts queries
+- [x] 5. Create admin.ts queries
 
   **What to do**:
   - Add queries to `convex/admin.ts`:
@@ -357,7 +357,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 6. Create /admin layout with sidebar
+- [x] 6. Create /admin layout with sidebar
 
   **What to do**:
   - Create `src/routes/admin.tsx` as layout route
@@ -403,7 +403,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 7. Configure table-history for admin actions
+- [x] 7. Configure table-history for admin actions
 
   **What to do**:
   - Create `convex/lib/auditLog.ts` with TableHistory setup

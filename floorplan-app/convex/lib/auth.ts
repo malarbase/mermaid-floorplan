@@ -99,6 +99,26 @@ export function isSuperAdmin(user: Doc<"users">): boolean {
   return userEmail === superAdminEmail;
 }
 
+export async function requireAdmin(
+  ctx: QueryCtx | MutationCtx
+): Promise<Doc<"users">> {
+  const identity = await ctx.auth.getUserIdentity();
+
+  if (identity) {
+    const user = await getUserByIdentity(ctx, identity);
+    if (user && (user.isAdmin || isSuperAdmin(user))) return user;
+  }
+
+  if (!IS_DEV_MODE) {
+    throw new Error("Admin access required");
+  }
+
+  const devUser = await getDevUser(ctx);
+  if (devUser && (devUser.isAdmin || isSuperAdmin(devUser))) return devUser;
+
+  throw new Error("Admin access required");
+}
+
 export async function requireSuperAdmin(
   ctx: QueryCtx | MutationCtx
 ): Promise<Doc<"users">> {
