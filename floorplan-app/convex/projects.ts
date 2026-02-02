@@ -2,6 +2,7 @@ import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
 import { Id } from "./_generated/dataModel";
 import { requireUserForMutation, requireUserForQuery } from "./devAuth";
+import * as crypto from "crypto";
 
 /**
  * Generate content hash (first 8 chars of SHA256)
@@ -338,6 +339,50 @@ export const listVersions = query({
       .query("versions")
       .withIndex("by_project_name", (q) => q.eq("projectId", args.projectId))
       .collect();
+  },
+});
+
+const sessionViewCache = new Map<string, { timestamp: number }>();
+const DEBOUNCE_WINDOW_MS = 60 * 60 * 1000;
+
+/**
+ * Track view for a project with debouncing.
+ * 1 view per session per hour (uses session token hash as identifier)
+ */
+export const trackView = mutation({
+  args: {
+    projectId: v.id("projects"),
+    sessionToken: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error("Project not found");
+
+    const sessionHash = crypto
+      .createHash("sha256")
+      .update(args.sessionToken)
+      .digest("hex");
+    const cacheKey = `${args.projectId}-${sessionHash}`;
+    const now = Date.now();
+
+    const lastView = sessionViewCache.get(cacheKey);
+    if (lastView && now - lastView.timestamp < DEBOUNCE_WINDOW_MS) {
+      return {
+        success: true,
+        debounced: true,
+        viewCount: project.viewCount ?? 0,
+      };
+    }
+
+    const newViewCount = (project.viewCount ?? 0) + 1;
+    await ctx.db.patch(args.projectId, { viewCount: newViewCount });
+
+    sessionViewCache.set(cacheKey, { timestamp: now });
+
+    return {
+      success: true,
+      viewCount: newViewCount,
+    };
   },
 });
 
