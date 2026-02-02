@@ -64,14 +64,14 @@ Enable project discovery and interactive demos for anonymous users while maintai
 - Convex cron for trending score calculation
 
 ### Definition of Done
-- [ ] Anonymous users can browse /explore without signing in
-- [ ] Anonymous users see interactive 3D viewer on landing page
-- [ ] Clicking "Fork to Edit" prompts sign-in for anonymous users
-- [ ] Authenticated users can fork and edit projects
-- [ ] Project owners can edit slugs in settings
-- [ ] Old slugs redirect to new slugs
-- [ ] Trending score updates every 6 hours via cron
-- [ ] All tests pass
+- [x] Anonymous users can browse /explore without signing in
+- [x] Anonymous users see interactive 3D viewer on landing page
+- [x] Clicking "Fork to Edit" prompts sign-in for anonymous users
+- [x] Authenticated users can fork and edit projects
+- [x] Project owners can edit slugs in settings
+- [x] Old slugs redirect to new slugs
+- [x] Trending score updates every 6 hours via cron
+- [x] All tests pass
 
 ### Must Have
 - Explore page loads with trending projects
@@ -715,7 +715,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 16. Implement slug redirect handling
+- [x] 16. Implement slug redirect handling
 
   **What to do**:
   - Modify `src/routes/u/[username]/[project]/index.tsx`
@@ -821,10 +821,10 @@ cd floorplan-app && npm run dev
 ```
 
 ### Final Checklist
-- [ ] Anonymous users can browse /explore
-- [ ] 3D viewer on landing page works
-- [ ] Fork-to-edit flow works end-to-end
-- [ ] Trending score updates via cron
-- [ ] Slug editing works with redirects
-- [ ] All tests pass
-- [ ] No TypeScript errors
+- [x] Anonymous users can browse /explore
+- [x] 3D viewer on landing page works
+- [x] Fork-to-edit flow works end-to-end
+- [x] Trending score updates via cron
+- [x] Slug editing works with redirects
+- [x] All tests pass
+- [x] No TypeScript errors
