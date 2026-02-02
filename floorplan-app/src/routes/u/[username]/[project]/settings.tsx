@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { useParams, A, useNavigate } from "@solidjs/router";
-import { Show, createMemo, createSignal, For, createEffect } from "solid-js";
+import { Show, createMemo, createSignal, For, createEffect, onCleanup } from "solid-js";
 import { useQuery, useMutation } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
 import { useSession } from "~/lib/auth-client";
@@ -14,6 +14,7 @@ const api = {
   projects: {
     getBySlug: "projects:getBySlug" as unknown as FunctionReference<"query">,
     update: "projects:update" as unknown as FunctionReference<"mutation">,
+    updateSlug: "projects:updateSlug" as unknown as FunctionReference<"mutation">,
   },
   sharing: {
     getCollaborators: "sharing:getCollaborators" as unknown as FunctionReference<"query">,
@@ -85,6 +86,11 @@ export default function ProjectSettings() {
   const [saveError, setSaveError] = createSignal("");
   const [copiedLinkId, setCopiedLinkId] = createSignal<string | null>(null);
 
+  const [isEditingSlug, setIsEditingSlug] = createSignal(false);
+  const [newSlug, setNewSlug] = createSignal("");
+  const [debouncedSlug, setDebouncedSlug] = createSignal("");
+  const [slugSaveError, setSlugSaveError] = createSignal("");
+
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
 
@@ -149,6 +155,7 @@ export default function ProjectSettings() {
 
   // Mutations
   const updateProject = useMutation(api.projects.update);
+  const updateProjectSlug = useMutation(api.projects.updateSlug);
   const removeCollaborator = useMutation(api.sharing.removeCollaborator);
   const updateCollaboratorRole = useMutation(api.sharing.updateCollaboratorRole);
   const revokeShareLink = useMutation(api.sharing.revokeShareLink);
@@ -184,6 +191,58 @@ export default function ProjectSettings() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  createEffect(() => {
+    const s = newSlug();
+    const timer = setTimeout(() => setDebouncedSlug(s), 500);
+    onCleanup(() => clearTimeout(timer));
+  });
+
+  const slugCheckQuery = useQuery(api.projects.getBySlug, () => {
+    const s = debouncedSlug();
+    if (!isEditingSlug() || !s || s === projectSlug()) return "skip";
+    return { username: username(), projectSlug: s };
+  });
+
+  const isSlugTaken = createMemo(() => !!slugCheckQuery.data());
+  const isSlugValidFormat = createMemo(() => /^[a-z0-9-]+$/.test(newSlug()));
+  const canSaveSlug = createMemo(() => 
+    newSlug() && 
+    newSlug() !== projectSlug() && 
+    isSlugValidFormat() && 
+    !isSlugTaken() && 
+    !slugCheckQuery.isLoading()
+  );
+
+  const handleSaveSlug = async () => {
+    const proj = project();
+    if (!proj || !canSaveSlug()) return;
+
+    setIsSaving(true);
+    setSlugSaveError("");
+    
+    try {
+      const result = await updateProjectSlug.mutate({
+        projectId: proj._id,
+        newSlug: newSlug()
+      });
+      navigate(`/u/${username()}/${result.newSlug}/settings`, { replace: true });
+    } catch (err) {
+      setSlugSaveError(err instanceof Error ? err.message : "Failed to update slug");
+      setIsSaving(false);
+    }
+  };
+
+  const startEditingSlug = () => {
+    setNewSlug(projectSlug() || "");
+    setIsEditingSlug(true);
+  };
+
+  const cancelEditingSlug = () => {
+    setIsEditingSlug(false);
+    setNewSlug("");
+    setSlugSaveError("");
   };
 
   // Handle remove collaborator
@@ -437,6 +496,113 @@ export default function ProjectSettings() {
                     </Show>
                   </div>
                 </form>
+              </div>
+            </section>
+
+            <section class="card bg-base-100 shadow">
+              <div class="card-body">
+                <h2 class="card-title">Change URL Slug</h2>
+                
+                <Show when={!isEditingSlug()} fallback={
+                  <div class="space-y-4">
+                    <div class="alert alert-warning text-sm">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                      <div>
+                        <h3 class="font-bold">Warning</h3>
+                        <div class="text-xs">
+                          Changing the slug will change the URL of your project.
+                          Old URLs will automatically redirect to the new one.
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="form-control w-full">
+                      <label class="label">
+                        <span class="label-text">New Slug</span>
+                      </label>
+                      <div class="flex flex-col gap-2">
+                        <input
+                          type="text"
+                          class={`input input-bordered w-full font-mono ${
+                            !isSlugValidFormat() || isSlugTaken() ? "input-error" : 
+                            newSlug() !== projectSlug() && debouncedSlug() === newSlug() ? "input-success" : ""
+                          }`}
+                          value={newSlug()}
+                          onInput={(e) => {
+                            const val = e.currentTarget.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
+                            setNewSlug(val);
+                          }}
+                          placeholder="my-project-slug"
+                          disabled={isSaving()}
+                        />
+                        <div class="flex items-center justify-between text-xs min-h-[1.25rem]">
+                          <span class="text-base-content/60">
+                            {window.location.origin}/u/{username()}/{newSlug() || "..."}
+                          </span>
+                          
+                          <Show when={newSlug() && newSlug() !== projectSlug()}>
+                            <Show 
+                              when={!slugCheckQuery.isLoading()} 
+                              fallback={<span class="loading loading-spinner loading-xs"></span>}
+                            >
+                              <Show when={isSlugTaken()}>
+                                <span class="text-error font-medium flex items-center gap-1">
+                                  <span>✗</span> Slug already taken
+                                </span>
+                              </Show>
+                              <Show when={!isSlugTaken() && isSlugValidFormat()}>
+                                <span class="text-success font-medium flex items-center gap-1">
+                                  <span>✓</span> Available
+                                </span>
+                              </Show>
+                            </Show>
+                          </Show>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                      <button
+                        class="btn btn-primary"
+                        onClick={handleSaveSlug}
+                        disabled={isSaving() || !canSaveSlug()}
+                      >
+                        <Show when={isSaving()} fallback="Save Slug">
+                          <span class="loading loading-spinner loading-sm"></span>
+                          Saving...
+                        </Show>
+                      </button>
+                      <button 
+                        class="btn btn-ghost" 
+                        onClick={cancelEditingSlug}
+                        disabled={isSaving()}
+                      >
+                        Cancel
+                      </button>
+                      
+                      <Show when={slugSaveError()}>
+                        <span class="text-error text-sm">{slugSaveError()}</span>
+                      </Show>
+                    </div>
+                  </div>
+                }>
+                  <div>
+                    <p class="text-sm text-base-content/60 mb-4">
+                      The URL slug determines the address of your project.
+                    </p>
+                    <div class="flex items-center gap-4 p-4 bg-base-200 rounded-lg">
+                      <code class="flex-1 font-mono text-sm">
+                        {window.location.origin}/u/{username()}/{projectSlug()}
+                      </code>
+                      <button 
+                        class="btn btn-sm btn-outline"
+                        onClick={startEditingSlug}
+                      >
+                        Change Slug
+                      </button>
+                    </div>
+                  </div>
+                </Show>
               </div>
             </section>
 

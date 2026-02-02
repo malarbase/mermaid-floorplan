@@ -44,4 +44,11 @@
 00043| - Updated `AuthGatedEditorPanel` to append `?fork=true` to the return URL for the login redirect.
 00044| - Ensured `callback.tsx` handles the redirect correctly (implicitly supported by preserving query params).
 00045| - Verified no LSP errors.
+00046| 
+00047| ## Task 15: Slug Edit UI Implementation
+00048| - Implemented `updateSlug` mutation usage in settings page.
+00049| - Added real-time availability check using `getBySlug` query with debouncing.
+00050| - **Pattern**: For "is taken" checks, we can reuse `getBySlug` query. If it returns a project that isn't the current one, the slug is taken.
+00051| - **Gotcha**: TypeScript error with `useParams` values being potentially undefined led to `setNewSlug(projectSlug())` error. Fixed with fallback `|| ""`.
+00052| - **UX**: Added warning about redirects since changing slug breaks old links (though we have redirects, it's good to warn).
 </file>

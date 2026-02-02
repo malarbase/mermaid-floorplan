@@ -675,7 +675,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ### Phase 4: Editable Slugs
 
-- [ ] 15. Add slug edit UI in settings
+- [x] 15. Add slug edit UI in settings
 
   **What to do**:
   - Modify `src/routes/u/[username]/[project]/settings.tsx`
