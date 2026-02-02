@@ -466,15 +466,20 @@ export const forkProject = authenticatedMutation({
       createdAt: now,
     });
 
-    await ctx.db.insert("versions", {
-      projectId: newProjectId,
-      name: "main",
-      snapshotId: newSnapshotId,
-      createdAt: now,
-      updatedAt: now,
-    });
+     await ctx.db.insert("versions", {
+       projectId: newProjectId,
+       name: "main",
+       snapshotId: newSnapshotId,
+       createdAt: now,
+       updatedAt: now,
+     });
 
-    return { success: true, projectId: newProjectId };
+     await ctx.db.patch(args.projectId, {
+       forkCount: (sourceProject.forkCount ?? 0) + 1,
+       updatedAt: now,
+     });
+
+     return { success: true, projectId: newProjectId };
   },
 });
 
