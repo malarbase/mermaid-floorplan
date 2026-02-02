@@ -1,13 +1,17 @@
-import { createSignal, createMemo, Show } from "solid-js";
-import { useNavigate } from "@solidjs/router";
-import { useMutation } from "convex-solidjs";
+import { createSignal, createMemo, Show, createEffect } from "solid-js";
+import { useNavigate, useSearchParams } from "@solidjs/router";
+import { useMutation, useQuery } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
 import { useSession } from "~/lib/auth-client";
+import { useToast } from "~/components/ui/Toast";
 
 // Type-safe API reference for when generated files don't exist yet
 const api = {
   sharing: {
     forkProject: "sharing:forkProject" as unknown as FunctionReference<"mutation">,
+  },
+  projects: {
+    list: "projects:list" as unknown as FunctionReference<"query">,
   },
 };
 
@@ -22,6 +26,8 @@ interface ForkButtonProps {
   variant?: "primary" | "secondary" | "ghost" | "outline";
   /** Show label text */
   showLabel?: boolean;
+  /** Default name to use when forking */
+  defaultName?: string;
 }
 
 /**
@@ -32,7 +38,9 @@ interface ForkButtonProps {
  */
 export function ForkButton(props: ForkButtonProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const sessionSignal = useSession();
+  const toast = useToast();
   
   const [isModalOpen, setIsModalOpen] = createSignal(false);
   const [slug, setSlug] = createSignal("");
@@ -41,6 +49,7 @@ export function ForkButton(props: ForkButtonProps) {
   const [error, setError] = createSignal<string | null>(null);
 
   const forkProject = useMutation(api.sharing.forkProject);
+  const userProjects = useQuery(api.projects.list, {});
 
   const session = createMemo(() => sessionSignal());
   const currentUser = createMemo(() => session()?.data?.user);
@@ -72,12 +81,37 @@ export function ForkButton(props: ForkButtonProps) {
   });
 
   const openModal = () => {
-    // Set defaults
-    setSlug(props.projectSlug);
-    setDisplayName(`${props.projectName}`);
+    const baseName = props.defaultName || `${props.projectName} (fork)`;
+    setDisplayName(baseName);
     setError(null);
+    
+    const projects = userProjects.data() || [];
+    const existingSlugs = new Set((projects as any[]).map(p => p.slug));
+    
+    let baseSlug = baseName.toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+      
+    if (!baseSlug) baseSlug = "fork";
+    
+    let uniqueSlug = baseSlug;
+    let counter = 2;
+    
+    while (existingSlugs.has(uniqueSlug)) {
+      uniqueSlug = `${baseSlug}-${counter}`;
+      counter++;
+    }
+    
+    setSlug(uniqueSlug);
     setIsModalOpen(true);
   };
+
+  createEffect(() => {
+    if (isLoggedIn() && searchParams.fork === "true" && !isOwnProject()) {
+      setSearchParams({ fork: undefined });
+      openModal();
+    }
+  });
 
   const closeModal = () => {
     setIsModalOpen(false);
@@ -109,6 +143,7 @@ export function ForkButton(props: ForkButtonProps) {
 
       if (result?.success && result?.projectId) {
         closeModal();
+        toast.success("Now editing your copy");
         // Navigate to the new forked project
         navigate(`/u/${currentUsername()}/${slugValue}`);
       }
@@ -121,8 +156,7 @@ export function ForkButton(props: ForkButtonProps) {
   };
 
   const handleLogin = () => {
-    // Redirect to login with return URL
-    const returnUrl = encodeURIComponent(window.location.pathname);
+    const returnUrl = encodeURIComponent(window.location.pathname + "?fork=true");
     navigate(`/login?returnUrl=${returnUrl}`);
   };
 

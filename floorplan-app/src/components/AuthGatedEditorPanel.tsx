@@ -58,7 +58,7 @@ export function AuthGatedEditorPanel(props: AuthGatedEditorPanelProps) {
   const isLoggedIn = createMemo(() => !!session().data?.user);
 
   const handleLogin = () => {
-    const returnUrl = encodeURIComponent(window.location.pathname);
+    const returnUrl = encodeURIComponent(window.location.pathname + "?fork=true");
     navigate(`/login?returnUrl=${returnUrl}`);
   };
 

@@ -633,7 +633,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 14. Implement fork-to-edit flow
+- [x] 14. Implement fork-to-edit flow
 
   **What to do**:
   - After sign-in, redirect back to project with fork modal open

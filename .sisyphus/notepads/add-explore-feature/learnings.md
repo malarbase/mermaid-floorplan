@@ -36,4 +36,12 @@
 00035| - [Pattern] Dynamic import of `floorplan-viewer-core` in `onMount` prevents SSR issues with Three.js.
 00036| - [Correction] Fixed `displayName` vs `name` property usage from Convex schema.
 00037| - [Miss] Failed to create Todo list before starting multi-step task (3 steps). Will correct in future.
+00038| 
+00039| ## Task 14: Fork-to-Edit Flow Implementation
+00040| - Modified `ForkButton` to handle auto-opening via `?fork=true` query param.
+00041| - Implemented client-side unique slug generation by fetching user's project list.
+00042| - Added toast notification using `useToast` hook.
+00043| - Updated `AuthGatedEditorPanel` to append `?fork=true` to the return URL for the login redirect.
+00044| - Ensured `callback.tsx` handles the redirect correctly (implicitly supported by preserving query params).
+00045| - Verified no LSP errors.
 </file>
