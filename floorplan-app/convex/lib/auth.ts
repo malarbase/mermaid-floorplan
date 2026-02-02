@@ -90,3 +90,31 @@ export const optionalAuthQuery = customQuery(
     user: await getCurrentUser(ctx),
   }))
 );
+
+export function isSuperAdmin(user: Doc<"users">): boolean {
+  const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
+  if (!superAdminEmail) return false;
+  // Check if email field exists on user (for future compatibility)
+  const userEmail = (user as any).email;
+  return userEmail === superAdminEmail;
+}
+
+export async function requireSuperAdmin(
+  ctx: QueryCtx | MutationCtx
+): Promise<Doc<"users">> {
+  const identity = await ctx.auth.getUserIdentity();
+
+  if (identity) {
+    const user = await getUserByIdentity(ctx, identity);
+    if (user && isSuperAdmin(user)) return user;
+  }
+
+  if (!IS_DEV_MODE) {
+    throw new Error("Super admin access required");
+  }
+
+  const devUser = await getDevUser(ctx);
+  if (devUser && isSuperAdmin(devUser)) return devUser;
+
+  throw new Error("Super admin access required");
+}
