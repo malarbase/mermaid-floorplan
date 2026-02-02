@@ -11,6 +11,7 @@
 import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
 import type * as devAuth from "../devAuth.js";
+import type * as explore from "../explore.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as projects from "../projects.js";
 import type * as sharing from "../sharing.js";
@@ -27,6 +28,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   crons: typeof crons;
   devAuth: typeof devAuth;
+  explore: typeof explore;
   "lib/auth": typeof lib_auth;
   projects: typeof projects;
   sharing: typeof sharing;

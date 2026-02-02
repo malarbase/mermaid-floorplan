@@ -95,3 +95,40 @@ const hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 ### Verification
 Run `npx convex dev --once` to verify Convex functions compile without errors.
 
+
+## Task 6: Explore Queries Implementation
+
+### Convex Index Usage
+- The `by_trending` index is `["trendingScore", "updatedAt"]` - cannot use `.eq()` on trendingScore
+- The `by_featured` index is `["isFeatured", "updatedAt"]` - similar constraint
+- Must use `.filter()` for isPublic check instead of index equality
+
+### Correct Pattern
+```typescript
+// WRONG: Cannot use .eq() on first index field without constraints
+.withIndex("by_trending", (q) => q.eq("isPublic", true))
+
+// CORRECT: Use index without constraints, then filter
+.withIndex("by_trending")
+.order("desc")
+.filter((q) => q.eq(q.field("isPublic"), true))
+```
+
+### Test Strategy
+- convex-test package is NOT installed in the project
+- Convex tests are excluded in vitest.config.ts (`exclude: ['convex/**']`)
+- Tests for pure functions (like trending.ts) use plain vitest
+- For query/mutation tests, simple structural tests verifying exports exist are sufficient
+- Acceptance criteria only checks for function existence, not full integration tests
+
+### Query Implementations
+1. **listTrending**: Returns public projects sorted by trendingScore DESC, default limit 24
+2. **listByTopic**: Filters projects by topic slug via projectTopics junction table, only public projects
+3. **listFeatured**: Returns projects with isFeatured=true, sorted by featuredAt DESC
+4. **getCollection**: Returns collection by slug with all project details, preserves project order
+5. **listCollections**: Returns all collections (no isOfficial filter in schema)
+
+### Files Created
+- `convex/explore.ts` - All 5 discovery queries
+- `convex/explore.test.ts` - Structural tests verifying exports
+

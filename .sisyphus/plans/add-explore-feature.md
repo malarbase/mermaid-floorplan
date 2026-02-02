@@ -336,7 +336,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 6. Create explore queries
+- [x] 6. Create explore queries
 
   **What to do**:
   - Create `explore.listTrending` query (paginated, sorted by trendingScore)
