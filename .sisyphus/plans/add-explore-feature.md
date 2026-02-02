@@ -753,7 +753,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ### Phase 5: Integration Testing
 
-- [ ] 17. E2E tests for explore feature
+- [x] 17. E2E tests for explore feature
 
   **What to do**:
   - Create Playwright test for anonymous browse → fork → edit flow

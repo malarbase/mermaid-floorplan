@@ -64,3 +64,22 @@
 - **URL Preservation**: Used `location.search` (query params) and `location.hash` (fragments) to preserve original request intent.
 - **No LSP Errors**: Verified clean TypeScript compilation.
 - **Next Task**: Original project loading (getBySlug) will continue normally if no redirect, or user gets redirected before that query runs.
+
+## Task 17: E2E Tests for Explore Feature
+- Created comprehensive E2E test suite in `tests/explore/explore.spec.ts` covering:
+  - Explore page load and project display
+  - Topic filtering via URL params and dedicated routes
+  - Collection page structure and not-found states
+  - Fork-to-edit flow (anonymous and authenticated users)
+  - View count increment tracking
+- **Pattern**: Use `test.skip()` for data-dependent tests when prerequisite data doesn't exist (graceful degradation).
+- **Responsive Design Testing**: Desktop and mobile use different active state classes (`bg-base-200` vs `btn-neutral`). Tests must check both with regex: `/bg-base-200|btn-neutral/`.
+- **Playwright Best Practices Applied**:
+  - Used `.first()` to select from multiple matching elements
+  - Used `.or()` for fallback selectors when multiple possibilities exist
+  - Used `page.waitForLoadState("networkidle")` for async content loading
+  - Used conditional logic to skip tests gracefully when data prerequisites aren't met
+  - Added proper timeouts for debounced operations (view count: 2.5s)
+- **Test Results**: 8 passed, 4 skipped (data-dependent), 0 failed
+- **LSP Status**: No TypeScript errors
+- **Key Insight**: E2E tests for explore features need to handle missing data gracefully since they depend on projects existing in the database. Using `test.skip()` prevents false failures in development/CI environments.
