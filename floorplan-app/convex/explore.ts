@@ -72,7 +72,33 @@ export const listFeatured = query({
       .filter((q) => q.eq(q.field("isFeatured"), true))
       .take(limit);
     
-    return { projects };
+    const enrichedProjects = await Promise.all(
+      projects.map(async (p) => {
+        const owner = await ctx.db.get(p.userId);
+        
+        // Get default version to find content
+        const version = await ctx.db
+          .query("versions")
+          .withIndex("by_project_name", (q) => 
+            q.eq("projectId", p._id).eq("name", p.defaultVersion)
+          )
+          .first();
+          
+        let content = "";
+        if (version) {
+          const snapshot = await ctx.db.get(version.snapshotId);
+          content = snapshot?.content ?? "";
+        }
+        
+        return {
+          ...p,
+          ownerName: owner?.username ?? "Unknown",
+          content,
+        };
+      })
+    );
+    
+    return { projects: enrichedProjects };
   },
 });
 

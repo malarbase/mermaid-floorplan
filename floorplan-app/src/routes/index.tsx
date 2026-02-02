@@ -3,6 +3,7 @@ import { A } from "@solidjs/router";
 import { Show, createMemo } from "solid-js";
 import { useSession } from "~/lib/auth-client";
 import { Header } from "~/components/Header";
+import { FeaturedProjectViewer } from "~/components/FeaturedProjectViewer";
 
 /**
  * Home page - public landing page.
@@ -18,22 +19,24 @@ export default function Home() {
 
       <Header variant="transparent" />
 
-      <div class="hero min-h-[80vh] md:min-h-[70vh] px-4 relative">
-        <div class="absolute inset-0 opacity-20" style={{
+      <div class="hero min-h-screen px-4 pt-24 pb-12 relative overflow-hidden">
+        <div class="absolute inset-0 opacity-20 pointer-events-none" style={{
           background: `radial-gradient(circle at 50% 30%, oklch(75% 0.18 195 / 0.3) 0%, transparent 50%)`
         }} />
-        <div class="hero-content text-center relative z-10">
-          <div class="max-w-3xl">
-            <h1 class="text-4xl sm:text-5xl md:text-7xl tracking-wide" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+        
+        <div class="max-w-7xl mx-auto w-full grid lg:grid-cols-2 gap-12 items-center relative z-10">
+          {/* Left Column: Text Content */}
+          <div class="text-center lg:text-left">
+            <h1 class="text-5xl sm:text-6xl md:text-8xl tracking-wide leading-none mb-6" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
               ARCHITECTURAL
               <span class="block text-gradient-primary">FLOORPLAN DESIGN</span>
             </h1>
-            <p class="py-6 sm:py-8 text-base sm:text-lg text-base-content/60 max-w-xl mx-auto" style={{ "font-family": "'DM Sans', sans-serif" }}>
+            <p class="py-6 text-lg sm:text-xl text-base-content/70 max-w-xl mx-auto lg:mx-0 leading-relaxed" style={{ "font-family": "'DM Sans', sans-serif" }}>
               Create, visualize, and share architectural floorplans with our 
               intuitive DSL-powered 3D designer. Write simple text, see stunning results.
             </p>
             
-            <div class="flex flex-col sm:flex-row gap-4 justify-center w-full sm:w-auto">
+            <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start w-full sm:w-auto">
               <Show
                 when={isLoggedIn()}
                 fallback={
@@ -42,7 +45,7 @@ export default function Home() {
                       Get Started
                     </A>
                     <a href="#demo" class="btn btn-outline btn-lg w-full sm:w-auto border-glow">
-                      See Demo
+                      Learn More
                     </a>
                   </>
                 }
@@ -55,6 +58,11 @@ export default function Home() {
                 </A>
               </Show>
             </div>
+          </div>
+
+          {/* Right Column: 3D Viewer */}
+          <div class="w-full h-[500px] lg:h-[600px] perspective-1000">
+            <FeaturedProjectViewer />
           </div>
         </div>
       </div>

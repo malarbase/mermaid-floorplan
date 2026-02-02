@@ -16,6 +16,8 @@ interface FloorplanEmbedProps {
   containerId?: string;
   /** Theme (light or dark) */
   theme?: "light" | "dark";
+  /** Whether to show the full UI (toolbar, command palette, etc.) */
+  withUI?: boolean;
   /** Callback when DSL changes (for editable mode) */
   onDslChange?: (dsl: string) => void;
   /** Callback when save is requested */
@@ -30,12 +32,14 @@ interface FloorplanEmbedProps {
  * - Proper lifecycle management (mount/cleanup)
  * - Auth state integration
  * - DSL content synchronization
+ * - UI initialization (optional)
  * 
  * Usage:
  * ```tsx
  * <FloorplanEmbed
  *   dsl={floorplanDsl}
  *   editable={isOwner}
+ *   withUI={true}
  *   onSave={(dsl) => saveMutation({ dsl })}
  * />
  * ```
@@ -43,6 +47,7 @@ interface FloorplanEmbedProps {
 export function FloorplanEmbed(props: FloorplanEmbedProps) {
   let containerRef: HTMLDivElement | undefined;
   let app: InstanceType<typeof import("floorplan-viewer-core").FloorplanAppCore> | null = null;
+  let ui: any = null; // Type will be resolved dynamically
 
   const [isLoading, setIsLoading] = createSignal(true);
   const [error, setError] = createSignal<string | null>(null);
@@ -60,15 +65,36 @@ export function FloorplanEmbed(props: FloorplanEmbedProps) {
     navigate(`/login?redirect=${encodeURIComponent(currentPath)}`);
   };
 
+  const isWebGLAvailable = () => {
+    try {
+      const canvas = document.createElement('canvas');
+      return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
+    } catch (e) {
+      return false;
+    }
+  };
+
   // Initialize viewer on mount (client-side only)
   onMount(async () => {
+    if (!isWebGLAvailable()) {
+      setError("Your browser does not support WebGL, which is required for 3D viewing.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Dynamically import to avoid SSR issues
       const viewerCore = await import("floorplan-viewer-core");
       FloorplanAppCore = viewerCore.FloorplanAppCore;
+      const { createFloorplanUI, injectStyles } = viewerCore;
 
       if (!containerRef) {
         throw new Error("Container ref not available");
+      }
+
+      // Inject shared styles if UI is enabled
+      if (props.withUI) {
+        injectStyles();
       }
 
       // Create the viewer instance
@@ -76,7 +102,23 @@ export function FloorplanEmbed(props: FloorplanEmbedProps) {
         containerId,
         initialTheme: props.theme ?? "dark",
         initialDsl: props.dsl,
+        enableSelection: !!props.editable, // Only enable selection if editable
       });
+
+      // Initialize UI if requested
+      if (props.withUI) {
+        // Basic commands for the UI
+        const commands: any[] = []; // Add commands if needed
+        
+        ui = createFloorplanUI(app, {
+          initialFilename: 'Featured Project', // TODO: Pass filename as prop
+          initialTheme: props.theme ?? "dark",
+          initialEditorOpen: false,
+          initialAuthenticated: !!props.editable,
+          headerAutoHide: true,
+          commands,
+        });
+      }
 
       // Set up event handlers if needed
       // app.on("authRequired", handleAuthRequired);
@@ -91,10 +133,14 @@ export function FloorplanEmbed(props: FloorplanEmbedProps) {
 
   // Clean up on unmount
   onCleanup(() => {
+    if (ui && typeof ui.dispose === "function") {
+      ui.dispose();
+    }
     if (app && typeof app.dispose === "function") {
       app.dispose();
     }
     app = null;
+    ui = null;
   });
 
   // Update DSL when props change

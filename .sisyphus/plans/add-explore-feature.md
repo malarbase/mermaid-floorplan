@@ -554,7 +554,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ### Phase 3: Landing Page & Fork Flow
 
-- [ ] 12. Embed 3D viewer on landing page
+- [x] 12. Embed 3D viewer on landing page
 
   **What to do**:
   - Modify `src/routes/index.tsx` to include FloorplanEmbed
