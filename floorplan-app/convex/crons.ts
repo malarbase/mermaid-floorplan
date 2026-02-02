@@ -17,4 +17,14 @@ crons.daily(
   internal.users.cleanupExpiredUsernames
 );
 
+/**
+ * Calculate trending scores for all projects every 6 hours.
+ * Uses view/fork counts with time decay based on project age.
+ */
+crons.interval(
+  "calculate-trending-scores",
+  { hours: 6 },
+  internal.trending.calculateTrendingScores
+);
+
 export default crons;
