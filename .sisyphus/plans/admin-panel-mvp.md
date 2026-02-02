@@ -158,7 +158,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ### Phase 1: Foundation & Super Admin
 
-- [ ] 1. Add super admin env var support
+- [x] 1. Add super admin env var support
 
   **What to do**:
   - Add `SUPER_ADMIN_EMAIL` environment variable to Convex
@@ -197,7 +197,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 2. Install convex-table-history package
+- [x] 2. Install convex-table-history package
 
   **What to do**:
   - Run `npm install convex-table-history convex-helpers` in floorplan-app
@@ -237,7 +237,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 3. Create AdminGuard component
+- [x] 3. Create AdminGuard component
 
   **What to do**:
   - Create `src/components/AdminGuard.tsx`
