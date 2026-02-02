@@ -406,7 +406,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 8. Create topic assignment mutations
+- [x] 8. Create topic assignment mutations
 
   **What to do**:
   - Create `topics.assignToProject` mutation (owner or admin)
@@ -440,7 +440,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ### Phase 2: Explore UI Routes
 
-- [ ] 9. Create /explore route
+- [x] 9. Create /explore route
 
   **What to do**:
   - Create `src/routes/explore/index.tsx`
