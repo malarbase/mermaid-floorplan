@@ -8,6 +8,7 @@ import { PermalinkDisplay } from "~/components/PermalinkDisplay";
 import { copyToClipboard, generatePermalink } from "~/lib/permalink";
 import { ForkButton } from "~/components/ForkButton";
 import { useSession } from "~/lib/auth-client";
+import { UserMenu } from "~/components/UserMenu";
 
 // Use clientOnly to prevent SSR issues with Three.js
 const FloorplanEmbed = clientOnly(() => import("~/components/FloorplanEmbed"));
@@ -70,14 +71,6 @@ export default function SnapshotView() {
   const session = createMemo(() => sessionSignal());
   const currentUser = createMemo(() => session()?.data?.user);
 
-  // Check if current user is the owner
-  const isOwner = createMemo(() => {
-    const user = currentUser();
-    const own = owner();
-    if (!user || !own) return false;
-    return user.name === own.username;
-  });
-
   // Query project data first
   const projectQuery = useQuery(api.projects.getBySlug, () => ({
     username: username(),
@@ -93,14 +86,21 @@ export default function SnapshotView() {
   const owner = createMemo(() => projectData()?.owner);
   const forkedFrom = createMemo(() => projectData()?.forkedFrom);
 
+  const isOwner = createMemo(() => {
+    const user = currentUser();
+    const own = owner();
+    if (!user || !own) return false;
+    return (user.username ?? user.name) === own.username;
+  });
+
   // Query snapshot data
   const snapshotQuery = useQuery(
     api.projects.getByHash,
     () => ({
-      projectId: project()?._id ?? "",
+      projectId: project()?._id ?? ("" as any),
       hash: hash(),
     }),
-    { enabled: !!project() }
+    () => ({ enabled: !!project()?._id })
   );
 
   const snapshot = createMemo(() => {
@@ -108,25 +108,19 @@ export default function SnapshotView() {
     return data;
   });
 
-  // DSL content from snapshot or fallback
-  const content = createMemo(() => {
-    const snap = snapshot();
-    if (snap?.content) return snap.content;
+  const content = createMemo(() => snapshot()?.content);
 
-    // Fallback while loading or if not found
-    return `floorplan ${projectSlug()}
-  floor MainFloor 35x25
-    room Office 12x10 at 0,0
-      door east
-      window south
-    room Bedroom 15x12 at 12,0
-      door west`;
+  const isLoading = createMemo(() => {
+    if (projectQuery.isLoading() || projectQuery.data() === undefined) return true;
+    if (projectQuery.data() === null) return false;
+    return snapshotQuery.isLoading() || snapshotQuery.data() === undefined;
   });
 
-  // Loading state
-  const isLoading = createMemo(
-    () => projectQuery.isLoading() || snapshotQuery.isLoading()
-  );
+  const isContentMissing = createMemo(() => {
+    if (isLoading()) return false;
+    if (!projectData() || !snapshot()) return false;
+    return !content();
+  });
 
   // Format timestamp
   const formatDate = (ts: number) => {
@@ -209,18 +203,22 @@ export default function SnapshotView() {
             {/* Header */}
             <header class="bg-base-100 border-b border-base-300 p-4">
               <div class="max-w-6xl mx-auto flex items-center justify-between">
-                <div>
-                  <div class="text-sm breadcrumbs">
-                    <ul>
-                      <li>
-                        <A href={`/u/${username()}`}>{username()}</A>
-                      </li>
-                      <li>
-                        <A href={`/u/${username()}/${projectSlug()}`}>{projectSlug()}</A>
-                      </li>
-                      <li>s/{hash()}</li>
-                    </ul>
-                  </div>
+                <div class="flex items-center gap-4">
+                  <A href="/" class="btn btn-ghost text-xl tracking-wider flex-shrink-0" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+                    FLOORPLAN
+                  </A>
+                  <div>
+                    <div class="text-sm breadcrumbs">
+                      <ul>
+                        <li>
+                          <A href={`/u/${username()}`}>{username()}</A>
+                        </li>
+                        <li>
+                          <A href={`/u/${username()}/${projectSlug()}`}>{projectSlug()}</A>
+                        </li>
+                        <li>s/{hash()}</li>
+                      </ul>
+                    </div>
                   <h1 class="text-xl font-bold">
                     {project()?.displayName}{" "}
                     <span class="font-mono text-base-content/50">#{hash()}</span>
@@ -253,6 +251,7 @@ export default function SnapshotView() {
                       </A>
                     </div>
                   </Show>
+                  </div>
                 </div>
 
                 <div class="flex items-center gap-2">
@@ -320,6 +319,9 @@ export default function SnapshotView() {
                       variant="ghost"
                     />
                   </Show>
+
+                  <div class="divider divider-horizontal mx-2 h-6 self-center" />
+                  <UserMenu size="sm" />
                 </div>
               </div>
             </header>
@@ -369,7 +371,26 @@ export default function SnapshotView() {
 
             {/* Viewer Container */}
             <div class="h-[calc(100vh-160px)]">
-              <FloorplanEmbed dsl={content()} theme="dark" editable={false} />
+              <Show
+                when={!isContentMissing()}
+                fallback={
+                  <div class="flex justify-center items-center h-full">
+                    <div class="card bg-error/10 border border-error">
+                      <div class="card-body text-center">
+                        <h2 class="card-title text-error">Content Not Available</h2>
+                        <p class="text-base-content/70">
+                          This snapshot has no content. The data may be corrupted.
+                        </p>
+                        <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-outline btn-sm mt-4">
+                          View History
+                        </A>
+                      </div>
+                    </div>
+                  </div>
+                }
+              >
+                <FloorplanEmbed dsl={content()!} theme="dark" editable={false} />
+              </Show>
             </div>
           </Show>
         </Show>

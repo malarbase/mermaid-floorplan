@@ -30,6 +30,25 @@ export const list = query({
   },
 });
 
+export const listPublicByUsername = query({
+  args: { username: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .first();
+
+    if (!user) return [];
+
+    return ctx.db
+      .query("projects")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .filter((q) => q.eq(q.field("isPublic"), true))
+      .order("desc")
+      .collect();
+  },
+});
+
 /**
  * Get project by username and project slug
  */
@@ -158,19 +177,10 @@ export const save = mutation({
     message: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const user = await requireUserForMutation(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
-
-    // Check ownership or edit access
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
 
     const isOwner = project.userId === user._id;
     if (!isOwner) {
@@ -206,7 +216,7 @@ export const save = mutation({
       content: args.content,
       message: args.message,
       parentId: version?.snapshotId,
-      authorId: identity.subject,
+      authorId: user._id,
       createdAt: now,
     });
 
@@ -357,19 +367,12 @@ export const update = mutation({
     defaultVersion: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const user = await requireUserForMutation(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
 
-    // Only owner can update settings
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user || project.userId !== user._id) {
+    if (project.userId !== user._id) {
       throw new Error("Not authorized");
     }
 
@@ -397,19 +400,10 @@ export const createVersion = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const user = await requireUserForMutation(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
-
-    // Check ownership or edit access
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
 
     const isOwner = project.userId === user._id;
     if (!isOwner) {

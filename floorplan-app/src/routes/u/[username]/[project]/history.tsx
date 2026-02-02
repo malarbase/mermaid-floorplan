@@ -90,7 +90,7 @@ export default function ProjectHistory() {
     const user = currentUser();
     const own = owner();
     if (!user || !own) return false;
-    return user.name === own.username;
+    return (user.username ?? user.name) === own.username;
   });
 
   // Query versions

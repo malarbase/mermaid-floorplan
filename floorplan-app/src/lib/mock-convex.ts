@@ -3,6 +3,8 @@
 
 import { createSignal } from "solid-js";
 
+import { styledApartmentContent } from "./mock-floorplan-content";
+
 // Mock project data
 const mockProjectsData = [
   {
@@ -54,16 +56,7 @@ const mockSnapshotsData = [
     _creationTime: Date.now(),
     projectId: "mock-project-1" as any,
     contentHash: "a1b2c3d4",
-    content: `floorplan version 0.7
-config theme: blueprint, unit: ft
-
-floor "Ground Floor":
-  room LivingRoom 20x15 at 0,0:
-    door 3ft at south
-  room Kitchen 15x12 at 20,0:
-    door 3ft at west
-  room Bedroom 12x12 at 0,15:
-    door 3ft at north`,
+    content: styledApartmentContent,
     message: "Initial version",
     parentId: null,
     authorId: "dev-user-1",

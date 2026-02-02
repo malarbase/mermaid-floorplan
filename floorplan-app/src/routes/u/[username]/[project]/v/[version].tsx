@@ -5,6 +5,7 @@ import { clientOnly } from "@solidjs/start";
 import { useQuery } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
 import { useSession } from "~/lib/auth-client";
+import { UserMenu } from "~/components/UserMenu";
 import { CreateVersionModal } from "~/components/CreateVersionModal";
 import { VersionSwitcher } from "~/components/VersionSwitcher";
 import { PermalinkDisplay } from "~/components/PermalinkDisplay";
@@ -98,10 +99,10 @@ export default function VersionView() {
   const versionQuery = useQuery(
     api.projects.getVersion,
     () => ({
-      projectId: project()?._id ?? "",
+      projectId: project()?._id ?? ("" as any),
       versionName: versionName(),
     }),
-    { enabled: !!project() }
+    () => ({ enabled: !!project()?._id })
   );
 
   const versionData = createMemo(() => {
@@ -109,34 +110,29 @@ export default function VersionView() {
     return data;
   });
 
-  const content = createMemo(
-    () =>
-      versionData()?.snapshot?.content ??
-      `floorplan ${projectSlug()}
-  floor MainFloor 40x30
-    room LivingRoom 20x15 at 0,0
-      door south
-    room Kitchen 15x12 at 20,0
-      door west`
-  );
-
+  const content = createMemo(() => versionData()?.snapshot?.content);
   const currentHash = createMemo(() => versionData()?.snapshot?.contentHash);
 
-  // Check if current user is the owner
   const isOwner = createMemo(() => {
     const user = currentUser();
     const own = owner();
     if (!user || !own) return false;
-    return user.name === own.username;
+    return (user.username ?? user.name) === own.username;
   });
 
-  // Loading state
-  const isLoading = createMemo(
-    () => projectQuery.isLoading() || versionQuery.isLoading()
-  );
+  const isLoading = createMemo(() => {
+    if (projectQuery.isLoading() || projectQuery.data() === undefined) return true;
+    if (projectQuery.data() === null) return false;
+    return versionQuery.isLoading() || versionQuery.data() === undefined;
+  });
 
-  // Check if version exists
   const versionExists = createMemo(() => versionData()?.version != null);
+
+  const isContentMissing = createMemo(() => {
+    if (isLoading()) return false;
+    if (!projectData() || !versionExists()) return false;
+    return !content();
+  });
 
   // Handle save success
   const handleSaveSuccess = (result: { snapshotId: string; hash: string }) => {
@@ -197,20 +193,24 @@ export default function VersionView() {
           {/* Header */}
           <header class="bg-base-100 border-b border-base-300 px-4 py-3">
             <div class="max-w-6xl mx-auto flex items-center justify-between">
-              <div>
-                <div class="text-sm breadcrumbs">
-                  <ul>
-                    <li>
-                      <A href={`/u/${username()}`}>{username()}</A>
-                    </li>
-                    <li>
-                      <A href={`/u/${username()}/${projectSlug()}`}>
-                        {projectSlug()}
-                      </A>
-                    </li>
-                    <li>v/{versionName()}</li>
-                  </ul>
-                </div>
+              <div class="flex items-center gap-4">
+                <A href="/" class="btn btn-ghost text-xl tracking-wider flex-shrink-0" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+                  FLOORPLAN
+                </A>
+                <div>
+                  <div class="text-sm breadcrumbs">
+                    <ul>
+                      <li>
+                        <A href={`/u/${username()}`}>{username()}</A>
+                      </li>
+                      <li>
+                        <A href={`/u/${username()}/${projectSlug()}`}>
+                          {projectSlug()}
+                        </A>
+                      </li>
+                      <li>v/{versionName()}</li>
+                    </ul>
+                  </div>
                 <h1 class="text-xl font-bold">
                   {project()?.displayName}{" "}
                   <span class="text-base-content/50 font-normal">
@@ -242,6 +242,7 @@ export default function VersionView() {
                     </A>
                   </div>
                 </Show>
+                </div>
               </div>
 
               <div class="flex items-center gap-2">
@@ -284,6 +285,9 @@ export default function VersionView() {
                     variant="ghost"
                   />
                 </Show>
+
+                <div class="divider divider-horizontal mx-2 h-6 self-center" />
+                <UserMenu size="sm" />
               </div>
             </div>
           </header>
@@ -310,18 +314,37 @@ export default function VersionView() {
 
           {/* Viewer/Editor Container */}
           <div class="flex-1 overflow-hidden">
-            <FloorplanEditor
-              initialContent={content()}
-              projectId={project()?._id}
-              versionName={versionName()}
-              editable={isOwner()}
-              theme="dark"
-              projectName={project()?.displayName}
-              username={username()}
-              projectSlug={projectSlug()}
-              currentHash={currentHash()}
-              onSave={handleSaveSuccess}
-            />
+            <Show
+              when={!isContentMissing()}
+              fallback={
+                <div class="flex justify-center items-center h-full">
+                  <div class="card bg-error/10 border border-error">
+                    <div class="card-body text-center">
+                      <h2 class="card-title text-error">Content Not Available</h2>
+                      <p class="text-base-content/70">
+                        This version has no content. The data may be corrupted or missing.
+                      </p>
+                      <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-outline btn-sm mt-4">
+                        View Default Version
+                      </A>
+                    </div>
+                  </div>
+                </div>
+              }
+            >
+              <FloorplanEditor
+                initialContent={content()!}
+                projectId={project()?._id}
+                versionName={versionName()}
+                editable={isOwner()}
+                theme="dark"
+                projectName={project()?.displayName}
+                username={username()}
+                projectSlug={projectSlug()}
+                currentHash={currentHash()}
+                onSave={handleSaveSuccess}
+              />
+            </Show>
           </div>
         </Show>
       </Show>

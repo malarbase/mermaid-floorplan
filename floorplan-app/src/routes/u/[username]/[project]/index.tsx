@@ -4,7 +4,9 @@ import { Show, createMemo, createSignal } from "solid-js";
 import { clientOnly } from "@solidjs/start";
 import { useQuery } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useSession } from "~/lib/auth-client";
+import { UserMenu } from "~/components/UserMenu";
 import { VisibilityToggle } from "~/components/VisibilityToggle";
 import { VersionSwitcher } from "~/components/VersionSwitcher";
 import { CreateVersionModal } from "~/components/CreateVersionModal";
@@ -26,7 +28,7 @@ const api = {
 
 // Project and owner types
 interface Project {
-  _id: string;
+  _id: Id<"projects">;
   displayName: string;
   description?: string;
   isPublic: boolean;
@@ -96,10 +98,10 @@ export default function ProjectView() {
   const versionQuery = useQuery(
     api.projects.getVersion,
     () => ({
-      projectId: project()?._id ?? "",
+      projectId: project()?._id ?? ("" as any),
       versionName: project()?.defaultVersion ?? "main",
     }),
-    { enabled: !!project() }
+    () => ({ enabled: !!project()?._id })
   );
 
   const versionData = createMemo(() => {
@@ -107,33 +109,28 @@ export default function ProjectView() {
     return data;
   });
 
-  const content = createMemo(
-    () =>
-      versionData()?.snapshot?.content ??
-      `floorplan ${projectSlug()}
-  floor MainFloor 40x30
-    room LivingRoom 20x15 at 0,0
-      door south
-    room Kitchen 15x12 at 20,0
-      door west`
-  );
-
+  const content = createMemo(() => versionData()?.snapshot?.content);
   const currentHash = createMemo(() => versionData()?.snapshot?.contentHash);
 
-  // Check if current user is the owner
   const isOwner = createMemo(() => {
     const user = currentUser();
     const proj = project();
     const own = owner();
     if (!user || !proj || !own) return false;
-    // Compare by username (since we may not have internal user IDs in session)
-    return user.name === own.username;
+    return (user.username ?? user.name) === own.username;
   });
 
-  // Loading state
-  const isLoading = createMemo(
-    () => projectQuery.isLoading() || versionQuery.isLoading()
-  );
+  const isLoading = createMemo(() => {
+    if (projectQuery.isLoading() || projectQuery.data() === undefined) return true;
+    if (projectQuery.data() === null) return false;
+    return versionQuery.isLoading() || versionQuery.data() === undefined;
+  });
+
+  const isContentMissing = createMemo(() => {
+    if (isLoading()) return false;
+    if (!projectData()) return false;
+    return !content();
+  });
 
   // Handle save success
   const handleSaveSuccess = (result: { snapshotId: string; hash: string }) => {
@@ -173,15 +170,19 @@ export default function ProjectView() {
           {/* Project Header */}
           <header class="bg-base-100 border-b border-base-300 px-3 sm:px-4 py-2 sm:py-3">
             <div class="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
-              <div class="min-w-0 flex-1">
-                <div class="text-xs sm:text-sm breadcrumbs">
-                  <ul>
-                    <li>
-                      <A href={`/u/${username()}`}>{username()}</A>
-                    </li>
-                    <li class="truncate">{projectSlug()}</li>
-                  </ul>
-                </div>
+              <div class="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
+                <A href="/" class="btn btn-ghost text-lg sm:text-xl tracking-wider flex-shrink-0" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+                  FLOORPLAN
+                </A>
+                <div class="min-w-0 flex-1">
+                  <div class="text-xs sm:text-sm breadcrumbs">
+                    <ul>
+                      <li>
+                        <A href={`/u/${username()}`}>{username()}</A>
+                      </li>
+                      <li class="truncate">{projectSlug()}</li>
+                    </ul>
+                  </div>
                 <h1 class="text-base sm:text-xl font-bold truncate">{project()?.displayName}</h1>
                 {/* Forked from attribution */}
                 <Show when={forkedFrom()}>
@@ -209,6 +210,7 @@ export default function ProjectView() {
                     </A>
                   </div>
                 </Show>
+                </div>
               </div>
 
               <div class="flex flex-wrap items-center gap-1 sm:gap-2">
@@ -306,24 +308,46 @@ export default function ProjectView() {
                     </svg>
                   </A>
                 </Show>
+
+                <div class="divider divider-horizontal mx-1 sm:mx-2 h-6 self-center" />
+                <UserMenu size="sm" />
               </div>
             </div>
           </header>
 
           {/* Viewer/Editor Container */}
           <div class="flex-1 overflow-hidden">
-            <FloorplanEditor
-              initialContent={content()}
-              projectId={project()?._id}
-              versionName={project()?.defaultVersion}
-              editable={isOwner()}
-              theme="dark"
-              projectName={project()?.displayName}
-              username={username()}
-              projectSlug={projectSlug()}
-              currentHash={currentHash()}
-              onSave={handleSaveSuccess}
-            />
+            <Show
+              when={!isContentMissing()}
+              fallback={
+                <div class="flex justify-center items-center h-full">
+                  <div class="card bg-error/10 border border-error">
+                    <div class="card-body text-center">
+                      <h2 class="card-title text-error">Content Not Available</h2>
+                      <p class="text-base-content/70">
+                        This project version has no content. The data may be corrupted or missing.
+                      </p>
+                      <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-outline btn-sm mt-4">
+                        View History
+                      </A>
+                    </div>
+                  </div>
+                </div>
+              }
+            >
+              <FloorplanEditor
+                initialContent={content()!}
+                projectId={project()?._id}
+                versionName={project()?.defaultVersion}
+                editable={isOwner()}
+                theme="dark"
+                projectName={project()?.displayName}
+                username={username()}
+                projectSlug={projectSlug()}
+                currentHash={currentHash()}
+                onSave={handleSaveSuccess}
+              />
+            </Show>
           </div>
         </Show>
       </Show>

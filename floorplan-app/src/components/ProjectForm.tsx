@@ -1,6 +1,7 @@
 import { createSignal, createMemo, Show } from "solid-js";
 import { useMutation } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
+import { styledApartmentContent } from "~/lib/mock-floorplan-content";
 
 // Type-safe API reference builder for when generated files don't exist yet
 // This will be replaced with proper imports once `npx convex dev` generates the API
@@ -65,12 +66,7 @@ export interface ProjectFormProps {
   onError?: (error: Error) => void;
 }
 
-const DEFAULT_CONTENT = `floorplan MyFloorplan
-  floor MainFloor 40x30
-    room LivingRoom 20x15 at 0,0
-      door south
-    room Kitchen 15x12 at 20,0
-      door west`;
+const DEFAULT_CONTENT = styledApartmentContent;
 
 /**
  * Reusable project form component for creating and editing floorplan projects.

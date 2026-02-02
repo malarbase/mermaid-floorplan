@@ -144,7 +144,7 @@ export default function ProjectSettings() {
     const proj = project();
     const own = owner();
     if (!user || !proj || !own) return false;
-    return user.name === own.username;
+    return (user.username ?? user.name) === own.username;
   });
 
   // Mutations

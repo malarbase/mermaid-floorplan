@@ -1,5 +1,6 @@
 import { query, mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
+import { requireUserForQuery, requireUserForMutation } from "./devAuth";
 
 /**
  * Generate a temporary username from authId.
@@ -33,13 +34,7 @@ function isValidUsername(username: string): boolean {
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return null;
-
-    return ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
+    return await requireUserForQuery(ctx);
   },
 });
 
@@ -100,46 +95,21 @@ export const getOrCreateUser = mutation({
     avatarUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
+    const user = await requireUserForMutation(ctx);
 
-    // Check if user already exists
-    const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (existingUser) {
-      // Update display name and avatar if provided and user hasn't set them
-      const updates: Record<string, unknown> = {};
-      if (args.displayName && !existingUser.displayName) {
-        updates.displayName = args.displayName;
-      }
-      if (args.avatarUrl && !existingUser.avatarUrl) {
-        updates.avatarUrl = args.avatarUrl;
-      }
-      if (Object.keys(updates).length > 0) {
-        updates.updatedAt = Date.now();
-        await ctx.db.patch(existingUser._id, updates);
-      }
-      return existingUser;
+    // Update display name and avatar if provided and user hasn't set them
+    const updates: Record<string, unknown> = {};
+    if (args.displayName && !user.displayName) {
+      updates.displayName = args.displayName;
     }
-
-    // Create new user with temp username
-    const now = Date.now();
-    const tempUsername = await generateTempUsername(identity.subject);
-
-    const userId = await ctx.db.insert("users", {
-      authId: identity.subject,
-      username: tempUsername,
-      displayName: args.displayName ?? identity.name,
-      avatarUrl: args.avatarUrl ?? identity.pictureUrl,
-      createdAt: now,
-      updatedAt: now,
-      // usernameSetAt is not set - indicates temp username
-    });
-
-    return ctx.db.get(userId);
+    if (args.avatarUrl && !user.avatarUrl) {
+      updates.avatarUrl = args.avatarUrl;
+    }
+    if (Object.keys(updates).length > 0) {
+      updates.updatedAt = Date.now();
+      await ctx.db.patch(user._id, updates);
+    }
+    return user;
   },
 });
 
@@ -201,23 +171,12 @@ export const isUsernameAvailable = query({
 export const setUsername = mutation({
   args: { username: v.string() },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
+    const user = await requireUserForMutation(ctx);
     const normalizedUsername = args.username.toLowerCase();
 
-    // Validate format
     if (!isValidUsername(normalizedUsername)) {
       throw new Error("Invalid username format");
     }
-
-    // Get current user
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
 
     // Check if same username
     if (user.username === normalizedUsername) {
@@ -282,16 +241,7 @@ export const updateProfile = mutation({
     avatarUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user) throw new Error("User not found");
-
+    const user = await requireUserForMutation(ctx);
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
     if (args.displayName !== undefined) updates.displayName = args.displayName;
     if (args.avatarUrl !== undefined) updates.avatarUrl = args.avatarUrl;
@@ -308,17 +258,8 @@ export const updateProfile = mutation({
 export const hasTempUsername = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return false;
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
+    const user = await requireUserForQuery(ctx);
     if (!user) return false;
-
-    // User has temp username if it starts with "u_" and usernameSetAt is not set
     return user.username.startsWith("u_") && !user.usernameSetAt;
   },
 });
@@ -330,11 +271,10 @@ export const hasTempUsername = query({
 export const suggestUsername = query({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+    const user = await requireUserForQuery(ctx);
+    if (!user) return [];
 
-    // Get name from identity
-    const name = identity.name || identity.email?.split("@")[0] || "user";
+    const name = user.displayName || user.username || "user";
 
     // Generate base username from name
     const baseUsername = name

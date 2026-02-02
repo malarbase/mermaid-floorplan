@@ -13,42 +13,44 @@ export default function Home() {
   const isLoggedIn = createMemo(() => session()?.data != null);
 
   return (
-    <main class="min-h-screen bg-base-200">
+    <main class="min-h-screen app-container">
       <Title>Floorplan - Design Beautiful Spaces</Title>
 
-      {/* Header */}
       <Header variant="transparent" />
 
-      {/* Hero Section */}
-      <div class="hero min-h-[80vh] md:min-h-[70vh] px-4">
-        <div class="hero-content text-center">
-          <div class="max-w-2xl">
-            <h1 class="text-3xl sm:text-4xl md:text-5xl font-bold">
-              Design Beautiful Floorplans
+      <div class="hero min-h-[80vh] md:min-h-[70vh] px-4 relative">
+        <div class="absolute inset-0 opacity-20" style={{
+          background: `radial-gradient(circle at 50% 30%, oklch(75% 0.18 195 / 0.3) 0%, transparent 50%)`
+        }} />
+        <div class="hero-content text-center relative z-10">
+          <div class="max-w-3xl">
+            <h1 class="text-4xl sm:text-5xl md:text-7xl tracking-wide" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+              ARCHITECTURAL
+              <span class="block text-gradient-primary">FLOORPLAN DESIGN</span>
             </h1>
-            <p class="py-4 sm:py-6 text-base sm:text-lg text-base-content/70">
+            <p class="py-6 sm:py-8 text-base sm:text-lg text-base-content/60 max-w-xl mx-auto" style={{ "font-family": "'DM Sans', sans-serif" }}>
               Create, visualize, and share architectural floorplans with our 
               intuitive DSL-powered 3D designer. Write simple text, see stunning results.
             </p>
             
-            <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center w-full sm:w-auto">
+            <div class="flex flex-col sm:flex-row gap-4 justify-center w-full sm:w-auto">
               <Show
                 when={isLoggedIn()}
                 fallback={
                   <>
-                    <A href="/login" class="btn btn-primary btn-md sm:btn-lg w-full sm:w-auto">
+                    <A href="/login" class="btn btn-primary btn-lg w-full sm:w-auto glow-accent">
                       Get Started
                     </A>
-                    <a href="#demo" class="btn btn-outline btn-md sm:btn-lg w-full sm:w-auto">
+                    <a href="#demo" class="btn btn-outline btn-lg w-full sm:w-auto border-glow">
                       See Demo
                     </a>
                   </>
                 }
               >
-                <A href="/dashboard" class="btn btn-primary btn-md sm:btn-lg w-full sm:w-auto">
+                <A href="/dashboard" class="btn btn-primary btn-lg w-full sm:w-auto glow-accent">
                   Go to Dashboard
                 </A>
-                <A href="/new" class="btn btn-outline btn-md sm:btn-lg w-full sm:w-auto">
+                <A href="/new" class="btn btn-outline btn-lg w-full sm:w-auto border-glow">
                   Create New Project
                 </A>
               </Show>
@@ -57,65 +59,72 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Features Section */}
-      <section class="py-10 sm:py-16 px-4" id="demo">
+      <section class="py-16 sm:py-24 px-4 relative" id="demo">
         <div class="max-w-6xl mx-auto">
-          <h2 class="text-2xl sm:text-3xl font-bold text-center mb-8 sm:mb-12">
-            Powerful Features
+          <h2 class="text-3xl sm:text-4xl text-center mb-12 sm:mb-16 tracking-wide" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+            POWERFUL FEATURES
           </h2>
           
-          <div class="grid gap-4 sm:gap-6 md:gap-8 md:grid-cols-3">
-            <div class="card bg-base-100 shadow-xl">
-              <div class="card-body p-5 sm:p-6">
-                <h3 class="card-title text-base sm:text-lg">Simple DSL</h3>
-                <p class="text-sm sm:text-base">
-                  Write floorplans using an intuitive domain-specific language. 
-                  No complex CAD software needed.
-                </p>
+          <div class="grid gap-6 md:gap-8 md:grid-cols-3">
+            <div class="project-card p-6 sm:p-8 card-hover">
+              <div class="w-12 h-12 rounded-lg flex items-center justify-center mb-4" style={{ background: "oklch(75% 0.18 195 / 0.15)" }}>
+                <svg class="w-6 h-6" style={{ color: "oklch(75% 0.18 195)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
               </div>
+              <h3 class="text-xl font-semibold mb-2" style={{ "font-family": "'DM Sans', sans-serif" }}>Simple DSL</h3>
+              <p class="text-base-content/60">
+                Write floorplans using an intuitive domain-specific language. 
+                No complex CAD software needed.
+              </p>
             </div>
 
-            <div class="card bg-base-100 shadow-xl">
-              <div class="card-body p-5 sm:p-6">
-                <h3 class="card-title text-base sm:text-lg">3D Visualization</h3>
-                <p class="text-sm sm:text-base">
-                  See your designs come to life with real-time 3D rendering. 
-                  Explore from any angle.
-                </p>
+            <div class="project-card p-6 sm:p-8 card-hover">
+              <div class="w-12 h-12 rounded-lg flex items-center justify-center mb-4" style={{ background: "oklch(75% 0.18 195 / 0.15)" }}>
+                <svg class="w-6 h-6" style={{ color: "oklch(75% 0.18 195)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                </svg>
               </div>
+              <h3 class="text-xl font-semibold mb-2" style={{ "font-family": "'DM Sans', sans-serif" }}>3D Visualization</h3>
+              <p class="text-base-content/60">
+                See your designs come to life with real-time 3D rendering. 
+                Explore from any angle.
+              </p>
             </div>
 
-            <div class="card bg-base-100 shadow-xl">
-              <div class="card-body p-5 sm:p-6">
-                <h3 class="card-title text-base sm:text-lg">Cloud Storage</h3>
-                <p class="text-sm sm:text-base">
-                  Save your projects to the cloud. Share with clients or 
-                  collaborate with your team.
-                </p>
+            <div class="project-card p-6 sm:p-8 card-hover">
+              <div class="w-12 h-12 rounded-lg flex items-center justify-center mb-4" style={{ background: "oklch(75% 0.18 195 / 0.15)" }}>
+                <svg class="w-6 h-6" style={{ color: "oklch(75% 0.18 195)" }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+                </svg>
               </div>
+              <h3 class="text-xl font-semibold mb-2" style={{ "font-family": "'DM Sans', sans-serif" }}>Cloud Storage</h3>
+              <p class="text-base-content/60">
+                Save your projects to the cloud. Share with clients or 
+                collaborate with your team.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section class="py-10 sm:py-16 px-4 bg-primary text-primary-content">
+      <section class="py-16 sm:py-24 px-4 relative" style={{ background: "linear-gradient(135deg, oklch(75% 0.18 195 / 0.15) 0%, oklch(10% 0.02 250) 100%)" }}>
         <div class="max-w-4xl mx-auto text-center">
-          <h2 class="text-2xl sm:text-3xl font-bold mb-3 sm:mb-4">
-            Ready to design your space?
+          <h2 class="text-3xl sm:text-4xl mb-4 tracking-wide" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+            READY TO DESIGN YOUR SPACE?
           </h2>
-          <p class="mb-6 sm:mb-8 text-primary-content/80 text-sm sm:text-base">
+          <p class="mb-8 text-base-content/60 max-w-xl mx-auto" style={{ "font-family": "'DM Sans', sans-serif" }}>
             Sign up for free and start creating beautiful floorplans today.
           </p>
           <Show
             when={!isLoggedIn()}
             fallback={
-              <A href="/dashboard" class="btn btn-md sm:btn-lg bg-base-100 text-base-content hover:bg-base-200 w-full sm:w-auto">
+              <A href="/dashboard" class="btn btn-primary btn-lg glow-accent">
                 Go to Dashboard
               </A>
             }
           >
-            <A href="/login" class="btn btn-md sm:btn-lg bg-base-100 text-base-content hover:bg-base-200 w-full sm:w-auto">
+            <A href="/login" class="btn btn-primary btn-lg glow-accent">
               Sign Up Free
             </A>
           </Show>

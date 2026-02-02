@@ -1,8 +1,10 @@
 import { Title } from "@solidjs/meta";
 import { useParams, A } from "@solidjs/router";
 import { Show, For, createMemo, Switch, Match } from "solid-js";
-// import { useQuery } from "convex-solidjs";
-// import { api } from "~/convex/_generated/api";
+import { useQuery } from "convex-solidjs";
+import { api } from "../../../../convex/_generated/api";
+import { Header } from "~/components/Header";
+import { useSession } from "~/lib/auth-client";
 
 /**
  * User Renamed component - shown when visiting an old username URL.
@@ -14,10 +16,12 @@ function UserRenamed(props: {
   displayName?: string | null;
 }) {
   return (
-    <main class="min-h-screen bg-base-200 flex items-center justify-center p-8">
+    <main class="min-h-screen bg-base-200">
       <Title>Username Changed - Floorplan</Title>
+      <Header />
 
-      <div class="card bg-base-100 shadow-xl max-w-md w-full">
+      <div class="flex items-center justify-center p-8 min-h-[calc(100vh-4rem)]">
+        <div class="card bg-base-100 shadow-xl max-w-md w-full">
         <div class="card-body text-center">
           <div class="flex justify-center mb-4">
             <svg
@@ -72,6 +76,7 @@ function UserRenamed(props: {
           </div>
         </div>
       </div>
+      </div>
     </main>
   );
 }
@@ -81,10 +86,12 @@ function UserRenamed(props: {
  */
 function UserNotFound(props: { username: string }) {
   return (
-    <main class="min-h-screen bg-base-200 flex items-center justify-center p-8">
+    <main class="min-h-screen bg-base-200">
       <Title>User Not Found - Floorplan</Title>
+      <Header />
 
-      <div class="card bg-base-100 shadow-xl max-w-md w-full">
+      <div class="flex items-center justify-center p-8 min-h-[calc(100vh-4rem)]">
+        <div class="card bg-base-100 shadow-xl max-w-md w-full">
         <div class="card-body text-center">
           <div class="flex justify-center mb-4">
             <svg
@@ -115,6 +122,7 @@ function UserNotFound(props: { username: string }) {
           </A>
         </div>
       </div>
+      </div>
     </main>
   );
 }
@@ -131,58 +139,33 @@ function UserNotFound(props: { username: string }) {
 export default function UserProfile() {
   const params = useParams();
   const username = createMemo(() => params.username);
+  const session = useSession();
+  const currentUser = createMemo(() => session()?.data?.user);
+  const isOwnProfile = createMemo(() => {
+    const cur = currentUser();
+    return cur && (cur.username ?? cur.name) === username();
+  });
 
-  // TODO: Uncomment when Convex is configured
-  // Query for the user by username
-  // const user = useQuery(api.users.getByUsername, () => ({
-  //   username: username(),
-  // }));
+  const userQuery = useQuery(
+    api.users.getByUsername,
+    () => ({ username: username() as string })
+  );
 
-  // Query for previous owner if user doesn't exist (username was renamed)
-  // const previousOwner = useQuery(
-  //   api.users.getPreviousOwner,
-  //   () => {
-  //     // Only query if user doesn't exist
-  //     if (user() === null) {
-  //       return { username: username() };
-  //     }
-  //     return "skip";
-  //   }
-  // );
+  const projectsQuery = useQuery(
+    api.projects.listPublicByUsername,
+    () => ({ username: username() as string })
+  );
 
-  // Query for user's public projects
-  // const userProjects = useQuery(api.projects.getByUsername, () => ({
-  //   username: username(),
-  // }));
-
-  // Placeholder types for user and previousOwner
-  type UserType = {
-    _id: string;
-    username: string;
-    displayName?: string;
-    avatarUrl?: string;
-    createdAt: number;
-  } | null;
-
-  type PreviousOwnerType = {
-    oldUsername: string;
-    newUsername: string;
-    displayName?: string;
-  } | null;
-
-  // Placeholder data - in real app, these would be from useQuery
-  // Set to an empty user to simulate "user exists" state for now
-  const isLoading = () => false;
-  const user = (): UserType => null; // Will be null until Convex is connected
-  const previousOwner = (): PreviousOwnerType => null; // Will be null until Convex is connected
-  const projects = () =>
-    [] as Array<{
-      _id: string;
-      slug: string;
-      displayName: string;
-      description?: string;
-      updatedAt: number;
-    }>;
+  const isLoading = () => userQuery.isLoading() || projectsQuery.isLoading();
+  const user = () => userQuery.data();
+  
+  const profileAvatarUrl = createMemo(() => 
+    user()?.avatarUrl ?? (isOwnProfile() ? currentUser()?.image : undefined)
+  );
+  const projects = () => projectsQuery.data() ?? [];
+  
+  // TODO: Add previousOwner query when username history is implemented
+  const previousOwner = () => null as { oldUsername: string; newUsername: string; displayName?: string } | null;
 
   return (
     <Switch
@@ -202,14 +185,15 @@ export default function UserProfile() {
       {/* User exists - show profile */}
       <Match when={user()}>
         {(userData) => (
-          <main class="min-h-screen bg-base-200 p-8">
+          <main class="min-h-screen bg-base-200">
             <Title>{username()} - Floorplan</Title>
+            <Header />
 
-            <div class="max-w-4xl mx-auto">
+            <div class="max-w-4xl mx-auto p-8">
               {/* User Header */}
               <div class="flex items-center gap-4 mb-8">
                 <Show
-                  when={userData().avatarUrl}
+                  when={profileAvatarUrl()}
                   fallback={
                     <div class="avatar placeholder">
                       <div class="bg-neutral text-neutral-content rounded-full w-16">
@@ -223,7 +207,7 @@ export default function UserProfile() {
                   <div class="avatar">
                     <div class="w-16 rounded-full">
                       <img
-                        src={userData().avatarUrl!}
+                        src={profileAvatarUrl()!}
                         alt={userData().displayName || username()}
                       />
                     </div>

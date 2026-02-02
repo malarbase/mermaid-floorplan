@@ -1,10 +1,12 @@
-import { QueryCtx, MutationCtx } from "./_generated/server";
-import { Doc } from "./_generated/dataModel";
+import { customQuery, customMutation, customCtx } from "convex-helpers/server/customFunctions";
+import { query, mutation } from "../_generated/server";
+import { QueryCtx, MutationCtx } from "../_generated/server";
+import { Doc } from "../_generated/dataModel";
 
 const DEV_USER_AUTH_ID = "dev-user-1";
 
-const IS_DEV_MODE = 
-  process.env.DEV_AUTH_ENABLED === "true" || 
+const IS_DEV_MODE =
+  process.env.DEV_AUTH_ENABLED === "true" ||
   process.env.NODE_ENV !== "production" ||
   process.env.CONVEX_CLOUD_ORIGIN?.includes("localhost") === true;
 
@@ -42,9 +44,7 @@ async function getUserByIdentity(
     .first();
 }
 
-export async function requireUserForQuery(
-  ctx: QueryCtx
-): Promise<Doc<"users"> | null> {
+async function getCurrentUser(ctx: QueryCtx): Promise<Doc<"users"> | null> {
   const identity = await ctx.auth.getUserIdentity();
 
   if (identity) {
@@ -55,9 +55,7 @@ export async function requireUserForQuery(
   return IS_DEV_MODE ? getDevUser(ctx) : null;
 }
 
-export async function requireUserForMutation(
-  ctx: MutationCtx
-): Promise<Doc<"users">> {
+async function requireUser(ctx: MutationCtx): Promise<Doc<"users">> {
   const identity = await ctx.auth.getUserIdentity();
 
   if (identity) {
@@ -71,3 +69,24 @@ export async function requireUserForMutation(
 
   return getOrCreateDevUser(ctx);
 }
+
+export const authenticatedQuery = customQuery(
+  query,
+  customCtx(async (ctx) => ({
+    user: await getCurrentUser(ctx),
+  }))
+);
+
+export const authenticatedMutation = customMutation(
+  mutation,
+  customCtx(async (ctx) => ({
+    user: await requireUser(ctx),
+  }))
+);
+
+export const optionalAuthQuery = customQuery(
+  query,
+  customCtx(async (ctx) => ({
+    user: await getCurrentUser(ctx),
+  }))
+);

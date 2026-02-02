@@ -1,19 +1,10 @@
 import { createSignal, Show } from "solid-js";
 import { useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
-
-// Type-safe API reference builder for when generated files don't exist yet
-const api = {
-  projects: {
-    update: "projects:update" as unknown as FunctionReference<"mutation">,
-  },
-};
+import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 
 export interface VisibilityToggleProps {
-  /**
-   * Project ID to update
-   */
-  projectId: string;
+  projectId: Id<"projects"> | string;
 
   /**
    * Current visibility state
@@ -67,7 +58,7 @@ export function VisibilityToggle(props: VisibilityToggleProps) {
 
     try {
       await updateProject.mutate({
-        projectId: props.projectId,
+        projectId: props.projectId as Id<"projects">,
         isPublic: newValue,
       });
       props.onToggle?.(newValue);
@@ -85,15 +76,29 @@ export function VisibilityToggle(props: VisibilityToggleProps) {
     return (
       <button
         type="button"
-        class={`badge cursor-pointer transition-colors ${
-          isPublic() ? "badge-success" : "badge-ghost"
+        class={`btn btn-xs gap-1 ${
+          isPublic() ? "btn-success btn-outline" : "btn-ghost border border-base-content/20"
         } ${props.class ?? ""}`}
         onClick={handleToggle}
         disabled={isLoading()}
         title={isPublic() ? "Click to make private" : "Click to make public"}
       >
         <Show when={isLoading()}>
-          <span class="loading loading-spinner loading-xs mr-1"></span>
+          <span class="loading loading-spinner loading-xs"></span>
+        </Show>
+        <Show when={!isLoading()}>
+          <Show
+            when={isPublic()}
+            fallback={
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+            }
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </Show>
         </Show>
         {isPublic() ? "Public" : "Private"}
       </button>

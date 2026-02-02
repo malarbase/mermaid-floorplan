@@ -88,21 +88,25 @@
   overflow: hidden;
 }
 
-/* Header nav link styles */
 .nav-link {
   padding: 0.5rem 0.75rem;
-  border-radius: 0.5rem;
+  border-radius: 0.375rem;
   font-weight: 500;
-  transition: background-color 0.15s ease, color 0.15s ease;
+  font-family: 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0.01em;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
 }
 
 .nav-link:hover {
-  background-color: oklch(var(--color-base-200));
+  background-color: oklch(18% 0.03 250);
+  border-color: oklch(25% 0.02 250);
 }
 
 .nav-link-active {
-  background-color: oklch(var(--color-primary) / 0.1);
-  color: oklch(var(--color-primary));
+  background-color: oklch(75% 0.18 195 / 0.1);
+  color: oklch(75% 0.18 195);
+  border-color: oklch(75% 0.18 195 / 0.3);
 }
 
 /* Responsive container */
@@ -131,12 +135,20 @@
 
 /* === Auth Page Styles === */
 
-/* Gradient text for branding */
 .text-gradient-primary {
-  background: linear-gradient(135deg, oklch(var(--color-primary)) 0%, oklch(var(--color-secondary)) 100%);
+  background: linear-gradient(135deg, oklch(75% 0.18 195) 0%, oklch(65% 0.15 220) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px oklch(75% 0.18 195 / 0.25), 0 0 40px oklch(75% 0.18 195 / 0.1);
+}
+
+.border-glow:hover {
+  border-color: oklch(75% 0.18 195 / 0.6);
+  box-shadow: 0 0 20px oklch(75% 0.18 195 / 0.15);
 }
 
 /* Card hover effect */
@@ -211,19 +223,14 @@
   animation: scaleIn 0.3s ease-out forwards;
 }
 
-/* === Dashboard Page Styles === */
-
-/* Dashboard page background with subtle gradient */
 .dashboard-bg {
-  background: linear-gradient(
-    135deg,
-    oklch(var(--color-base-200)) 0%,
-    oklch(var(--color-base-300) / 0.5) 100%
-  );
+  background: 
+    linear-gradient(oklch(8% 0.02 250 / 0.95), oklch(8% 0.02 250 / 0.95)),
+    repeating-linear-gradient(0deg, transparent, transparent 39px, oklch(25% 0.03 250 / 0.12) 39px, oklch(25% 0.03 250 / 0.12) 40px),
+    repeating-linear-gradient(90deg, transparent, transparent 39px, oklch(25% 0.03 250 / 0.12) 39px, oklch(25% 0.03 250 / 0.12) 40px);
   min-height: 100vh;
 }
 
-/* Dashboard section header */
 .dashboard-section-header {
   display: flex;
   align-items: center;
@@ -232,16 +239,19 @@
 }
 
 .dashboard-section-title {
-  font-size: 1.875rem;
-  font-weight: 700;
-  line-height: 1.2;
-  color: oklch(var(--color-base-content));
+  font-size: 2.5rem;
+  font-weight: 400;
+  line-height: 1.1;
+  color: oklch(95% 0.01 250);
+  font-family: 'Bebas Neue', 'DM Sans', system-ui, sans-serif;
+  letter-spacing: 0.03em;
 }
 
 .dashboard-section-subtitle {
-  margin-top: 0.25rem;
-  color: oklch(var(--color-base-content) / 0.6);
+  margin-top: 0.5rem;
+  color: oklch(65% 0.02 250);
   font-size: 0.875rem;
+  font-family: 'DM Sans', system-ui, sans-serif;
 }
 
 /* Project cards grid */
@@ -262,32 +272,35 @@
   }
 }
 
-/* Enhanced project card */
 .project-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  background-color: oklch(var(--color-base-100));
-  border-radius: 1rem;
+  background-color: oklch(12% 0.02 250);
+  border-radius: 0.5rem;
   overflow: hidden;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid oklch(25% 0.02 250);
+  transition: all 0.25s ease;
 }
 
 .project-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  border-color: oklch(75% 0.18 195 / 0.5);
+  box-shadow: 0 0 30px oklch(75% 0.18 195 / 0.12);
 }
 
-/* Project card thumbnail area */
 .project-card-thumbnail {
   height: 140px;
-  background-color: oklch(var(--color-base-200));
+  background: 
+    linear-gradient(oklch(10% 0.02 250 / 0.9), oklch(10% 0.02 250 / 0.9)),
+    repeating-linear-gradient(0deg, transparent, transparent 19px, oklch(25% 0.03 250 / 0.2) 19px, oklch(25% 0.03 250 / 0.2) 20px),
+    repeating-linear-gradient(90deg, transparent, transparent 19px, oklch(25% 0.03 250 / 0.2) 19px, oklch(25% 0.03 250 / 0.2) 20px);
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   overflow: hidden;
+  pointer-events: none;
 }
 
 .project-card-thumbnail::after {
@@ -297,7 +310,7 @@
   background: linear-gradient(
     to bottom,
     transparent 0%,
-    oklch(var(--color-base-100) / 0.05) 100%
+    oklch(12% 0.02 250 / 0.3) 100%
   );
 }
 
@@ -313,6 +326,7 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  pointer-events: none;
 }
 
 .project-card-title {
@@ -357,11 +371,14 @@
   position: relative;
 }
 
+.project-card-actions {
+  pointer-events: auto;
+}
+
 .project-card:hover .project-card-actions {
   opacity: 1;
 }
 
-/* Empty state styling */
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -369,9 +386,9 @@
   justify-content: center;
   text-align: center;
   padding: 4rem 2rem;
-  background-color: oklch(var(--color-base-100));
-  border-radius: 1.5rem;
-  border: 2px dashed oklch(var(--color-base-300));
+  background-color: oklch(10% 0.02 250);
+  border-radius: 0.5rem;
+  border: 1px dashed oklch(30% 0.02 250);
 }
 
 .empty-state-icon {
@@ -418,9 +435,14 @@
   align-items: center;
   gap: 1rem;
   padding: 1.25rem;
-  background-color: oklch(var(--color-base-100));
-  border-radius: 1rem;
-  box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+  background-color: oklch(12% 0.02 250);
+  border-radius: 0.5rem;
+  border: 1px solid oklch(25% 0.02 250);
+  transition: border-color 0.2s ease;
+}
+
+.stat-card:hover {
+  border-color: oklch(35% 0.02 250);
 }
 
 .stat-card-icon {
@@ -434,23 +456,23 @@
 }
 
 .stat-card-icon.primary {
-  background-color: oklch(var(--color-primary) / 0.1);
-  color: oklch(var(--color-primary));
+  background-color: oklch(75% 0.18 195 / 0.15);
+  color: oklch(75% 0.18 195);
 }
 
 .stat-card-icon.secondary {
-  background-color: oklch(var(--color-secondary) / 0.1);
-  color: oklch(var(--color-secondary));
+  background-color: oklch(55% 0.08 250 / 0.2);
+  color: oklch(65% 0.08 250);
 }
 
 .stat-card-icon.accent {
-  background-color: oklch(var(--color-accent) / 0.1);
-  color: oklch(var(--color-accent));
+  background-color: oklch(75% 0.18 195 / 0.15);
+  color: oklch(75% 0.18 195);
 }
 
 .stat-card-icon.info {
-  background-color: oklch(var(--color-info) / 0.1);
-  color: oklch(var(--color-info));
+  background-color: oklch(65% 0.15 220 / 0.15);
+  color: oklch(70% 0.15 220);
 }
 
 .stat-card-content {

@@ -76,15 +76,14 @@ export const Header: Component<HeaderProps> = (props) => {
     return location.pathname === path || location.pathname.startsWith(path + "/");
   };
   
-  // Get variant-specific classes
   const getVariantClasses = () => {
     switch (props.variant) {
       case "transparent":
         return "bg-transparent";
       case "minimal":
-        return "bg-base-100 border-b border-base-200";
+        return "bg-base-200/50 border-b border-neutral backdrop-blur-sm";
       default:
-        return "bg-base-100 shadow-sm";
+        return "bg-base-200/80 border-b border-neutral backdrop-blur-sm";
     }
   };
   
@@ -92,7 +91,7 @@ export const Header: Component<HeaderProps> = (props) => {
   const username = createMemo(() => user()?.username ?? user()?.name ?? "");
 
   return (
-    <header class={`navbar ${getVariantClasses()} ${props.class ?? ""}`}>
+    <header class={`navbar relative z-50 ${getVariantClasses()} ${props.class ?? ""}`}>
       {/* Left side - Logo/Brand and Back button */}
       <div class="flex-1 gap-2">
         <Show when={props.backHref}>
@@ -105,8 +104,8 @@ export const Header: Component<HeaderProps> = (props) => {
         </Show>
         
         <Show when={props.variant !== "minimal"}>
-          <A href="/" class="btn btn-ghost text-xl font-bold">
-            Floorplan
+          <A href="/" class="btn btn-ghost text-xl tracking-wider" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+            FLOORPLAN
           </A>
         </Show>
         
@@ -172,7 +171,7 @@ export const Header: Component<HeaderProps> = (props) => {
                       </Show>
                     </div>
                   </div>
-                  <ul tabIndex={0} class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
+                  <ul tabIndex={0} class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
                     <li class="menu-title px-2 py-1">
                       <span class="text-base-content font-medium">{user()?.name}</span>
                       <Show when={user()?.email}>
@@ -229,7 +228,7 @@ export const Header: Component<HeaderProps> = (props) => {
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                   </div>
-                  <ul tabIndex={0} class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
+                  <ul tabIndex={0} class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
                     <li><A href="/dashboard">Dashboard</A></li>
                     <li><A href={`/u/${username()}`}>Profile</A></li>
                     <li><A href="/new">New Project</A></li>

@@ -44,7 +44,8 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
   // Check if username is available
   const availabilityQuery = useQuery(
     api.users.isUsernameAvailable,
-    () => username().length >= 3 ? { username: username() } : ({ _skip: true } as never)
+    () => ({ username: username() }),
+    () => ({ enabled: username().length >= 3 })
   );
   
   // Mutation to set username

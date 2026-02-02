@@ -1,10 +1,7 @@
 import { query, mutation } from "./_generated/server";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { authenticatedMutation, optionalAuthQuery } from "./lib/auth";
 
-/**
- * Generate a cryptographically secure random token for share links.
- */
 async function generateShareToken(): Promise<string> {
   const array = new Uint8Array(24);
   crypto.getRandomValues(array);
@@ -12,16 +9,7 @@ async function generateShareToken(): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-/**
- * Role types for access control
- */
-type AccessRole = "viewer" | "editor";
-
-/**
- * Check if a user can access a project (query version).
- * Returns the access level or null if no access.
- */
-export const checkAccess = query({
+export const checkAccess = optionalAuthQuery({
   args: {
     projectId: v.id("projects"),
     token: v.optional(v.string()),
@@ -30,51 +18,35 @@ export const checkAccess = query({
     const project = await ctx.db.get(args.projectId);
     if (!project) return null;
 
-    // Public projects: anyone can view
     if (project.isPublic) {
-      // Check if authenticated user has elevated access
-      const identity = await ctx.auth.getUserIdentity();
-      if (identity) {
-        const user = await ctx.db
-          .query("users")
-          .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
+      if (ctx.user) {
+        if (project.userId === ctx.user._id) {
+          return { role: "owner" as const, canEdit: true, canManage: true };
+        }
+
+        const access = await ctx.db
+          .query("projectAccess")
+          .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+          .filter((q) => q.eq(q.field("userId"), ctx.user!._id))
           .first();
 
-        if (user) {
-          // Owner has full access
-          if (project.userId === user._id) {
-            return { role: "owner" as const, canEdit: true, canManage: true };
-          }
-
-          // Check projectAccess for collaborator role
-          const access = await ctx.db
-            .query("projectAccess")
-            .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-            .filter((q) => q.eq(q.field("userId"), user._id))
-            .first();
-
-          if (access) {
-            return {
-              role: access.role,
-              canEdit: access.role === "editor",
-              canManage: false,
-            };
-          }
+        if (access) {
+          return {
+            role: access.role,
+            canEdit: access.role === "editor",
+            canManage: false,
+          };
         }
       }
 
-      // Default public access: viewer
       return { role: "viewer" as const, canEdit: false, canManage: false };
     }
 
-    // Private project: check authentication
-    const identity = await ctx.auth.getUserIdentity();
-
-    // Check share link token first (works for both auth and non-auth)
     if (args.token) {
+      const token = args.token;
       const shareLink = await ctx.db
         .query("shareLinks")
-        .withIndex("by_token", (q) => q.eq("token", args.token))
+        .withIndex("by_token", (q) => q.eq("token", token))
         .first();
 
       if (
@@ -90,25 +62,16 @@ export const checkAccess = query({
       }
     }
 
-    if (!identity) return null;
+    if (!ctx.user) return null;
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user) return null;
-
-    // Owner has full access
-    if (project.userId === user._id) {
+    if (project.userId === ctx.user._id) {
       return { role: "owner" as const, canEdit: true, canManage: true };
     }
 
-    // Check projectAccess for collaborator role
     const access = await ctx.db
       .query("projectAccess")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .filter((q) => q.eq(q.field("userId"), user._id))
+      .filter((q) => q.eq(q.field("userId"), ctx.user!._id))
       .first();
 
     if (access) {
@@ -123,26 +86,15 @@ export const checkAccess = query({
   },
 });
 
-/**
- * Get all collaborators for a project.
- * Only owner can view the full list.
- */
-export const getCollaborators = query({
+export const getCollaborators = optionalAuthQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+    if (!ctx.user) return [];
 
     const project = await ctx.db.get(args.projectId);
     if (!project) return [];
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    // Only owner can see full collaborator list
-    if (!user || project.userId !== user._id) {
+    if (project.userId !== ctx.user._id) {
       return [];
     }
 
@@ -151,7 +103,6 @@ export const getCollaborators = query({
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
       .collect();
 
-    // Fetch user details for each collaborator
     const collaborators = await Promise.all(
       accessList.map(async (access) => {
         const collaborator = await ctx.db.get(access.userId);
@@ -173,26 +124,15 @@ export const getCollaborators = query({
   },
 });
 
-/**
- * Get all share links for a project.
- * Only owner can view share links.
- */
-export const getShareLinks = query({
+export const getShareLinks = optionalAuthQuery({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
+    if (!ctx.user) return [];
 
     const project = await ctx.db.get(args.projectId);
     if (!project) return [];
 
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    // Only owner can see share links
-    if (!user || project.userId !== user._id) {
+    if (project.userId !== ctx.user._id) {
       return [];
     }
 
@@ -212,36 +152,20 @@ export const getShareLinks = query({
   },
 });
 
-/**
- * Invite a user to collaborate on a project by username.
- * Only owner can invite collaborators.
- */
-export const inviteByUsername = mutation({
+export const inviteByUsername = authenticatedMutation({
   args: {
     projectId: v.id("projects"),
     username: v.string(),
     role: v.union(v.literal("viewer"), v.literal("editor")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!currentUser) throw new Error("User not found");
-
-    // Only owner can invite
-    if (project.userId !== currentUser._id) {
+    if (project.userId !== ctx.user._id) {
       throw new Error("Only project owner can invite collaborators");
     }
 
-    // Find user to invite
     const invitee = await ctx.db
       .query("users")
       .withIndex("by_username", (q) => q.eq("username", args.username.toLowerCase()))
@@ -251,12 +175,10 @@ export const inviteByUsername = mutation({
       throw new Error("User not found");
     }
 
-    // Cannot invite yourself
-    if (invitee._id === currentUser._id) {
+    if (invitee._id === ctx.user._id) {
       throw new Error("Cannot invite yourself");
     }
 
-    // Check if already has access
     const existingAccess = await ctx.db
       .query("projectAccess")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
@@ -264,7 +186,6 @@ export const inviteByUsername = mutation({
       .first();
 
     if (existingAccess) {
-      // Update role if different
       if (existingAccess.role !== args.role) {
         await ctx.db.patch(existingAccess._id, { role: args.role });
         return { success: true, action: "updated", accessId: existingAccess._id };
@@ -272,12 +193,11 @@ export const inviteByUsername = mutation({
       return { success: true, action: "exists", accessId: existingAccess._id };
     }
 
-    // Create access
     const accessId = await ctx.db.insert("projectAccess", {
       projectId: args.projectId,
       userId: invitee._id,
       role: args.role,
-      invitedBy: currentUser._id,
+      invitedBy: ctx.user._id,
       createdAt: Date.now(),
     });
 
@@ -285,35 +205,19 @@ export const inviteByUsername = mutation({
   },
 });
 
-/**
- * Remove a collaborator from a project.
- * Only owner can remove collaborators.
- */
-export const removeCollaborator = mutation({
+export const removeCollaborator = authenticatedMutation({
   args: {
     projectId: v.id("projects"),
     userId: v.id("users"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!currentUser) throw new Error("User not found");
-
-    // Only owner can remove collaborators
-    if (project.userId !== currentUser._id) {
+    if (project.userId !== ctx.user._id) {
       throw new Error("Only project owner can remove collaborators");
     }
 
-    // Find and remove access
     const access = await ctx.db
       .query("projectAccess")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
@@ -330,36 +234,20 @@ export const removeCollaborator = mutation({
   },
 });
 
-/**
- * Update a collaborator's role.
- * Only owner can update roles.
- */
-export const updateCollaboratorRole = mutation({
+export const updateCollaboratorRole = authenticatedMutation({
   args: {
     projectId: v.id("projects"),
     userId: v.id("users"),
     role: v.union(v.literal("viewer"), v.literal("editor")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!currentUser) throw new Error("User not found");
-
-    // Only owner can update roles
-    if (project.userId !== currentUser._id) {
+    if (project.userId !== ctx.user._id) {
       throw new Error("Only project owner can update collaborator roles");
     }
 
-    // Find access
     const access = await ctx.db
       .query("projectAccess")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
@@ -376,32 +264,17 @@ export const updateCollaboratorRole = mutation({
   },
 });
 
-/**
- * Create a share link for "anyone with link" access.
- * Only owner can create share links.
- */
-export const createShareLink = mutation({
+export const createShareLink = authenticatedMutation({
   args: {
     projectId: v.id("projects"),
     role: v.union(v.literal("viewer"), v.literal("editor")),
     expiresInDays: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!currentUser) throw new Error("User not found");
-
-    // Only owner can create share links
-    if (project.userId !== currentUser._id) {
+    if (project.userId !== ctx.user._id) {
       throw new Error("Only project owner can create share links");
     }
 
@@ -422,31 +295,16 @@ export const createShareLink = mutation({
   },
 });
 
-/**
- * Revoke (delete) a share link.
- * Only owner can revoke share links.
- */
-export const revokeShareLink = mutation({
+export const revokeShareLink = authenticatedMutation({
   args: { linkId: v.id("shareLinks") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
     const link = await ctx.db.get(args.linkId);
     if (!link) throw new Error("Share link not found");
 
     const project = await ctx.db.get(link.projectId);
     if (!project) throw new Error("Project not found");
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!currentUser) throw new Error("User not found");
-
-    // Only owner can revoke share links
-    if (project.userId !== currentUser._id) {
+    if (project.userId !== ctx.user._id) {
       throw new Error("Only project owner can revoke share links");
     }
 
@@ -456,10 +314,6 @@ export const revokeShareLink = mutation({
   },
 });
 
-/**
- * Validate a share link token and get project info.
- * Used when accessing a project via share link.
- */
 export const validateShareLink = query({
   args: { token: v.string() },
   handler: async (ctx, args) => {
@@ -472,7 +326,6 @@ export const validateShareLink = query({
       return { valid: false, reason: "not_found" as const };
     }
 
-    // Check expiration
     if (link.expiresAt && link.expiresAt < Date.now()) {
       return { valid: false, reason: "expired" as const };
     }
@@ -495,28 +348,16 @@ export const validateShareLink = query({
   },
 });
 
-/**
- * Get projects the current user has access to (as collaborator, not owner).
- */
-export const getSharedWithMe = query({
+export const getSharedWithMe = optionalAuthQuery({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!user) return [];
+    if (!ctx.user) return [];
 
     const accessList = await ctx.db
       .query("projectAccess")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .withIndex("by_user", (q) => q.eq("userId", ctx.user!._id))
       .collect();
 
-    // Fetch project details for each
     const projects = await Promise.all(
       accessList.map(async (access) => {
         const project = await ctx.db.get(access.projectId);
@@ -547,40 +388,25 @@ export const getSharedWithMe = query({
   },
 });
 
-/**
- * Fork a project (create a copy owned by the current user).
- * Requires at least viewer access to the source project.
- */
-export const forkProject = mutation({
+export const forkProject = authenticatedMutation({
   args: {
     projectId: v.id("projects"),
     slug: v.string(),
     displayName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
     const sourceProject = await ctx.db.get(args.projectId);
     if (!sourceProject) throw new Error("Project not found");
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!currentUser) throw new Error("User not found");
-
-    // Check access (public or has explicit access)
     let hasAccess = sourceProject.isPublic;
     if (!hasAccess) {
-      if (sourceProject.userId === currentUser._id) {
+      if (sourceProject.userId === ctx.user._id) {
         hasAccess = true;
       } else {
         const access = await ctx.db
           .query("projectAccess")
           .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-          .filter((q) => q.eq(q.field("userId"), currentUser._id))
+          .filter((q) => q.eq(q.field("userId"), ctx.user._id))
           .first();
         hasAccess = !!access;
       }
@@ -590,11 +416,10 @@ export const forkProject = mutation({
       throw new Error("No access to fork this project");
     }
 
-    // Check slug uniqueness for new owner
     const existingProject = await ctx.db
       .query("projects")
       .withIndex("by_user_slug", (q) =>
-        q.eq("userId", currentUser._id).eq("slug", args.slug)
+        q.eq("userId", ctx.user._id).eq("slug", args.slug)
       )
       .first();
 
@@ -602,7 +427,6 @@ export const forkProject = mutation({
       throw new Error("You already have a project with this slug");
     }
 
-    // Get default version snapshot from source
     const defaultVersion = await ctx.db
       .query("versions")
       .withIndex("by_project_name", (q) =>
@@ -621,30 +445,27 @@ export const forkProject = mutation({
 
     const now = Date.now();
 
-    // Create forked project
     const newProjectId = await ctx.db.insert("projects", {
-      userId: currentUser._id,
+      userId: ctx.user._id,
       slug: args.slug,
       displayName: args.displayName ?? sourceProject.displayName,
       description: sourceProject.description,
-      isPublic: false, // Forks start as private
+      isPublic: false,
       defaultVersion: "main",
       forkedFrom: args.projectId,
       createdAt: now,
       updatedAt: now,
     });
 
-    // Create initial snapshot (copy content)
     const newSnapshotId = await ctx.db.insert("snapshots", {
       projectId: newProjectId,
       contentHash: sourceSnapshot.contentHash,
       content: sourceSnapshot.content,
       message: `Forked from ${sourceProject.displayName}`,
-      authorId: identity.subject,
+      authorId: ctx.user.authId,
       createdAt: now,
     });
 
-    // Create main version
     await ctx.db.insert("versions", {
       projectId: newProjectId,
       name: "main",
@@ -657,10 +478,6 @@ export const forkProject = mutation({
   },
 });
 
-/**
- * Get fork information for a project.
- * Returns the source project info if this project is a fork.
- */
 export const getForkSource = query({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
@@ -669,7 +486,6 @@ export const getForkSource = query({
 
     const sourceProject = await ctx.db.get(project.forkedFrom);
     if (!sourceProject) {
-      // Source was deleted
       return { deleted: true, projectId: project.forkedFrom };
     }
 
@@ -686,36 +502,20 @@ export const getForkSource = query({
   },
 });
 
-/**
- * Leave a shared project (remove your own access).
- * Cannot be used by the project owner.
- */
-export const leaveProject = mutation({
+export const leaveProject = authenticatedMutation({
   args: { projectId: v.id("projects") },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error("Unauthenticated");
-
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error("Project not found");
 
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-      .first();
-
-    if (!currentUser) throw new Error("User not found");
-
-    // Owner cannot leave their own project
-    if (project.userId === currentUser._id) {
+    if (project.userId === ctx.user._id) {
       throw new Error("Owner cannot leave their own project. Transfer or delete instead.");
     }
 
-    // Find and remove access
     const access = await ctx.db
       .query("projectAccess")
       .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .filter((q) => q.eq(q.field("userId"), currentUser._id))
+      .filter((q) => q.eq(q.field("userId"), ctx.user._id))
       .first();
 
     if (!access) {
