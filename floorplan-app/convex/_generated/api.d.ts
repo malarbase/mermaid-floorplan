@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as collections from "../collections.js";
 import type * as crons from "../crons.js";
 import type * as devAuth from "../devAuth.js";
 import type * as explore from "../explore.js";
@@ -26,6 +27,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  collections: typeof collections;
   crons: typeof crons;
   devAuth: typeof devAuth;
   explore: typeof explore;

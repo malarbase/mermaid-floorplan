@@ -7,8 +7,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
-    include: ['src/**/*.test.{ts,tsx}'],
-    exclude: ['node_modules/**', 'convex/**'],
+    include: ['src/**/*.test.{ts,tsx}', 'convex/**/*.test.ts'],
+    exclude: ['node_modules/**'],
     setupFiles: ['./src/test/setup.ts'],
     server: {
       deps: {

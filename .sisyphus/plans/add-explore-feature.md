@@ -369,7 +369,7 @@ Task 1 → Task 4-7 → Task 8 → Task 11 → Task 14-16
 
 ---
 
-- [ ] 7. Create collection CRUD mutations
+- [x] 7. Create collection CRUD mutations
 
   **What to do**:
   - Create `collections.create` mutation (admin-only)
