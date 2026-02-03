@@ -56,14 +56,14 @@ Build an admin panel MVP with super admin hierarchy, user/project management, an
 - Super admin impersonation capability
 
 ### Definition of Done
-- [ ] Super admin can promote/demote regular admins
-- [ ] Admins can feature/unfeature projects
-- [ ] Super admin can delete any project
-- [ ] Super admin can impersonate users
-- [ ] Audit trail records admin actions
-- [ ] Non-admins redirected away from /admin
-- [ ] All admin actions require proper authorization
-- [ ] No TypeScript errors
+- [x] Super admin can promote/demote regular admins
+- [x] Admins can feature/unfeature projects
+- [x] Super admin can delete any project
+- [x] Super admin can impersonate users
+- [x] Audit trail records admin actions
+- [x] Non-admins redirected away from /admin
+- [x] All admin actions require proper authorization
+- [x] No TypeScript errors
 
 ### Must Have
 - Super admin email configurable via `SUPER_ADMIN_EMAIL` env var
@@ -722,11 +722,11 @@ cd floorplan-app && npm run typecheck 2>&1 | grep -v node_modules
 ```
 
 ### Final Checklist
-- [ ] Super admin can promote/demote admins
-- [ ] Admins can feature/unfeature projects
-- [ ] Super admin can delete any project
-- [ ] Super admin can impersonate users
-- [ ] Audit trail records admin actions
-- [ ] Non-admins redirected away from /admin
-- [ ] All admin actions require proper authorization
-- [ ] No TypeScript errors
+- [x] Super admin can promote/demote admins
+- [x] Admins can feature/unfeature projects
+- [x] Super admin can delete any project
+- [x] Super admin can impersonate users
+- [x] Audit trail records admin actions
+- [x] Non-admins redirected away from /admin
+- [x] All admin actions require proper authorization
+- [x] No TypeScript errors
