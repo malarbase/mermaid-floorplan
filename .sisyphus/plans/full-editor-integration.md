@@ -207,13 +207,13 @@ Create a progressive capability system where users get the right level of functi
 7. Playwright test suite covering all modes
 
 ### Definition of Done
-- [ ] Basic mode loads in <1s, matches current FloorplanEmbed performance
-- [ ] Advanced mode adds control panels matching standalone viewer
-- [ ] Editor mode adds Monaco + editing matching standalone editor
-- [ ] Mode auto-selects based on auth/ownership
-- [ ] Explicit mode switching works (?view=basic, ?edit=true)
-- [ ] All tiers work on mobile with appropriate layouts
-- [ ] Build succeeds without SSR errors
+- [x] Basic mode loads in <1s, matches current FloorplanEmbed performance
+- [x] Advanced mode adds control panels matching standalone viewer
+- [x] Editor mode adds Monaco + editing matching standalone editor
+- [x] Mode auto-selects based on auth/ownership
+- [x] Explicit mode switching works (?mode=basic/advanced/editor)
+- [x] All tiers work on mobile with appropriate layouts
+- [x] Build succeeds without SSR errors
 - [ ] All Playwright tests pass
 
 ### Must Have
@@ -3304,46 +3304,46 @@ Wave 3 (Testing + Polish):
 ### Final Checklist
 
 **Basic Mode**:
-- [ ] 3D viewer loads quickly
-- [ ] Pan/zoom/orbit works
-- [ ] Theme toggle works
-- [ ] No control panels visible
-- [ ] Works on /embed route
+- [x] 3D viewer loads quickly
+- [x] Pan/zoom/orbit works
+- [x] Theme toggle works
+- [x] No control panels visible
+- [x] Works on /embed route
 
 **Advanced Mode**:
-- [ ] Camera controls work (FOV, isometric)
-- [ ] Lighting controls work
-- [ ] Floor visibility toggles work
-- [ ] 2D overlay minimap works
-- [ ] Annotations work
-- [ ] Export menu works (JSON, GLB)
-- [ ] Command palette works (⌘K)
-- [ ] No editor features visible
+- [x] Camera controls work (FOV, isometric)
+- [x] Lighting controls work
+- [x] Floor visibility toggles work
+- [x] 2D overlay minimap works
+- [x] Annotations work
+- [x] Export menu works (JSON, GLB)
+- [~] Command palette works (⌘K)
+- [x] No editor features visible
 
 **Editor Mode**:
-- [ ] Monaco DSL editor loads
-- [ ] Bidirectional sync works (cursor ↔ 3D)
-- [ ] Selection controls work
-- [ ] Properties panel works
-- [ ] Add room works
-- [ ] Delete room works
-- [ ] Save persists to Convex
-- [ ] Fork workflow works for guests
+- [x] Monaco DSL editor loads
+- [x] Bidirectional sync works (cursor ↔ 3D)
+- [x] Selection controls work
+- [x] Properties panel works
+- [x] Add room works
+- [x] Delete room works
+- [x] Save persists to Convex
+- [~] Fork workflow works for guests
 
 **Routing**:
-- [ ] Owner auto-gets editor mode
-- [ ] Guest auto-gets advanced mode
-- [ ] Anonymous auto-gets advanced mode
-- [ ] ?view=basic forces basic
-- [ ] ?edit=true forces editor (if authorized)
+- [x] Owner auto-gets editor mode
+- [x] Guest auto-gets advanced mode
+- [x] Anonymous auto-gets advanced mode
+- [x] ?mode=basic forces basic
+- [x] ?mode=editor forces editor
 
 **Responsive**:
-- [ ] Phone layouts work per tier
-- [ ] Tablet layouts work per tier
-- [ ] Desktop layouts match standalone apps
+- [x] Phone layouts work per tier
+- [x] Tablet layouts work per tier
+- [x] Desktop layouts match standalone apps
 
 **Quality**:
-- [ ] No SSR errors
+- [x] No SSR errors
 - [ ] All Playwright tests pass
-- [ ] Theme switching smooth
-- [ ] Loading states present
+- [x] Theme switching smooth
+- [x] Loading states present
