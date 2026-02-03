@@ -197,3 +197,118 @@ export const getStats = query({
     };
   },
 });
+
+/**
+ * Super Admin: Delete project with cascade (delete all related data)
+ */
+export const deleteProject = mutation({
+  args: {
+    projectId: v.id("projects"),
+  },
+  handler: async (ctx, args) => {
+    await requireSuperAdmin(ctx);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) {
+      throw new Error("Project not found");
+    }
+
+    // CASCADE: Delete related data
+    
+    // 1. Delete versions
+    const versions = await ctx.db
+      .query("versions")
+      .withIndex("by_project_name", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const version of versions) {
+      await ctx.db.delete(version._id);
+    }
+
+    // 2. Delete snapshots
+    const snapshots = await ctx.db
+      .query("snapshots")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const snapshot of snapshots) {
+      await ctx.db.delete(snapshot._id);
+    }
+
+    // 3. Delete project access
+    const accessEntries = await ctx.db
+      .query("projectAccess")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const access of accessEntries) {
+      await ctx.db.delete(access._id);
+    }
+
+    // 4. Delete share links
+    const shareLinks = await ctx.db
+      .query("shareLinks")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const link of shareLinks) {
+      await ctx.db.delete(link._id);
+    }
+
+    // 5. Delete project topics
+    const projectTopics = await ctx.db
+      .query("projectTopics")
+      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .collect();
+    for (const topic of projectTopics) {
+      await ctx.db.delete(topic._id);
+    }
+
+    // 6. Finally delete the project itself
+    await ctx.db.delete(args.projectId);
+
+    return { success: true };
+  },
+});
+
+/**
+ * Super Admin: Start impersonating a user
+ * Returns the target user ID for frontend to switch context
+ */
+export const startImpersonation = mutation({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const superAdmin = await requireSuperAdmin(ctx);
+
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error("User not found");
+    }
+
+    // Cannot impersonate another super admin
+    if (isSuperAdmin(targetUser)) {
+      throw new Error("Cannot impersonate super admin");
+    }
+
+    // For MVP: Frontend-only impersonation
+    // Return target user info for client to store
+    return {
+      success: true,
+      targetUserId: args.userId,
+      targetUsername: targetUser.username,
+      superAdminId: superAdmin._id,
+    };
+  },
+});
+
+/**
+ * Super Admin: End impersonation session
+ * Signal to frontend to return to super admin context
+ */
+export const endImpersonation = mutation({
+  args: {},
+  handler: async (ctx) => {
+    await requireSuperAdmin(ctx);
+
+    // For MVP: Just a signal to frontend
+    return { success: true };
+  },
+});

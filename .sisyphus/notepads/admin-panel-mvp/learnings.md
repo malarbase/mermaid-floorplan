@@ -22,3 +22,10 @@
 ### Gotchas
 - The path relative to `src` versus `root` can be confusing in nested routes. `../../` from `src/routes/admin` only reaches `src`, not the root where `convex` lives. Always verify relative paths against the project root structure.
 - `convex-solidjs` `useQuery` returns a resource object, not a direct signal. Access data via function call `query.data()`.
+
+## Admin User Management Implementation
+- Created `/admin/users` page for user management
+- Used `api.admin.listAllUsers` which provides `isSuperAdmin` flag for each user
+- Used `api.users.getCurrentUser` and checked `isAdmin` property for frontend super-admin approximation (backend enforces actual super-admin checks)
+- Added `promoteToAdmin` and `demoteFromAdmin` mutations with confirmation dialogs
+- Note: `api.admin` types were incomplete in `_generated/api.d.ts`, so I cast `api.admin` to `any` for `listAllUsers`. This is consistent with `featured.tsx`.

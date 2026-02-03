@@ -30,6 +30,15 @@ export default function FeaturedProjects() {
   }));
 
   const setFeatured = useMutation(api.admin.setFeatured);
+  const deleteProject = useMutation((api.admin as any).deleteProject);
+  
+  const currentUser = useQuery(api.users.getCurrentUser, {});
+  const isSuperAdmin = () => {
+    const user = currentUser.data();
+    if (!user) return false;
+    const SUPER_ADMIN_EMAIL = "malar@malar.dev";
+    return (user as any).email === SUPER_ADMIN_EMAIL;
+  };
 
   const filteredProjects = createMemo(() => {
     const allProjects = projects.data() as Project[] | undefined;
@@ -53,6 +62,36 @@ export default function FeaturedProjects() {
     } catch (err) {
       console.error(err);
       toast.error("Failed to update featured status");
+    }
+  };
+  
+  const handleDelete = async (projectId: Id<"projects">, projectName: string) => {
+    const confirmed = confirm(
+      `⚠️ DANGER: Delete "${projectName}"?\n\n` +
+      `This will permanently delete:\n` +
+      `• The project\n` +
+      `• All versions\n` +
+      `• All snapshots\n` +
+      `• All access permissions\n` +
+      `• All share links\n\n` +
+      `This action CANNOT be undone!\n\n` +
+      `Type the project name to confirm: "${projectName}"`
+    );
+    
+    if (!confirmed) return;
+    
+    const userTyped = prompt(`Type "${projectName}" to confirm deletion:`);
+    if (userTyped !== projectName) {
+      toast.error("Project name did not match. Deletion cancelled.");
+      return;
+    }
+    
+    try {
+      await deleteProject.mutate({ projectId });
+      toast.success(`Project "${projectName}" deleted`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to delete project");
     }
   };
 
@@ -96,7 +135,7 @@ export default function FeaturedProjects() {
                 <th>Project</th>
                 <th>Owner</th>
                 <th class="text-right">Stats</th>
-                <th class="text-right w-40">Action</th>
+                <th class="text-right w-40">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -111,7 +150,7 @@ export default function FeaturedProjects() {
                       </td>
                       <td><div class="h-4 w-24 bg-base-300 rounded"></div></td>
                       <td><div class="h-4 w-16 bg-base-300 rounded ml-auto"></div></td>
-                      <td><div class="h-8 w-24 bg-base-300 rounded ml-auto"></div></td>
+                      <td><div class="h-8 w-32 bg-base-300 rounded ml-auto"></div></td>
                     </tr>
                   )}
                 </For>
@@ -165,23 +204,35 @@ export default function FeaturedProjects() {
                       </div>
                     </td>
                     <td class="text-right">
-                      <button
-                        class={`btn btn-sm w-32 ${
-                          project.isFeatured 
-                            ? "btn-warning btn-outline hover:btn-error hover:text-white hover:border-error" 
-                            : "btn-ghost border-base-300"
-                        }`}
-                        onClick={() => handleToggle(project._id, project.isFeatured, project.displayName || "Untitled")}
-                      >
-                        {project.isFeatured ? (
-                          <>
-                            <span class="group-hover:hidden">Featured</span>
-                            <span class="hidden group-hover:inline">Unfeature</span>
-                          </>
-                        ) : (
-                          "Feature"
-                        )}
-                      </button>
+                      <div class="flex justify-end gap-2">
+                        <button
+                          class={`btn btn-sm w-28 ${
+                            project.isFeatured 
+                              ? "btn-warning btn-outline hover:btn-error hover:text-white hover:border-error" 
+                              : "btn-ghost border-base-300"
+                          }`}
+                          onClick={() => handleToggle(project._id, project.isFeatured, project.displayName || "Untitled")}
+                        >
+                          {project.isFeatured ? (
+                            <>
+                              <span class="group-hover:hidden">Featured</span>
+                              <span class="hidden group-hover:inline">Unfeature</span>
+                            </>
+                          ) : (
+                            "Feature"
+                          )}
+                        </button>
+                        
+                        <Show when={isSuperAdmin()}>
+                          <button
+                            class="btn btn-sm btn-error btn-outline"
+                            onClick={() => handleDelete(project._id, project.displayName || "Untitled")}
+                            title="Super Admin: Delete project"
+                          >
+                            🗑️
+                          </button>
+                        </Show>
+                      </div>
                     </td>
                   </tr>
                 )}

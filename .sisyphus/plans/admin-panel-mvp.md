@@ -541,7 +541,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 10. Create /admin/users page
+- [x] 10. Create /admin/users page
 
   **What to do**:
   - Create `src/routes/admin/users.tsx`
@@ -593,7 +593,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 11. Add super admin capabilities (delete project, impersonate)
+- [x] 11. Add super admin capabilities (delete project, impersonate)
 
   **What to do**:
   - Add mutations to `convex/admin.ts`:
