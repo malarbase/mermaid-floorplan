@@ -214,7 +214,7 @@ Create a progressive capability system where users get the right level of functi
 - [x] Explicit mode switching works (?mode=basic/advanced/editor)
 - [x] All tiers work on mobile with appropriate layouts
 - [x] Build succeeds without SSR errors
-- [ ] All Playwright tests pass
+- [~] All Playwright tests pass (BLOCKED: requires test infrastructure - Convex test DB, see issues.md)
 
 ### Must Have
 - Three distinct capability tiers
@@ -3344,6 +3344,6 @@ Wave 3 (Testing + Polish):
 
 **Quality**:
 - [x] No SSR errors
-- [ ] All Playwright tests pass
+- [~] All Playwright tests pass (BLOCKED: requires test infrastructure - Convex test DB, see issues.md)
 - [x] Theme switching smooth
 - [x] Loading states present
