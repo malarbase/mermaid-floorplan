@@ -1,8 +1,6 @@
 {
-  "active_plan": "/Users/malar/Personal/Code/mermaid-floorplan/.sisyphus/plans/full-editor-integration.md",
-  "started_at": "2026-02-03T05:37:13.751Z",
-  "session_ids": [
-    "ses_3de8c8ebfffedMx1N85H7B5sr8"
-  ],
-  "plan_name": "full-editor-integration"
+  "active_plan": "/Users/malar/Personal/Code/mermaid-floorplan/.sisyphus/plans/e2e-test-infrastructure.md",
+  "started_at": "2026-02-03T07:27:25.644Z",
+  "session_ids": ["ses_3de8c8ebfffedMx1N85H7B5sr8"],
+  "plan_name": "e2e-test-infrastructure"
 }

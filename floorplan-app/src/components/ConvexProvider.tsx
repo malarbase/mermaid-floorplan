@@ -1,7 +1,7 @@
 import { ConvexProvider } from "convex-solidjs";
 import { ConvexClient } from "convex/browser";
 import { type JSX, createSignal, onMount, Show } from "solid-js";
-import { isMockMode } from "~/lib/mock-convex";
+import { isMockMode, createMockConvexClient } from "~/lib/mock-convex";
 
 // Get Convex URL from environment
 const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
@@ -30,9 +30,9 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
   const [isReady, setIsReady] = createSignal(false);
 
   onMount(() => {
-    // If mock mode is enabled, skip Convex client entirely
     if (isMockMode()) {
-      console.log("[MOCK MODE] Skipping Convex connection - using mock data");
+      console.log("[MOCK MODE] Using mock Convex client");
+      setClient(createMockConvexClient());
       setIsReady(true);
       return;
     }
@@ -76,27 +76,18 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
       }
     >
        <Show 
-         when={client() || isMockMode()} 
+         when={client()} 
          fallback={
            <div class="min-h-screen flex items-center justify-center bg-base-200">
              <div class="loading loading-spinner loading-lg text-primary"></div>
            </div>
          }
        >
-         {(resolvedClient) => {
-           // If mock mode, render children without provider
-           if (isMockMode()) {
-             return props.children;
-           }
-           
-           // Otherwise wrap with real ConvexProvider
-           // resolvedClient is an accessor, call it to get the value
-           return (
-             <ConvexProvider client={resolvedClient() as ConvexClient}>
-               {props.children}
-             </ConvexProvider>
-           );
-         }}
+         {(resolvedClient) => (
+           <ConvexProvider client={resolvedClient() as ConvexClient}>
+             {props.children}
+           </ConvexProvider>
+         )}
        </Show>
     </Show>
   );

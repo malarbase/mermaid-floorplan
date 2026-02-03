@@ -7,8 +7,11 @@ dist
 app.config.timestamp_*.js
 
 # Environment
+# Track: .env.example, .env.development, .env.production, .env.local.*-example
+# Ignore: .env.local (contains secrets), .env (deprecated, use .env.local)
 .env
-.env*.local
+.env.local
+.env.*.local
 
 # dependencies
 /node_modules

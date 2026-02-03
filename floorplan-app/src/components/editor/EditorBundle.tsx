@@ -47,8 +47,9 @@ export default function EditorBundle(props: EditorBundleProps) {
   };
 
   return (
-    <div class="flex h-full w-full">
-      <div class="flex-1 relative">
+    <div class="flex flex-col h-full w-full overflow-hidden">
+      {/* Monaco Editor - takes remaining space */}
+      <div class="flex-1 min-h-0 relative">
         <EditorPanel
           core={props.core}
           dsl={props.dsl}
@@ -57,14 +58,19 @@ export default function EditorBundle(props: EditorBundleProps) {
         />
       </div>
 
-      <div class="flex">
-        <SelectionControls
-          core={props.core}
-          onAddRoom={() => setShowAddRoomDialog(true)}
-          onDelete={handleDelete}
-        />
+      {/* Selection Tools and Properties Panel - fixed height at bottom */}
+      <div class="flex-shrink-0 flex border-t border-base-300 max-h-64 overflow-hidden">
+        <div class="overflow-y-auto">
+          <SelectionControls
+            core={props.core}
+            onAddRoom={() => setShowAddRoomDialog(true)}
+            onDelete={handleDelete}
+          />
+        </div>
 
-        <PropertiesPanel core={props.core} onPropertyChange={handlePropertyChange} />
+        <div class="flex-1 overflow-y-auto">
+          <PropertiesPanel core={props.core} onPropertyChange={handlePropertyChange} />
+        </div>
       </div>
 
       <AddRoomDialog

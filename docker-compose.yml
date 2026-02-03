@@ -5,6 +5,9 @@ services:
     build:
       context: .
       dockerfile: floorplan-app/Dockerfile.dev
+    env_file:
+      - floorplan-app/.env.development  # Development defaults
+      - floorplan-app/.env.local        # Optional local overrides (gitignored)
     ports:
       - "3000:3000"
     volumes:
@@ -13,9 +16,6 @@ services:
       - ./floorplan-app/convex:/app/floorplan-app/convex
       - ./floorplan-app/app.config.ts:/app/floorplan-app/app.config.ts
       - ./floorplan-app/package.json:/app/floorplan-app/package.json
-      # Mount .env files so Vite reads updated environment
-      - ./floorplan-app/.env:/app/floorplan-app/.env:ro
-      - ./floorplan-app/.env.local:/app/floorplan-app/.env.local:ro
       # Mount shared packages for development
       - ./floorplan-viewer-core/src:/app/floorplan-viewer-core/src
       - ./floorplan-3d-core/src:/app/floorplan-3d-core/src
@@ -23,28 +23,6 @@ services:
       # Preserve node_modules
       - app-node-modules:/app/node_modules
       - app-floorplan-app-node-modules:/app/floorplan-app/node_modules
-    environment:
-      # Convex Self-Hosted Configuration
-      - VITE_CONVEX_URL=${VITE_CONVEX_URL:-http://localhost:3210}
-      - CONVEX_SELF_HOSTED_URL=http://convex:3210
-      - CONVEX_SELF_HOSTED_ADMIN_KEY=${CONVEX_SELF_HOSTED_ADMIN_KEY:-local-dev|019a5fc49ab8fc332224e1623ff0af38b76215dd69ea731750c6403907a2a41148ac3ec4e6}
-      # Mock Mode (set to "true" to use local mock data instead of Convex)
-      - VITE_MOCK_MODE=${VITE_MOCK_MODE:-false}
-      # Better Auth
-      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-dev-secret-change-in-production}
-      - BETTER_AUTH_URL=${BETTER_AUTH_URL:-http://localhost:3000}
-      # Google OAuth (optional - only needed if testing real OAuth)
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-      # Development Auth Bypass
-      - DEV_AUTH_BYPASS=${DEV_AUTH_BYPASS:-true}
-      - DEV_USER_EMAIL=${DEV_USER_EMAIL:-dev@example.com}
-      - DEV_USER_NAME=${DEV_USER_NAME:-Dev User}
-      - DEV_USER_USERNAME=${DEV_USER_USERNAME:-devuser}
-      # Mock Mode
-      - VITE_MOCK_MODE=${VITE_MOCK_MODE:-false}
-      # Node environment
-      - NODE_ENV=development
     command: npm run --workspace floorplan-app dev
     networks:
       - floorplan-network

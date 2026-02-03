@@ -97,7 +97,7 @@ export default function ProjectHistory() {
   const versionsQuery = useQuery(
     api.projects.listVersions,
     () => ({ projectId: project()?._id ?? "" }),
-    { enabled: !!project() }
+    () => ({ enabled: !!project() })
   );
 
   const versions = createMemo(() => {
@@ -116,7 +116,7 @@ export default function ProjectHistory() {
   const historyQuery = useQuery(
     api.projects.getHistory,
     () => ({ projectId: project()?._id ?? "", limit: 50 }),
-    { enabled: !!project() }
+    () => ({ enabled: !!project() })
   );
 
   const snapshots = createMemo(() => {

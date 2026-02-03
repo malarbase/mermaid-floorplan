@@ -95,6 +95,10 @@ export abstract class BaseViewer implements SceneContext {
   // Animation
   protected animationFrameId: number | null = null;
   
+  // Container resize observer (for responsive layout)
+  protected resizeObserver: ResizeObserver | null = null;
+  protected resizeDebounceTimeout: NodeJS.Timeout | null = null;
+  
   // SceneContext interface getters
   get scene(): THREE.Scene { return this._scene; }
   get activeCamera(): THREE.Camera { return this._cameraManager.activeCamera; }
@@ -226,8 +230,18 @@ export abstract class BaseViewer implements SceneContext {
       },
     });
     
-    // Window resize
-    window.addEventListener('resize', this.onWindowResize.bind(this));
+    // Container resize observer (responds to container size changes, not just window resize)
+    // This handles editor panel open/close, responsive layout changes, etc.
+    this.resizeObserver = new ResizeObserver(() => {
+      // Debounce to avoid excessive updates during CSS transitions
+      if (this.resizeDebounceTimeout) {
+        clearTimeout(this.resizeDebounceTimeout);
+      }
+      this.resizeDebounceTimeout = setTimeout(() => {
+        this.onWindowResize();
+      }, 50);
+    });
+    this.resizeObserver.observe(container);
     
     // Initialize keyboard controls if enabled
     if (enableKeyboardControls) {
@@ -975,7 +989,7 @@ export abstract class BaseViewer implements SceneContext {
     const width = container?.clientWidth ?? window.innerWidth;
     const height = container?.clientHeight ?? window.innerHeight;
     
-    this._cameraManager.onWindowResize();
+    this._cameraManager.onWindowResize(width, height);
     this._renderer.setSize(width, height);
     this.labelRenderer.setSize(width, height);
   }
@@ -1051,8 +1065,12 @@ export abstract class BaseViewer implements SceneContext {
     // Dispose renderer
     this._renderer.dispose();
     
-    // Remove event listeners
-    window.removeEventListener('resize', this.onWindowResize.bind(this));
+    // Clean up resize observer
+    if (this.resizeDebounceTimeout) {
+      clearTimeout(this.resizeDebounceTimeout);
+    }
+    this.resizeObserver?.disconnect();
+    this.resizeObserver = null;
   }
 }
 

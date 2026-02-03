@@ -10,6 +10,7 @@ const viewerCoreSrc = resolve(__dirname, "../floorplan-viewer-core/src");
 const languageSrc = resolve(__dirname, "../floorplan-language/src");
 const floorplan3DCoreSrc = resolve(__dirname, "../floorplan-3d-core/src");
 const floorplanCommonSrc = resolve(__dirname, "../floorplan-common/src");
+const editorSrc = resolve(__dirname, "../floorplan-editor/src");
 
 export default defineConfig({
   server: {
@@ -28,6 +29,7 @@ export default defineConfig({
         "floorplan-language": languageSrc,
         "floorplan-3d-core": floorplan3DCoreSrc,
         "floorplan-common": floorplanCommonSrc,
+        "floorplan-editor": editorSrc,
       },
       // Prefer ESM over CommonJS to avoid "require is not defined" errors
       conditions: ["import", "module", "browser", "default"],
@@ -66,6 +68,22 @@ export default defineConfig({
       fs: {
         // Allow serving files from the parent project (for workspace dependencies)
         allow: ["..", "../.."],
+      },
+      // Listen on all interfaces in Docker
+      host: "0.0.0.0",
+      port: 3000,
+      strictPort: false,  // Allow fallback to 3001 if needed
+      // HMR configuration for Docker - overlay on HTTP connection
+      hmr: {
+        // Don't create a separate HMR server, overlay on main HTTP server
+        overlay: true,
+        // Client should connect back via the host machine
+        clientPort: 3000,
+      },
+      // Enable hot reload with polling for Docker volumes
+      watch: {
+        usePolling: true,
+        interval: 1000,
       },
     },
   },

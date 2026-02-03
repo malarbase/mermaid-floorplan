@@ -17,22 +17,84 @@
 /* Control Panel (right sidebar) */
 .control-panel {
   width: 320px;
-  background: var(--fallback-b1, oklch(var(--b1)));
-  border-left: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.1));
+  background: oklch(var(--color-base-100));
+  border-left: 1px solid oklch(var(--color-base-content) / 0.1);
   overflow-y: auto;
   transition: transform 0.3s ease;
   position: relative; /* Ensure absolute children are contained */
 }
 
+/* Override fp-control-panel absolute positioning when inside our layout */
+.control-panel .fp-control-panel {
+  position: static;
+  width: 100%;
+  max-height: none;
+  box-shadow: none;
+  background: transparent;
+  /* Keep rounded corners on the inner edge */
+  border-radius: 10px 0 0 10px;
+}
+
+/* Ensure the wrapper div fills the control panel and has proper background */
+.control-panel > div {
+  min-height: 100%;
+  background: inherit;
+}
+
 /* Editor Panel (left sidebar) */
 .editor-panel {
   width: 400px;
-  background: var(--fallback-b1, oklch(var(--b1)));
-  border-right: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.1));
+  background: oklch(var(--color-base-100));
+  border-right: 1px solid oklch(var(--color-base-content) / 0.1);
   overflow: hidden;
-  transition: transform 0.3s ease;
-  position: relative; /* Ensure absolute children are contained */
+  transition: width 0.3s ease, margin-left 0.3s ease;
+  position: relative;
 }
+
+/* Override fp-editor-panel fixed positioning when inside our layout */
+.editor-panel.fp-editor-panel {
+  position: relative;
+  top: 0 !important;
+  left: auto;
+  height: 100%;
+  z-index: auto;
+}
+
+.editor-panel.collapsed {
+  width: 0;
+  margin-left: -1px;
+}
+
+.editor-collapse-btn {
+  position: fixed;
+  top: 50%;
+  left: 400px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  background: oklch(var(--color-base-200));
+  border: 1px solid oklch(var(--color-base-content) / 0.2);
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: oklch(var(--color-base-content) / 0.6);
+  z-index: 1000;
+  transition: left 0.3s ease, background 0.2s ease;
+}
+
+.editor-panel.collapsed .editor-collapse-btn {
+  left: 0;
+}
+
+.editor-collapse-btn:hover {
+  background: oklch(var(--color-base-300));
+}
+
+
 
 /* FAB (phone only) */
 .fab-button {
@@ -49,7 +111,7 @@
   left: 0;
   right: 0;
   height: 70vh;
-  background: var(--fallback-b1, oklch(var(--b1)));
+  background: oklch(var(--color-base-100));
   border-top-left-radius: 1rem;
   border-top-right-radius: 1rem;
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
@@ -71,7 +133,7 @@
 .bottom-sheet-handle {
   width: 40px;
   height: 4px;
-  background: var(--fallback-bc, oklch(var(--bc) / 0.3));
+  background: oklch(var(--color-base-content) / 0.3);
   border-radius: 2px;
   margin: 0 auto 1rem;
 }
@@ -97,14 +159,13 @@
 @media (min-width: 640px) and (max-width: 1023px) {
   .fab-button,
   .bottom-sheet {
-    display: none; /* Hidden on tablet+ */
+    display: none;
   }
   
   .floorplan-container {
     flex-direction: row;
   }
   
-  /* On tablet, show ONE sidebar at a time */
   .editor-panel {
     width: 360px;
   }
@@ -113,10 +174,17 @@
     width: 300px;
   }
   
-  /* Collapsible sidebar */
-  .control-panel.collapsed,
+  .editor-collapse-btn {
+    left: 360px;
+  }
+  
   .editor-panel.collapsed {
-    transform: translateX(-100%);
+    width: 0;
+    margin-left: -1px;
+  }
+  
+  .editor-panel.collapsed .editor-collapse-btn {
+    left: 0;
   }
 }
 
@@ -124,19 +192,26 @@
 @media (min-width: 1024px) {
   .fab-button,
   .bottom-sheet {
-    display: none; /* Hidden on desktop */
+    display: none;
   }
   
   .floorplan-container {
     flex-direction: row;
   }
   
-  /* Full 3-column layout */
   .editor-panel {
     width: 450px;
   }
   
   .control-panel {
     width: 350px;
+  }
+  
+  .editor-collapse-btn {
+    left: 450px;
+  }
+  
+  .editor-panel.collapsed .editor-collapse-btn {
+    left: 0;
   }
 }

@@ -1,5 +1,6 @@
 /* === CSS Variables === */
-:root {
+:root,
+[data-theme="light"] {
   /* Colors - Light Theme Default */
   --fp-bg-primary: rgba(255, 255, 255, 0.95);
   --fp-bg-secondary: #f8f8f8;
@@ -807,3 +808,91 @@ body.dark-theme {
 }
 
 /* Shortcut info panel is now at bottom-right, no need to shift when editor opens */
+
+/* ============================================================================
+ * CONTROL PANEL THEME OVERRIDES
+ * High-specificity overrides to ensure theme switching works correctly
+ * ============================================================================ */
+
+/* Dark theme (default) */
+.fp-control-panel {
+  background: rgba(40, 40, 40, 0.95) !important;
+  color: #e0e0e0 !important;
+}
+
+.fp-control-section {
+  background: transparent !important;
+}
+
+.fp-section-header,
+.fp-control-section .collapse-title {
+  color: #e0e0e0 !important;
+}
+
+.fp-label {
+  color: #aaaaaa !important;
+}
+
+/* Light theme overrides */
+[data-theme="light"] .fp-control-panel,
+body:not(.dark-theme) .fp-control-panel {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #333333 !important;
+}
+
+[data-theme="light"] .fp-section-header,
+[data-theme="light"] .fp-control-section .collapse-title,
+body:not(.dark-theme) .fp-section-header,
+body:not(.dark-theme) .fp-control-section .collapse-title {
+  color: #333333 !important;
+}
+
+[data-theme="light"] .fp-label,
+body:not(.dark-theme) .fp-label {
+  color: #555555 !important;
+}
+
+/* Button overrides - dark theme */
+.fp-btn {
+  background: var(--fp-accent) !important;
+  color: var(--fp-text-inverted) !important;
+}
+
+.fp-btn-secondary {
+  background: #555555 !important;
+}
+
+.fp-btn-secondary:hover {
+  background: #666666 !important;
+}
+
+/* Button overrides - light theme */
+[data-theme="light"] .fp-btn-secondary,
+body:not(.dark-theme) .fp-btn-secondary {
+  background: #666666 !important;
+}
+
+[data-theme="light"] .fp-btn-secondary:hover,
+body:not(.dark-theme) .fp-btn-secondary:hover {
+  background: #555555 !important;
+}
+
+/* Input/slider overrides - dark theme */
+.fp-slider {
+  background: #3d3d3d !important;
+}
+
+.fp-slider::-webkit-slider-thumb {
+  background: #888888 !important;
+}
+
+/* Input/slider overrides - light theme */
+[data-theme="light"] .fp-slider,
+body:not(.dark-theme) .fp-slider {
+  background: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-slider::-webkit-slider-thumb,
+body:not(.dark-theme) .fp-slider::-webkit-slider-thumb {
+  background: #666666 !important;
+}

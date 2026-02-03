@@ -264,17 +264,19 @@ admin-setup: ## Configure admin testing environment (ADMIN_EMAIL=your@email.com)
 	@cd floorplan-app && npx convex env set SUPER_ADMIN_EMAIL "$(ADMIN_EMAIL)" 2>/dev/null || \
 		echo "Note: Run 'npx convex dev' first if Convex is not running"
 	@echo ""
-	@echo "Creating .env.local with dev auth bypass..."
-	@echo "DEV_AUTH_BYPASS=true" > floorplan-app/.env.local.admin
-	@echo "DEV_USER_EMAIL=$(ADMIN_EMAIL)" >> floorplan-app/.env.local.admin
-	@echo "DEV_USER_NAME=Test Admin" >> floorplan-app/.env.local.admin
-	@echo "DEV_USER_USERNAME=testadmin" >> floorplan-app/.env.local.admin
+	@echo "Creating .env.local with admin auth bypass..."
+	@echo "# Admin Testing Configuration" > floorplan-app/.env.local
+	@echo "DEV_AUTH_BYPASS=true" >> floorplan-app/.env.local
+	@echo "DEV_USER_EMAIL=$(ADMIN_EMAIL)" >> floorplan-app/.env.local
+	@echo "DEV_USER_NAME=Test Admin" >> floorplan-app/.env.local
+	@echo "DEV_USER_USERNAME=testadmin" >> floorplan-app/.env.local
+	@echo "VITE_MOCK_MODE=false" >> floorplan-app/.env.local
 	@echo ""
 	@echo "Admin setup complete!"
 	@echo "  Super admin email: $(ADMIN_EMAIL)"
+	@echo "  Configuration: floorplan-app/.env.local"
 	@echo ""
-	@echo "To use: cp floorplan-app/.env.local.admin floorplan-app/.env.local"
-	@echo "Then:   make admin-dev"
+	@echo "Next step: make admin-dev"
 
 admin-dev: ## Start app with admin user pre-configured
 	@if [ ! -f floorplan-app/.env.local ]; then \
@@ -302,9 +304,13 @@ admin-help: ## Show admin testing help
 	@echo ""
 	@echo "Quick Start:"
 	@echo "  1. make admin-setup ADMIN_EMAIL=your@email.com"
-	@echo "  2. cp floorplan-app/.env.local.admin floorplan-app/.env.local"
-	@echo "  3. make admin-dev"
-	@echo "  4. Open http://localhost:3000/admin"
+	@echo "  2. make admin-dev"
+	@echo "  3. Open http://localhost:3000/admin"
+	@echo ""
+	@echo "Alternative: Manual Setup"
+	@echo "  cp floorplan-app/.env.local.admin-example floorplan-app/.env.local"
+	@echo "  # Edit .env.local with your admin email"
+	@echo "  make admin-dev"
 	@echo ""
 	@echo "Testing Routes:"
 	@echo "  /admin           - Dashboard with stats"

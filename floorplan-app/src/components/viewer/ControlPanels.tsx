@@ -1,4 +1,4 @@
-import { onMount, onCleanup } from "solid-js";
+import { onMount, onCleanup, createEffect } from "solid-js";
 import type { FloorplanAppCore } from "floorplan-viewer-core";
 
 function getUIThemeMode(theme: string): 'light' | 'dark' {
@@ -7,10 +7,21 @@ function getUIThemeMode(theme: string): 'light' | 'dark' {
 
 interface ControlPanelsProps {
   viewer: FloorplanAppCore | null;
+  theme?: 'light' | 'dark';
+  onThemeToggle?: () => void;
 }
 
 export default function ControlPanels(props: ControlPanelsProps) {
   let containerRef: HTMLDivElement | undefined;
+  // Store reference to theme button updater for reactive updates
+  let updateThemeBtnRef: ((theme: string) => void) | null = null;
+  
+  // Reactive effect at component level to update theme button when props.theme changes
+  createEffect(() => {
+    if (props.theme && updateThemeBtnRef) {
+      updateThemeBtnRef(props.theme);
+    }
+  });
   
   onMount(async () => {
     const {
@@ -107,21 +118,30 @@ export default function ControlPanels(props: ControlPanelsProps) {
          const uiTheme = getUIThemeMode(theme);
          themeBtn.textContent = uiTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
        };
-       // @ts-ignore
-       updateThemeBtn(viewer.theme);
+       // Initialize from prop or viewer state
+       updateThemeBtn(props.theme || (viewer as any).theme || 'dark');
        
        themeBtn.addEventListener('click', () => {
-         // @ts-ignore
-         viewer.handleThemeToggle();
-         // @ts-ignore
-         updateThemeBtn(viewer.theme);
+         // Use the unified theme toggle callback if provided
+         if (props.onThemeToggle) {
+           props.onThemeToggle();
+         } else {
+           // Fallback to viewer-only toggle
+           // @ts-ignore
+           viewer.handleThemeToggle();
+           // @ts-ignore
+           updateThemeBtn(viewer.theme);
+         }
        });
        
        themeRow.appendChild(themeBtn);
        viewContent.appendChild(themeRow);
        
-       // @ts-ignore
-       viewer.on('themeChange', ({ theme }) => {
+       // Store reference to update function for component-level reactive effect
+       updateThemeBtnRef = updateThemeBtn;
+       
+       // @ts-ignore - Subscribe to viewer theme changes as backup
+       viewer.on('themeChange', ({ theme }: { theme: string }) => {
           updateThemeBtn(theme);
        });
 
@@ -142,6 +162,8 @@ export default function ControlPanels(props: ControlPanelsProps) {
        onFloorToggle: (id, visible) => viewer.floorManager.setFloorVisible(id, visible)
     });
     controlPanel.appendChild(floorControls.element);
+    
+    viewer.floorManager.initFloorVisibility();
 
     const overlaySection = createControlPanelSection({
        title: '2D Overlay',
@@ -159,6 +181,11 @@ export default function ControlPanels(props: ControlPanelsProps) {
         onVisibilityChange: (v) => layoutManager.setOverlay2DVisible(v)
     });
     document.body.appendChild(overlay2D.element);
+    
+    // @ts-ignore - Trigger initial 2D overlay render with current floorplan data
+    if (viewer.overlay2DManager?.render) {
+      viewer.overlay2DManager.render();
+    }
     
     let overlayCheckbox: HTMLInputElement | null = null;
     
@@ -219,11 +246,20 @@ export default function ControlPanels(props: ControlPanelsProps) {
     });
     controlPanel.appendChild(annotationControls.element);
 
+    // @ts-ignore - Subscribe to floorplanLoaded for future DSL reloads
+    const unsubscribeFloorplan = viewer.on?.('floorplanLoaded', () => {
+      viewer.floorManager.initFloorVisibility();
+      if (viewer.overlay2DManager?.render) {
+        viewer.overlay2DManager.render();
+      }
+    });
+
     onCleanup(() => {
        if (controlPanel.parentNode) controlPanel.parentNode.removeChild(controlPanel);
        if (overlay2D.element.parentNode) overlay2D.element.parentNode.removeChild(overlay2D.element);
+       unsubscribeFloorplan?.();
     });
   });
 
-  return <div ref={containerRef} class="absolute inset-0 pointer-events-none z-[100]" />;
+  return <div ref={containerRef} class="h-full w-full bg-base-100" />;
 }

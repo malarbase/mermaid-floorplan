@@ -1,4 +1,4 @@
-import { createSignal, onMount, onCleanup, Suspense, Show } from "solid-js";
+import { createSignal, onMount, onCleanup, Suspense, Show, createEffect } from "solid-js";
 import { useLocation, useSearchParams } from "@solidjs/router";
 import { FloorplanBase } from "./FloorplanBase";
 import { ViewerErrorBoundary } from "./ViewerError";
@@ -8,6 +8,7 @@ import EditorBundle from "../editor/EditorBundle";
 import { FAB } from "./FAB";
 import { BottomSheet } from "./BottomSheet";
 import "./viewer-layout.css";
+import { getLayoutManager } from "floorplan-viewer-core";
 
 // Define the mode types
 export type ViewerMode = 'basic' | 'advanced' | 'editor';
@@ -20,6 +21,7 @@ interface FloorplanContainerProps {
   initialMode?: ViewerMode;
   onDslChange?: (dsl: string) => void;
   onSave?: (dsl: string) => void;
+  onThemeToggle?: () => void;
   className?: string;
   // Legacy support
   withUI?: boolean;
@@ -52,8 +54,26 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   const [coreInstance, setCoreInstance] = createSignal<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = createSignal(false);
   const [isMobile, setIsMobile] = createSignal(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+  const [isEditorCollapsed, setIsEditorCollapsed] = createSignal(false);
+  
+  // Sync mode with props changes
+  createEffect(() => {
+    const newMode = getMode();
+    if (newMode !== mode()) {
+      setMode(newMode);
+    }
+  });
+  
+  createEffect(() => {
+    const layoutManager = getLayoutManager({ editorWidth: 400 });
+    layoutManager.setEditorOpen(!isEditorCollapsed());
+  });
   
   onMount(() => {
+    const layoutManager = getLayoutManager({ editorWidth: 400 });
+    if (mode() === 'editor') {
+      layoutManager.setEditorOpen(true);
+    }
     const handleResize = () => setIsMobile(window.innerWidth < 640);
     window.addEventListener('resize', handleResize);
     onCleanup(() => window.removeEventListener('resize', handleResize));
@@ -81,7 +101,9 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   });
 
   const controlProps = () => ({
-    viewer: coreInstance()
+    viewer: coreInstance(),
+    theme: props.theme,
+    onThemeToggle: props.onThemeToggle
   });
 
   return (
@@ -90,10 +112,17 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
         <div class="floorplan-container">
           {/* Editor panel (desktop + tablet in editor mode) */}
           <Show when={mode() === 'editor' && !isMobile()}>
-            <div class="editor-panel">
+            <div class={`editor-panel fp-editor-panel ${isEditorCollapsed() ? 'collapsed' : ''}`}>
               <Show when={coreInstance()} fallback={<EditorSkeleton />}>
                 <EditorBundle {...editorProps()} />
               </Show>
+              <button
+                class="editor-collapse-btn"
+                onClick={() => setIsEditorCollapsed(prev => !prev)}
+                title={isEditorCollapsed() ? 'Expand editor' : 'Collapse editor'}
+              >
+                {isEditorCollapsed() ? '▶' : '◀'}
+              </button>
             </div>
           </Show>
           

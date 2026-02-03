@@ -44,11 +44,13 @@ docker compose down
 
 You have **3 options** for testing. Pick one:
 
+**Note:** Environment configuration has been restructured. See [ENV-GUIDE.md](./ENV-GUIDE.md) for details.
+
 #### Option A: Mock Mode (Quickest - No Convex Deployment Needed) ⭐ RECOMMENDED FOR TESTING
 
 ```bash
-# Enable mock mode
-export VITE_MOCK_MODE=true
+# Enable mock mode by creating/editing .env.local
+echo "VITE_MOCK_MODE=true" > floorplan-app/.env.local
 
 # Start services
 docker compose up -d
@@ -70,8 +72,7 @@ mermaid-floorplan-convex-1    Up (healthy)
 #### Option B: Deploy to Self-Hosted Convex (Full Local Stack)
 
 ```bash
-# Start services (without mock mode)
-export VITE_MOCK_MODE=false
+# Start services (default .env.development uses real Convex)
 docker compose up -d
 
 # Wait for Convex to be ready
@@ -94,9 +95,9 @@ cd /Users/malar/Personal/Code/mermaid-floorplan/floorplan-app
 npx convex dev
 # This creates a cloud project and outputs URL
 
-# Update .env with the cloud URL
-echo "VITE_CONVEX_URL=https://your-project.convex.cloud" > .env
-echo "CONVEX_DEPLOYMENT=prod:your-project" >> .env
+# Update .env.local with the cloud URL
+echo "VITE_CONVEX_URL=https://your-project.convex.cloud" > .env.local
+echo "CONVEX_DEPLOYMENT=prod:your-project" >> .env.local
 
 # Start only the app (no local Convex needed)
 docker compose up -d app
@@ -346,18 +347,14 @@ docker compose exec app npm run build --workspace floorplan-viewer-core
 docker compose restart app
 ```
 
-### Issue: "VITE_MOCK_MODE not defined"
+### Issue: "VITE_MOCK_MODE not working"
 
 ```bash
-# Ensure variable is exported AND passed to Docker
-export VITE_MOCK_MODE=true
+# Set in .env.local (not as shell variable)
+echo "VITE_MOCK_MODE=true" > floorplan-app/.env.local
 
-# Check if docker-compose.yml has it in environment section
-grep VITE_MOCK_MODE docker-compose.yml
-# Should see: - VITE_MOCK_MODE=${VITE_MOCK_MODE:-false}
-
-# Restart with explicit env
-VITE_MOCK_MODE=true docker compose up -d
+# Restart services
+docker compose restart app
 ```
 
 ---

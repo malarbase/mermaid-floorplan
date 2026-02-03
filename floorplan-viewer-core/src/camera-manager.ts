@@ -105,11 +105,15 @@ export class CameraManager {
         }
     }
     
+    // Container dimensions for proper aspect ratio calculation
+    private containerWidth: number = window.innerWidth;
+    private containerHeight: number = window.innerHeight;
+    
     /**
      * Update orthographic camera frustum based on distance
      */
     public updateOrthographicSize(): void {
-        const aspect = window.innerWidth / window.innerHeight;
+        const aspect = this.containerWidth / this.containerHeight;
         const distance = this.orthographicCamera.position.distanceTo(this.controls.target);
         const frustumSize = distance * 0.5;
         
@@ -176,10 +180,15 @@ export class CameraManager {
     }
     
     /**
-     * Handle window resize
+     * Handle window/container resize
+     * @param width - Container width (defaults to window.innerWidth)
+     * @param height - Container height (defaults to window.innerHeight)
      */
-    public onWindowResize(): void {
-        const aspect = window.innerWidth / window.innerHeight;
+    public onWindowResize(width?: number, height?: number): void {
+        this.containerWidth = width ?? window.innerWidth;
+        this.containerHeight = height ?? window.innerHeight;
+        
+        const aspect = this.containerWidth / this.containerHeight;
         
         this.perspectiveCamera.aspect = aspect;
         this.perspectiveCamera.updateProjectionMatrix();

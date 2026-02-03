@@ -28,22 +28,20 @@ This is a SolidStart application that provides:
 3. A Convex account and project (for database)
 4. Google OAuth credentials (for authentication)
 
-### Environment Variables
+### Environment Configuration
 
-Create a `.env` file (copy from `.env.example`):
+The app uses a structured environment configuration system:
 
-```bash
-# Convex
-CONVEX_URL=https://your-project.convex.cloud
+- **`.env.development`** - Development defaults (self-hosted Convex in Docker)
+- **`.env.production`** - Production template (cloud Convex)
+- **`.env.local`** - Your personal overrides (gitignored, for secrets)
+- **`.env.example`** - Comprehensive reference
 
-# Better Auth
-BETTER_AUTH_SECRET=your-secret-key
-BETTER_AUTH_URL=http://localhost:3000
+**Quick start:** The defaults in `.env.development` work out of the box with Docker Compose.
 
-# Google OAuth
-GOOGLE_CLIENT_ID=your-client-id
-GOOGLE_CLIENT_SECRET=your-client-secret
-```
+**For production:** Copy `.env.production` to `.env.local` and fill in your secrets.
+
+**For detailed configuration:** See [ENV-GUIDE.md](../docs/ENV-GUIDE.md) for complete documentation.
 
 ### Getting Started
 

@@ -12,16 +12,60 @@
 
 /* === DaisyUI v5 Configuration === */
 @plugin "daisyui" {
-  themes: blueprint --default;
+  themes: light, dark --default;
   logs: true;
 }
 
-/* === Architectural Blueprint Theme ===
+/* === Light Theme - Clean technical aesthetic === */
+@plugin "daisyui/theme" {
+  name: "light";
+  color-scheme: light;
+  
+  /* Clean white/gray backgrounds */
+  --color-base-100: oklch(100% 0 0);            /* #ffffff - Background */
+  --color-base-200: oklch(97% 0.01 250);        /* #f5f7fa - Card backgrounds */
+  --color-base-300: oklch(93% 0.01 250);        /* #e8ecf0 - Hover states */
+  --color-base-content: oklch(20% 0.02 250);    /* #1a2030 - Primary text */
+  
+  /* Technical cyan accent (same as dark) */
+  --color-primary: oklch(60% 0.18 195);         /* Slightly darker cyan for light bg */
+  --color-primary-content: oklch(100% 0 0);     /* White text on cyan */
+  
+  /* Muted secondary */
+  --color-secondary: oklch(45% 0.08 250);       /* Darker blue-gray */
+  --color-secondary-content: oklch(100% 0 0);
+  
+  /* Accent matches primary */
+  --color-accent: oklch(60% 0.18 195);
+  --color-accent-content: oklch(100% 0 0);
+  
+  /* Neutral for borders */
+  --color-neutral: oklch(85% 0.01 250);         /* Light border color */
+  --color-neutral-content: oklch(20% 0.02 250);
+  
+  /* Status colors */
+  --color-info: oklch(55% 0.15 220);
+  --color-info-content: oklch(100% 0 0);
+  --color-success: oklch(55% 0.18 145);
+  --color-success-content: oklch(100% 0 0);
+  --color-warning: oklch(70% 0.15 75);
+  --color-warning-content: oklch(15% 0.05 75);
+  --color-error: oklch(55% 0.22 25);
+  --color-error-content: oklch(100% 0 0);
+  
+  /* Sharper corners for technical feel */
+  --radius-selector: 0.375rem;
+  --radius-field: 0.25rem;
+  --radius-box: 0.5rem;
+}
+
+/* === Dark Theme - Architectural Blueprint ===
  * Dark technical aesthetic with cyan accents
  */
 @plugin "daisyui/theme" {
-  name: "blueprint";
+  name: "dark";
   default: true;
+  prefersdark: true;
   color-scheme: dark;
   
   /* Deep navy/charcoal backgrounds */
@@ -73,7 +117,7 @@
 @layer base {
   body {
     font-family: 'DM Sans', system-ui, sans-serif;
-    background-color: oklch(8% 0.02 250);
+    background-color: oklch(var(--color-base-100));
   }
   
   html, body {

@@ -1,6 +1,6 @@
 import { Title } from "@solidjs/meta";
 import { useParams, A, useNavigate, useLocation, useSearchParams } from "@solidjs/router";
-import { Show, createMemo, createSignal } from "solid-js";
+import { Show, createMemo, createSignal, createEffect } from "solid-js";
 import { clientOnly } from "@solidjs/start";
 import { useQuery } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
@@ -75,10 +75,17 @@ export default function ProjectView() {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const sessionSignal = useSession();
   const [showCreateVersionModal, setShowCreateVersionModal] = createSignal(false);
   const [theme, setTheme] = createSignal<"light" | "dark">("dark");
+
+  createEffect(() => {
+    const currentTheme = theme();
+    document.documentElement.dataset.theme = currentTheme;
+    // Also toggle body.dark-theme class for viewer-core CSS compatibility
+    document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+  });
 
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
@@ -346,9 +353,18 @@ export default function ProjectView() {
                 </Show>
 
                 <div class="flex items-center gap-2">
-                  <div class="badge badge-outline">
+                  <button
+                    class="badge badge-outline cursor-pointer hover:badge-primary transition-colors min-w-[6.5rem] justify-center"
+                    onClick={() => {
+                      const modes: ViewerMode[] = ['basic', 'advanced', 'editor'];
+                      const currentIndex = modes.indexOf(mode());
+                      const nextMode = modes[(currentIndex + 1) % modes.length];
+                      setSearchParams({ mode: nextMode });
+                    }}
+                    title="Click to cycle viewer modes"
+                  >
                     {mode() === 'editor' ? '✏️ Editor' : mode() === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
-                  </div>
+                  </button>
                   
                   <button
                     class="btn btn-ghost btn-sm"
@@ -399,6 +415,7 @@ export default function ProjectView() {
                 dsl={content()!}
                 mode={mode()}
                 theme={theme()}
+                onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
                 onDslChange={(newDsl: string) => {
                   console.log("DSL changed:", newDsl.slice(0, 100));
                 }}

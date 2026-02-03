@@ -1,8 +1,6 @@
-// Mock Convex data for development without backend
-// Enables testing the full UI without setting up Convex
-
+import { ConvexClient } from "convex/browser";
+import { getFunctionName } from "convex/server";
 import { createSignal } from "solid-js";
-
 import { styledApartmentContent } from "./mock-floorplan-content";
 
 // Mock project data
@@ -132,6 +130,12 @@ export const mockConvexQueries = {
     return mockUsersData[0];
   },
   
+  "users:getById": (args: { userId: string }) => {
+    console.log("[MOCK] users.getById() called", args);
+    const user = mockUsersData.find(u => u._id === args.userId || u.authId === args.userId);
+    return user ?? mockUsersData[0];
+  },
+  
   "users:hasTempUsername": () => {
     console.log("[MOCK] users.hasTempUsername() called");
     return false; // Mock user has permanent username
@@ -165,6 +169,65 @@ export const mockConvexQueries = {
   "sharing:getSharedWithMe": () => {
     console.log("[MOCK] sharing.getSharedWithMe() called");
     return []; // No shared projects in mock mode
+  },
+  
+  "explore:listFeatured": (args: { limit?: number }) => {
+    console.log("[MOCK] explore.listFeatured() called", args);
+    const limit = args?.limit ?? 10;
+    const featured = mockProjectsData
+      .filter(p => p.isPublic)
+      .slice(0, limit)
+      .map(p => {
+        const owner = mockUsersData.find(u => u.authId === p.userId);
+        const version = mockVersionsData.find(v => v.projectId === p._id);
+        const snapshot = version ? mockSnapshotsData.find(s => s._id === version.snapshotId) : null;
+        return {
+          ...p,
+          ownerName: owner?.username ?? "unknown",
+          content: snapshot?.content ?? styledApartmentContent,
+        };
+      });
+    return { projects: featured };
+  },
+  
+  "explore:listTrending": (args: { limit?: number }) => {
+    console.log("[MOCK] explore.listTrending() called", args);
+    const limit = args?.limit ?? 24;
+    const trending = mockProjectsData
+      .filter(p => p.isPublic)
+      .slice(0, limit)
+      .map(p => {
+        const owner = mockUsersData.find(u => u.authId === p.userId);
+        return {
+          ...p,
+          ownerName: owner?.username ?? "unknown",
+        };
+      });
+    return { projects: trending };
+  },
+  
+  "explore:listCollections": () => {
+    console.log("[MOCK] explore.listCollections() called");
+    return { collections: [] };
+  },
+  
+  "explore:listByTopic": (args: { topicSlug: string; limit?: number }) => {
+    console.log("[MOCK] explore.listByTopic() called", args);
+    if (args.topicSlug === "_______SKIP_______") {
+      return { projects: [] };
+    }
+    const limit = args?.limit ?? 24;
+    const projects = mockProjectsData
+      .filter(p => p.isPublic)
+      .slice(0, limit)
+      .map(p => {
+        const owner = mockUsersData.find(u => u.authId === p.userId);
+        return {
+          ...p,
+          ownerName: owner?.username ?? "unknown",
+        };
+      });
+    return { projects };
   },
 };
 
@@ -341,4 +404,88 @@ export function useMockableMutation<TArgs = Record<string, unknown>, TResult = u
   const { useMutation } = require("convex-solidjs");
   const mutation = useMutation(mutationName as any);
   return mutation;
+}
+
+function getQueryKey(query: unknown): string | null {
+  try {
+    const name = getFunctionName(query as any);
+    return name.replace(/\./g, ":");
+  } catch {
+    return null;
+  }
+}
+
+function getMockHandler(queryKey: string): ((args: unknown) => unknown) | null {
+  const handler = (mockConvexQueries as Record<string, (args: unknown) => unknown>)[queryKey];
+  return handler ?? null;
+}
+
+export function createMockConvexClient(): ConvexClient {
+  const mockDataCache = new Map<string, unknown>();
+  
+  const client = new ConvexClient("https://mock-convex.invalid");
+
+  const innerClient = client.client;
+  if (innerClient) {
+    const originalLocalQueryResult = innerClient.localQueryResult.bind(innerClient);
+    (innerClient as any).localQueryResult = (queryName: string, args: any): any => {
+      const queryKey = queryName.replace(/\./g, ":");
+      const cacheKey = `${queryKey}:${JSON.stringify(args)}`;
+      const cached = mockDataCache.get(cacheKey);
+      if (cached !== undefined) return cached;
+      return originalLocalQueryResult(queryName, args);
+    };
+  }
+  
+  (client as any).onUpdate = function(
+    query: unknown,
+    args: unknown,
+    callback: (result: unknown) => void,
+    _onError?: (error: Error) => void
+  ): () => void {
+    const queryKey = getQueryKey(query);
+    
+    if (queryKey) {
+      const handler = getMockHandler(queryKey);
+      if (handler) {
+        setTimeout(() => {
+          try {
+            const result = handler(args);
+            const cacheKey = `${queryKey}:${JSON.stringify(args)}`;
+            mockDataCache.set(cacheKey, result);
+            callback(result);
+          } catch (err) {
+            console.error(`[MOCK] Error in query ${queryKey}:`, err);
+            callback(undefined);
+          }
+        }, 50);
+        return () => {};
+      }
+      console.warn(`[MOCK] No handler for query: ${queryKey}`);
+    }
+
+    callback(undefined);
+    return () => {};
+  };
+
+  (client as any).mutation = async function(mutation: unknown, args: unknown): Promise<unknown> {
+    const mutationKey = getQueryKey(mutation);
+    if (mutationKey) {
+      const handler = (mockConvexMutations as Record<string, (args: unknown) => unknown>)[mutationKey];
+      if (handler) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        return handler(args);
+      }
+      console.warn(`[MOCK] No handler for mutation: ${mutationKey}`);
+    }
+    return null;
+  };
+
+  (client as any).action = async function(action: unknown, args: unknown): Promise<unknown> {
+    const actionKey = getQueryKey(action);
+    console.log(`[MOCK] Action called: ${actionKey}`, args);
+    return null;
+  };
+
+  return client;
 }
