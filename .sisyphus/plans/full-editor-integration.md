@@ -626,7 +626,7 @@ Wave 3 (Testing + Polish):
 
 ---
 
-- [ ] 1. Create FloorplanContainer + FloorplanBase
+- [x] 1. Create FloorplanContainer + FloorplanBase
 
   **What to do**:
 
@@ -1013,7 +1013,7 @@ Wave 3 (Testing + Polish):
 
 ---
 
-- [ ] 2. Create ControlPanels component (lazy)
+- [x] 2. Create ControlPanels component (lazy)
 
   **What to do**:
 
