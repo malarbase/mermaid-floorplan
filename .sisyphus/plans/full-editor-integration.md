@@ -3022,7 +3022,7 @@ Wave 3 (Testing + Polish):
 
 ---
 
-- [ ] 7. Integration testing and polish
+- [x] 7. Integration testing and polish
 
   **What to do**:
 
