@@ -53,10 +53,10 @@ Enable E2E tests to run by providing database-independent test routes.
 - Updated `e2e/progressive-viewer.spec.ts`
 
 ### Definition of Done
-- [ ] All 3 new test routes return 200 OK
-- [ ] Canvas renders on each route
-- [ ] E2E tests pass: `npx playwright test e2e/progressive-viewer.spec.ts`
-- [ ] Build succeeds: `bun run build`
+- [x] All 3 new test routes return 200 OK
+- [x] Canvas renders on each route
+- [x] E2E tests pass: `npx playwright test e2e/progressive-viewer.spec.ts` (22/25 = 88%)
+- [x] Build succeeds: `bun run build`
 
 ### Must Have
 - Test routes work without authentication
@@ -349,10 +349,10 @@ cd floorplan-app && npx playwright test e2e/progressive-viewer.spec.ts --project
 ```
 
 ### Final Checklist
-- [ ] All "Must Have" present (3 routes, updated tests)
-- [ ] All "Must NOT Have" absent (no auth, no component changes)
-- [ ] E2E tests pass at 80%+ rate
-- [ ] Build succeeds
+- [x] All "Must Have" present (3 routes, updated tests)
+- [x] All "Must NOT Have" absent (no auth, no component changes)
+- [x] E2E tests pass at 80%+ rate (achieved 88%)
+- [x] Build succeeds
 
 ---
 
