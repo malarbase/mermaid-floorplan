@@ -29,8 +29,12 @@
     "convex-helpers": "^0.1.111",
     "convex-solidjs": "^0.0.3",
     "convex-table-history": "^0.1.2",
+    "floorplan-editor": "*",
     "floorplan-viewer-core": "*",
     "solid-js": "^1.9.5",
+    "three": "^0.170.0",
+    "three-bvh-csg": "^0.0.16",
+    "three-mesh-bvh": "^0.7.0",
     "vinxi": "^0.5.7"
   },
   "devDependencies": {

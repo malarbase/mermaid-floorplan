@@ -1246,7 +1246,7 @@ Wave 3 (Testing + Polish):
 
 ---
 
-- [ ] 3. Create EditorBundle component (lazy)
+- [x] 3. Create EditorBundle component (lazy)
 
   **What to do**:
 
