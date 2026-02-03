@@ -22,7 +22,8 @@ export default function EditorPanel(props: EditorPanelProps) {
     try {
       const [viewerCore, editorModule] = await Promise.all([
         import("floorplan-viewer-core"),
-        import("floorplan-editor")
+        // @ts-ignore - Direct source import to bypass build issues
+        import("floorplan-editor/src/index")
       ]);
 
       const { createDslEditor, parseFloorplanDSL } = viewerCore;

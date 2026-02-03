@@ -1,5 +1,5 @@
 import { Title } from "@solidjs/meta";
-import { useParams, A, useNavigate, useLocation } from "@solidjs/router";
+import { useParams, A, useNavigate, useLocation, useSearchParams } from "@solidjs/router";
 import { Show, createMemo, createSignal } from "solid-js";
 import { clientOnly } from "@solidjs/start";
 import { useQuery } from "convex-solidjs";
@@ -12,10 +12,11 @@ import { VersionSwitcher } from "~/components/VersionSwitcher";
 import { CreateVersionModal } from "~/components/CreateVersionModal";
 import { CopyPermalinkButton } from "~/components/CopyPermalinkButton";
 import { ForkButton } from "~/components/ForkButton";
+import type { ViewerMode } from "~/components/viewer/FloorplanContainer";
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanEditor = clientOnly(
-  () => import("~/components/FloorplanEditor")
+const FloorplanContainer = clientOnly(
+  () => import("~/components/viewer/FloorplanContainer")
 );
 const AuthGatedEditorPanel = clientOnly(
   () => import("~/components/AuthGatedEditorPanel")
@@ -74,8 +75,10 @@ export default function ProjectView() {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const sessionSignal = useSession();
   const [showCreateVersionModal, setShowCreateVersionModal] = createSignal(false);
+  const [theme, setTheme] = createSignal<"light" | "dark">("dark");
 
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
@@ -155,6 +158,14 @@ export default function ProjectView() {
     if (isLoading()) return false;
     if (!projectData()) return false;
     return !content();
+  });
+
+  const mode = createMemo((): ViewerMode => {
+    const modeParam = typeof searchParams.mode === 'string' ? searchParams.mode : undefined;
+    if (modeParam && ['basic', 'advanced', 'editor'].includes(modeParam)) {
+      return modeParam as ViewerMode;
+    }
+    return isOwner() ? 'editor' : 'advanced';
   });
 
   // Handle save success
@@ -334,6 +345,30 @@ export default function ProjectView() {
                   </A>
                 </Show>
 
+                <div class="flex items-center gap-2">
+                  <div class="badge badge-outline">
+                    {mode() === 'editor' ? '✏️ Editor' : mode() === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
+                  </div>
+                  
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
+                    title="Toggle theme"
+                  >
+                    🌓
+                  </button>
+                  
+                  <button
+                    class="btn btn-ghost btn-sm"
+                    onClick={() => {
+                      console.log('Command palette triggered');
+                    }}
+                    title="Command palette (Cmd+K)"
+                  >
+                    ⌘K
+                  </button>
+                </div>
+
                 <div class="divider divider-horizontal mx-1 sm:mx-2 h-6 self-center" />
                 <UserMenu size="sm" />
               </div>
@@ -360,32 +395,14 @@ export default function ProjectView() {
                 </div>
               }
             >
-              <Show
-                when={isOwner()}
-                fallback={
-                  <AuthGatedEditorPanel
-                    initialContent={content()!}
-                    projectId={project()!._id}
-                    projectSlug={projectSlug()!}
-                    projectName={project()!.displayName}
-                    ownerUsername={username()!}
-                    theme="dark"
-                  />
-                }
-              >
-                <FloorplanEditor
-                  initialContent={content()!}
-                  projectId={project()?._id}
-                  versionName={project()?.defaultVersion}
-                  editable={true}
-                  theme="dark"
-                  projectName={project()?.displayName}
-                  username={username()}
-                  projectSlug={projectSlug()}
-                  currentHash={currentHash()}
-                  onSave={handleSaveSuccess}
-                />
-              </Show>
+              <FloorplanContainer
+                dsl={content()!}
+                mode={mode()}
+                theme={theme()}
+                onDslChange={(newDsl: string) => {
+                  console.log("DSL changed:", newDsl.slice(0, 100));
+                }}
+              />
             </Show>
           </div>
         </Show>

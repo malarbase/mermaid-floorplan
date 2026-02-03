@@ -5,14 +5,15 @@
   "license": "GPL-3.0-or-later",
   "author": "Malar Kannan",
   "type": "module",
-  "main": "./out/index.js",
-  "types": "./out/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "types": "./out/index.d.ts",
-      "import": "./out/index.js",
-      "default": "./out/index.js"
-    }
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./src/*": "./src/*"
   },
   "files": [
     "out"

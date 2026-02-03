@@ -1,0 +1,142 @@
+/* Base container */
+.floorplan-container {
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 3D Viewer */
+.floorplan-3d {
+  flex: 1;
+  position: relative;
+  min-width: 0; /* Allow flexbox shrinking */
+}
+
+/* Control Panel (right sidebar) */
+.control-panel {
+  width: 320px;
+  background: var(--fallback-b1, oklch(var(--b1)));
+  border-left: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.1));
+  overflow-y: auto;
+  transition: transform 0.3s ease;
+  position: relative; /* Ensure absolute children are contained */
+}
+
+/* Editor Panel (left sidebar) */
+.editor-panel {
+  width: 400px;
+  background: var(--fallback-b1, oklch(var(--b1)));
+  border-right: 1px solid var(--fallback-bc, oklch(var(--bc) / 0.1));
+  overflow: hidden;
+  transition: transform 0.3s ease;
+  position: relative; /* Ensure absolute children are contained */
+}
+
+/* FAB (phone only) */
+.fab-button {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 50;
+}
+
+/* Bottom Sheet (phone only) */
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70vh;
+  background: var(--fallback-b1, oklch(var(--b1)));
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  z-index: 40;
+}
+
+.bottom-sheet.open {
+  transform: translateY(0);
+}
+
+.bottom-sheet-content {
+  padding: 1rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: var(--fallback-bc, oklch(var(--bc) / 0.3));
+  border-radius: 2px;
+  margin: 0 auto 1rem;
+}
+
+/* PHONE: <640px */
+@media (max-width: 639px) {
+  .floorplan-container {
+    flex-direction: column;
+  }
+  
+  .editor-panel,
+  .control-panel {
+    display: none; /* Hidden on phone, use bottom sheet instead */
+  }
+  
+  .floorplan-3d {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* TABLET: 640px-1024px */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .fab-button,
+  .bottom-sheet {
+    display: none; /* Hidden on tablet+ */
+  }
+  
+  .floorplan-container {
+    flex-direction: row;
+  }
+  
+  /* On tablet, show ONE sidebar at a time */
+  .editor-panel {
+    width: 360px;
+  }
+  
+  .control-panel {
+    width: 300px;
+  }
+  
+  /* Collapsible sidebar */
+  .control-panel.collapsed,
+  .editor-panel.collapsed {
+    transform: translateX(-100%);
+  }
+}
+
+/* DESKTOP: >1024px */
+@media (min-width: 1024px) {
+  .fab-button,
+  .bottom-sheet {
+    display: none; /* Hidden on desktop */
+  }
+  
+  .floorplan-container {
+    flex-direction: row;
+  }
+  
+  /* Full 3-column layout */
+  .editor-panel {
+    width: 450px;
+  }
+  
+  .control-panel {
+    width: 350px;
+  }
+}

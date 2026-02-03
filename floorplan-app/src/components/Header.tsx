@@ -8,42 +8,17 @@ import { LogoutButton } from "./LogoutButton";
  */
 export type HeaderVariant = "default" | "minimal" | "transparent";
 
-/**
- * Props for the Header component
- */
 export interface HeaderProps {
-  /**
-   * Header style variant
-   * - "default": Standard header with background
-   * - "minimal": No branding, just navigation
-   * - "transparent": Transparent background (for hero sections)
-   */
   variant?: HeaderVariant;
-  
-  /**
-   * Additional CSS classes
-   */
   class?: string;
-  
-  /**
-   * Show a back button with custom href
-   */
   backHref?: string;
-  
-  /**
-   * Custom back button label
-   */
   backLabel?: string;
-  
-  /**
-   * Right-side action slot (replaces default user menu)
-   */
   actions?: JSX.Element;
-  
-  /**
-   * Hide user menu entirely
-   */
   hideUserMenu?: boolean;
+  showViewerControls?: boolean;
+  mode?: 'basic' | 'advanced' | 'editor';
+  onThemeToggle?: () => void;
+  onCommandPalette?: () => void;
 }
 
 /**
@@ -128,8 +103,31 @@ export const Header: Component<HeaderProps> = (props) => {
         </Show>
       </div>
 
-      {/* Right side - Auth actions */}
       <div class="flex-none gap-2">
+        <Show when={props.showViewerControls}>
+          <div class="flex items-center gap-2">
+            <div class="badge badge-outline">
+              {props.mode === 'editor' ? '✏️ Editor' : props.mode === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
+            </div>
+            
+            <button
+              class="btn btn-ghost btn-sm"
+              onClick={props.onThemeToggle}
+              title="Toggle theme"
+            >
+              🌓
+            </button>
+            
+            <button
+              class="btn btn-ghost btn-sm"
+              onClick={props.onCommandPalette}
+              title="Command palette (Cmd+K)"
+            >
+              ⌘K
+            </button>
+          </div>
+        </Show>
+
         <Show when={props.actions} fallback={
           <Show when={!props.hideUserMenu}>
             <Show

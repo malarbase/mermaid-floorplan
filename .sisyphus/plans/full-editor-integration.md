@@ -1608,7 +1608,7 @@ Wave 3 (Testing + Polish):
 
 ---
 
-- [ ] 4. Update routes with mode detection and Header integration
+- [x] 4. Update routes with mode detection and Header integration
 
   **What to do**:
 
@@ -1915,7 +1915,7 @@ Wave 3 (Testing + Polish):
 
 ---
 
-- [ ] 5. Responsive layouts per tier
+- [x] 5. Responsive layouts per tier
 
   **What to do**:
 
