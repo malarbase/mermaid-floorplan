@@ -259,7 +259,7 @@ Total: ~1.5-2 hours
 
 ### Phase 3: Verify and Fix
 
-- [ ] 3. Run E2E tests and fix any issues
+- [x] 3. Run E2E tests and fix any issues
 
   **What to do**:
   1. Run full E2E test suite on chromium
@@ -310,9 +310,9 @@ Total: ~1.5-2 hours
   ```
 
   **Evidence to Capture**:
-  - [ ] Final pass/fail count documented
-  - [ ] Any failing tests documented with reason
-  - [ ] Screenshots of successful renders in `.sisyphus/evidence/`
+  - [x] Final pass/fail count documented
+  - [x] Any failing tests documented with reason
+  - [~] Screenshots of successful renders in `.sisyphus/evidence/` (in test-results/)
 
   **Commit**: YES
   - Message: `test: E2E tests passing for progressive viewer`
