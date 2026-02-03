@@ -202,7 +202,7 @@ Total: ~1.5-2 hours
 
 ### Phase 2: Update E2E Tests
 
-- [ ] 2. Update progressive-viewer.spec.ts to use new routes
+- [x] 2. Update progressive-viewer.spec.ts to use new routes
 
   **What to do**:
   1. Find/replace URLs in test file:
@@ -239,9 +239,9 @@ Total: ~1.5-2 hours
   **Acceptance Criteria**:
   
   **File Modified**:
-  - [ ] `e2e/progressive-viewer.spec.ts` updated with new URLs
-  - [ ] No references to `/u/testuser/testproject` remain (except comments)
-  - [ ] Embed route test either skipped or uses new route
+  - [x] `e2e/progressive-viewer.spec.ts` updated with new URLs
+  - [x] No references to `/u/testuser/testproject` remain (except comments)
+  - [x] Embed route test either skipped or uses new route
 
   **Test Compilation**:
   ```bash
