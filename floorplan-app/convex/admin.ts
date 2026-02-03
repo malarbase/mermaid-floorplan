@@ -180,6 +180,21 @@ export const listAllUsers = query({
 });
 
 /**
+ * Get current user's admin status
+ * Used by admin UI to determine super admin capabilities
+ */
+export const getCurrentUserAdminStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireAdmin(ctx);
+    return {
+      isAdmin: user.isAdmin ?? false,
+      isSuperAdmin: isSuperAdmin(user),
+    };
+  },
+});
+
+/**
  * Get admin statistics
  */
 export const getStats = query({

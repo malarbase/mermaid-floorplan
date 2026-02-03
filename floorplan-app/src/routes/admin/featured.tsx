@@ -32,13 +32,8 @@ export default function FeaturedProjects() {
   const setFeatured = useMutation(api.admin.setFeatured);
   const deleteProject = useMutation((api.admin as any).deleteProject);
   
-  const currentUser = useQuery(api.users.getCurrentUser, {});
-  const isSuperAdmin = () => {
-    const user = currentUser.data();
-    if (!user) return false;
-    const SUPER_ADMIN_EMAIL = "malar@malar.dev";
-    return (user as any).email === SUPER_ADMIN_EMAIL;
-  };
+  const adminStatus = useQuery((api.admin as any).getCurrentUserAdminStatus, {});
+  const isSuperAdmin = () => adminStatus.data()?.isSuperAdmin ?? false;
 
   const filteredProjects = createMemo(() => {
     const allProjects = projects.data() as Project[] | undefined;

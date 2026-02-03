@@ -102,10 +102,10 @@ export class FloorplanAppCore extends BaseViewer {
   private _isAuthenticated: boolean;
   private _onAuthRequired?: () => AuthResult;
   
-  // Managers
-  private _selectionManager: SelectionManager | null = null;
-  private overlay2DManager: Overlay2DManager | null = null;
-  public readonly layoutManager: LayoutManager;
+   // Managers
+   private _selectionManager: SelectionManager | null = null;
+   private _overlay2DManager: Overlay2DManager | null = null;
+   public readonly layoutManager: LayoutManager;
   
   // State
   private editorPanelOpen: boolean = false;
@@ -116,11 +116,12 @@ export class FloorplanAppCore extends BaseViewer {
   // Event handlers
   private eventHandlers: Map<string, Set<EventHandler<unknown>>> = new Map();
   
-  // Getters
-  get selectionManager(): SelectionManager | null { return this._selectionManager; }
-  get isAuthenticated(): boolean { return this._isAuthenticated; }
-  get currentFilename(): string { return this._currentFilename; }
-  get isEditorPanelOpen(): boolean { return this.editorPanelOpen; }
+   // Getters
+   get selectionManager(): SelectionManager | null { return this._selectionManager; }
+   get overlay2DManager(): Overlay2DManager | null { return this._overlay2DManager; }
+   get isAuthenticated(): boolean { return this._isAuthenticated; }
+   get currentFilename(): string { return this._currentFilename; }
+   get isEditorPanelOpen(): boolean { return this.editorPanelOpen; }
   
   constructor(options: FloorplanAppCoreOptions = {}) {
     const containerId = options.containerId ?? 'app';
@@ -158,19 +159,19 @@ export class FloorplanAppCore extends BaseViewer {
       );
     }
     
-    // Initialize 2D overlay manager
-    this.overlay2DManager = new Overlay2DManager({
-      getCurrentTheme: () => this.currentTheme,
-      getFloorplanData: () => this.currentFloorplanData,
-      getVisibleFloorIds: () => this._floorManager.getVisibleFloorIds(),
-      onVisibilityChange: (visible) => this.layoutManager.setOverlay2DVisible(visible),
-    });
-    
-    // Setup manager controls (keyboard shortcuts)
-    this._cameraManager.setupControls();
-    this._annotationManager.setupControls();
-    this._floorManager.setupControls();
-    this.overlay2DManager?.setupControls();
+     // Initialize 2D overlay manager
+     this._overlay2DManager = new Overlay2DManager({
+       getCurrentTheme: () => this.currentTheme,
+       getFloorplanData: () => this.currentFloorplanData,
+       getVisibleFloorIds: () => this._floorManager.getVisibleFloorIds(),
+       onVisibilityChange: (visible) => this.layoutManager.setOverlay2DVisible(visible),
+     });
+     
+     // Setup manager controls (keyboard shortcuts)
+     this._cameraManager.setupControls();
+     this._annotationManager.setupControls();
+     this._floorManager.setupControls();
+     this._overlay2DManager?.setupControls();
     
     // Load initial content
     if (options.initialDsl) {
@@ -236,9 +237,9 @@ export class FloorplanAppCore extends BaseViewer {
         return;
       }
       
-      if (result.data) {
-        this.loadFloorplan(result.data);
-        this.overlay2DManager?.setLangiumDocument(result.document ?? null);
+       if (result.data) {
+         this.loadFloorplan(result.data);
+         this._overlay2DManager?.setLangiumDocument(result.document ?? null);
         
         // Emit warnings
         this.emit('parseWarnings', { warnings: result.warnings });
@@ -336,35 +337,35 @@ export class FloorplanAppCore extends BaseViewer {
     }
   }
   
-  /**
-   * Toggle editor panel state.
-   */
-  public toggleEditorPanel(): void {
-    this.editorPanelOpen = !this.editorPanelOpen;
-    
-    document.body.classList.toggle('editor-open', this.editorPanelOpen);
-    if (this.editorPanelOpen) {
-      document.documentElement.style.setProperty('--editor-width', `${this.editorPanelWidth}px`);
-    }
-    
-    this.overlay2DManager?.onEditorStateChanged(this.editorPanelOpen, this.editorPanelWidth);
-    this.emit('editorToggle', { isOpen: this.editorPanelOpen });
-  }
+   /**
+    * Toggle editor panel state.
+    */
+   public toggleEditorPanel(): void {
+     this.editorPanelOpen = !this.editorPanelOpen;
+     
+     document.body.classList.toggle('editor-open', this.editorPanelOpen);
+     if (this.editorPanelOpen) {
+       document.documentElement.style.setProperty('--editor-width', `${this.editorPanelWidth}px`);
+     }
+     
+     this._overlay2DManager?.onEditorStateChanged(this.editorPanelOpen, this.editorPanelWidth);
+     this.emit('editorToggle', { isOpen: this.editorPanelOpen });
+   }
   
-  /**
-   * Set editor panel state explicitly.
-   */
-  public setEditorPanelOpen(open: boolean): void {
-    if (this.editorPanelOpen === open) return;
-    this.editorPanelOpen = open;
-    
-    document.body.classList.toggle('editor-open', this.editorPanelOpen);
-    if (this.editorPanelOpen) {
-      document.documentElement.style.setProperty('--editor-width', `${this.editorPanelWidth}px`);
-    }
-    
-    this.overlay2DManager?.onEditorStateChanged(this.editorPanelOpen, this.editorPanelWidth);
-  }
+   /**
+    * Set editor panel state explicitly.
+    */
+   public setEditorPanelOpen(open: boolean): void {
+     if (this.editorPanelOpen === open) return;
+     this.editorPanelOpen = open;
+     
+     document.body.classList.toggle('editor-open', this.editorPanelOpen);
+     if (this.editorPanelOpen) {
+       document.documentElement.style.setProperty('--editor-width', `${this.editorPanelWidth}px`);
+     }
+     
+     this._overlay2DManager?.onEditorStateChanged(this.editorPanelOpen, this.editorPanelWidth);
+   }
   
   /**
    * Override setTheme to emit themeChange event.
@@ -596,19 +597,19 @@ export class FloorplanAppCore extends BaseViewer {
   // Overrides
   // ============================================================================
   
-  /**
-   * Override to handle floor visibility changes.
-   */
-  protected onFloorVisibilityChanged(): void {
-    this.overlay2DManager?.render();
-  }
-  
-  /**
-   * Override to handle floorplan loaded.
-   */
-  protected onFloorplanLoaded(): void {
-    this.overlay2DManager?.render();
-  }
+   /**
+    * Override to handle floor visibility changes.
+    */
+   protected onFloorVisibilityChanged(): void {
+     this._overlay2DManager?.render();
+   }
+   
+   /**
+    * Override to handle floorplan loaded.
+    */
+   protected onFloorplanLoaded(): void {
+     this._overlay2DManager?.render();
+   }
   
   /**
    * Override animation loop to update selection manager.

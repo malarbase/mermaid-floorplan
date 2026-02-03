@@ -885,6 +885,7 @@ function updateThemeButton() {
   if (themeToggleBtn) {
     themeToggleBtn.textContent = uiTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
   }
+  document.documentElement.setAttribute('data-theme', uiTheme);
   document.body.classList.toggle('dark-theme', uiTheme === 'dark');
 }
 

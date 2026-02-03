@@ -32,6 +32,21 @@ const threeGlobalPlugin = {
   },
 };
 
+// Plugin to handle optional peer dependencies (three-bvh-csg and its transitive deps)
+const optionalPeerDepsPlugin = {
+  name: 'optional-peer-deps',
+  setup(build) {
+    // Mark optional peer dependencies and their transitive deps as external
+    // These will only be available if the consuming app installs them
+    const optionalDeps = ['three-bvh-csg', 'three-mesh-bvh'];
+    
+    build.onResolve({ filter: new RegExp(`^(${optionalDeps.join('|')})$`) }, (args) => ({
+      path: args.path,
+      external: true,
+    }));
+  },
+};
+
 async function build() {
   try {
     const result = await esbuild.build({
@@ -40,7 +55,7 @@ async function build() {
       format: 'iife',
       globalName: 'FloorplanCore',
       outfile: 'out/floorplan-3d-core.browser.js',
-      plugins: [threeGlobalPlugin],
+      plugins: [threeGlobalPlugin, optionalPeerDepsPlugin],
       minify: false,
       sourcemap: false,
     });

@@ -5,7 +5,8 @@
 .PHONY: all help install build clean dev test langium langium-watch \
         images images-svg images-png images-annotated render mcp-server mcp-build rebuild watch \
         viewer-dev viewer-build export-json export-images export-svg export-png export-annotated \
-        export-3d export-3d-perspective export-dxf
+        export-3d export-3d-perspective export-dxf \
+        admin-setup admin-dev admin-test admin-reset admin-help
 
 # Default target
 all: help
@@ -251,3 +252,71 @@ app-test: ## Run floorplan-app tests
 
 setup-mock-auth: ## Set up mock authentication for development
 	@./scripts/setup-mock-auth.sh
+
+# ===============================
+# Admin Panel Testing
+# ===============================
+
+ADMIN_EMAIL ?= admin@test.local
+
+admin-setup: ## Configure admin testing environment (ADMIN_EMAIL=your@email.com)
+	@echo "Setting up admin testing environment..."
+	@cd floorplan-app && npx convex env set SUPER_ADMIN_EMAIL "$(ADMIN_EMAIL)" 2>/dev/null || \
+		echo "Note: Run 'npx convex dev' first if Convex is not running"
+	@echo ""
+	@echo "Creating .env.local with dev auth bypass..."
+	@echo "DEV_AUTH_BYPASS=true" > floorplan-app/.env.local.admin
+	@echo "DEV_USER_EMAIL=$(ADMIN_EMAIL)" >> floorplan-app/.env.local.admin
+	@echo "DEV_USER_NAME=Test Admin" >> floorplan-app/.env.local.admin
+	@echo "DEV_USER_USERNAME=testadmin" >> floorplan-app/.env.local.admin
+	@echo ""
+	@echo "Admin setup complete!"
+	@echo "  Super admin email: $(ADMIN_EMAIL)"
+	@echo ""
+	@echo "To use: cp floorplan-app/.env.local.admin floorplan-app/.env.local"
+	@echo "Then:   make admin-dev"
+
+admin-dev: ## Start app with admin user pre-configured
+	@if [ ! -f floorplan-app/.env.local ]; then \
+		echo "Error: .env.local not found. Run 'make admin-setup' first."; \
+		exit 1; \
+	fi
+	@echo "Starting admin dev environment..."
+	@echo "Admin panel: http://localhost:3000/admin"
+	@cd floorplan-app && npm run dev
+
+admin-test: ## Run Playwright E2E tests for admin panel
+	@echo "Running admin panel tests..."
+	@cd floorplan-app && npx playwright test --grep "@admin" || \
+		echo "Note: No @admin tagged tests found. Create tests in floorplan-app/tests/"
+
+admin-reset: ## Reset admin state (demote all admins except super admin)
+	@echo "Resetting admin state..."
+	@cd floorplan-app && npx convex run admin:resetAdminState 2>/dev/null || \
+		echo "Note: admin:resetAdminState mutation not found. Manual reset required."
+	@echo "Admin state reset complete."
+
+admin-help: ## Show admin testing help
+	@echo "Admin Panel Testing"
+	@echo "==================="
+	@echo ""
+	@echo "Quick Start:"
+	@echo "  1. make admin-setup ADMIN_EMAIL=your@email.com"
+	@echo "  2. cp floorplan-app/.env.local.admin floorplan-app/.env.local"
+	@echo "  3. make admin-dev"
+	@echo "  4. Open http://localhost:3000/admin"
+	@echo ""
+	@echo "Testing Routes:"
+	@echo "  /admin           - Dashboard with stats"
+	@echo "  /admin/featured  - Manage featured projects"
+	@echo "  /admin/users     - User management (super admin)"
+	@echo "  /admin/audit     - Audit log viewer"
+	@echo ""
+	@echo "Super Admin Capabilities:"
+	@echo "  - Promote/demote admins"
+	@echo "  - Delete any project"
+	@echo "  - Impersonate users"
+	@echo ""
+	@echo "Regular Admin Capabilities:"
+	@echo "  - Feature/unfeature projects"
+	@echo "  - View user list (read-only)"

@@ -304,6 +304,40 @@ export const remove = mutation({
 });
 
 /**
+ * Get public project by ID (no auth required)
+ * Returns null if project is not public
+ */
+export const getPublic = query({
+  args: { projectId: v.id("projects") },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project) return null;
+    
+    // Only return if project is public
+    if (!project.isPublic) return null;
+    
+    // Get the default version and its snapshot
+    const version = await ctx.db
+      .query("versions")
+      .withIndex("by_project_name", (q) =>
+        q.eq("projectId", args.projectId).eq("name", project.defaultVersion)
+      )
+      .first();
+    
+    if (!version) return null;
+    
+    const snapshot = await ctx.db.get(version.snapshotId);
+    if (!snapshot) return null;
+    
+    return {
+      project,
+      version,
+      snapshot,
+    };
+  },
+});
+
+/**
  * Get snapshot by hash (for permalinks)
  */
 export const getByHash = query({

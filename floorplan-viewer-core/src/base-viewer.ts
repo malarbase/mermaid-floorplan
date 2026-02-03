@@ -308,7 +308,9 @@ export abstract class BaseViewer implements SceneContext {
     this._scene.background = new THREE.Color(colors.BACKGROUND);
     
     // Update body class for CSS theme selectors (blueprint is also dark)
-    document.body.classList.toggle('dark-theme', isDarkTheme(this.currentTheme));
+    const isDark = isDarkTheme(this.currentTheme);
+    document.body.classList.toggle('dark-theme', isDark);
+    document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
     
     // Update wall generator theme
     this.wallGenerator.setTheme(this.currentTheme);
