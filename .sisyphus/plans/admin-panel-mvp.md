@@ -638,7 +638,7 @@ Parallel Speedup: ~40% faster than sequential
 
 ---
 
-- [ ] 12. Create /admin/audit page
+- [x] 12. Create /admin/audit page
 
   **What to do**:
   - Create `src/routes/admin/audit.tsx`

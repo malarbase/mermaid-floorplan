@@ -1,3 +1,4 @@
+import { adminAuditLog } from "./lib/auditLog";
 import { v } from "convex/values";
 import { mutation as rawMutation, query } from "./_generated/server";
 import { requireAdmin, requireSuperAdmin, isSuperAdmin } from "./lib/auth";
@@ -266,6 +267,75 @@ export const deleteProject = mutation({
     return { success: true };
   },
 });
+
+/**
+ * Get audit log history
+ * Wraps convex-table-history to provide a list of admin actions
+ */
+export const getAuditLog = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const maxTs = Date.now();
+    const limit = args.limit ?? 100;
+
+    const history = await adminAuditLog.listHistory(ctx, maxTs, {
+      numItems: limit,
+      cursor: null
+    });
+
+    return history.page.map((entry) => {
+      let action = "updated";
+      let target = "Unknown";
+      let details = "";
+
+      if (entry.isDeleted) {
+        action = "deleted";
+      }
+
+      if (entry.doc) {
+        if ('displayName' in entry.doc) {
+          target = `Project: ${entry.doc.displayName}`;
+          if (entry.doc.isFeatured) {
+            details = "Featured status active";
+          }
+        } else if ('username' in entry.doc) {
+          target = `User: ${entry.doc.username}`;
+          if (entry.doc.isAdmin) {
+            details = "Admin privileges active";
+          }
+        }
+      } else {
+        target = `ID: ${entry.id}`;
+      }
+
+      return {
+        ts: entry.ts,
+        action,
+        actor: formatActor(entry.attribution),
+        target,
+        details: details || "Property update",
+        rawAction: action,
+        table: entry.doc ? ('displayName' in entry.doc ? 'projects' : 'users') : 'unknown'
+      };
+    });
+  },
+});
+
+function formatActor(attribution: any): string {
+  if (!attribution) return "System";
+  if (typeof attribution === 'object') {
+    if (attribution.name) return attribution.name;
+    if (attribution.email) return attribution.email;
+    if (attribution.tokenIdentifier) {
+        return attribution.tokenIdentifier.split('|').pop() || "Unknown";
+    }
+  }
+  return String(attribution);
+}
 
 /**
  * Super Admin: Start impersonating a user
