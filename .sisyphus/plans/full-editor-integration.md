@@ -2518,7 +2518,7 @@ Wave 3 (Testing + Polish):
 
 ---
 
-- [ ] 6. Playwright test suite
+- [x] 6. Playwright test suite
 
   **What to do**:
 

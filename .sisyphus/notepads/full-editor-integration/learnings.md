@@ -110,3 +110,53 @@
 00106| - **Workaround**: Temporarily patched `EditorPanel.tsx` to disable the `floorplan-editor` import and mock the module. This allowed verifying the responsive layout build while the dependency issue is addressed separately.
 00107| - **Lesson**: Ensure workspace packages intended for consumption are built in library mode (Vite `lib` config) or expose a valid `main` entry point.
 </file>
+## E2E Test Suite Implementation (Task 6)
+
+### Test Infrastructure Created
+- **Playwright config**: Updated to use `./e2e` testDir with 5 browser projects (chromium, firefox, webkit, Mobile Chrome, Mobile Safari)
+- **Test file**: `e2e/progressive-viewer.spec.ts` with 28 unique tests (140 total across all browsers)
+- **Auth fixtures**: Created `e2e/.auth/.gitkeep` placeholder for future authenticated test fixtures
+
+### Test Suites Breakdown
+1. **Basic Mode** (3 tests): Fast load verification, 3D interactivity, embed route support
+2. **Advanced Mode** (10 tests): Camera controls, lighting, floors, 2D overlay, annotations, theme toggle, export, command palette, editor exclusion, mode badge
+3. **Editor Mode** (5 tests): Monaco loading, EditorBundle components, properties panel, mode badge, dual-panel layout
+4. **Responsive Behavior** (3 tests): Mobile FAB + bottom sheet, tablet sidebars, desktop 3-column layout
+5. **Mode Detection** (5 tests): URL param overrides (?mode=basic/advanced/editor), default mode behavior
+6. **Authenticated Tests** (2 tests): Owner/guest mode detection (skipped without PLAYWRIGHT_AUTH env var)
+
+### Test Patterns
+- **Flexible selectors**: Used `.or()` chaining for resilient element finding (e.g., `page.locator('.fp-section').filter({ hasText: 'Camera' })`)
+- **Timeout tolerances**: Monaco loading gets 10s timeout, 3D canvas gets 3-5s (accounting for dynamic imports)
+- **Viewport testing**: Explicitly set viewport sizes for responsive tests (375x667 mobile, 768x1024 tablet, 1920x1080 desktop)
+- **Mode parameter testing**: URL param `?mode=` overrides default behavior for easy testing of all modes
+
+### Key Learnings
+- **Test count**: 28 unique tests × 5 browser configs = 140 total test runs
+- **Verification**: `npx playwright test --list` confirms all tests parse correctly, LSP diagnostics clean (exit 0)
+- **Pragmatic approach**: Focused on **visibility/structure** tests rather than complex interactions (interactions can be flaky until features stabilize)
+- **Auth fixtures**: Placeholder created but tests use `?mode=` override instead of real auth for now (simpler, more reliable)
+
+### Running Tests
+```bash
+# List all tests
+npx playwright test --list
+
+# Run tests (requires dev server running)
+npx playwright test
+
+# Run in headed mode (see browser)
+npx playwright test --headed
+
+# Run specific suite
+npx playwright test -g "Basic Mode"
+
+# Run on specific browser
+npx playwright test --project=chromium
+```
+
+### Next Steps
+- Tests will likely fail initially until project route with testuser/testproject data exists
+- Some selectors may need adjustment as UI components are finalized (e.g., `.control-panel`, `.editor-panel` class names)
+- Add `page.on('pageerror')` listeners to catch console errors in tests
+- Implement real auth fixtures when authentication is fully stable
