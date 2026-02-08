@@ -1,27 +1,12 @@
-import { onMount, onCleanup, createEffect } from "solid-js";
+import { onMount, onCleanup } from "solid-js";
 import type { FloorplanAppCore } from "floorplan-viewer-core";
-
-function getUIThemeMode(theme: string): 'light' | 'dark' {
-  return (theme === 'dark' || theme === 'blueprint') ? 'dark' : 'light';
-}
 
 interface ControlPanelsProps {
   viewer: FloorplanAppCore | null;
-  theme?: 'light' | 'dark';
-  onThemeToggle?: () => void;
 }
 
 export default function ControlPanels(props: ControlPanelsProps) {
   let containerRef: HTMLDivElement | undefined;
-  // Store reference to theme button updater for reactive updates
-  let updateThemeBtnRef: ((theme: string) => void) | null = null;
-  
-  // Reactive effect at component level to update theme button when props.theme changes
-  createEffect(() => {
-    if (props.theme && updateThemeBtnRef) {
-      updateThemeBtnRef(props.theme);
-    }
-  });
   
   onMount(async () => {
     const {
@@ -102,49 +87,6 @@ export default function ControlPanels(props: ControlPanelsProps) {
     const viewContent = getSectionContent(viewSection);
     
     if (viewContent) {
-       const themeRow = document.createElement('div');
-       themeRow.className = 'fp-control-group';
-       themeRow.innerHTML = `
-         <div class="fp-control-row">
-           <label class="fp-label">Theme</label>
-         </div>
-       `;
-       
-       const themeBtn = document.createElement('button');
-       themeBtn.className = 'fp-btn fp-btn-secondary';
-       themeBtn.style.cssText = 'padding: 4px 12px; font-size: 11px; margin-top: 4px;';
-       
-       const updateThemeBtn = (theme: string) => {
-         const uiTheme = getUIThemeMode(theme);
-         themeBtn.textContent = uiTheme === 'dark' ? '☀️ Light' : '🌙 Dark';
-       };
-       // Initialize from prop or viewer state
-       updateThemeBtn(props.theme || (viewer as any).theme || 'dark');
-       
-       themeBtn.addEventListener('click', () => {
-         // Use the unified theme toggle callback if provided
-         if (props.onThemeToggle) {
-           props.onThemeToggle();
-         } else {
-           // Fallback to viewer-only toggle
-           // @ts-ignore
-           viewer.handleThemeToggle();
-           // @ts-ignore
-           updateThemeBtn(viewer.theme);
-         }
-       });
-       
-       themeRow.appendChild(themeBtn);
-       viewContent.appendChild(themeRow);
-       
-       // Store reference to update function for component-level reactive effect
-       updateThemeBtnRef = updateThemeBtn;
-       
-       // @ts-ignore - Subscribe to viewer theme changes as backup
-       viewer.on('themeChange', ({ theme }: { theme: string }) => {
-          updateThemeBtn(theme);
-       });
-
        const explodedSlider = createSliderControl({
           id: 'exploded-view',
           label: 'Exploded View',
@@ -261,5 +203,5 @@ export default function ControlPanels(props: ControlPanelsProps) {
     });
   });
 
-  return <div ref={containerRef} class="h-full w-full bg-base-100" />;
+  return <div ref={containerRef} class="h-full w-full" />;
 }

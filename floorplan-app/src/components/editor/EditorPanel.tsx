@@ -33,7 +33,7 @@ interface SelectionManager {
   highlight(entity: SelectableEntity): void;
   clearHighlight(): void;
   getSelection(): SelectableEntity[];
-  on?(event: string, callback: (event: any) => void): void;
+  onSelectionChange(listener: (event: any) => void): () => void;
 }
 
 interface EditorCore {
@@ -65,6 +65,7 @@ export default function EditorPanel(props: EditorPanelProps) {
   let editorSync: EditorViewerSyncInstance | null = null;
   let parseDebounceTimeout: NodeJS.Timeout | null = null;
   let errorMarkerTimeout: NodeJS.Timeout | null = null;
+  let unsubSelection: (() => void) | null = null;
   
   const [isInitialized, setIsInitialized] = createSignal(false);
 
@@ -121,6 +122,10 @@ export default function EditorPanel(props: EditorPanelProps) {
     }
     if (errorMarkerTimeout) {
       clearTimeout(errorMarkerTimeout);
+    }
+    if (unsubSelection) {
+      unsubSelection();
+      unsubSelection = null;
     }
     if (editorSync) {
       editorSync.dispose?.();
@@ -297,12 +302,12 @@ export default function EditorPanel(props: EditorPanelProps) {
     });
 
     // Handle 3D selection → editor scroll
-    selectionManager.on?.('selectionChange', (event: { source?: string; selected?: SelectableEntity[] }) => {
+    unsubSelection = selectionManager.onSelectionChange((event: { source?: string; selection: ReadonlySet<SelectableEntity> }) => {
       if (event.source === 'editor') return; // Avoid circular updates
       
-      const selected = event.selected;
-      if (selected && selected.length > 0) {
-        const entity = selected[0];
+      const arr = Array.from(event.selection);
+      if (arr.length > 0) {
+        const entity = arr[0];
         const entityKey = `${entity.floorId}:${entity.entityType}:${entity.entityId}`;
         
         // Scroll to the entity in the editor

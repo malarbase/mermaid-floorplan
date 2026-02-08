@@ -35,7 +35,6 @@ export function FeaturedProjectViewer() {
             <>
               <FloorplanEmbed 
                 dsl={p().content} 
-                theme="light" 
                 withUI={true}
                 editable={false}
               />

@@ -1,7 +1,8 @@
 import { A, useLocation } from "@solidjs/router";
 import { Show, createMemo, Component, JSX } from "solid-js";
 import { useSession } from "~/lib/auth-client";
-import { LogoutButton } from "./LogoutButton";
+import { useAppTheme } from "~/lib/theme";
+import { UserMenu } from "./UserMenu";
 
 /**
  * Header navigation variant types
@@ -13,38 +14,39 @@ export interface HeaderProps {
   class?: string;
   backHref?: string;
   backLabel?: string;
+  /** Custom actions rendered before the theme toggle + user menu */
   actions?: JSX.Element;
+  /** Custom center content (replaces default nav links). Used for project breadcrumbs/title. */
+  centerContent?: JSX.Element;
   hideUserMenu?: boolean;
   showViewerControls?: boolean;
   mode?: 'basic' | 'advanced' | 'editor';
-  onThemeToggle?: () => void;
   onCommandPalette?: () => void;
 }
 
 /**
- * Consistent header/navigation component for the app.
+ * Unified header component for the entire app.
  * 
- * Features:
- * - Auth-aware navigation (shows login/dashboard based on session)
- * - User avatar dropdown with settings and logout
- * - Active link highlighting
- * - Responsive design
- * - Multiple variants for different page contexts
+ * Provides a consistent shell across all pages:
+ * - Left: Logo (+ optional back button)
+ * - Center: Nav links (default) or custom content (project breadcrumbs, etc.)
+ * - Right: Custom actions + theme toggle + user menu
  * 
  * Usage:
  * ```tsx
- * <Header />
- * <Header variant="transparent" />
- * <Header backHref="/dashboard" backLabel="Dashboard" />
+ * <Header />                                    // Default with nav links
+ * <Header variant="transparent" />              // Landing page
+ * <Header centerContent={<Breadcrumbs />} />    // Project pages
+ * <Header backHref="/dashboard" />              // Sub-pages
  * ```
  */
 export const Header: Component<HeaderProps> = (props) => {
+  const { theme, toggleTheme } = useAppTheme();
   const sessionSignal = useSession();
   const location = useLocation();
   
   const session = createMemo(() => sessionSignal());
   const user = createMemo(() => session()?.data?.user);
-  const isLoading = createMemo(() => session()?.isPending ?? true);
   
   // Determine if a nav link is active
   const isActive = (path: string) => {
@@ -65,180 +67,103 @@ export const Header: Component<HeaderProps> = (props) => {
   // Get username for profile link (use username field, not display name)
   const username = createMemo(() => user()?.username ?? user()?.name ?? "");
 
+  // Theme toggle button (reused in both standalone and viewer controls)
+  const ThemeToggleButton = () => (
+    <button
+      class={`btn btn-sm btn-circle shadow-sm transition-colors ${
+        theme() === "light"
+          ? "bg-neutral text-neutral-content hover:bg-neutral-focus"
+          : "bg-base-300 text-base-content hover:bg-base-200"
+      }`}
+      onClick={toggleTheme}
+      title={`Switch to ${theme() === "light" ? "dark" : "light"} theme`}
+    >
+      {theme() === "light" ? "🌙" : "☀️"}
+    </button>
+  );
+
   return (
-    <header class={`navbar relative z-50 ${getVariantClasses()} ${props.class ?? ""}`}>
-      {/* Left side - Logo/Brand and Back button */}
-      <div class="flex-1 gap-2">
-        <Show when={props.backHref}>
-          <A href={props.backHref!} class="btn btn-ghost btn-sm gap-2">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-            </svg>
-            <span class="hidden sm:inline">{props.backLabel ?? "Back"}</span>
-          </A>
-        </Show>
-        
-        <Show when={props.variant !== "minimal"}>
-          <A href="/" class="btn btn-ghost text-xl tracking-wider" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
-            FLOORPLAN
-          </A>
-        </Show>
-        
-        {/* Main navigation links */}
-        <Show when={user() && !props.backHref}>
-          <nav class="hidden md:flex ml-4 gap-1">
-            <A 
-              href="/dashboard" 
-              class={`nav-link ${isActive("/dashboard") ? "nav-link-active" : ""}`}
-            >
-              Dashboard
+    <header class={`relative z-50 px-3 sm:px-4 py-2 sm:py-3 ${getVariantClasses()} ${props.class ?? ""}`}>
+      <div class="flex items-center gap-2 sm:gap-4 px-1">
+        {/* Left side - Logo/Brand and Back button */}
+        <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+          <Show when={props.backHref}>
+            <A href={props.backHref!} class="btn btn-ghost btn-sm gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+              </svg>
+              <span class="hidden sm:inline">{props.backLabel ?? "Back"}</span>
             </A>
-            <A 
-              href={username() ? `/u/${username()}` : "#"} 
-              class={`nav-link ${isActive(`/u/${username()}`) ? "nav-link-active" : ""}`}
-            >
-              My Profile
-            </A>
-          </nav>
-        </Show>
-      </div>
-
-      <div class="flex-none gap-2">
-        <Show when={props.showViewerControls}>
-          <div class="flex items-center gap-2">
-            <div class="badge badge-outline">
-              {props.mode === 'editor' ? '✏️ Editor' : props.mode === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
-            </div>
-            
-            <button
-              class="btn btn-ghost btn-sm"
-              onClick={props.onThemeToggle}
-              title="Toggle theme"
-            >
-              🌓
-            </button>
-            
-            <button
-              class="btn btn-ghost btn-sm"
-              onClick={props.onCommandPalette}
-              title="Command palette (Cmd+K)"
-            >
-              ⌘K
-            </button>
-          </div>
-        </Show>
-
-        <Show when={props.actions} fallback={
-          <Show when={!props.hideUserMenu}>
-            <Show
-              when={!isLoading()}
-              fallback={
-                <div class="w-10 h-10 rounded-full bg-base-200 animate-pulse" />
-              }
-            >
-              <Show
-                when={user()}
-                fallback={
-                  <div class="flex gap-2">
-                    <A href="/login" class="btn btn-ghost btn-sm">
-                      Log in
-                    </A>
-                    <A href="/login" class="btn btn-primary btn-sm">
-                      Sign up
-                    </A>
-                  </div>
-                }
-              >
-                {/* User dropdown */}
-                <div class="dropdown dropdown-end">
-                  <div tabIndex={0} role="button" class="btn btn-ghost btn-circle avatar">
-                    <div class="w-10 rounded-full">
-                      <Show
-                        when={user()?.image}
-                        fallback={
-                          <div class="bg-neutral text-neutral-content w-full h-full flex items-center justify-center text-lg font-semibold">
-                            {user()?.name?.charAt(0).toUpperCase() ?? "?"}
-                          </div>
-                        }
-                      >
-                        <img 
-                          alt={`${user()?.name}'s avatar`} 
-                          src={user()?.image ?? ""} 
-                          class="w-full h-full object-cover"
-                        />
-                      </Show>
-                    </div>
-                  </div>
-                  <ul tabIndex={0} class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
-                    <li class="menu-title px-2 py-1">
-                      <span class="text-base-content font-medium">{user()?.name}</span>
-                      <Show when={user()?.email}>
-                        <span class="text-base-content/60 text-xs font-normal">{user()?.email}</span>
-                      </Show>
-                    </li>
-                    <div class="divider my-1" />
-                    <li>
-                      <A href="/dashboard" class="flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                        Dashboard
-                      </A>
-                    </li>
-                    <Show when={username()}>
-                      <li>
-                        <A href={`/u/${username()}`} class="flex items-center gap-2">
-                          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                          </svg>
-                          Profile
-                        </A>
-                      </li>
-                    </Show>
-                    <li>
-                      <A href="/new" class="flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                        </svg>
-                        New Project
-                      </A>
-                    </li>
-                    <div class="divider my-1" />
-                    <li>
-                      <A href="/settings" class="flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                        </svg>
-                        Settings
-                      </A>
-                    </li>
-                    <li>
-                      <LogoutButton class="flex items-center gap-2 text-error" />
-                    </li>
-                  </ul>
-                </div>
-                
-                {/* Mobile menu button (for logged in users) */}
-                <div class="md:hidden dropdown dropdown-end">
-                  <div tabIndex={0} role="button" class="btn btn-ghost btn-circle">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                  </div>
-                  <ul tabIndex={0} class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200">
-                    <li><A href="/dashboard">Dashboard</A></li>
-                    <li><A href={`/u/${username()}`}>Profile</A></li>
-                    <li><A href="/new">New Project</A></li>
-                    <li><A href="/settings">Settings</A></li>
-                  </ul>
-                </div>
-              </Show>
-            </Show>
           </Show>
-        }>
-          {props.actions}
-        </Show>
+          
+          <Show when={props.variant !== "minimal"}>
+            <A href="/" class="btn btn-ghost text-lg sm:text-xl tracking-wider flex-shrink-0" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
+              FLOORPLAN
+            </A>
+          </Show>
+        </div>
+
+        {/* Center - Custom content or default nav links */}
+        <div class="flex-1 min-w-0">
+          <Show
+            when={props.centerContent}
+            fallback={
+              /* Default: Navigation links for logged-in users */
+              <Show when={user() && !props.backHref}>
+                <nav class="hidden md:flex gap-1">
+                  <A 
+                    href="/dashboard" 
+                    class={`nav-link ${isActive("/dashboard") ? "nav-link-active" : ""}`}
+                  >
+                    Dashboard
+                  </A>
+                  <A 
+                    href={username() ? `/u/${username()}` : "#"} 
+                    class={`nav-link ${isActive(`/u/${username()}`) ? "nav-link-active" : ""}`}
+                  >
+                    My Profile
+                  </A>
+                </nav>
+              </Show>
+            }
+          >
+            {props.centerContent}
+          </Show>
+        </div>
+
+        {/* Right side - Actions + Theme toggle + User menu */}
+        <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          {/* Page-specific actions */}
+          <Show when={props.actions}>
+            <div class="flex flex-wrap items-center gap-1 sm:gap-2">
+              {props.actions}
+            </div>
+          </Show>
+
+          {/* Viewer controls (mode badge + command palette) */}
+          <Show when={props.showViewerControls}>
+            <div class="flex items-center gap-2">
+              <div class="badge badge-outline">
+                {props.mode === 'editor' ? '✏️ Editor' : props.mode === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
+              </div>
+              <button
+                class="btn btn-ghost btn-sm"
+                onClick={props.onCommandPalette}
+                title="Command palette (Cmd+K)"
+              >
+                ⌘K
+              </button>
+            </div>
+          </Show>
+
+          {/* Theme toggle (always visible) */}
+          <ThemeToggleButton />
+
+          {/* User menu (unless hidden) */}
+          <Show when={!props.hideUserMenu}>
+            <UserMenu size="sm" />
+          </Show>
+        </div>
       </div>
     </header>
   );

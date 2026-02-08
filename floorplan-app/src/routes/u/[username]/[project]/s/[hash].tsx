@@ -1,55 +1,24 @@
-import { Title } from "@solidjs/meta";
-import { useParams, A } from "@solidjs/router";
+import { useParams, A, useSearchParams } from "@solidjs/router";
 import { Show, createMemo, createSignal } from "solid-js";
 import { clientOnly } from "@solidjs/start";
-import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
 import { PermalinkDisplay } from "~/components/PermalinkDisplay";
-import { copyToClipboard, generatePermalink } from "~/lib/permalink";
-import { ForkButton } from "~/components/ForkButton";
-import { useSession } from "~/lib/auth-client";
-import { UserMenu } from "~/components/UserMenu";
+import { CopyPermalinkButton } from "~/components/CopyPermalinkButton";
+import { Header } from "~/components/Header";
+import {
+  ProjectPageLayout,
+  ProjectBreadcrumbs,
+  InfoBanner,
+  NotFoundCard,
+  ContentMissingCard,
+  LinkIcon,
+} from "~/components/project/ProjectPageLayout";
+import { useProjectData, useSnapshotData } from "~/hooks/useProjectData";
+import type { ViewerMode } from "~/components/viewer/FloorplanContainer";
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanEmbed = clientOnly(() => import("~/components/FloorplanEmbed"));
-
-// Type-safe API reference builder for when generated files don't exist yet
-const api = {
-  projects: {
-    getBySlug: "projects:getBySlug" as unknown as FunctionReference<"query">,
-    getByHash: "projects:getByHash" as unknown as FunctionReference<"query">,
-  },
-};
-
-// Types
-interface Project {
-  _id: string;
-  displayName: string;
-  description?: string;
-  isPublic: boolean;
-  defaultVersion: string;
-  userId: string;
-  slug: string;
-}
-
-interface Owner {
-  _id: string;
-  username: string;
-}
-
-interface ForkedFrom {
-  project: Project;
-  owner: Owner;
-}
-
-interface Snapshot {
-  _id: string;
-  contentHash: string;
-  content: string;
-  message?: string;
-  createdAt: number;
-  authorId: string;
-}
+const FloorplanContainer = clientOnly(
+  () => import("~/components/viewer/FloorplanContainer")
+);
 
 /**
  * Snapshot permalink page - shows project at a specific immutable snapshot.
@@ -60,66 +29,50 @@ interface Snapshot {
  */
 export default function SnapshotView() {
   const params = useParams();
-  const sessionSignal = useSession();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Route params
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
   const hash = createMemo(() => params.hash);
 
-  const [copied, setCopied] = createSignal(false);
+  // Project data
+  const {
+    project,
+    forkedFrom,
+    projectData,
+    isOwner,
+    isProjectLoading,
+    projectNotFound,
+  } = useProjectData(username, projectSlug);
 
-  // Get current user session
-  const session = createMemo(() => sessionSignal());
-  const currentUser = createMemo(() => session()?.data?.user);
-
-  // Query project data first
-  const projectQuery = useQuery(api.projects.getBySlug, () => ({
-    username: username(),
-    projectSlug: projectSlug(),
-  }));
-
-  const projectData = createMemo(() => {
-    const data = projectQuery.data() as { project: Project; owner: Owner; forkedFrom: ForkedFrom | null } | null | undefined;
-    return data;
-  });
-
-  const project = createMemo(() => projectData()?.project);
-  const owner = createMemo(() => projectData()?.owner);
-  const forkedFrom = createMemo(() => projectData()?.forkedFrom);
-
-  const isOwner = createMemo(() => {
-    const user = currentUser();
-    const own = owner();
-    if (!user || !own) return false;
-    return (user.username ?? user.name) === own.username;
-  });
-
-  // Query snapshot data
-  const snapshotQuery = useQuery(
-    api.projects.getByHash,
-    () => ({
-      projectId: project()?._id ?? ("" as any),
-      hash: hash(),
-    }),
-    () => ({ enabled: !!project()?._id })
+  // Snapshot data
+  const { snapshot, content, isSnapshotLoading, snapshotNotFound } = useSnapshotData(
+    () => project()?._id as string | undefined,
+    hash
   );
 
-  const snapshot = createMemo(() => {
-    const data = snapshotQuery.data() as Snapshot | null | undefined;
-    return data;
-  });
-
-  const content = createMemo(() => snapshot()?.content);
-
+  // Loading state
   const isLoading = createMemo(() => {
-    if (projectQuery.isLoading() || projectQuery.data() === undefined) return true;
-    if (projectQuery.data() === null) return false;
-    return snapshotQuery.isLoading() || snapshotQuery.data() === undefined;
+    if (isProjectLoading()) return true;
+    if (projectNotFound()) return false;
+    return isSnapshotLoading();
   });
 
+  // Content missing check
   const isContentMissing = createMemo(() => {
     if (isLoading()) return false;
-    if (!projectData() || !snapshot()) return false;
+    if (!projectData() || snapshotNotFound()) return false;
     return !content();
+  });
+
+  // Viewer mode (read-only: no editor mode for snapshots)
+  const mode = createMemo((): ViewerMode => {
+    const modeParam = typeof searchParams.mode === "string" ? searchParams.mode : undefined;
+    if (modeParam && ["basic", "advanced"].includes(modeParam)) {
+      return modeParam as ViewerMode;
+    }
+    return "advanced";
   });
 
   // Format timestamp
@@ -128,273 +81,145 @@ export default function SnapshotView() {
     return date.toLocaleDateString() + " " + date.toLocaleTimeString();
   };
 
-  // Copy permalink to clipboard
-  const copyPermalink = async () => {
-    const u = username();
-    const p = projectSlug();
-    const h = hash();
-    if (!u || !p || !h) return;
-    
-    const url = generatePermalink(u, p, h, true);
-    const success = await copyToClipboard(url);
-    if (success) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
+  // Header actions (consistent with other project pages)
+  const headerActions = () => (
+    <>
+      {/* Permalink with copy button */}
+      <Show when={hash() && username() && projectSlug()}>
+        <div class="flex items-center gap-1">
+          <span class="badge badge-ghost font-mono" title="Snapshot hash">
+            #{hash()?.slice(0, 6)}
+          </span>
+          <CopyPermalinkButton
+            username={username()!}
+            projectSlug={projectSlug()!}
+            hash={hash()!}
+            size="xs"
+            variant="ghost"
+          />
+        </div>
+      </Show>
+
+      <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-ghost btn-sm">
+        History
+      </A>
+
+      <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary btn-sm">
+        Latest
+      </A>
+
+      <button
+        class="badge badge-outline cursor-pointer hover:badge-primary transition-colors min-w-[6.5rem] justify-center"
+        onClick={() => {
+          const modes: ViewerMode[] = ["basic", "advanced"];
+          const currentIndex = modes.indexOf(mode());
+          const nextMode = modes[(currentIndex + 1) % modes.length];
+          setSearchParams({ mode: nextMode });
+        }}
+        title="Click to cycle viewer modes"
+      >
+        {mode() === "advanced" ? "⚙️ Advanced" : "👁️ Basic"}
+      </button>
+    </>
+  );
 
   return (
-    <main class="min-h-screen bg-base-200">
-      <Title>
-        {projectSlug()} s/{hash()} - Floorplan
-      </Title>
-
-      <Show
-        when={!isLoading()}
-        fallback={
-          <div class="flex justify-center items-center h-screen">
-            <span class="loading loading-spinner loading-lg"></span>
-          </div>
+    <ProjectPageLayout
+      title={`${projectSlug()} s/${hash()} - Floorplan`}
+      isLoading={isLoading()}
+      showNotFound={projectNotFound() || (!isLoading() && snapshotNotFound())}
+      notFoundFallback={
+        <NotFoundCard
+          title={!projectData() ? "Project not found" : "Snapshot not found"}
+          message={
+            !projectData()
+              ? "This project doesn't exist or you don't have access."
+              : `The snapshot #${hash()} doesn't exist for this project.`
+          }
+          actions={
+            <>
+              <Show when={projectData()}>
+                <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary">
+                  View Project
+                </A>
+                <A
+                  href={`/u/${username()}/${projectSlug()}/history`}
+                  class="btn btn-ghost"
+                >
+                  View History
+                </A>
+              </Show>
+              <Show when={!projectData()}>
+                <A href="/" class="btn btn-ghost">
+                  Go Home
+                </A>
+              </Show>
+            </>
+          }
+        />
+      }
+    >
+      {/* Header */}
+      <Header
+        centerContent={
+          <ProjectBreadcrumbs
+            username={username()!}
+            projectSlug={projectSlug()!}
+            project={project()}
+            forkedFrom={forkedFrom()}
+            compact
+            breadcrumbSuffix={`s/${hash()}`}
+            titleSuffix={
+              <span class="font-mono text-base-content/50">#{hash()}</span>
+            }
+          />
         }
-      >
+        actions={headerActions()}
+        hideUserMenu={false}
+      />
+
+      {/* Snapshot info banner (includes message if present) */}
+      <InfoBanner variant="success">
+        <LinkIcon />
+        <span class="text-sm font-medium">Permanent snapshot</span>
+        <Show when={snapshot()?.message}>
+          <span class="text-xs opacity-60">&mdash; {snapshot()?.message}</span>
+        </Show>
+        <span class="text-xs opacity-50 hidden sm:inline">
+          {snapshot()?.createdAt ? formatDate(snapshot()!.createdAt) : ""}
+        </span>
+        <Show when={username() && projectSlug() && hash()}>
+          <div class="hidden sm:block ml-auto">
+            <PermalinkDisplay
+              username={username()!}
+              projectSlug={projectSlug()!}
+              hash={hash()!}
+              variant="badge"
+              showCopyButton
+              isCurrent
+            />
+          </div>
+        </Show>
+      </InfoBanner>
+
+      {/* Viewer Container */}
+      <div class="flex-1 overflow-hidden">
         <Show
-          when={projectData()}
+          when={!isContentMissing()}
           fallback={
-            <div class="flex justify-center items-center h-screen">
-              <div class="card bg-base-100 shadow-xl">
-                <div class="card-body text-center">
-                  <h2 class="card-title">Project not found</h2>
-                  <p>This project doesn't exist or you don't have access.</p>
-                  <A href="/" class="btn btn-ghost mt-4">
-                    Go Home
-                  </A>
-                </div>
-              </div>
-            </div>
+            <ContentMissingCard
+              username={username()!}
+              projectSlug={projectSlug()!}
+              message="This snapshot has no content. The data may be corrupted."
+            />
           }
         >
-          <Show
-            when={snapshot()}
-            fallback={
-              <div class="flex justify-center items-center h-screen">
-                <div class="card bg-base-100 shadow-xl">
-                  <div class="card-body text-center">
-                    <h2 class="card-title">Snapshot not found</h2>
-                    <p>
-                      The snapshot <code class="bg-base-200 px-2 py-1 rounded">#{hash()}</code>{" "}
-                      doesn't exist for this project.
-                    </p>
-                    <div class="flex gap-2 justify-center mt-4">
-                      <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary">
-                        View Project
-                      </A>
-                      <A
-                        href={`/u/${username()}/${projectSlug()}/history`}
-                        class="btn btn-ghost"
-                      >
-                        View History
-                      </A>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            }
-          >
-            {/* Header */}
-            <header class="bg-base-100 border-b border-base-300 p-4">
-              <div class="max-w-6xl mx-auto flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                  <A href="/" class="btn btn-ghost text-xl tracking-wider flex-shrink-0" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
-                    FLOORPLAN
-                  </A>
-                  <div>
-                    <div class="text-sm breadcrumbs">
-                      <ul>
-                        <li>
-                          <A href={`/u/${username()}`}>{username()}</A>
-                        </li>
-                        <li>
-                          <A href={`/u/${username()}/${projectSlug()}`}>{projectSlug()}</A>
-                        </li>
-                        <li>s/{hash()}</li>
-                      </ul>
-                    </div>
-                  <h1 class="text-xl font-bold">
-                    {project()?.displayName}{" "}
-                    <span class="font-mono text-base-content/50">#{hash()}</span>
-                  </h1>
-                  <Show when={snapshot()?.message}>
-                    <p class="text-sm text-base-content/70 mt-1">{snapshot()?.message}</p>
-                  </Show>
-                  {/* Forked from attribution */}
-                  <Show when={forkedFrom()}>
-                    <div class="text-sm text-base-content/60 flex items-center gap-1 mt-1">
-                      <svg
-                        class="w-3.5 h-3.5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                        />
-                      </svg>
-                      <span>forked from</span>
-                      <A
-                        href={`/u/${forkedFrom()!.owner.username}/${forkedFrom()!.project.slug}`}
-                        class="link link-hover font-medium"
-                      >
-                        {forkedFrom()!.owner.username}/{forkedFrom()!.project.slug}
-                      </A>
-                    </div>
-                  </Show>
-                  </div>
-                </div>
-
-                <div class="flex items-center gap-2">
-                  {/* Copy Permalink Button */}
-                  <button
-                    class="btn btn-ghost btn-sm gap-2"
-                    onClick={copyPermalink}
-                  >
-                    <Show
-                      when={!copied()}
-                      fallback={
-                        <>
-                          <svg
-                            class="w-4 h-4 text-success"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M5 13l4 4L19 7"
-                            />
-                          </svg>
-                          Copied!
-                        </>
-                      }
-                    >
-                      <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          stroke-linecap="round"
-                          stroke-linejoin="round"
-                          stroke-width="2"
-                          d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                        />
-                      </svg>
-                      Copy Permalink
-                    </Show>
-                  </button>
-
-                  <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-ghost btn-sm">
-                    History
-                  </A>
-
-                  <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary btn-sm">
-                    Latest
-                  </A>
-
-                  <span class="badge badge-success">Permanent Link</span>
-
-                  {/* Fork button for non-owners */}
-                  <Show when={!isOwner() && project() && username()}>
-                    <ForkButton
-                      projectId={project()!._id}
-                      projectSlug={projectSlug()!}
-                      projectName={project()!.displayName}
-                      ownerUsername={username()!}
-                      size="sm"
-                      variant="ghost"
-                    />
-                  </Show>
-
-                  <div class="divider divider-horizontal mx-2 h-6 self-center" />
-                  <UserMenu size="sm" />
-                </div>
-              </div>
-            </header>
-
-            {/* Permalink Info Banner */}
-            <div class="bg-success/10 border-b border-success/20 p-3">
-              <div class="max-w-6xl mx-auto flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                  <svg
-                    class="w-5 h-5 text-success"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
-                    />
-                  </svg>
-                  <div>
-                    <p class="text-sm font-medium text-success-content">
-                      This is a permanent snapshot
-                    </p>
-                    <p class="text-xs text-success-content/70">
-                      This content will never change. Created{" "}
-                      {snapshot()?.createdAt ? formatDate(snapshot()!.createdAt) : ""}
-                    </p>
-                  </div>
-                </div>
-
-                <Show when={username() && projectSlug() && hash()}>
-                  <div class="hidden sm:block">
-                    <PermalinkDisplay
-                      username={username()!}
-                      projectSlug={projectSlug()!}
-                      hash={hash()!}
-                      variant="badge"
-                      showCopyButton
-                      isCurrent
-                    />
-                  </div>
-                </Show>
-              </div>
-            </div>
-
-            {/* Viewer Container */}
-            <div class="h-[calc(100vh-160px)]">
-              <Show
-                when={!isContentMissing()}
-                fallback={
-                  <div class="flex justify-center items-center h-full">
-                    <div class="card bg-error/10 border border-error">
-                      <div class="card-body text-center">
-                        <h2 class="card-title text-error">Content Not Available</h2>
-                        <p class="text-base-content/70">
-                          This snapshot has no content. The data may be corrupted.
-                        </p>
-                        <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-outline btn-sm mt-4">
-                          View History
-                        </A>
-                      </div>
-                    </div>
-                  </div>
-                }
-              >
-                <FloorplanEmbed dsl={content()!} theme="dark" editable={false} />
-              </Show>
-            </div>
-          </Show>
+          <FloorplanContainer
+            dsl={content()!}
+            mode={mode()}
+          />
         </Show>
-      </Show>
-    </main>
+      </div>
+    </ProjectPageLayout>
   );
 }

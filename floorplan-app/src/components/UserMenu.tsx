@@ -59,7 +59,7 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
           </div>
           <ul
             tabIndex={0}
-            class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-lg bg-base-100 rounded-box w-52 border border-base-200"
+            class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-xl bg-base-100 rounded-box w-52 border border-base-content/15 ring-1 ring-base-content/10"
           >
             <li class="menu-title px-2 py-1">
               <span class="text-base-content font-medium">{user()?.name}</span>

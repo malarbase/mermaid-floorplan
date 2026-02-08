@@ -1,5 +1,5 @@
 import { clientOnly } from "@solidjs/start";
-import { createSignal, createEffect } from "solid-js";
+import { Header } from "~/components/Header";
 
 // Use clientOnly to prevent SSR issues with Three.js
 const FloorplanContainer = clientOnly(() =>
@@ -14,15 +14,6 @@ const FloorplanContainer = clientOnly(() =>
  * (3D viewer with editor and control panels).
  */
 export default function ViewerTestEditor() {
-  const [theme, setTheme] = createSignal<"light" | "dark">("dark");
-  
-  createEffect(() => {
-    const currentTheme = theme();
-    document.documentElement.dataset.theme = currentTheme;
-    // Also toggle body.dark-theme class for viewer-core CSS compatibility
-    document.body.classList.toggle('dark-theme', currentTheme === 'dark');
-  });
-  
   const testDsl = `floorplan TestHouse
   floor MainFloor 40x30
     room LivingRoom 20x15 at 0,0
@@ -40,26 +31,16 @@ export default function ViewerTestEditor() {
 
   return (
     <main class="h-screen flex flex-col bg-base-200">
-      <header class="bg-base-100 border-b border-base-300 px-3 sm:px-4 py-2 sm:py-3">
-        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+      <Header
+        centerContent={
           <div class="text-lg font-semibold">Viewer Test - Editor Mode</div>
-          <div class="flex flex-wrap items-center gap-1 sm:gap-2">
-            <button
-              class="btn btn-ghost btn-sm"
-              onClick={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
-              title="Toggle theme"
-            >
-              {theme() === 'dark' ? '🌓' : '☀️'}
-            </button>
-          </div>
-        </div>
-      </header>
+        }
+        hideUserMenu
+      />
       <div class="flex-1 overflow-hidden">
         <FloorplanContainer
           dsl={testDsl}
           mode="editor"
-          theme={theme()}
-          onThemeToggle={() => setTheme(t => t === 'light' ? 'dark' : 'light')}
           onDslChange={() => {}}
         />
       </div>

@@ -6,6 +6,7 @@ import { ConvexClientProvider } from "~/components/ConvexProvider";
 import { PageErrorBoundary } from "~/components/ui/ErrorBoundary";
 import { ToastProvider } from "~/components/ui/Toast";
 import { Loading } from "~/components/ui/Loading";
+import { ThemeProvider } from "~/lib/theme";
 import "./app.css";
 
 /**
@@ -26,17 +27,19 @@ export default function App() {
           <Title>Floorplan - Design Beautiful Spaces</Title>
           <PageErrorBoundary>
             <ConvexClientProvider>
-              <ToastProvider position="top-right" defaultDuration={4000}>
-                <Suspense
-                  fallback={
-                    <div class="min-h-screen flex items-center justify-center bg-base-200">
-                      <Loading size="lg" text="Loading..." />
-                    </div>
-                  }
-                >
-                  {props.children}
-                </Suspense>
-              </ToastProvider>
+              <ThemeProvider>
+                <ToastProvider position="top-right" defaultDuration={4000}>
+                  <Suspense
+                    fallback={
+                      <div class="min-h-screen flex items-center justify-center bg-base-200">
+                        <Loading size="lg" text="Loading..." />
+                      </div>
+                    }
+                  >
+                    {props.children}
+                  </Suspense>
+                </ToastProvider>
+              </ThemeProvider>
             </ConvexClientProvider>
           </PageErrorBoundary>
         </MetaProvider>

@@ -346,7 +346,6 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
       <div class="flex-1">
         <FloorplanEmbed
           dsl={currentContent()}
-          theme={props.theme ?? "dark"}
           editable={props.editable}
           onDslChange={handleContentChange}
           onSave={quickSave}

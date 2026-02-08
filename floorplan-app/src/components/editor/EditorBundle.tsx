@@ -4,6 +4,7 @@ import SelectionControls from "./SelectionControls";
 import PropertiesPanel from "./PropertiesPanel";
 import AddRoomDialog from "./AddRoomDialog";
 import DeleteConfirmDialog from "./DeleteConfirmDialog";
+import { useSelection } from "~/hooks/useSelection";
 
 interface EditorBundleProps {
   core: any;
@@ -12,10 +13,30 @@ interface EditorBundleProps {
   onDslChange: (dsl: string) => void;
 }
 
+/**
+ * Editor panel bundle layout:
+ * 
+ * ┌──────────────────────────────┐
+ * │ [+Add] [Copy] [Focus] [Del] │ ← Toolbar (compact, single row)
+ * ├──────────────────────────────┤
+ * │                              │
+ * │     Monaco Editor            │ ← Flex-1, takes remaining space
+ * │                              │
+ * ├──────────────────────────────┤
+ * │ Properties: LivingRoom       │ ← Collapsible, expands on selection
+ * │ X: 0   Y: 0   W: 20  H: 15 │
+ * └──────────────────────────────┘
+ * 
+ * Selection state is managed by useSelection hook (single subscription)
+ * and passed down as props to presentational children.
+ */
 export default function EditorBundle(props: EditorBundleProps) {
   const [showAddRoomDialog, setShowAddRoomDialog] = createSignal(false);
   const [showDeleteDialog, setShowDeleteDialog] = createSignal(false);
   const [selectedEntityName, setSelectedEntityName] = createSignal("");
+
+  // Single reactive selection subscription for the entire editor panel
+  const selection = useSelection(() => props.core);
 
   const handleAddRoom = (data: {
     name: string;
@@ -26,14 +47,22 @@ export default function EditorBundle(props: EditorBundleProps) {
     console.log("Add room:", data);
   };
 
+  const handleCopy = () => {
+    const sel = selection();
+    if (sel.entities.length === 0) return;
+    console.log("Copy entities:", sel.entities);
+  };
+
+  const handleFocus = () => {
+    const sel = selection();
+    if (!sel.primary) return;
+    props.core?.cameraManager?.focusOnEntity?.(sel.primary);
+  };
+
   const handleDelete = () => {
-    const selectionManager = props.core.getSelectionManager?.();
-    if (!selectionManager) return;
-
-    const selected = selectionManager.getSelection();
-    if (selected.length === 0) return;
-
-    setSelectedEntityName(selected[0].entityId || "this entity");
+    const sel = selection();
+    if (!sel.primary) return;
+    setSelectedEntityName(sel.primaryId || "this entity");
     setShowDeleteDialog(true);
   };
 
@@ -48,7 +77,19 @@ export default function EditorBundle(props: EditorBundleProps) {
 
   return (
     <div class="flex flex-col h-full w-full overflow-hidden">
-      {/* Monaco Editor - takes remaining space */}
+      {/* Top: Compact toolbar */}
+      <div class="flex-shrink-0">
+        <SelectionControls
+          hasSelection={selection().hasSelection}
+          selectedCount={selection().count}
+          onAddRoom={() => setShowAddRoomDialog(true)}
+          onCopy={handleCopy}
+          onFocus={handleFocus}
+          onDelete={handleDelete}
+        />
+      </div>
+
+      {/* Middle: Monaco Editor - takes remaining space */}
       <div class="flex-1 min-h-0 relative">
         <EditorPanel
           core={props.core}
@@ -58,19 +99,15 @@ export default function EditorBundle(props: EditorBundleProps) {
         />
       </div>
 
-      {/* Selection Tools and Properties Panel - fixed height at bottom */}
-      <div class="flex-shrink-0 flex border-t border-base-300 max-h-64 overflow-hidden">
-        <div class="overflow-y-auto">
-          <SelectionControls
-            core={props.core}
-            onAddRoom={() => setShowAddRoomDialog(true)}
-            onDelete={handleDelete}
-          />
-        </div>
-
-        <div class="flex-1 overflow-y-auto">
-          <PropertiesPanel core={props.core} onPropertyChange={handlePropertyChange} />
-        </div>
+      {/* Bottom: Properties panel - collapses when no selection */}
+      <div class="flex-shrink-0 max-h-48 overflow-y-auto">
+        <PropertiesPanel
+          hasSelection={selection().hasSelection}
+          entityType={selection().primaryType}
+          entityId={selection().primaryId}
+          properties={selection().properties}
+          onPropertyChange={handlePropertyChange}
+        />
       </div>
 
       <AddRoomDialog

@@ -50,7 +50,6 @@ export default function ViewerTest() {
       <div class="h-[calc(100vh-140px)]">
         <FloorplanEmbed
           dsl={testDsl}
-          theme="dark"
           editable={false}
         />
       </div>

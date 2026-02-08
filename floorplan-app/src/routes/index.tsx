@@ -116,7 +116,7 @@ export default function Home() {
         </div>
       </section>
 
-      <section class="py-16 sm:py-24 px-4 relative" style={{ background: "linear-gradient(135deg, oklch(75% 0.18 195 / 0.15) 0%, oklch(10% 0.02 250) 100%)" }}>
+      <section class="py-16 sm:py-24 px-4 relative bg-base-200">
         <div class="max-w-4xl mx-auto text-center">
           <h2 class="text-3xl sm:text-4xl mb-4 tracking-wide" style={{ "font-family": "'Bebas Neue', sans-serif" }}>
             READY TO DESIGN YOUR SPACE?

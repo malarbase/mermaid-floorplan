@@ -19,11 +19,15 @@ export interface FloorplanBaseProps {
   onError?: (error: Error) => void;
   className?: string;
   enableSelection?: boolean;
+  /** Allow toggling selection on/off after init (creates SelectionManager even if selection starts disabled) */
+  allowSelectionToggle?: boolean;
+  /** Called when a DSL specifies a theme different from the current app theme */
+  onDslThemeDetected?: (dslTheme: "light" | "dark") => void;
 }
 
 export function FloorplanBase(props: FloorplanBaseProps) {
   let containerRef: HTMLDivElement | undefined;
-  let app: CoreInstance | null = null;
+  const [appInstance, setAppInstance] = createSignal<CoreInstance | null>(null);
   const [isLoading, setIsLoading] = createSignal(true);
   const [error, setError] = createSignal<Error | null>(null);
 
@@ -61,15 +65,18 @@ export function FloorplanBase(props: FloorplanBaseProps) {
         throw new Error(`Requested core ${props.useEditorCore ? 'InteractiveEditorCore' : 'FloorplanAppCore'} not found in floorplan-viewer-core`);
       }
 
-      app = new CoreClass({
+      const core = new CoreClass({
         containerId,
         initialTheme: props.theme ?? "dark",
         initialDsl: props.dsl,
         enableSelection: props.enableSelection ?? !!props.useEditorCore,
+        allowSelectionToggle: props.allowSelectionToggle ?? true,
       });
 
-      if (props.onCoreReady && app) {
-        props.onCoreReady(app);
+      setAppInstance(core);
+
+      if (props.onCoreReady && core) {
+        props.onCoreReady(core);
       }
 
       setIsLoading(false);
@@ -83,27 +90,74 @@ export function FloorplanBase(props: FloorplanBaseProps) {
   });
 
   onCleanup(() => {
+    const app = appInstance();
     if (app && typeof app.dispose === "function") {
       app.dispose();
     }
-    app = null;
+    setAppInstance(null);
   });
 
-  // Reactive updates
+  // Reactive updates: load DSL and enforce app theme
   createEffect(() => {
+    const app = appInstance();
     if (app && props.dsl) {
+      // Capture theme before loading DSL (DSL config may change it)
+      const themeBefore = app.currentTheme;
       app.loadFromDsl?.(props.dsl);
+      const themeAfter = app.currentTheme;
+
+      // Always enforce the app-level theme after DSL load
+      if (props.theme) {
+        app.setTheme?.(props.theme);
+      }
+
+      // If DSL tried to change the theme, notify the parent
+      if (themeBefore !== themeAfter && props.theme && props.onDslThemeDetected) {
+        const dslWanted: "light" | "dark" =
+          themeAfter === "dark" || themeAfter === "blueprint" ? "dark" : "light";
+        if (dslWanted !== props.theme) {
+          props.onDslThemeDetected(dslWanted);
+        }
+      }
     }
   });
 
+  // Sync app theme → viewer when theme prop changes (user toggle)
   createEffect(() => {
+    const app = appInstance();
     if (app && props.theme) {
       app.setTheme?.(props.theme);
     }
   });
 
+  // React to enableSelection prop changes - toggle selection on the core
+  createEffect(() => {
+    const app = appInstance();
+    if (app?.selectionManager && props.enableSelection !== undefined) {
+      app.selectionManager.setEnabled(props.enableSelection);
+    }
+  });
+
+  // Listen for viewer theme changes:
+  // 1. Restore global data-theme to app theme (prevent viewer core from leaking)
+  // 2. Keep scoped container data-theme in sync with the app theme
+  createEffect(() => {
+    const app = appInstance();
+    if (app?.on) {
+      const unsub = app.on('themeChange', () => {
+        // The viewer core's applyTheme() sets document.documentElement data-theme globally.
+        // Restore the global to the app's theme so it doesn't leak to the rest of the page.
+        if (props.theme) {
+          document.documentElement.dataset.theme = props.theme;
+          document.body.classList.toggle("dark-theme", props.theme === "dark");
+        }
+      });
+      onCleanup(() => unsub?.());
+    }
+  });
+
   return (
-    <div class={`relative w-full h-full ${props.className ?? ''}`}>
+    <div class={`relative w-full h-full ${props.className ?? ''}`} data-theme={props.theme ?? 'dark'}>
       {isLoading() && <ViewerSkeleton />}
       {error() && <ViewerErrorState error={error()} reset={() => window.location.reload()} />}
       

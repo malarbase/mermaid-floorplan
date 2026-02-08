@@ -7,8 +7,6 @@ export interface FloorplanEmbedProps {
   editable?: boolean;
   /** Container ID (auto-generated if not provided) */
   containerId?: string;
-  /** Theme (light or dark) */
-  theme?: "light" | "dark";
   /** Whether to show the full UI (toolbar, command palette, etc.) */
   withUI?: boolean;
   /** Callback when DSL changes (for editable mode) */
@@ -30,7 +28,6 @@ export function FloorplanEmbed(props: FloorplanEmbedProps) {
   return (
     <FloorplanContainer
       dsl={props.dsl}
-      theme={props.theme}
       containerId={props.containerId}
       editable={props.editable}
       withUI={props.withUI}

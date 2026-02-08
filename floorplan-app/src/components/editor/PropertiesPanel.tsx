@@ -1,7 +1,8 @@
-import { createSignal, createEffect, onMount, For } from "solid-js";
+import { Show, For } from "solid-js";
+import type { EntityProperties } from "~/hooks/useSelection";
 
 interface PropertyDef {
-  name: string;
+  name: keyof EntityProperties;
   label: string;
   type: "text" | "number" | "readonly";
   step?: number;
@@ -17,6 +18,11 @@ const PROPERTY_DEFS: Record<string, PropertyDef[]> = {
     { name: "width", label: "Width", type: "number", step: 0.5, min: 0.5 },
     { name: "height", label: "Height", type: "number", step: 0.5, min: 0.5 },
   ],
+  wall: [
+    { name: "name", label: "Name", type: "readonly" },
+    { name: "x", label: "X", type: "readonly" },
+    { name: "y", label: "Y", type: "readonly" },
+  ],
   furniture: [
     { name: "name", label: "Name", type: "text" },
     { name: "x", label: "X", type: "number", step: 0.5 },
@@ -26,106 +32,81 @@ const PROPERTY_DEFS: Record<string, PropertyDef[]> = {
 };
 
 interface PropertiesPanelProps {
-  core: any;
+  /** Whether something is selected */
+  hasSelection: boolean;
+  /** Entity type (e.g., "room", "wall") */
+  entityType: string;
+  /** Entity ID (e.g., "LivingRoom") */
+  entityId: string;
+  /** Extracted property values */
+  properties: EntityProperties;
+  /** Called when a property value changes */
   onPropertyChange?: (property: string, value: any) => void;
 }
 
+/**
+ * Properties panel -- pure presentational component.
+ * Receives selection data as props. Collapses to a header when nothing is selected,
+ * expands with a 2-column property grid when an entity is selected.
+ */
 export default function PropertiesPanel(props: PropertiesPanelProps) {
-  const [selectedEntity, setSelectedEntity] = createSignal<any>(null);
-  const [properties, setProperties] = createSignal<Record<string, any>>({});
-
-  onMount(() => {
-    const selectionManager = props.core.getSelectionManager?.();
-    if (!selectionManager) return;
-
-    selectionManager.on?.('selectionChange', (event: any) => {
-      const selected = event.selected;
-      if (!selected || selected.length === 0) {
-        setSelectedEntity(null);
-        setProperties({});
-        return;
-      }
-
-      const entity = selected[0];
-      setSelectedEntity(entity);
-
-      const entityData: Record<string, any> = {
-        name: entity.entityId || "",
-        x: entity.userData?.position?.x ?? 0,
-        y: entity.userData?.position?.z ?? 0,
-      };
-
-      if (entity.entityType === "room") {
-        entityData.width = entity.userData?.size?.x ?? 0;
-        entityData.height = entity.userData?.size?.z ?? 0;
-      } else if (entity.entityType === "furniture") {
-        entityData.rotation = entity.userData?.rotation ?? 0;
-      }
-
-      setProperties(entityData);
-    });
-  });
-
-  const handlePropertyChange = (property: string, value: any) => {
-    setProperties((prev) => ({ ...prev, [property]: value }));
-    props.onPropertyChange?.(property, value);
-  };
-
-  const entity = selectedEntity();
-  if (!entity) {
-    return (
-      <div class="flex flex-col p-4 bg-base-100/95 backdrop-blur-sm border-l border-base-300">
-        <div class="text-sm font-medium text-base-content/70">
-          Properties
-        </div>
-        <div class="mt-4 text-xs text-base-content/60">
-          No selection
-        </div>
-      </div>
-    );
-  }
-
-  const defs = PROPERTY_DEFS[entity.entityType] || [];
+  const getDefs = () => PROPERTY_DEFS[props.entityType] || [];
 
   return (
-    <div class="flex flex-col gap-3 p-4 bg-base-100/95 backdrop-blur-sm border-l border-base-300">
-      <div class="text-sm font-medium text-base-content/70">
-        {entity.entityType}: {entity.entityId}
+    <div class="border-t border-base-300 bg-base-100">
+      {/* Header - always visible */}
+      <div class="flex items-center gap-2 px-3 py-2">
+        <span class="text-xs font-semibold text-base-content/50 uppercase tracking-wider">
+          Properties
+        </span>
+        <Show when={props.hasSelection}>
+          <span class="text-xs text-base-content/70">
+            — {props.entityType}: {props.entityId}
+          </span>
+        </Show>
+        <Show when={!props.hasSelection}>
+          <span class="text-xs text-base-content/40 italic">No selection</span>
+        </Show>
       </div>
 
-      <For each={defs}>
-        {(def) => (
-          <div class="form-control">
-            <label class="label">
-              <span class="label-text text-xs">{def.label}</span>
-            </label>
-            {def.type === "readonly" ? (
-              <span class="text-sm text-base-content/80">
-                {properties()[def.name] ?? "—"}
-              </span>
-            ) : def.type === "number" ? (
-              <input
-                type="number"
-                class="input input-sm input-bordered"
-                value={properties()[def.name] ?? ""}
-                step={def.step}
-                min={def.min}
-                max={def.max}
-                onChange={(e) =>
-                  handlePropertyChange(def.name, parseFloat(e.target.value))
-                }
-              />
-            ) : (
-              <input
-                type="text"
-                class="input input-sm input-bordered"
-                value={properties()[def.name] ?? ""}
-                onChange={(e) => handlePropertyChange(def.name, e.target.value)}
-              />
+      {/* Property fields - shown only when something is selected */}
+      <Show when={props.hasSelection}>
+        <div class="px-3 pb-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
+          <For each={getDefs()}>
+            {(def) => (
+              <div class={`form-control ${def.name === "name" ? "col-span-2" : ""}`}>
+                <label class="label py-0.5">
+                  <span class="label-text text-xs text-base-content/60">{def.label}</span>
+                </label>
+                {def.type === "readonly" ? (
+                  <span class="text-sm text-base-content/80 px-2 py-1">
+                    {props.properties[def.name] ?? "—"}
+                  </span>
+                ) : def.type === "number" ? (
+                  <input
+                    type="number"
+                    class="input input-xs input-bordered w-full"
+                    value={props.properties[def.name] ?? ""}
+                    step={def.step}
+                    min={def.min}
+                    max={def.max}
+                    onChange={(e) =>
+                      props.onPropertyChange?.(def.name, parseFloat(e.target.value))
+                    }
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    class="input input-xs input-bordered w-full"
+                    value={props.properties[def.name] ?? ""}
+                    onChange={(e) => props.onPropertyChange?.(def.name, e.target.value)}
+                  />
+                )}
+              </div>
             )}
-          </div>
-        )}
-      </For>
+          </For>
+        </div>
+      </Show>
     </div>
   );
 }

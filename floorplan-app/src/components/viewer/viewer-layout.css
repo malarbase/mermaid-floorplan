@@ -2,7 +2,7 @@
 .floorplan-container {
   display: flex;
   width: 100%;
-  height: 100vh;
+  height: 100%;
   position: relative;
   overflow: hidden;
 }
@@ -14,61 +14,61 @@
   min-width: 0; /* Allow flexbox shrinking */
 }
 
-/* Control Panel (right sidebar) */
+/* Control Panel (floating over 3D view) */
 .control-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
   width: 320px;
-  background: oklch(var(--color-base-100));
-  border-left: 1px solid oklch(var(--color-base-content) / 0.1);
-  overflow-y: auto;
-  transition: transform 0.3s ease;
-  position: relative; /* Ensure absolute children are contained */
+  z-index: 10;
+  pointer-events: none; /* Allow clicks through to canvas */
 }
 
-/* Override fp-control-panel absolute positioning when inside our layout */
+/* The inner wrapper contains the actual control panel */
+.control-panel > div {
+  pointer-events: auto; /* Re-enable clicks for the panel content */
+}
+
+/* Let the fp-control-panel use its natural floating styles */
 .control-panel .fp-control-panel {
   position: static;
   width: 100%;
-  max-height: none;
-  box-shadow: none;
-  background: transparent;
-  /* Keep rounded corners on the inner edge */
-  border-radius: 10px 0 0 10px;
+  max-height: calc(100vh - 140px); /* Account for header and margins */
+  overflow-y: auto;
+  /* Shadows and styling come from shared-styles.css */
 }
 
-/* Ensure the wrapper div fills the control panel and has proper background */
-.control-panel > div {
-  min-height: 100%;
-  background: inherit;
-}
-
-/* Editor Panel (left sidebar) */
+/* Editor Panel (overlays the viewport from the left) */
 .editor-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
   width: 400px;
+  height: 100%;
   background: oklch(var(--color-base-100));
   border-right: 1px solid oklch(var(--color-base-content) / 0.1);
   overflow: hidden;
-  transition: width 0.3s ease, margin-left 0.3s ease;
-  position: relative;
+  transition: transform 0.3s ease;
+  transform: translateX(0);
+  z-index: 20;
 }
 
 /* Override fp-editor-panel fixed positioning when inside our layout */
 .editor-panel.fp-editor-panel {
-  position: relative;
+  position: absolute;
   top: 0 !important;
-  left: auto;
+  left: 0;
   height: 100%;
-  z-index: auto;
 }
 
 .editor-panel.collapsed {
-  width: 0;
-  margin-left: -1px;
+  transform: translateX(-100%);
 }
 
 .editor-collapse-btn {
-  position: fixed;
+  position: absolute;
   top: 50%;
-  left: 400px;
+  right: -24px;
   transform: translateY(-50%);
   width: 24px;
   height: 48px;
@@ -83,11 +83,11 @@
   font-size: 10px;
   color: oklch(var(--color-base-content) / 0.6);
   z-index: 1000;
-  transition: left 0.3s ease, background 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .editor-panel.collapsed .editor-collapse-btn {
-  left: 0;
+  right: -24px;
 }
 
 .editor-collapse-btn:hover {
@@ -162,29 +162,12 @@
     display: none;
   }
   
-  .floorplan-container {
-    flex-direction: row;
-  }
-  
   .editor-panel {
     width: 360px;
   }
   
   .control-panel {
-    width: 300px;
-  }
-  
-  .editor-collapse-btn {
-    left: 360px;
-  }
-  
-  .editor-panel.collapsed {
-    width: 0;
-    margin-left: -1px;
-  }
-  
-  .editor-panel.collapsed .editor-collapse-btn {
-    left: 0;
+    width: 280px;
   }
 }
 
@@ -195,23 +178,11 @@
     display: none;
   }
   
-  .floorplan-container {
-    flex-direction: row;
-  }
-  
   .editor-panel {
     width: 450px;
   }
   
   .control-panel {
-    width: 350px;
-  }
-  
-  .editor-collapse-btn {
-    left: 450px;
-  }
-  
-  .editor-panel.collapsed .editor-collapse-btn {
-    left: 0;
+    width: 320px;
   }
 }
