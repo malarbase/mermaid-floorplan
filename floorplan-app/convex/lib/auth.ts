@@ -4,8 +4,12 @@ import { type MutationCtx, mutation, type QueryCtx, query } from '../_generated/
 
 const DEV_USER_AUTH_ID = 'dev-user-1';
 
+// Detect development mode for auth bypass.
+// In production, users must authenticate via real OAuth.
 const IS_DEV_MODE =
   process.env.DEV_AUTH_ENABLED === 'true' ||
+  process.env.CONVEX_DEPLOYMENT?.startsWith('dev:') === true || // Self-hosted dev (e.g., "dev:local")
+  process.env.INSTANCE_NAME === 'local-dev' || // Self-hosted Convex instance name
   process.env.NODE_ENV !== 'production' ||
   process.env.CONVEX_CLOUD_ORIGIN?.includes('localhost') === true;
 
@@ -43,7 +47,19 @@ async function getUserByIdentity(
     .first();
 }
 
-async function getCurrentUser(ctx: QueryCtx): Promise<Doc<'users'> | null> {
+/**
+ * Get the current user, with dev-mode fallback to the dev user.
+ *
+ * In dev mode (Convex auth provider disabled), ctx.auth.getUserIdentity()
+ * is always null, so this falls back to the dev user for convenience.
+ * In production, returns null if no auth identity exists.
+ *
+ * NOTE: Do NOT use this for access control on private resources.
+ * The dev fallback cannot distinguish "logged in" from "logged out" in dev mode,
+ * because the Convex Better Auth integration is disabled locally.
+ * Use getStrictAuthUser() for access control checks instead.
+ */
+export async function getCurrentUser(ctx: QueryCtx): Promise<Doc<'users'> | null> {
   const identity = await ctx.auth.getUserIdentity();
 
   if (identity) {
@@ -51,10 +67,34 @@ async function getCurrentUser(ctx: QueryCtx): Promise<Doc<'users'> | null> {
     if (user) return user;
   }
 
-  return IS_DEV_MODE ? getDevUser(ctx) : null;
+  if (!IS_DEV_MODE) {
+    return null;
+  }
+
+  return getDevUser(ctx);
 }
 
-async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
+/**
+ * Get the authenticated user WITHOUT dev-mode fallback.
+ *
+ * Use this for access control decisions (e.g., canAccessProject) where
+ * "no auth identity = no access" must hold, even in dev mode.
+ *
+ * In production: returns the user if authenticated, null otherwise.
+ * In dev mode: also returns null if no real Convex auth identity exists
+ * (which is always the case when the Better Auth integration is disabled).
+ */
+export async function getStrictAuthUser(ctx: QueryCtx): Promise<Doc<'users'> | null> {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity) return null;
+  return getUserByIdentity(ctx, identity);
+}
+
+/**
+ * Require an authenticated user for mutations, with dev-mode fallback.
+ * Throws 'Unauthenticated' in production if no auth identity exists.
+ */
+export async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
   const identity = await ctx.auth.getUserIdentity();
 
   if (identity) {
@@ -94,7 +134,7 @@ export function isSuperAdmin(user: Doc<'users'>): boolean {
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;
   if (!superAdminEmail) return false;
   // Check if email field exists on user (for future compatibility)
-  const userEmail = (user as any).email;
+  const userEmail = (user as unknown as { email?: string }).email;
   return userEmail === superAdminEmail;
 }
 

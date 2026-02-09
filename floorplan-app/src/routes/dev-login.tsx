@@ -2,7 +2,7 @@
 // Visit http://localhost:3000/dev-login to get a session
 
 import { useNavigate } from '@solidjs/router';
-import { mockUsers, setMockSession } from '~/lib/mock-auth';
+import { setDevLoggedIn } from '~/lib/mock-auth';
 
 export default function DevLogin() {
   const navigate = useNavigate();
@@ -14,12 +14,8 @@ export default function DevLogin() {
   }
 
   const login = () => {
-    // Use the pre-configured mock user
-    const mockUser = mockUsers.regularUser;
-
-    // Store mock session in localStorage
-    setMockSession(mockUser);
-    console.log('Mock user created:', mockUser);
+    // Set the dev login flag — useSession() will query Convex for the actual user data
+    setDevLoggedIn(true);
 
     // Navigate to dashboard
     navigate('/dashboard');
@@ -48,7 +44,7 @@ export default function DevLogin() {
             <span>Only works in development mode</span>
           </div>
           <div class="card-actions justify-end mt-4">
-            <button class="btn btn-primary" onClick={login}>
+            <button type="button" class="btn btn-primary" onClick={login}>
               Login as Dev User
             </button>
           </div>

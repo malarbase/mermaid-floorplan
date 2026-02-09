@@ -1,6 +1,8 @@
 import { createAuthClient } from 'better-auth/solid';
+import type { FunctionReference } from 'convex/server';
+import { useQuery } from 'convex-solidjs';
 import { type Accessor, createMemo, createSignal, onMount } from 'solid-js';
-import { getMockSession, type MockUser } from './mock-auth';
+import { isDevLoggedIn } from './mock-auth';
 
 /**
  * Client-side auth utilities for Solid.js components.
@@ -48,26 +50,44 @@ export interface SessionData {
   error: Error | null;
 }
 
+// Type-safe API reference for the Convex query used in dev mode
+const usersApi = {
+  getCurrentUser: 'users:getCurrentUser' as unknown as FunctionReference<'query'>,
+};
+
 /**
  * Session hook that supports dev authentication bypass.
- * In development, checks localStorage for mock session first.
- * In production or when no mock session exists, uses Better Auth.
+ *
+ * In development:
+ *   - Checks the dev-logged-in flag from localStorage
+ *   - If logged in, queries Convex `users:getCurrentUser` for the real dev user data
+ *   - This means Convex is the single source of truth — username changes,
+ *     profile updates, etc. are automatically reflected without manual sync
+ *   - If not logged in, returns null (visitor)
+ *
+ * In production:
+ *   - Uses Better Auth session (real OAuth)
  */
 export function useSession(): Accessor<SessionData> {
-  // In development, check for mock session from localStorage
-  // This allows the dev-login page to bypass OAuth
+  // Dev mode: derive session from Convex dev user
   if (import.meta.env.DEV) {
-    const [mockUser, setMockUser] = createSignal<MockUser | null>(null);
+    const [devLoggedIn, setDevLoggedIn] = createSignal(false);
     const [isChecked, setIsChecked] = createSignal(false);
 
-    // Check localStorage on mount (client-side only)
+    // Check localStorage flag on mount (client-side only)
     onMount(() => {
-      const user = getMockSession();
-      setMockUser(user);
+      setDevLoggedIn(isDevLoggedIn());
       setIsChecked(true);
     });
 
-    // Use real auth hook for when no mock session exists
+    // Query Convex for the actual dev user (only when logged in)
+    const convexUser = useQuery(
+      usersApi.getCurrentUser,
+      () => ({}),
+      () => ({ enabled: devLoggedIn() }),
+    );
+
+    // Use real auth hook as fallback when not using dev login
     const realSession = realUseSession();
 
     return createMemo(() => {
@@ -76,14 +96,47 @@ export function useSession(): Accessor<SessionData> {
         return { data: null, isPending: true, error: null };
       }
 
-      // Mock session exists - use it
-      const mock = mockUser();
-      if (mock) {
-        return { data: { user: mock as SessionUser }, isPending: false, error: null };
+      // Dev logged in — use Convex user data as session
+      if (devLoggedIn()) {
+        const user = convexUser.data() as
+          | {
+              _id: string;
+              authId: string;
+              username: string;
+              displayName?: string;
+              avatarUrl?: string | null;
+              isAdmin?: boolean;
+            }
+          | null
+          | undefined;
+
+        if (user === undefined) {
+          // Query still loading
+          return { data: null, isPending: true, error: null };
+        }
+
+        if (!user) {
+          // Dev user not found in Convex (shouldn't happen normally)
+          return { data: null, isPending: false, error: null };
+        }
+
+        return {
+          data: {
+            user: {
+              id: user.authId,
+              email: `${user.username}@dev.local`,
+              name: user.displayName ?? user.username,
+              username: user.username,
+              image: user.avatarUrl,
+              isAdmin: user.isAdmin,
+            } as SessionUser,
+          },
+          isPending: false,
+          error: null,
+        };
       }
 
-      // No mock session - fall back to real auth
-      // Map the Better Auth response to our common interface
+      // Not dev-logged-in — fall back to real auth
       const session = realSession();
       return {
         data: session.data ? { user: session.data.user as unknown as SessionUser } : null,
@@ -94,7 +147,6 @@ export function useSession(): Accessor<SessionData> {
   }
 
   // Production: always use real Better Auth session
-  // Map the Better Auth response to our common interface
   const realSession = realUseSession();
   return createMemo(() => {
     const session = realSession();

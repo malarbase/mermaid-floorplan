@@ -1,6 +1,6 @@
 import { v } from 'convex/values';
 import { mutation } from './_generated/server';
-import { requireUserForMutation } from './devAuth';
+import { requireUser } from './lib/auth';
 
 export const assignToProject = mutation({
   args: {
@@ -8,7 +8,7 @@ export const assignToProject = mutation({
     topicId: v.id('topics'),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
@@ -61,7 +61,7 @@ export const removeFromProject = mutation({
     topicId: v.id('topics'),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');

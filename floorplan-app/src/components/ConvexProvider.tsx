@@ -40,24 +40,6 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
     if (convexUrl) {
       console.log('Connecting to Convex at:', convexUrl);
       const convexClient = new ConvexClient(convexUrl);
-
-      // Add mock auth token for development
-      if (import.meta.env.DEV) {
-        const mockSession = localStorage.getItem('mock-dev-session');
-        if (mockSession) {
-          try {
-            const session = JSON.parse(mockSession);
-            // Set a custom header with the mock session token
-            (convexClient as any).requestHeaders = {
-              'x-mock-auth-token': JSON.stringify(session.user),
-            };
-            console.log('[DEV] Mock auth token set for Convex client');
-          } catch (e) {
-            console.error('[DEV] Failed to parse mock session', e);
-          }
-        }
-      }
-
       setClient(convexClient);
       setIsReady(true);
     } else {

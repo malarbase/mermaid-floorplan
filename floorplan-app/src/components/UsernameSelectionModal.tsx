@@ -1,6 +1,5 @@
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
-import { getMockSession, setMockSession } from '~/lib/mock-auth';
 import { api } from '../../convex/_generated/api';
 
 interface UsernameSelectionModalProps {
@@ -103,13 +102,8 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
     try {
       await setUsernameMutation.mutate({ username: username() });
 
-      // Update mock session in dev mode so the UI reflects the new username immediately
-      if (import.meta.env.DEV) {
-        const currentMockSession = getMockSession();
-        if (currentMockSession) {
-          setMockSession({ ...currentMockSession, username: username() });
-        }
-      }
+      // No need to manually sync — useSession() queries Convex reactively,
+      // so the new username is picked up automatically.
 
       props.onClose?.();
     } catch (err) {

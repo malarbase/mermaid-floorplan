@@ -1,6 +1,40 @@
 import { v } from 'convex/values';
+import type { Doc } from './_generated/dataModel';
+import type { QueryCtx } from './_generated/server';
 import { mutation, query } from './_generated/server';
-import { requireUserForMutation, requireUserForQuery } from './devAuth';
+import { getCurrentUser, requireUser } from './lib/auth';
+
+/**
+ * Check if the current user can access a project.
+ * Public projects are accessible to everyone.
+ * Private projects require the user to be the owner or have projectAccess.
+ *
+ * In production: getCurrentUser returns null for unauthenticated requests,
+ * so private projects are properly protected on the server side.
+ *
+ * In dev mode: The Convex auth provider is disabled, so getCurrentUser
+ * falls back to the dev user for ALL requests (can't distinguish logged-in
+ * from logged-out). The client-side privacy guard in useProjectData
+ * provides the real enforcement by checking the session state.
+ */
+async function canAccessProject(ctx: QueryCtx, project: Doc<'projects'>): Promise<boolean> {
+  if (project.isPublic) return true;
+
+  const currentUser = await getCurrentUser(ctx);
+  if (!currentUser) return false;
+
+  // Owner always has access
+  if (currentUser._id === project.userId) return true;
+
+  // Check for explicit project access (collaborator)
+  const access = await ctx.db
+    .query('projectAccess')
+    .withIndex('by_project', (q) => q.eq('projectId', project._id))
+    .filter((q) => q.eq(q.field('userId'), currentUser._id))
+    .first();
+
+  return !!access;
+}
 
 /**
  * Generate content hash (first 8 chars of SHA256)
@@ -18,7 +52,7 @@ async function contentHash(content: string): Promise<string> {
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUserForQuery(ctx);
+    const user = await getCurrentUser(ctx);
     if (!user) return [];
 
     return ctx.db
@@ -68,20 +102,7 @@ export const getBySlug = query({
 
     if (!project) return null;
 
-    if (!project.isPublic) {
-      const currentUser = await requireUserForQuery(ctx);
-      if (!currentUser) return null;
-
-      if (currentUser._id !== project.userId) {
-        const access = await ctx.db
-          .query('projectAccess')
-          .withIndex('by_project', (q) => q.eq('projectId', project._id))
-          .filter((q) => q.eq(q.field('userId'), currentUser._id))
-          .first();
-
-        if (!access) return null;
-      }
-    }
+    if (!(await canAccessProject(ctx, project))) return null;
 
     // Get fork source info if this is a forked project
     let forkedFrom: { project: typeof project; owner: typeof user } | null = null;
@@ -111,7 +132,7 @@ export const create = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     if (!/^[a-z0-9-]+$/.test(args.slug)) {
       throw new Error('Slug must contain only lowercase letters, numbers, and hyphens');
@@ -182,7 +203,7 @@ export const save = mutation({
     message: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
@@ -243,7 +264,7 @@ export const save = mutation({
 export const remove = mutation({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
     if (!user) throw new Error('Unauthenticated');
 
     const project = await ctx.db.get(args.projectId);
@@ -333,6 +354,9 @@ export const getPublic = query({
 export const getByHash = query({
   args: { projectId: v.id('projects'), hash: v.string() },
   handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project || !(await canAccessProject(ctx, project))) return null;
+
     return ctx.db
       .query('snapshots')
       .withIndex('by_hash', (q) => q.eq('projectId', args.projectId).eq('contentHash', args.hash))
@@ -346,6 +370,9 @@ export const getByHash = query({
 export const getVersion = query({
   args: { projectId: v.id('projects'), versionName: v.string() },
   handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project || !(await canAccessProject(ctx, project))) return null;
+
     const version = await ctx.db
       .query('versions')
       .withIndex('by_project_name', (q) =>
@@ -366,6 +393,9 @@ export const getVersion = query({
 export const listVersions = query({
   args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project || !(await canAccessProject(ctx, project))) return [];
+
     return ctx.db
       .query('versions')
       .withIndex('by_project_name', (q) => q.eq('projectId', args.projectId))
@@ -424,6 +454,9 @@ export const trackView = mutation({
 export const getHistory = query({
   args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project || !(await canAccessProject(ctx, project))) return [];
+
     return ctx.db
       .query('snapshots')
       .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
@@ -444,7 +477,7 @@ export const update = mutation({
     defaultVersion: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
@@ -476,7 +509,7 @@ export const createVersion = mutation({
     description: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
@@ -533,7 +566,7 @@ export const updateSlug = mutation({
     newSlug: v.string(),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     if (!/^[a-z0-9-]+$/.test(args.newSlug)) {
       throw new Error('Slug must contain only lowercase letters, numbers, and hyphens');
@@ -579,8 +612,8 @@ export const updateSlug = mutation({
 });
 
 /**
- * Resolve a slug to a project, checking redirects if needed
- * Returns the current slug if a redirect exists, null otherwise
+ * Resolve a slug to a project, checking redirects if needed.
+ * Enforces privacy: returns null for private projects the user can't access.
  */
 export const resolveSlug = query({
   args: { username: v.string(), slug: v.string() },
@@ -598,6 +631,7 @@ export const resolveSlug = query({
       .first();
 
     if (project) {
+      if (!(await canAccessProject(ctx, project))) return null;
       return { projectId: project._id, currentSlug: args.slug, wasRedirected: false };
     }
 
@@ -615,6 +649,7 @@ export const resolveSlug = query({
       .first();
 
     if (!targetProject) return null;
+    if (!(await canAccessProject(ctx, targetProject))) return null;
 
     return { projectId: targetProject._id, currentSlug: redirect.toSlug, wasRedirected: true };
   },

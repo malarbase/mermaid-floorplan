@@ -1,6 +1,6 @@
 import { v } from 'convex/values';
 import { internalMutation, mutation, query } from './_generated/server';
-import { requireUserForMutation, requireUserForQuery } from './devAuth';
+import { getCurrentUser as getAuthUser, requireUser } from './lib/auth';
 
 // ============================================================================
 // Constants for adaptive username reservation system
@@ -129,7 +129,7 @@ function getCooldownExpiry(
 export const getCurrentUser = query({
   args: {},
   handler: async (ctx) => {
-    return await requireUserForQuery(ctx);
+    return await getAuthUser(ctx);
   },
 });
 
@@ -190,7 +190,7 @@ export const getOrCreateUser = mutation({
     avatarUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     // Update display name and avatar if provided and user hasn't set them
     const updates: Record<string, unknown> = {};
@@ -242,7 +242,7 @@ export const isUsernameAvailable = query({
 
     if (releasedUsername && releasedUsername.expiresAt > now) {
       // Username is reserved - only original owner can reclaim
-      const currentUser = await requireUserForQuery(ctx);
+      const currentUser = await getAuthUser(ctx);
 
       // Try to get the original user to compare authId (for backwards compatibility)
       const originalUser = await ctx.db.get(releasedUsername.originalUserId);
@@ -289,7 +289,7 @@ export const isUsernameAvailable = query({
 export const setUsername = mutation({
   args: { username: v.string() },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
     const normalizedUsername = args.username.toLowerCase();
     const now = Date.now();
 
@@ -420,7 +420,7 @@ export const updateProfile = mutation({
     avatarUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
     const updates: Record<string, unknown> = { updatedAt: Date.now() };
     if (args.displayName !== undefined) updates.displayName = args.displayName;
     if (args.avatarUrl !== undefined) updates.avatarUrl = args.avatarUrl;
@@ -437,7 +437,7 @@ export const updateProfile = mutation({
 export const hasTempUsername = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUserForQuery(ctx);
+    const user = await getAuthUser(ctx);
     if (!user) return false;
     return user.username.startsWith('u_') && !user.usernameSetAt;
   },
@@ -455,7 +455,7 @@ export const hasTempUsername = query({
 export const getUsernameCooldown = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUserForQuery(ctx);
+    const user = await getAuthUser(ctx);
     if (!user) {
       return null;
     }
@@ -513,7 +513,7 @@ export const getUsernameCooldown = query({
 export const suggestUsername = query({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUserForQuery(ctx);
+    const user = await getAuthUser(ctx);
     if (!user) return [];
 
     const name = user.displayName || user.username || 'user';
@@ -628,7 +628,7 @@ export const cleanupExpiredUsernames = internalMutation({
 export const fixReleasedUsernameAuthIds = mutation({
   args: {},
   handler: async (ctx) => {
-    const user = await requireUserForMutation(ctx);
+    const user = await requireUser(ctx);
 
     // Get all released usernames without originalUserAuthId
     const releasedUsernames = await ctx.db.query('releasedUsernames').collect();

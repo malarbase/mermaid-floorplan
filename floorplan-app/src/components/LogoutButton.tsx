@@ -1,6 +1,6 @@
 import { useNavigate } from '@solidjs/router';
 import { authClient } from '~/lib/auth-client';
-import { clearMockSession } from '~/lib/mock-auth';
+import { clearDevLogin } from '~/lib/mock-auth';
 
 interface LogoutButtonProps {
   class?: string;
@@ -15,9 +15,9 @@ export function LogoutButton(props: LogoutButtonProps) {
   const navigate = useNavigate();
 
   const handleLogout = async () => {
-    // Clear mock session in dev mode
+    // Clear dev login flag in dev mode
     if (import.meta.env.DEV) {
-      clearMockSession();
+      clearDevLogin();
     }
     // Sign out from real auth
     await authClient.signOut();
@@ -25,7 +25,7 @@ export function LogoutButton(props: LogoutButtonProps) {
   };
 
   return (
-    <button class={props.class ?? 'btn btn-ghost btn-sm'} onClick={handleLogout}>
+    <button type="button" class={props.class ?? 'btn btn-ghost btn-sm'} onClick={handleLogout}>
       Sign out
     </button>
   );

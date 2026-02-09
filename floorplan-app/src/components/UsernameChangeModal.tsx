@@ -1,7 +1,6 @@
 import type { FunctionReference } from 'convex/server';
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
-import { getMockSession, setMockSession } from '~/lib/mock-auth';
 
 // Type-safe API reference builder for when generated files don't exist yet
 // This will be replaced with proper imports once `npx convex dev` generates the API
@@ -189,13 +188,8 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
     try {
       await setUsernameMutation.mutate({ username: username() });
 
-      // Update mock session in dev mode
-      if (import.meta.env.DEV) {
-        const currentMockSession = getMockSession();
-        if (currentMockSession) {
-          setMockSession({ ...currentMockSession, username: username() });
-        }
-      }
+      // No need to manually sync — useSession() queries Convex reactively,
+      // so the new username is picked up automatically.
 
       props.onClose();
     } catch (err) {

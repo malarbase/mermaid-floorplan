@@ -8,6 +8,7 @@ import { type Accessor, createEffect, createMemo, createSignal } from 'solid-js'
 import { useSession } from '~/lib/auth-client';
 import type { ProjectQueryResult, Snapshot, VersionData } from '~/lib/project-types';
 import { projectApi } from '~/lib/project-types';
+import type { Id } from '../../convex/_generated/dataModel';
 
 /**
  * Hook for fetching and managing project data.
@@ -51,7 +52,19 @@ export function useProjectData(
   });
 
   const projectNotFound = createMemo(() => {
-    return !isProjectLoading() && projectQuery.data() === null;
+    // Server returned null (not found or access denied)
+    if (!isProjectLoading() && projectQuery.data() === null) return true;
+
+    // Client-side privacy guard: if the project is private and the user
+    // has no session, treat it as "not found". This is needed because in
+    // dev mode the Convex auth provider is disabled, so ctx.auth.getUserIdentity()
+    // is always null and the dev user fallback grants access to all requests.
+    // The client knows the real session state via mock session / Better Auth.
+    const proj = projectData()?.project;
+    const user = currentUser();
+    if (proj && !proj.isPublic && !user) return true;
+
+    return false;
   });
 
   return {
@@ -76,7 +89,7 @@ export function useVersionData(
   const versionQuery = useQuery(
     projectApi.projects.getVersion,
     () => ({
-      projectId: projectId() ?? ('' as any),
+      projectId: projectId() ?? ('' as Id<'projects'>),
       versionName: versionName() ?? 'main',
     }),
     () => ({ enabled: !!projectId() }),
@@ -114,7 +127,7 @@ export function useSnapshotData(
   const snapshotQuery = useQuery(
     projectApi.projects.getByHash,
     () => ({
-      projectId: projectId() ?? ('' as any),
+      projectId: projectId() ?? ('' as Id<'projects'>),
       hash: hash(),
     }),
     () => ({ enabled: !!projectId() }),
