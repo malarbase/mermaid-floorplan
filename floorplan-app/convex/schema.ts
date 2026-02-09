@@ -20,20 +20,33 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     usernameSetAt: v.optional(v.number()), // null = still using temp ID
     isAdmin: v.optional(v.boolean()), // Discovery feature - admin users
+    // Anti-DOS: track username change history for exponential cooldown
+    usernameChanges: v.optional(
+      v.array(
+        v.object({
+          username: v.string(), // The username they changed FROM
+          changedAt: v.number(), // When they changed away from it
+          heldSince: v.number(), // When they first got that username
+        }),
+      ),
+    ),
+    lastUsernameChangeAt: v.optional(v.number()), // Timestamp of most recent change
     createdAt: v.number(),
     updatedAt: v.number(),
   })
     .index('by_auth_id', ['authId'])
     .index('by_username', ['username']),
 
-  // Released usernames (for 90-day grace period)
+  // Released usernames (tenure-proportional reservation, max 1 per user)
   releasedUsernames: defineTable({
     username: v.string(),
     originalUserId: v.id('users'),
     originalUserAuthId: v.optional(v.string()), // For stable comparison (authId doesn't change if user is recreated)
     releasedAt: v.number(),
-    expiresAt: v.number(), // 90 days after release
-  }).index('by_username', ['username']),
+    expiresAt: v.number(), // Tenure-proportional: min 7d, max 90d
+  })
+    .index('by_username', ['username'])
+    .index('by_original_user', ['originalUserId']),
 
   // Projects (like GitHub repos)
   projects: defineTable({

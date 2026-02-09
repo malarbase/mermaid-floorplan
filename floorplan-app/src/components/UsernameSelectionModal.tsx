@@ -82,7 +82,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
         case 'taken':
           return 'This username is already taken';
         case 'grace_period':
-          return 'This username was recently released and is in a 90-day grace period';
+          return 'This username was recently released and is still reserved';
         default:
           return 'Username is not available';
       }
@@ -151,7 +151,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
           <p class="py-4 text-base-content/70">
             {props.isFirstLogin
               ? 'Your username will be used in your profile URL and to identify you across the platform.'
-              : 'Change your username. Note: Your old username will be reserved for 90 days.'}
+              : 'Change your username. Your old username will be reserved based on how long you held it.'}
           </p>
 
           <form onSubmit={handleSubmit}>

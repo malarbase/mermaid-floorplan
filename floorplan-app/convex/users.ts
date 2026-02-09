@@ -2,6 +2,31 @@ import { v } from 'convex/values';
 import { internalMutation, mutation, query } from './_generated/server';
 import { requireUserForMutation, requireUserForQuery } from './devAuth';
 
+// ============================================================================
+// Constants for adaptive username reservation system
+// ============================================================================
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const YEAR_MS = 365 * DAY_MS;
+
+/** Base cooldown between username changes (7 days), doubles each change */
+const BASE_COOLDOWN_DAYS = 7;
+/** Maximum cooldown cap (180 days) */
+const MAX_COOLDOWN_DAYS = 180;
+/** Rolling window for counting recent changes (365 days) */
+const COOLDOWN_WINDOW_MS = YEAR_MS;
+
+/** Reservation = 50% of time held */
+const RESERVATION_FACTOR = 0.5;
+/** Minimum reservation period (7 days) */
+const MIN_RESERVATION_DAYS = 7;
+/** Maximum reservation period (90 days) */
+const MAX_RESERVATION_DAYS = 90;
+
+// ============================================================================
+// Helper functions
+// ============================================================================
+
 /**
  * Generate a temporary username from authId.
  * Format: "u_" + first 8 chars of a hash
@@ -20,11 +45,81 @@ async function _generateTempUsername(authId: string): Promise<string> {
  * Must be 3-30 characters, alphanumeric with underscores, not starting with underscore.
  */
 function isValidUsername(username: string): boolean {
-  // Must be 3-30 characters
   if (username.length < 3 || username.length > 30) return false;
-  // Must match pattern: start with letter/number, rest can include underscores
   const pattern = /^[a-zA-Z0-9][a-zA-Z0-9_]{2,29}$/;
   return pattern.test(username);
+}
+
+/**
+ * Calculate exponential cooldown based on recent change count.
+ *
+ * Formula: cooldown_days = min(BASE * 2^(n-1), MAX)
+ * where n = number of changes in rolling 365-day window.
+ *
+ * | Changes in year | Cooldown |
+ * |-----------------|----------|
+ * | 1st             | 0 (free) |
+ * | 2nd             | 7 days   |
+ * | 3rd             | 14 days  |
+ * | 4th             | 28 days  |
+ * | 5th             | 56 days  |
+ * | 6th             | 112 days |
+ * | 7th+            | 180 days |
+ */
+function calculateCooldownMs(recentChangeCount: number): number {
+  if (recentChangeCount <= 0) return 0;
+  const cooldownDays = Math.min(
+    BASE_COOLDOWN_DAYS * 2 ** (recentChangeCount - 1),
+    MAX_COOLDOWN_DAYS,
+  );
+  return cooldownDays * DAY_MS;
+}
+
+/**
+ * Calculate tenure-proportional reservation duration.
+ *
+ * Formula: reservation = clamp(days_held * 0.5, MIN, MAX)
+ *
+ * | Held for   | Reserved for |
+ * |------------|-------------|
+ * | < 14 days  | 7 days      |
+ * | 1 month    | 15 days     |
+ * | 2 months   | 30 days     |
+ * | 6+ months  | 90 days     |
+ */
+function calculateReservationMs(heldSinceMs: number, nowMs: number): number {
+  const daysHeld = (nowMs - heldSinceMs) / DAY_MS;
+  const reservationDays = Math.max(
+    MIN_RESERVATION_DAYS,
+    Math.min(Math.floor(daysHeld * RESERVATION_FACTOR), MAX_RESERVATION_DAYS),
+  );
+  return reservationDays * DAY_MS;
+}
+
+/**
+ * Count username changes within the rolling window.
+ */
+function countRecentChanges(
+  usernameChanges: Array<{ changedAt: number }> | undefined,
+  nowMs: number,
+): number {
+  if (!usernameChanges) return 0;
+  const windowStart = nowMs - COOLDOWN_WINDOW_MS;
+  return usernameChanges.filter((c) => c.changedAt > windowStart).length;
+}
+
+/**
+ * Get cooldown expiry timestamp. Returns 0 if no cooldown active.
+ */
+function getCooldownExpiry(
+  usernameChanges: Array<{ changedAt: number }> | undefined,
+  lastUsernameChangeAt: number | undefined,
+  nowMs: number,
+): number {
+  const recentCount = countRecentChanges(usernameChanges, nowMs);
+  if (recentCount === 0 || !lastUsernameChangeAt) return 0;
+  const cooldownMs = calculateCooldownMs(recentCount);
+  return lastUsernameChangeAt + cooldownMs;
 }
 
 /**
@@ -116,6 +211,7 @@ export const getOrCreateUser = mutation({
 /**
  * Check if a username is available.
  * Checks both current users and released usernames within grace period.
+ * Returns reservation expiry info for grace period usernames.
  */
 export const isUsernameAvailable = query({
   args: { username: v.string() },
@@ -124,7 +220,7 @@ export const isUsernameAvailable = query({
 
     // Check format validity
     if (!isValidUsername(normalizedUsername)) {
-      return { available: false, reason: 'invalid_format' };
+      return { available: false, reason: 'invalid_format' as const };
     }
 
     // Check if username is taken by current user
@@ -134,10 +230,10 @@ export const isUsernameAvailable = query({
       .first();
 
     if (existingUser) {
-      return { available: false, reason: 'taken' };
+      return { available: false, reason: 'taken' as const };
     }
 
-    // Check if username is in grace period (released within last 90 days)
+    // Check if username is in reservation period
     const now = Date.now();
     const releasedUsername = await ctx.db
       .query('releasedUsernames')
@@ -145,8 +241,7 @@ export const isUsernameAvailable = query({
       .first();
 
     if (releasedUsername && releasedUsername.expiresAt > now) {
-      // Username is in grace period - only original owner can reclaim
-      // Use requireUserForQuery to handle both real auth and dev mode
+      // Username is reserved - only original owner can reclaim
       const currentUser = await requireUserForQuery(ctx);
 
       // Try to get the original user to compare authId (for backwards compatibility)
@@ -155,44 +250,59 @@ export const isUsernameAvailable = query({
       // Compare by authId if available (stable across user recreation), fallback to _id
       const isOriginalOwner =
         currentUser &&
-        // Prefer authId comparison via stored field
         ((releasedUsername.originalUserAuthId &&
           currentUser.authId === releasedUsername.originalUserAuthId) ||
-          // Or compare via looking up the original user's authId (for old records)
           (originalUser && currentUser.authId === originalUser.authId) ||
-          // Fallback to _id for direct match
           currentUser._id === releasedUsername.originalUserId);
 
       if (isOriginalOwner) {
-        return { available: true, reason: 'reclaim' };
+        return { available: true, reason: 'reclaim' as const };
       }
-      return { available: false, reason: 'grace_period' };
+
+      const daysRemaining = Math.ceil((releasedUsername.expiresAt - now) / DAY_MS);
+      return {
+        available: false,
+        reason: 'grace_period' as const,
+        daysRemaining,
+      };
     }
 
-    return { available: true, reason: 'available' };
+    return { available: true, reason: 'available' as const };
   },
 });
 
 /**
  * Set username for the current user.
- * Used for first-time username selection or username changes.
+ * Implements adaptive anti-DOS protections:
+ *
+ * 1. **Exponential cooldown**: Each change in a rolling year increases the wait
+ *    before the next change (7d → 14d → 28d → 56d → 112d → 180d cap).
+ * 2. **Tenure-proportional reservation**: Old username is reserved for
+ *    50% of the time held (min 7 days, max 90 days).
+ * 3. **Single reservation limit**: Only the most recent old username is reserved.
+ *    Previous reservations are immediately released.
+ * 4. **Free undo**: Reclaiming your most recently released username doesn't
+ *    count as a change and has no cooldown penalty.
+ *
+ * First-time setup (from temp username) bypasses all cooldowns.
  */
 export const setUsername = mutation({
   args: { username: v.string() },
   handler: async (ctx, args) => {
     const user = await requireUserForMutation(ctx);
     const normalizedUsername = args.username.toLowerCase();
+    const now = Date.now();
 
     if (!isValidUsername(normalizedUsername)) {
       throw new Error('Invalid username format');
     }
 
-    // Check if same username
+    // No-op if same username
     if (user.username === normalizedUsername) {
       return { success: true, username: normalizedUsername };
     }
 
-    // Check if username is available
+    // Check if username is taken by another user
     const existingUser = await ctx.db
       .query('users')
       .withIndex('by_username', (q) => q.eq('username', normalizedUsername))
@@ -202,40 +312,99 @@ export const setUsername = mutation({
       throw new Error('Username already taken');
     }
 
-    // Check grace period
-    const now = Date.now();
-    const releasedUsername = await ctx.db
+    // Check if target username is reserved by someone else
+    const targetReservation = await ctx.db
       .query('releasedUsernames')
       .withIndex('by_username', (q) => q.eq('username', normalizedUsername))
       .first();
 
-    if (releasedUsername && releasedUsername.expiresAt > now) {
-      // Only original owner can reclaim during grace period
-      if (releasedUsername.originalUserId !== user._id) {
-        throw new Error('Username is in grace period');
+    if (targetReservation && targetReservation.expiresAt > now) {
+      if (targetReservation.originalUserId !== user._id) {
+        throw new Error('Username is reserved by another user');
       }
-      // Remove from released usernames if reclaiming
-      await ctx.db.delete(releasedUsername._id);
     }
 
-    // If user has a non-temp username, add old one to released
-    const isExistingTempUsername = user.username.startsWith('u_') && !user.usernameSetAt;
-    if (!isExistingTempUsername) {
-      const GRACE_PERIOD_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+    // Determine if this is first-time setup (temp username → real username)
+    const isFirstTimeSetup = user.username.startsWith('u_') && !user.usernameSetAt;
+
+    // Determine if this is an "undo" (reclaiming most recently released username)
+    const myReservation = await ctx.db
+      .query('releasedUsernames')
+      .withIndex('by_original_user', (q) => q.eq('originalUserId', user._id))
+      .first();
+    const isUndo =
+      myReservation &&
+      myReservation.username === normalizedUsername &&
+      myReservation.expiresAt > now;
+
+    // --- Cooldown check (skip for first-time setup and undo) ---
+    if (!isFirstTimeSetup && !isUndo) {
+      const recentCount = countRecentChanges(user.usernameChanges, now);
+      const cooldownExpiry = getCooldownExpiry(
+        user.usernameChanges,
+        user.lastUsernameChangeAt,
+        now,
+      );
+
+      if (now < cooldownExpiry) {
+        const daysRemaining = Math.ceil((cooldownExpiry - now) / DAY_MS);
+        throw new Error(
+          `Username change cooldown: please wait ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}. ` +
+            `You've changed your username ${recentCount} time${recentCount === 1 ? '' : 's'} this year.`,
+        );
+      }
+    }
+
+    // --- Release old reservation (single reservation limit) ---
+    // Delete ALL existing reservations for this user before creating a new one
+    const existingReservations = await ctx.db
+      .query('releasedUsernames')
+      .withIndex('by_original_user', (q) => q.eq('originalUserId', user._id))
+      .collect();
+    for (const reservation of existingReservations) {
+      await ctx.db.delete(reservation._id);
+    }
+
+    // --- Also clean up the target reservation if reclaiming ---
+    if (targetReservation && targetReservation.expiresAt > now) {
+      // Already deleted above if it was ours; delete if it somehow wasn't caught
+      const stillExists = await ctx.db.get(targetReservation._id);
+      if (stillExists) {
+        await ctx.db.delete(targetReservation._id);
+      }
+    }
+
+    // --- Create tenure-proportional reservation for current username ---
+    if (!isFirstTimeSetup) {
+      const heldSince = user.usernameSetAt ?? user.createdAt;
+      const reservationMs = calculateReservationMs(heldSince, now);
+
       await ctx.db.insert('releasedUsernames', {
         username: user.username,
         originalUserId: user._id,
-        originalUserAuthId: user.authId, // Stable identifier for reclaim check
+        originalUserAuthId: user.authId,
         releasedAt: now,
-        expiresAt: now + GRACE_PERIOD_MS,
+        expiresAt: now + reservationMs,
       });
     }
 
-    // Update username
+    // --- Record change history (skip for first-time setup and undo) ---
+    const usernameChanges = user.usernameChanges ?? [];
+    if (!isFirstTimeSetup && !isUndo) {
+      usernameChanges.push({
+        username: user.username,
+        changedAt: now,
+        heldSince: user.usernameSetAt ?? user.createdAt,
+      });
+    }
+
+    // --- Update user ---
     await ctx.db.patch(user._id, {
       username: normalizedUsername,
       usernameSetAt: now,
       updatedAt: now,
+      usernameChanges,
+      ...(isFirstTimeSetup || isUndo ? {} : { lastUsernameChangeAt: now }),
     });
 
     return { success: true, username: normalizedUsername };
@@ -271,6 +440,69 @@ export const hasTempUsername = query({
     const user = await requireUserForQuery(ctx);
     if (!user) return false;
     return user.username.startsWith('u_') && !user.usernameSetAt;
+  },
+});
+
+/**
+ * Get username change cooldown status for the current user.
+ * Returns cooldown info including:
+ * - Whether the user can change their username now
+ * - How long until the cooldown expires (if active)
+ * - How many changes they've made recently
+ * - How long their current username reservation would last
+ * - Their most recent released username (for undo)
+ */
+export const getUsernameCooldown = query({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUserForQuery(ctx);
+    if (!user) {
+      return null;
+    }
+
+    const now = Date.now();
+    const isTemp = user.username.startsWith('u_') && !user.usernameSetAt;
+
+    // First-time setup has no cooldown
+    if (isTemp) {
+      return {
+        canChange: true,
+        isFirstTimeSetup: true,
+        cooldownExpiresAt: null,
+        daysRemaining: 0,
+        recentChangeCount: 0,
+        currentReservationDays: 0,
+        mostRecentReleasedUsername: null,
+      };
+    }
+
+    const recentCount = countRecentChanges(user.usernameChanges, now);
+    const cooldownExpiry = getCooldownExpiry(user.usernameChanges, user.lastUsernameChangeAt, now);
+    const canChange = now >= cooldownExpiry;
+
+    // Calculate how long current username would be reserved if changed
+    const heldSince = user.usernameSetAt ?? user.createdAt;
+    const reservationMs = calculateReservationMs(heldSince, now);
+    const currentReservationDays = Math.round(reservationMs / DAY_MS);
+
+    // Find most recent released username (for undo display)
+    const myReservation = await ctx.db
+      .query('releasedUsernames')
+      .withIndex('by_original_user', (q) => q.eq('originalUserId', user._id))
+      .first();
+
+    const mostRecentReleasedUsername =
+      myReservation && myReservation.expiresAt > now ? myReservation.username : null;
+
+    return {
+      canChange,
+      isFirstTimeSetup: false,
+      cooldownExpiresAt: canChange ? null : cooldownExpiry,
+      daysRemaining: canChange ? 0 : Math.ceil((cooldownExpiry - now) / DAY_MS),
+      recentChangeCount: recentCount,
+      currentReservationDays,
+      mostRecentReleasedUsername,
+    };
   },
 });
 

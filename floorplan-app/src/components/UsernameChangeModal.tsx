@@ -11,6 +11,7 @@ const api = {
     isUsernameAvailable: 'users:isUsernameAvailable' as unknown as FunctionReference<'query'>,
     setUsername: 'users:setUsername' as unknown as FunctionReference<'mutation'>,
     getCurrentUser: 'users:getCurrentUser' as unknown as FunctionReference<'query'>,
+    getUsernameCooldown: 'users:getUsernameCooldown' as unknown as FunctionReference<'query'>,
   },
 };
 
@@ -21,30 +22,51 @@ interface UsernameChangeModalProps {
   onClose: () => void;
 }
 
+interface CooldownData {
+  canChange: boolean;
+  isFirstTimeSetup: boolean;
+  cooldownExpiresAt: number | null;
+  daysRemaining: number;
+  recentChangeCount: number;
+  currentReservationDays: number;
+  mostRecentReleasedUsername: string | null;
+}
+
 /**
  * Modal for changing username with confirmation step.
  *
- * Flow:
- * 1. User selects new username (with availability check)
- * 2. User confirms the change (warning about old URL becoming unavailable)
- * 3. Username is updated, old username added to 90-day grace period
+ * Features adaptive anti-DOS protections:
+ * - Shows cooldown status if user has changed recently
+ * - Displays tenure-proportional reservation duration
+ * - Offers free "undo" for most recently released username
  */
 export function UsernameChangeModal(props: UsernameChangeModalProps) {
   const [step, setStep] = createSignal<Step>('select');
   const [username, setUsername] = createSignal('');
-  const [debouncedUsername, setDebouncedUsername] = createSignal(''); // For query
+  const [debouncedUsername, setDebouncedUsername] = createSignal('');
   const [error, setError] = createSignal('');
   const [isChecking, setIsChecking] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
-  // Get current user to show current username
-  const currentUserQuery = useQuery(api.users.getCurrentUser, () => ({}));
+  // Get current user to show current username (only when modal is open)
+  const currentUserQuery = useQuery(
+    api.users.getCurrentUser,
+    () => ({}),
+    () => ({ enabled: props.isOpen }),
+  );
+
+  // Get cooldown status (only when modal is open)
+  const cooldownQuery = useQuery(
+    api.users.getUsernameCooldown,
+    () => ({}),
+    () => ({ enabled: props.isOpen }),
+  );
 
   // Check if username is available (uses debounced username to avoid excessive queries)
   const availabilityQuery = useQuery(
     api.users.isUsernameAvailable,
     () => ({ username: debouncedUsername() }),
-    () => ({ enabled: debouncedUsername().length >= 3 }),
+    () => ({ enabled: props.isOpen && debouncedUsername().length >= 3 }),
   );
 
   // Mutation to set username
@@ -56,6 +78,10 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
   });
 
   const currentUsername = createMemo(() => currentUser()?.username ?? '');
+
+  const cooldown = createMemo(() => {
+    return cooldownQuery.data() as CooldownData | null | undefined;
+  });
 
   // Reset state when modal opens
   createEffect(() => {
@@ -78,18 +104,18 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
     setError('');
     setIsChecking(true);
 
-    // Debounce the query - only update debouncedUsername after user stops typing
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(() => {
       setDebouncedUsername(normalized);
       setIsChecking(false);
-    }, 500); // 500ms debounce before checking availability
+    }, 500);
   };
 
-  // Compute availability status (only valid when username matches what was queried)
+  // Compute availability status
   const availability = createMemo(() => {
-    const result = availabilityQuery.data() as { available: boolean; reason: string } | undefined;
-    // Only return result if username matches the debounced value that was queried
+    const result = availabilityQuery.data() as
+      | { available: boolean; reason: string; daysRemaining?: number }
+      | undefined;
     if (!result || username().length < 3 || username() !== debouncedUsername()) return null;
     return result;
   });
@@ -103,6 +129,12 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
     return username().toLowerCase() === currentUsername().toLowerCase();
   });
 
+  // Check if the selected username is the "undo" target
+  const isUndoTarget = createMemo(() => {
+    const cd = cooldown();
+    return cd?.mostRecentReleasedUsername === username().toLowerCase();
+  });
+
   const availabilityMessage = createMemo(() => {
     if (isSameUsername()) {
       return 'This is your current username';
@@ -113,7 +145,7 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
 
     if (avail.available) {
       if (avail.reason === 'reclaim') {
-        return 'You can reclaim this username (you previously owned it)';
+        return 'You can reclaim this username (no cooldown penalty)';
       }
       return 'Username is available!';
     } else {
@@ -123,7 +155,7 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
         case 'taken':
           return 'This username is already taken';
         case 'grace_period':
-          return 'This username was recently released and is in a 90-day grace period';
+          return `This username is reserved for ${avail.daysRemaining ?? '?'} more day${(avail.daysRemaining ?? 0) === 1 ? '' : 's'}`;
         default:
           return 'Username is not available';
       }
@@ -131,6 +163,11 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
   });
 
   const canProceed = createMemo(() => {
+    const cd = cooldown();
+    // If cooldown is active and this isn't an undo, block
+    if (cd && !cd.canChange && !isUndoTarget()) {
+      return false;
+    }
     return isAvailable() && !isSameUsername() && !isChecking();
   });
 
@@ -142,7 +179,6 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
       return;
     }
 
-    // Move to confirmation step
     setStep('confirm');
   };
 
@@ -153,7 +189,7 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
     try {
       await setUsernameMutation.mutate({ username: username() });
 
-      // Update mock session in dev mode so the UI reflects the new username immediately
+      // Update mock session in dev mode
       if (import.meta.env.DEV) {
         const currentMockSession = getMockSession();
         if (currentMockSession) {
@@ -164,7 +200,6 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
       props.onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to change username');
-      // Go back to select step on error
       setStep('select');
     } finally {
       setIsSubmitting(false);
@@ -176,6 +211,16 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
     setError('');
   };
 
+  // Quick-select undo target
+  const handleUndoClick = () => {
+    const cd = cooldown();
+    if (cd?.mostRecentReleasedUsername) {
+      setUsername(cd.mostRecentReleasedUsername);
+      setDebouncedUsername(cd.mostRecentReleasedUsername);
+      setError('');
+    }
+  };
+
   return (
     <Show when={props.isOpen}>
       <div class="modal modal-open">
@@ -184,11 +229,96 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
           <Show when={step() === 'select'}>
             <h3 class="font-bold text-lg">Change Username</h3>
 
+            {/* Cooldown warning */}
+            <Show when={cooldown() && !cooldown()!.canChange}>
+              <div class="alert alert-error mt-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="stroke-current shrink-0 h-6 w-6"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+                <div>
+                  <h4 class="font-bold">Cooldown active</h4>
+                  <p class="text-sm">
+                    You can change your username again in{' '}
+                    <span class="font-bold">{cooldown()!.daysRemaining} days</span>.
+                    {cooldown()!.recentChangeCount > 1 &&
+                      ` You've changed ${cooldown()!.recentChangeCount} times this year.`}
+                  </p>
+                  <Show when={cooldown()!.mostRecentReleasedUsername}>
+                    <p class="text-sm mt-1">
+                      You can still reclaim{' '}
+                      <button
+                        type="button"
+                        class="font-mono text-primary underline cursor-pointer"
+                        onClick={handleUndoClick}
+                      >
+                        @{cooldown()!.mostRecentReleasedUsername}
+                      </button>{' '}
+                      for free (no cooldown).
+                    </p>
+                  </Show>
+                </div>
+              </div>
+            </Show>
+
             <p class="py-4 text-base-content/70">
-              Choose a new username. Your current username{' '}
-              <span class="font-mono text-primary">@{currentUsername()}</span> will be reserved for
-              90 days.
+              <Show
+                when={cooldown()?.currentReservationDays}
+                fallback={
+                  <>
+                    Choose a new username. Your current username{' '}
+                    <span class="font-mono text-primary">@{currentUsername()}</span> will be
+                    reserved.
+                  </>
+                }
+              >
+                Choose a new username. Your current username{' '}
+                <span class="font-mono text-primary">@{currentUsername()}</span> will be reserved
+                for <span class="font-bold">{cooldown()!.currentReservationDays} days</span> (only
+                you can reclaim it).
+              </Show>
             </p>
+
+            {/* Undo shortcut */}
+            <Show when={cooldown()?.mostRecentReleasedUsername && cooldown()!.canChange}>
+              <div class="alert alert-info mb-4">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="stroke-current shrink-0 h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4"
+                  />
+                </svg>
+                <div class="flex-1">
+                  <span class="text-sm">
+                    Want your old username back?{' '}
+                    <button
+                      type="button"
+                      class="font-mono text-primary underline cursor-pointer"
+                      onClick={handleUndoClick}
+                    >
+                      @{cooldown()!.mostRecentReleasedUsername}
+                    </button>{' '}
+                    can be reclaimed for free.
+                  </span>
+                </div>
+              </div>
+            </Show>
 
             <form onSubmit={handleSelectSubmit}>
               {/* Current username display */}
@@ -227,6 +357,7 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
                     minLength={3}
                     pattern="[a-z0-9_]+"
                     required
+                    disabled={cooldown() != null && !cooldown()!.canChange && !isUndoTarget()}
                   />
                 </div>
 
@@ -234,7 +365,7 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
                 <label class="label">
                   <Show when={isChecking() || availabilityQuery.isLoading()}>
                     <span class="label-text-alt flex items-center gap-2">
-                      <span class="loading loading-spinner loading-xs"></span>
+                      <span class="loading loading-spinner loading-xs" />
                       Checking availability...
                     </span>
                   </Show>
@@ -298,25 +429,51 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
             <h3 class="font-bold text-lg">Confirm Username Change</h3>
 
             <div class="py-4">
-              <div class="alert alert-warning mb-4">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  class="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                  />
-                </svg>
-                <div>
-                  <h4 class="font-bold">Important: This action has consequences</h4>
-                  <p class="text-sm">Please review before confirming.</p>
+              <Show when={!isUndoTarget()}>
+                <div class="alert alert-warning mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="stroke-current shrink-0 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                    />
+                  </svg>
+                  <div>
+                    <h4 class="font-bold">Important: This action has consequences</h4>
+                    <p class="text-sm">Please review before confirming.</p>
+                  </div>
                 </div>
-              </div>
+              </Show>
+
+              <Show when={isUndoTarget()}>
+                <div class="alert alert-success mb-4">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="stroke-current shrink-0 h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M5 13l4 4L19 7"
+                    />
+                  </svg>
+                  <div>
+                    <h4 class="font-bold">Reclaiming your previous username</h4>
+                    <p class="text-sm">
+                      This is a free undo and won't affect your change cooldown.
+                    </p>
+                  </div>
+                </div>
+              </Show>
 
               <div class="space-y-4">
                 <div class="flex items-center gap-4 p-4 bg-base-200 rounded-lg">
@@ -364,26 +521,33 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
                     </svg>
                     <span>Your projects will be accessible at their new URLs</span>
                   </div>
-                  <div class="flex items-start gap-2">
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      class="h-5 w-5 text-warning shrink-0 mt-0.5"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                    <span>
-                      <span class="font-mono">@{currentUsername()}</span> will be reserved for 90
-                      days - only you can reclaim it
-                    </span>
-                  </div>
+
+                  <Show when={!isUndoTarget()}>
+                    <div class="flex items-start gap-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-warning shrink-0 mt-0.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                        />
+                      </svg>
+                      <span>
+                        <span class="font-mono">@{currentUsername()}</span> will be reserved for{' '}
+                        <span class="font-bold">
+                          {cooldown()?.currentReservationDays ?? 90} days
+                        </span>{' '}
+                        — only you can reclaim it
+                      </span>
+                    </div>
+                  </Show>
+
                   <div class="flex items-start gap-2">
                     <svg
                       xmlns="http://www.w3.org/2000/svg"
@@ -401,6 +565,29 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
                     </svg>
                     <span>Links to your old username will show a redirect notice</span>
                   </div>
+
+                  <Show when={!isUndoTarget() && (cooldown()?.recentChangeCount ?? 0) > 0}>
+                    <div class="flex items-start gap-2">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="h-5 w-5 text-warning shrink-0 mt-0.5"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                        />
+                      </svg>
+                      <span>
+                        Your next username change will require a longer wait (cooldown increases
+                        with each change)
+                      </span>
+                    </div>
+                  </Show>
                 </div>
               </div>
             </div>
@@ -432,16 +619,16 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
                 disabled={isSubmitting()}
               >
                 <Show when={isSubmitting()}>
-                  <span class="loading loading-spinner loading-sm"></span>
+                  <span class="loading loading-spinner loading-sm" />
                 </Show>
-                Change Username
+                {isUndoTarget() ? 'Reclaim Username' : 'Change Username'}
               </button>
             </div>
           </Show>
         </div>
 
         {/* Modal backdrop */}
-        <div class="modal-backdrop" onClick={() => !isSubmitting() && props.onClose()}></div>
+        <div class="modal-backdrop" onClick={() => !isSubmitting() && props.onClose()} />
       </div>
     </Show>
   );
