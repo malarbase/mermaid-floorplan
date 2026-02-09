@@ -1,12 +1,12 @@
-import { createSignal, createMemo, Show } from "solid-js";
-import { useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import type { FunctionReference } from 'convex/server';
+import { useMutation } from 'convex-solidjs';
+import { createMemo, createSignal, Show } from 'solid-js';
 
 // Type-safe API reference builder for when generated files don't exist yet
 // This will be replaced with proper imports once `npx convex dev` generates the API
 const api = {
   projects: {
-    save: "projects:save" as unknown as FunctionReference<"mutation">,
+    save: 'projects:save' as unknown as FunctionReference<'mutation'>,
   },
 };
 
@@ -42,12 +42,12 @@ export interface SaveButtonProps {
   /**
    * Button style variant
    */
-  variant?: "primary" | "ghost" | "outline";
+  variant?: 'primary' | 'ghost' | 'outline';
 
   /**
    * Button size
    */
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: 'xs' | 'sm' | 'md' | 'lg';
 
   /**
    * Additional CSS classes
@@ -89,17 +89,13 @@ export function SaveButton(props: SaveButtonProps) {
 
   // Button classes based on props
   const buttonClasses = createMemo(() => {
-    const variant = props.variant ?? "primary";
-    const size = props.size ?? "sm";
-    const baseClasses = "btn gap-2";
+    const variant = props.variant ?? 'primary';
+    const size = props.size ?? 'sm';
+    const baseClasses = 'btn gap-2';
     const variantClasses =
-      variant === "primary"
-        ? "btn-primary"
-        : variant === "ghost"
-          ? "btn-ghost"
-          : "btn-outline";
+      variant === 'primary' ? 'btn-primary' : variant === 'ghost' ? 'btn-ghost' : 'btn-outline';
     const sizeClasses = `btn-${size}`;
-    return `${baseClasses} ${variantClasses} ${sizeClasses} ${props.class ?? ""}`;
+    return `${baseClasses} ${variantClasses} ${sizeClasses} ${props.class ?? ''}`;
   });
 
   /**
@@ -143,10 +139,10 @@ export function SaveButton(props: SaveButtonProps) {
         disabled={isSaving() || !props.hasChanges}
         title={
           !props.hasChanges
-            ? "No unsaved changes"
+            ? 'No unsaved changes'
             : isSaving()
-              ? "Saving..."
-              : "Save changes (Ctrl+S)"
+              ? 'Saving...'
+              : 'Save changes (Ctrl+S)'
         }
       >
         <Show
@@ -171,12 +167,7 @@ export function SaveButton(props: SaveButtonProps) {
               </svg>
             }
           >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -194,12 +185,7 @@ export function SaveButton(props: SaveButtonProps) {
       {/* Error indicator */}
       <Show when={lastSaveError()}>
         <div class="tooltip tooltip-error" data-tip={lastSaveError()}>
-          <svg
-            class="w-5 h-5 text-error"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg class="w-5 h-5 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"

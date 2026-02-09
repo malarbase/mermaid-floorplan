@@ -1,17 +1,17 @@
 /**
  * Floorplan rendering utilities for MCP server
- * 
+ *
  * This module uses the shared rendering from the floorplan-language package.
  * Following Mermaid's convention: grammar + rendering in same diagram folder.
- * 
+ *
  * The language package exports everything needed for rendering,
  * this file adds MCP-specific functionality (SVG to PNG conversion).
  */
 
-import { Resvg } from "@resvg/resvg-js";
-import type { LangiumDocument } from "langium";
-import type { Floorplan, RenderOptions, AreaUnit, LengthUnit } from "floorplan-language";
-import { render } from "floorplan-language";
+import { Resvg } from '@resvg/resvg-js';
+import type { AreaUnit, Floorplan, LengthUnit, RenderOptions } from 'floorplan-language';
+import { render } from 'floorplan-language';
+import type { LangiumDocument } from 'langium';
 
 export interface GenerateSvgOptions {
   /** Floor index to render (default: 0) */
@@ -38,7 +38,7 @@ export interface GenerateSvgOptions {
  */
 export function generateSvg(
   document: LangiumDocument<Floorplan>,
-  options: GenerateSvgOptions = {}
+  options: GenerateSvgOptions = {},
 ): string {
   const renderOptions: RenderOptions = {
     includeStyles: true,
@@ -53,7 +53,7 @@ export function generateSvg(
     areaUnit: options.areaUnit,
     lengthUnit: options.lengthUnit,
   };
-  
+
   return render(document, renderOptions);
 }
 
@@ -63,8 +63,8 @@ export function generateSvg(
  */
 export async function svgToPng(svg: string, width = 800, _height = 600): Promise<Buffer> {
   const resvg = new Resvg(svg, {
-    fitTo: { mode: "width", value: width },
-    background: "white",
+    fitTo: { mode: 'width', value: width },
+    background: 'white',
   });
   return resvg.render().asPng();
 }

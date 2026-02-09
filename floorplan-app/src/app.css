@@ -1,6 +1,6 @@
 /**
  * Main application styles
- * 
+ *
  * Imports Tailwind CSS v4 with DaisyUI v5 configuration.
  * Additional app-specific styles can be added here.
  */
@@ -61,8 +61,6 @@
   animation: shimmer 1.5s infinite;
 }
 
-
-
 .modal.modal-open {
   z-index: 1000;
 }
@@ -92,7 +90,7 @@
   padding: 0.5rem 0.75rem;
   border-radius: 0.375rem;
   font-weight: 500;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
   letter-spacing: 0.01em;
   transition: all 0.2s ease;
   border: 1px solid transparent;
@@ -143,7 +141,9 @@
 }
 
 .glow-accent {
-  box-shadow: 0 0 20px oklch(75% 0.18 195 / 0.25), 0 0 40px oklch(75% 0.18 195 / 0.1);
+  box-shadow:
+    0 0 20px oklch(75% 0.18 195 / 0.25),
+    0 0 40px oklch(75% 0.18 195 / 0.1);
 }
 
 .border-glow:hover {
@@ -153,17 +153,22 @@
 
 /* Card hover effect */
 .card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .card-hover:hover {
   transform: translateY(-2px);
-  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  box-shadow:
+    0 20px 25px -5px rgb(0 0 0 / 0.1),
+    0 8px 10px -6px rgb(0 0 0 / 0.1);
 }
 
 /* Button pulse animation for primary actions */
 @keyframes pulse-subtle {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 0 0 oklch(var(--color-primary) / 0.4);
   }
   50% {
@@ -224,10 +229,22 @@
 }
 
 .dashboard-bg {
-  background: 
+  background:
     linear-gradient(oklch(var(--color-base-100) / 0.95), oklch(var(--color-base-100) / 0.95)),
-    repeating-linear-gradient(0deg, transparent, transparent 39px, oklch(var(--color-base-content) / 0.06) 39px, oklch(var(--color-base-content) / 0.06) 40px),
-    repeating-linear-gradient(90deg, transparent, transparent 39px, oklch(var(--color-base-content) / 0.06) 39px, oklch(var(--color-base-content) / 0.06) 40px);
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 39px,
+      oklch(var(--color-base-content) / 0.06) 39px,
+      oklch(var(--color-base-content) / 0.06) 40px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 39px,
+      oklch(var(--color-base-content) / 0.06) 39px,
+      oklch(var(--color-base-content) / 0.06) 40px
+    );
   min-height: 100vh;
 }
 
@@ -243,7 +260,7 @@
   font-weight: 400;
   line-height: 1.1;
   color: oklch(var(--color-base-content));
-  font-family: 'Bebas Neue', 'DM Sans', system-ui, sans-serif;
+  font-family: "Bebas Neue", "DM Sans", system-ui, sans-serif;
   letter-spacing: 0.03em;
 }
 
@@ -251,7 +268,7 @@
   margin-top: 0.5rem;
   color: oklch(var(--color-base-content) / 0.6);
   font-size: 0.875rem;
-  font-family: 'DM Sans', system-ui, sans-serif;
+  font-family: "DM Sans", system-ui, sans-serif;
 }
 
 /* Project cards grid */
@@ -291,10 +308,22 @@
 
 .project-card-thumbnail {
   height: 140px;
-  background: 
+  background:
     linear-gradient(oklch(var(--color-base-300) / 0.9), oklch(var(--color-base-300) / 0.9)),
-    repeating-linear-gradient(0deg, transparent, transparent 19px, oklch(var(--color-base-content) / 0.08) 19px, oklch(var(--color-base-content) / 0.08) 20px),
-    repeating-linear-gradient(90deg, transparent, transparent 19px, oklch(var(--color-base-content) / 0.08) 19px, oklch(var(--color-base-content) / 0.08) 20px);
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 19px,
+      oklch(var(--color-base-content) / 0.08) 19px,
+      oklch(var(--color-base-content) / 0.08) 20px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 19px,
+      oklch(var(--color-base-content) / 0.08) 19px,
+      oklch(var(--color-base-content) / 0.08) 20px
+    );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -307,11 +336,7 @@
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    oklch(var(--color-base-200) / 0.3) 100%
-  );
+  background: linear-gradient(to bottom, transparent 0%, oklch(var(--color-base-200) / 0.3) 100%);
 }
 
 .project-card-thumbnail-icon {
@@ -568,69 +593,69 @@
     font-size: 2rem;
     line-height: 1.2;
   }
-  
+
   .hero p {
     font-size: 1rem;
   }
-  
+
   /* Stack hero buttons vertically on small screens */
   .hero .flex.gap-4 {
     flex-direction: column;
     width: 100%;
   }
-  
+
   .hero .btn-lg {
     width: 100%;
   }
-  
+
   /* Dashboard section header stacks on mobile */
   .dashboard-section-header {
     flex-direction: column;
     align-items: flex-start;
     gap: 1rem;
   }
-  
+
   .dashboard-section-title {
     font-size: 1.5rem;
   }
-  
+
   /* Stat cards - 2 columns on small mobile */
   .stats-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  
+
   .stat-card {
     padding: 0.75rem;
   }
-  
+
   .stat-card-icon {
     width: 2.25rem;
     height: 2.25rem;
   }
-  
+
   .stat-card-value {
     font-size: 1.25rem;
   }
-  
+
   .stat-card-label {
     font-size: 0.75rem;
   }
-  
+
   /* Empty state smaller padding on mobile */
   .empty-state {
     padding: 2rem 1rem;
   }
-  
+
   .empty-state-icon {
     width: 4rem;
     height: 4rem;
     margin-bottom: 1rem;
   }
-  
+
   .empty-state-title {
     font-size: 1.25rem;
   }
-  
+
   .empty-state-description {
     font-size: 0.875rem;
   }
@@ -649,14 +674,14 @@
     width: 100%;
     justify-content: flex-end;
   }
-  
+
   /* Hide text labels on small screens for toolbar buttons */
   .project-header-actions .btn-text-hide-mobile {
     padding: 0.5rem;
     min-height: unset;
     height: auto;
   }
-  
+
   .project-header-actions .btn-text-hide-mobile span.hidden-mobile {
     display: none;
   }
@@ -676,7 +701,7 @@
   .editor-toolbar {
     padding: 0.5rem;
   }
-  
+
   .editor-toolbar .badge {
     font-size: 0.625rem;
     padding: 0.125rem 0.5rem;
@@ -688,7 +713,7 @@
   .breadcrumbs {
     font-size: 0.75rem;
   }
-  
+
   .breadcrumbs li + li::before {
     margin: 0 0.25rem;
   }
@@ -708,7 +733,7 @@
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .history-card-content > div:last-child {
     width: 100%;
     justify-content: space-between;
@@ -722,24 +747,24 @@
   .settings-container {
     padding: 1rem;
   }
-  
+
   /* Stack username input and button */
   .username-input-group {
     flex-direction: column;
     gap: 0.5rem;
   }
-  
+
   .username-input-group .flex-1 {
     width: 100%;
   }
-  
+
   /* Responsive table cells on mobile */
   .table-responsive-mobile td,
   .table-responsive-mobile th {
     padding: 0.5rem;
     font-size: 0.8rem;
   }
-  
+
   /* Hide less important columns on mobile */
   .table-responsive-mobile .hide-mobile {
     display: none;
@@ -753,7 +778,7 @@
     margin: 1rem;
     padding: 1.25rem;
   }
-  
+
   .modal-box h3 {
     font-size: 1.125rem;
   }
@@ -764,18 +789,18 @@
   .form-control .label {
     flex-wrap: wrap;
   }
-  
+
   .form-control .label-text-alt {
     width: 100%;
     margin-top: 0.25rem;
   }
-  
+
   /* Full-width buttons on mobile forms */
   .card-actions.justify-end {
     flex-direction: column-reverse;
     width: 100%;
   }
-  
+
   .card-actions.justify-end .btn {
     width: 100%;
   }
@@ -795,7 +820,7 @@
     flex-direction: column;
     align-items: flex-start;
   }
-  
+
   .project-view-header > div:last-child {
     width: 100%;
     flex-wrap: wrap;
@@ -809,7 +834,7 @@
     min-height: 2.5rem;
     min-width: 2.5rem;
   }
-  
+
   /* Larger touch targets for interactive elements */
   .dropdown-content li a,
   .menu li a {
@@ -830,7 +855,7 @@
     padding-top: 2.5rem;
     padding-bottom: 2.5rem;
   }
-  
+
   section h2 {
     font-size: 1.5rem;
   }
@@ -842,7 +867,7 @@
     padding-left: max(1rem, env(safe-area-inset-left));
     padding-right: max(1rem, env(safe-area-inset-right));
   }
-  
+
   .navbar {
     padding-left: max(0.5rem, env(safe-area-inset-left));
     padding-right: max(0.5rem, env(safe-area-inset-right));
@@ -855,7 +880,7 @@
     min-height: auto;
     padding: 2rem 0;
   }
-  
+
   .modal-box {
     max-height: 90vh;
     overflow-y: auto;

@@ -1,8 +1,8 @@
-import { describe, expect, test } from "vitest";
-import { calculateTrendingScore } from "./trending";
+import { describe, expect, test } from 'vitest';
+import { calculateTrendingScore } from './trending';
 
-describe("calculateTrendingScore", () => {
-  test("calculates basic score with views and forks", () => {
+describe('calculateTrendingScore', () => {
+  test('calculates basic score with views and forks', () => {
     const now = Date.now();
     const createdAt = now - 24 * 60 * 60 * 1000; // 1 day old
 
@@ -24,7 +24,7 @@ describe("calculateTrendingScore", () => {
     expect(score).toBeCloseTo(33.18, 2);
   });
 
-  test("applies time decay for older projects", () => {
+  test('applies time decay for older projects', () => {
     const now = Date.now();
     const createdAt = now - 100 * 24 * 60 * 60 * 1000; // 100 days old
 
@@ -43,7 +43,7 @@ describe("calculateTrendingScore", () => {
     expect(score).toBeCloseTo(3.32, 2);
   });
 
-  test("handles zero views and forks", () => {
+  test('handles zero views and forks', () => {
     const now = Date.now();
     const createdAt = now - 24 * 60 * 60 * 1000; // 1 day old
 
@@ -61,7 +61,7 @@ describe("calculateTrendingScore", () => {
     expect(score).toBe(0);
   });
 
-  test("recent activity weighs more than older activity", () => {
+  test('recent activity weighs more than older activity', () => {
     const now = Date.now();
     const createdAt = now - 24 * 60 * 60 * 1000; // 1 day old
 
@@ -88,7 +88,7 @@ describe("calculateTrendingScore", () => {
     expect(score1).toBeGreaterThan(score2);
   });
 
-  test("forks weigh more than views", () => {
+  test('forks weigh more than views', () => {
     const now = Date.now();
     const createdAt = now - 24 * 60 * 60 * 1000; // 1 day old
 
@@ -101,7 +101,7 @@ describe("calculateTrendingScore", () => {
       now,
     });
 
-    const scoreForks = calculateTrendingScore({
+    const _scoreForks = calculateTrendingScore({
       views_7d: 0,
       forks_7d: 2,
       views_30d: 0,
@@ -127,7 +127,7 @@ describe("calculateTrendingScore", () => {
     expect(scoreForks2).toBeGreaterThan(scoreViews);
   });
 
-  test("new projects have no time decay penalty", () => {
+  test('new projects have no time decay penalty', () => {
     const now = Date.now();
     const createdAt = now; // Just created
 

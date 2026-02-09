@@ -1,32 +1,32 @@
-import { QueryCtx, MutationCtx } from "./_generated/server";
-import { Doc } from "./_generated/dataModel";
+import type { Doc } from './_generated/dataModel';
+import type { MutationCtx, QueryCtx } from './_generated/server';
 
-const DEV_USER_AUTH_ID = "dev-user-1";
+const DEV_USER_AUTH_ID = 'dev-user-1';
 
 // Detect development mode for auth bypass
 // In production, users must authenticate via real OAuth
-const IS_DEV_MODE = 
-  process.env.DEV_AUTH_ENABLED === "true" || 
-  process.env.CONVEX_DEPLOYMENT?.startsWith("dev:") === true ||  // Self-hosted dev (e.g., "dev:local")
-  process.env.INSTANCE_NAME === "local-dev" ||                    // Self-hosted Convex instance name
-  process.env.NODE_ENV !== "production" ||
-  process.env.CONVEX_CLOUD_ORIGIN?.includes("localhost") === true;
+const IS_DEV_MODE =
+  process.env.DEV_AUTH_ENABLED === 'true' ||
+  process.env.CONVEX_DEPLOYMENT?.startsWith('dev:') === true || // Self-hosted dev (e.g., "dev:local")
+  process.env.INSTANCE_NAME === 'local-dev' || // Self-hosted Convex instance name
+  process.env.NODE_ENV !== 'production' ||
+  process.env.CONVEX_CLOUD_ORIGIN?.includes('localhost') === true;
 
-async function getDevUser(ctx: QueryCtx): Promise<Doc<"users"> | null> {
+async function getDevUser(ctx: QueryCtx): Promise<Doc<'users'> | null> {
   return ctx.db
-    .query("users")
-    .withIndex("by_auth_id", (q) => q.eq("authId", DEV_USER_AUTH_ID))
+    .query('users')
+    .withIndex('by_auth_id', (q) => q.eq('authId', DEV_USER_AUTH_ID))
     .first();
 }
 
-async function getOrCreateDevUser(ctx: MutationCtx): Promise<Doc<"users">> {
+async function getOrCreateDevUser(ctx: MutationCtx): Promise<Doc<'users'>> {
   let devUser = await getDevUser(ctx);
 
   if (!devUser) {
-    const userId = await ctx.db.insert("users", {
+    const userId = await ctx.db.insert('users', {
       authId: DEV_USER_AUTH_ID,
-      username: "testuser",
-      displayName: "Test User",
+      username: 'testuser',
+      displayName: 'Test User',
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
@@ -38,17 +38,15 @@ async function getOrCreateDevUser(ctx: MutationCtx): Promise<Doc<"users">> {
 
 async function getUserByIdentity(
   ctx: QueryCtx,
-  identity: { subject: string }
-): Promise<Doc<"users"> | null> {
+  identity: { subject: string },
+): Promise<Doc<'users'> | null> {
   return ctx.db
-    .query("users")
-    .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
+    .query('users')
+    .withIndex('by_auth_id', (q) => q.eq('authId', identity.subject))
     .first();
 }
 
-export async function requireUserForQuery(
-  ctx: QueryCtx
-): Promise<Doc<"users"> | null> {
+export async function requireUserForQuery(ctx: QueryCtx): Promise<Doc<'users'> | null> {
   const identity = await ctx.auth.getUserIdentity();
 
   if (identity) {
@@ -65,9 +63,7 @@ export async function requireUserForQuery(
   return getDevUser(ctx);
 }
 
-export async function requireUserForMutation(
-  ctx: MutationCtx
-): Promise<Doc<"users">> {
+export async function requireUserForMutation(ctx: MutationCtx): Promise<Doc<'users'>> {
   const identity = await ctx.auth.getUserIdentity();
 
   if (identity) {
@@ -76,7 +72,7 @@ export async function requireUserForMutation(
   }
 
   if (!IS_DEV_MODE) {
-    throw new Error("Unauthenticated");
+    throw new Error('Unauthenticated');
   }
 
   return getOrCreateDevUser(ctx);

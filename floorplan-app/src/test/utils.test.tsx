@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { renderWithProviders, createMockUser, createMockProject } from './utils';
+import { describe, expect, it } from 'vitest';
+import { createMockProject, createMockUser, renderWithProviders } from './utils';
 
 describe('Test Utilities', () => {
   it('should create mock user with defaults', () => {

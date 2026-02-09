@@ -1,11 +1,12 @@
 /**
  * Light controls UI component (Vanilla)
- * 
+ *
  * @deprecated Use Solid.js version instead: `LightControls` from './solid/ControlPanels'
  */
-import { injectStyles } from './styles.js';
+
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';
 import { createSliderControl, type SliderControl } from './slider-control.js';
+import { injectStyles } from './styles.js';
 
 export interface LightControlsUIOptions {
   initialAzimuth?: number;
@@ -28,7 +29,7 @@ export interface LightControlsUI {
  */
 export function createLightControlsUI(options: LightControlsUIOptions = {}): LightControlsUI {
   injectStyles();
-  
+
   const {
     initialAzimuth = 45,
     initialElevation = 45,
@@ -37,15 +38,15 @@ export function createLightControlsUI(options: LightControlsUIOptions = {}): Lig
     onElevationChange,
     onIntensityChange,
   } = options;
-  
+
   const section = createControlPanelSection({
     title: 'Lighting',
     id: 'light-section',
     collapsed: true,
   });
-  
+
   const content = getSectionContent(section)!;
-  
+
   // Azimuth slider
   const azimuthSlider = createSliderControl({
     id: 'light-azimuth',
@@ -58,7 +59,7 @@ export function createLightControlsUI(options: LightControlsUIOptions = {}): Lig
     onChange: onAzimuthChange,
   });
   content.appendChild(azimuthSlider.element);
-  
+
   // Elevation slider
   const elevationSlider = createSliderControl({
     id: 'light-elevation',
@@ -71,7 +72,7 @@ export function createLightControlsUI(options: LightControlsUIOptions = {}): Lig
     onChange: onElevationChange,
   });
   content.appendChild(elevationSlider.element);
-  
+
   // Intensity slider
   const intensitySlider = createSliderControl({
     id: 'light-intensity',
@@ -84,7 +85,7 @@ export function createLightControlsUI(options: LightControlsUIOptions = {}): Lig
     onChange: onIntensityChange,
   });
   content.appendChild(intensitySlider.element);
-  
+
   return {
     element: section,
     azimuthSlider,
@@ -92,4 +93,3 @@ export function createLightControlsUI(options: LightControlsUIOptions = {}): Lig
     intensitySlider,
   };
 }
-

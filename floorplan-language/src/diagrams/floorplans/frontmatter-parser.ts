@@ -1,6 +1,6 @@
 /**
  * YAML Frontmatter Parser for Floorplan DSL
- * 
+ *
  * Supports Mermaid.js v10.5.0+ frontmatter syntax:
  * ---
  * title: My Diagram
@@ -12,7 +12,7 @@
  *   ...
  */
 
-import { normalizeConfigKey } from "./styles.js";
+import { normalizeConfigKey } from './styles.js';
 
 /**
  * Parsed frontmatter result
@@ -42,24 +42,24 @@ const FRONTMATTER_REGEX = /^---\s*\n([\s\S]*?)\n---\s*\n?/;
 function parseSimpleYaml(yaml: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   const lines = yaml.split('\n');
-  
+
   let currentObject: Record<string, unknown> | null = null;
-  
+
   for (const line of lines) {
     // Skip comments and empty lines
     if (line.trim().startsWith('#') || line.trim() === '') continue;
-    
+
     // Check indentation
     const indentMatch = line.match(/^(\s*)/);
     const indent = indentMatch ? indentMatch[1].length : 0;
-    
+
     // Parse key: value
     const kvMatch = line.match(/^(\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)$/);
     if (!kvMatch) continue;
-    
+
     const [, , key, rawValue] = kvMatch;
     const value = rawValue.trim();
-    
+
     if (indent === 0) {
       // Top-level key
       if (value === '' || value === '{}') {
@@ -76,7 +76,7 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
       currentObject[key] = parseYamlValue(value);
     }
   }
-  
+
   return result;
 }
 
@@ -85,19 +85,21 @@ function parseSimpleYaml(yaml: string): Record<string, unknown> {
  */
 function parseYamlValue(value: string): unknown {
   // Remove surrounding quotes
-  if ((value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))) {
+  if (
+    (value.startsWith('"') && value.endsWith('"')) ||
+    (value.startsWith("'") && value.endsWith("'"))
+  ) {
     return value.slice(1, -1);
   }
-  
+
   // Boolean
   if (value === 'true') return true;
   if (value === 'false') return false;
-  
+
   // Number
   const num = Number(value);
-  if (!isNaN(num) && value !== '') return num;
-  
+  if (!Number.isNaN(num) && value !== '') return num;
+
   // String (unquoted)
   return value;
 }
@@ -107,24 +109,24 @@ function parseYamlValue(value: string): unknown {
  */
 function normalizeConfigObject(obj: Record<string, unknown>): Record<string, unknown> {
   const normalized: Record<string, unknown> = {};
-  
+
   for (const [key, value] of Object.entries(obj)) {
     const normalizedKey = normalizeConfigKey(key);
     normalized[normalizedKey] = value;
   }
-  
+
   return normalized;
 }
 
 /**
  * Extract and parse YAML frontmatter from DSL content
- * 
+ *
  * @param input - Full DSL input including potential frontmatter
  * @returns Parsed frontmatter result
  */
 export function parseFrontmatter(input: string): FrontmatterResult {
   const match = input.match(FRONTMATTER_REGEX);
-  
+
   if (!match) {
     return {
       config: {},
@@ -132,22 +134,22 @@ export function parseFrontmatter(input: string): FrontmatterResult {
       hasFrontmatter: false,
     };
   }
-  
+
   const yamlContent = match[1];
   const dslContent = input.slice(match[0].length);
-  
+
   try {
     const parsed = parseSimpleYaml(yamlContent);
-    
+
     // Extract title
     const title = typeof parsed.title === 'string' ? parsed.title : undefined;
-    
+
     // Extract and normalize config
     let config: Record<string, unknown> = {};
     if (parsed.config && typeof parsed.config === 'object') {
       config = normalizeConfigObject(parsed.config as Record<string, unknown>);
     }
-    
+
     return {
       title,
       config,
@@ -177,4 +179,3 @@ export function hasFrontmatter(input: string): boolean {
 export function stripFrontmatter(input: string): string {
   return input.replace(FRONTMATTER_REGEX, '');
 }
-

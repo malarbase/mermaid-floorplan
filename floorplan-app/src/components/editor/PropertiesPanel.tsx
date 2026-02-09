@@ -1,5 +1,5 @@
-import { Show, For } from "solid-js";
-import type { PropertyDefinition } from "~/hooks/useSelection";
+import { For, Show } from 'solid-js';
+import type { PropertyDefinition } from '~/hooks/useSelection';
 
 interface PropertiesPanelProps {
   /** Whether something is selected */
@@ -18,7 +18,7 @@ interface PropertiesPanelProps {
  * Properties panel -- pure presentational component.
  * Receives selection data as props. Collapses to a header when nothing is selected,
  * expands with a 2-column property grid when an entity is selected.
- * 
+ *
  * Supports: text, number, select, readonly field types.
  */
 export default function PropertiesPanel(props: PropertiesPanelProps) {
@@ -44,7 +44,7 @@ export default function PropertiesPanel(props: PropertiesPanelProps) {
         <div class="px-3 pb-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
           <For each={props.propertyDefs}>
             {(def) => (
-              <div class={`form-control ${def.name === "name" ? "col-span-2" : ""}`}>
+              <div class={`form-control ${def.name === 'name' ? 'col-span-2' : ''}`}>
                 <label class="label py-0.5">
                   <span class="label-text text-xs text-base-content/60">{def.label}</span>
                 </label>
@@ -63,34 +63,28 @@ function renderField(
   onPropertyChange?: (property: string, value: any) => void,
 ) {
   switch (def.type) {
-    case "readonly":
-      return (
-        <span class="text-sm text-base-content/80 px-2 py-1">
-          {def.value ?? "—"}
-        </span>
-      );
+    case 'readonly':
+      return <span class="text-sm text-base-content/80 px-2 py-1">{def.value ?? '—'}</span>;
 
-    case "select":
+    case 'select':
       return (
         <select
           class="select select-xs select-bordered w-full"
-          value={String(def.value ?? "")}
+          value={String(def.value ?? '')}
           onChange={(e) => onPropertyChange?.(def.name, e.target.value)}
         >
           <For each={def.options ?? []}>
-            {(opt) => (
-              <option value={opt.value}>{opt.label}</option>
-            )}
+            {(opt) => <option value={opt.value}>{opt.label}</option>}
           </For>
         </select>
       );
 
-    case "number":
+    case 'number':
       return (
         <input
           type="number"
           class="input input-xs input-bordered w-full"
-          value={def.value ?? ""}
+          value={def.value ?? ''}
           step={def.step}
           min={def.min}
           max={def.max}
@@ -103,7 +97,7 @@ function renderField(
         <input
           type="text"
           class="input input-xs input-bordered w-full"
-          value={def.value ?? ""}
+          value={def.value ?? ''}
           onChange={(e) => onPropertyChange?.(def.name, e.target.value)}
         />
       );

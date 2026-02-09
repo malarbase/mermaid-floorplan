@@ -2,11 +2,11 @@
  * Tests for scene builder module
  */
 
-import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
-import { buildFloorplanScene, buildCompleteScene } from '../src/scene-builder';
+import { describe, expect, test } from 'vitest';
+import { COLORS, COLORS_BLUEPRINT, COLORS_DARK } from '../src/constants';
+import { buildCompleteScene, buildFloorplanScene } from '../src/scene-builder';
 import type { JsonExport, JsonFloor, JsonRoom, Render3DOptions } from '../src/types';
-import { COLORS, COLORS_DARK, COLORS_BLUEPRINT } from '../src/constants';
 
 /**
  * Create a minimal room for testing
@@ -17,7 +17,7 @@ function createRoom(
   z: number,
   width: number,
   height: number,
-  style?: string
+  style?: string,
 ): JsonRoom {
   return {
     name,
@@ -52,10 +52,7 @@ function createFloor(id: string, index: number, rooms: JsonRoom[]): JsonFloor {
 function createMinimalFloorplan(): JsonExport {
   return {
     floors: [
-      createFloor('ground', 0, [
-        createRoom('room1', 0, 0, 5, 5),
-        createRoom('room2', 5, 0, 5, 5),
-      ]),
+      createFloor('ground', 0, [createRoom('room1', 0, 0, 5, 5), createRoom('room2', 5, 0, 5, 5)]),
     ],
     connections: [],
   };
@@ -102,14 +99,14 @@ describe('buildFloorplanScene', () => {
     test('should create a valid Three.js scene', () => {
       const data = createMinimalFloorplan();
       const result = buildFloorplanScene(data);
-      
+
       expect(result.scene).toBeInstanceOf(THREE.Scene);
     });
 
     test('should return scene bounds', () => {
       const data = createMinimalFloorplan();
       const result = buildFloorplanScene(data);
-      
+
       expect(result.bounds).toBeDefined();
       expect(result.bounds.center).toBeDefined();
       expect(result.bounds.size).toBeDefined();
@@ -120,14 +117,14 @@ describe('buildFloorplanScene', () => {
     test('should return list of rendered floors', () => {
       const data = createMinimalFloorplan();
       const result = buildFloorplanScene(data);
-      
+
       expect(result.floorsRendered).toEqual([0]);
     });
 
     test('should return style map', () => {
       const data = createStyledFloorplan();
       const result = buildFloorplanScene(data);
-      
+
       expect(result.styleMap).toBeInstanceOf(Map);
       expect(result.styleMap.has('wood')).toBe(true);
       expect(result.styleMap.has('tile')).toBe(true);
@@ -138,42 +135,38 @@ describe('buildFloorplanScene', () => {
     test('should create floor group for each floor', () => {
       const data = createMultiFloorFloorplan();
       const result = buildFloorplanScene(data);
-      
-      const floorGroups = result.scene.children.filter(
-        child => child.name.startsWith('floor_')
-      );
-      
+
+      const floorGroups = result.scene.children.filter((child) => child.name.startsWith('floor_'));
+
       expect(floorGroups).toHaveLength(3);
     });
 
     test('should render only specified floors', () => {
       const data = createMultiFloorFloorplan();
       const result = buildFloorplanScene(data, { floorIndices: [0, 2] });
-      
+
       // Should render floors 0 and 2, but not 1
       expect(result.floorsRendered).toEqual([0, 2]);
-      
-      const floorGroups = result.scene.children.filter(
-        child => child.name.startsWith('floor_')
-      );
+
+      const floorGroups = result.scene.children.filter((child) => child.name.startsWith('floor_'));
       expect(floorGroups).toHaveLength(2);
     });
 
     test('should position floors vertically', () => {
       const data = createMultiFloorFloorplan();
       const result = buildFloorplanScene(data);
-      
-      const floorGroups = result.scene.children.filter(
-        child => child.name.startsWith('floor_')
+
+      const floorGroups = result.scene.children.filter((child) =>
+        child.name.startsWith('floor_'),
       ) as THREE.Group[];
-      
+
       // Sort by index
       floorGroups.sort((a, b) => {
-        const aIndex = parseInt(a.name.replace('floor_', ''));
-        const bIndex = parseInt(b.name.replace('floor_', ''));
+        const aIndex = parseInt(a.name.replace('floor_', ''), 10);
+        const bIndex = parseInt(b.name.replace('floor_', ''), 10);
         return aIndex - bIndex;
       });
-      
+
       // Each floor should be positioned higher than the previous
       for (let i = 1; i < floorGroups.length; i++) {
         expect(floorGroups[i].position.y).toBeGreaterThan(floorGroups[i - 1].position.y);
@@ -185,7 +178,7 @@ describe('buildFloorplanScene', () => {
     test('should apply light theme by default', () => {
       const data = createMinimalFloorplan();
       const result = buildFloorplanScene(data);
-      
+
       expect(result.scene.background).toBeInstanceOf(THREE.Color);
       expect((result.scene.background as THREE.Color).getHex()).toBe(COLORS.BACKGROUND);
     });
@@ -193,14 +186,14 @@ describe('buildFloorplanScene', () => {
     test('should apply dark theme when specified', () => {
       const data = createMinimalFloorplan();
       const result = buildFloorplanScene(data, { theme: 'dark' });
-      
+
       expect((result.scene.background as THREE.Color).getHex()).toBe(COLORS_DARK.BACKGROUND);
     });
 
     test('should apply blueprint theme when specified', () => {
       const data = createMinimalFloorplan();
       const result = buildFloorplanScene(data, { theme: 'blueprint' });
-      
+
       expect((result.scene.background as THREE.Color).getHex()).toBe(COLORS_BLUEPRINT.BACKGROUND);
     });
   });
@@ -210,7 +203,7 @@ describe('buildFloorplanScene', () => {
       const data = createMinimalFloorplan();
       const resultWith = buildFloorplanScene(data, { showFloors: true });
       const resultWithout = buildFloorplanScene(data, { showFloors: false });
-      
+
       // Scene with floors should have more children
       const countMeshes = (scene: THREE.Scene): number => {
         let count = 0;
@@ -219,7 +212,7 @@ describe('buildFloorplanScene', () => {
         });
         return count;
       };
-      
+
       expect(countMeshes(resultWith.scene)).toBeGreaterThan(countMeshes(resultWithout.scene));
     });
 
@@ -227,7 +220,7 @@ describe('buildFloorplanScene', () => {
       const data = createMinimalFloorplan();
       const resultWith = buildFloorplanScene(data, { showWalls: true });
       const resultWithout = buildFloorplanScene(data, { showWalls: false });
-      
+
       const countMeshes = (scene: THREE.Scene): number => {
         let count = 0;
         scene.traverse((obj) => {
@@ -235,7 +228,7 @@ describe('buildFloorplanScene', () => {
         });
         return count;
       };
-      
+
       expect(countMeshes(resultWith.scene)).toBeGreaterThan(countMeshes(resultWithout.scene));
     });
   });
@@ -243,53 +236,61 @@ describe('buildFloorplanScene', () => {
   describe('stairs and lifts', () => {
     test('should render stairs when present', () => {
       const data: JsonExport = {
-        floors: [{
-          id: 'ground',
-          index: 0,
-          rooms: [createRoom('lobby', 0, 0, 10, 10)],
-          stairs: [{
-            name: 'main-stairs',
-            x: 8,
-            z: 2,
-            rise: 3.0,
-            shape: { type: 'straight', direction: 'north' },
-          }],
-        }],
+        floors: [
+          {
+            id: 'ground',
+            index: 0,
+            rooms: [createRoom('lobby', 0, 0, 10, 10)],
+            stairs: [
+              {
+                name: 'main-stairs',
+                x: 8,
+                z: 2,
+                rise: 3.0,
+                shape: { type: 'straight', direction: 'north' },
+              },
+            ],
+          },
+        ],
         connections: [],
       };
-      
+
       const result = buildFloorplanScene(data, { showStairs: true });
-      
+
       // Should have stair geometry
-      let hasStairGeometry = false;
+      let _hasStairGeometry = false;
       result.scene.traverse((obj) => {
-        if (obj.name.includes('stair')) hasStairGeometry = true;
+        if (obj.name.includes('stair')) _hasStairGeometry = true;
       });
-      
+
       // Stair generator creates a group even if named differently
       expect(result.scene.children.length).toBeGreaterThan(0);
     });
 
     test('should render lifts when present', () => {
       const data: JsonExport = {
-        floors: [{
-          id: 'ground',
-          index: 0,
-          rooms: [createRoom('lobby', 0, 0, 10, 10)],
-          lifts: [{
-            name: 'lift1',
-            x: 8,
-            z: 8,
-            width: 2,
-            height: 2,
-            doors: ['south'],
-          }],
-        }],
+        floors: [
+          {
+            id: 'ground',
+            index: 0,
+            rooms: [createRoom('lobby', 0, 0, 10, 10)],
+            lifts: [
+              {
+                name: 'lift1',
+                x: 8,
+                z: 8,
+                width: 2,
+                height: 2,
+                doors: ['south'],
+              },
+            ],
+          },
+        ],
         connections: [],
       };
-      
+
       const result = buildFloorplanScene(data, { showLifts: true });
-      
+
       // Scene should contain lift geometry
       expect(result.scene.children.length).toBeGreaterThan(0);
     });
@@ -300,9 +301,9 @@ describe('buildCompleteScene', () => {
   test('should return scene, camera, and bounds', () => {
     const data = createMinimalFloorplan();
     const options: Render3DOptions = { width: 800, height: 600 };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     expect(result.scene).toBeInstanceOf(THREE.Scene);
     expect(result.camera).toBeDefined();
     expect(result.bounds).toBeDefined();
@@ -312,9 +313,9 @@ describe('buildCompleteScene', () => {
   test('should set up isometric camera by default', () => {
     const data = createMinimalFloorplan();
     const options: Render3DOptions = { width: 800, height: 600 };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     expect(result.camera).toBeInstanceOf(THREE.OrthographicCamera);
   });
 
@@ -326,9 +327,9 @@ describe('buildCompleteScene', () => {
       projection: 'perspective',
       fov: 60,
     };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     expect(result.camera).toBeInstanceOf(THREE.PerspectiveCamera);
     expect((result.camera as THREE.PerspectiveCamera).fov).toBe(60);
   });
@@ -336,15 +337,15 @@ describe('buildCompleteScene', () => {
   test('should add lighting to the scene', () => {
     const data = createMinimalFloorplan();
     const options: Render3DOptions = { width: 800, height: 600 };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     // Should have ambient and/or directional lights
     let hasLight = false;
     result.scene.traverse((obj) => {
       if (obj instanceof THREE.Light) hasLight = true;
     });
-    
+
     expect(hasLight).toBe(true);
   });
 
@@ -355,18 +356,18 @@ describe('buildCompleteScene', () => {
       height: 600,
       renderAllFloors: true,
     };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     expect(result.floorsRendered).toEqual([0, 1, 2]);
   });
 
   test('should render only first floor by default', () => {
     const data = createMultiFloorFloorplan();
     const options: Render3DOptions = { width: 800, height: 600 };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     expect(result.floorsRendered).toEqual([0]);
   });
 
@@ -377,9 +378,9 @@ describe('buildCompleteScene', () => {
       height: 600,
       floorIndex: 1,
     };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     expect(result.floorsRendered).toEqual([1]);
   });
 
@@ -389,9 +390,9 @@ describe('buildCompleteScene', () => {
       config: { theme: 'dark' },
     };
     const options: Render3DOptions = { width: 800, height: 600 };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     expect((result.scene.background as THREE.Color).getHex()).toBe(COLORS_DARK.BACKGROUND);
   });
 
@@ -401,9 +402,9 @@ describe('buildCompleteScene', () => {
       config: { darkMode: true },
     };
     const options: Render3DOptions = { width: 800, height: 600 };
-    
+
     const result = buildCompleteScene(data, options);
-    
+
     expect((result.scene.background as THREE.Color).getHex()).toBe(COLORS_DARK.BACKGROUND);
   });
 });
@@ -412,7 +413,7 @@ describe('styled rooms', () => {
   test('should apply floor colors from styles', () => {
     const data = createStyledFloorplan();
     const result = buildFloorplanScene(data);
-    
+
     // Style map should have the styles
     expect(result.styleMap.get('wood')?.floor_color).toBe('#8B4513');
     expect(result.styleMap.get('tile')?.floor_color).toBe('#FFFFFF');
@@ -421,7 +422,7 @@ describe('styled rooms', () => {
   test('should apply wall colors from styles', () => {
     const data = createStyledFloorplan();
     const result = buildFloorplanScene(data);
-    
+
     expect(result.styleMap.get('wood')?.wall_color).toBe('#D2B48C');
     expect(result.styleMap.get('tile')?.wall_color).toBe('#C0C0C0');
   });
@@ -430,9 +431,9 @@ describe('styled rooms', () => {
 describe('error handling', () => {
   test('should handle empty floors array', () => {
     const data: JsonExport = { floors: [], connections: [] };
-    
+
     expect(() => buildFloorplanScene(data)).not.toThrow();
-    
+
     const result = buildFloorplanScene(data);
     expect(result.scene).toBeInstanceOf(THREE.Scene);
     expect(result.floorsRendered).toEqual([]);
@@ -443,9 +444,9 @@ describe('error handling', () => {
       floors: [{ id: 'empty', index: 0, rooms: [] }],
       connections: [],
     };
-    
+
     expect(() => buildFloorplanScene(data)).not.toThrow();
-    
+
     const result = buildFloorplanScene(data);
     expect(result.floorsRendered).toEqual([0]);
   });
@@ -456,19 +457,17 @@ describe('error handling', () => {
       connections: [],
       // No config
     };
-    
+
     expect(() => buildFloorplanScene(data)).not.toThrow();
   });
 
   test('should handle missing styles', () => {
     const data: JsonExport = {
-      floors: [createFloor('ground', 0, [
-        createRoom('room1', 0, 0, 5, 5, 'missing-style'),
-      ])],
+      floors: [createFloor('ground', 0, [createRoom('room1', 0, 0, 5, 5, 'missing-style')])],
       connections: [],
       // No styles array
     };
-    
+
     expect(() => buildFloorplanScene(data)).not.toThrow();
   });
 });
@@ -505,9 +504,9 @@ describe('double-door rendering', () => {
     expect(doubleDoorGroup!.children.length).toBe(2);
 
     // Check that both panels are meshes
-    const leftPanel = doubleDoorGroup!.children.find(c => c.name.includes('left'));
-    const rightPanel = doubleDoorGroup!.children.find(c => c.name.includes('right'));
-    
+    const leftPanel = doubleDoorGroup!.children.find((c) => c.name.includes('left'));
+    const rightPanel = doubleDoorGroup!.children.find((c) => c.name.includes('right'));
+
     expect(leftPanel).toBeDefined();
     expect(leftPanel).toBeInstanceOf(THREE.Mesh);
     expect(rightPanel).toBeDefined();
@@ -571,12 +570,13 @@ describe('double-door rendering', () => {
     const doubleDoorGroup = result.scene.getObjectByName('double-door-living-dining');
     expect(doubleDoorGroup).toBeDefined();
 
-    const leftPanel = doubleDoorGroup!.children.find(c => c.name.includes('left')) as THREE.Mesh;
-    const rightPanel = doubleDoorGroup!.children.find(c => c.name.includes('right')) as THREE.Mesh;
+    const leftPanel = doubleDoorGroup!.children.find((c) => c.name.includes('left')) as THREE.Mesh;
+    const rightPanel = doubleDoorGroup!.children.find((c) =>
+      c.name.includes('right'),
+    ) as THREE.Mesh;
 
     // Panels should have different rotations (mirrored)
     // The exact values depend on swing direction, but they should differ
     expect(leftPanel.rotation.y).not.toBe(rightPanel.rotation.y);
   });
 });
-

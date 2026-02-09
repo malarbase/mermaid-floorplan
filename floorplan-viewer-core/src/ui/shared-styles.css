@@ -8,37 +8,37 @@
   --fp-bg-panel: #ffffff;
   --fp-bg-input: #ffffff;
   --fp-bg-hover: rgba(0, 0, 0, 0.05);
-  
+
   --fp-text-primary: #333333;
   --fp-text-secondary: #555555;
   --fp-text-tertiary: #888888;
   --fp-text-inverted: #ffffff;
-  
+
   --fp-border-primary: #e0e0e0;
   --fp-border-secondary: #dddddd;
-  
+
   /* Brand Colors - Cyan Accent (OKLCH 75% 0.18 195) */
   --fp-accent: oklch(75% 0.18 195);
   --fp-accent-hover: oklch(70% 0.18 195);
-  
+
   /* Status Colors */
   --fp-success: #2d7d46;
   --fp-error: #c42b1c;
-  
+
   /* Warning Panel Colors */
   --fp-warning-bg: #fff8e1;
   --fp-warning-border: #ffd54f;
   --fp-warning-text: #5d4037;
   --fp-warning-accent: #f57c00;
   --fp-warning-separator: #ffe082;
-  
+
   /* UI Elements */
-  --fp-shadow-sm: 0 2px 10px rgba(0,0,0,0.1);
+  --fp-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.1);
   --fp-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.15);
   --fp-btn-secondary-bg: #666666;
   --fp-btn-secondary-hover: #555555;
-  --fp-resize-handle: rgba(0,0,0,0.2);
-  --fp-resize-handle-hover: rgba(0,0,0,0.4);
+  --fp-resize-handle: rgba(0, 0, 0, 0.2);
+  --fp-resize-handle-hover: rgba(0, 0, 0, 0.4);
 }
 
 [data-theme="dark"],
@@ -58,21 +58,21 @@ body.dark-theme {
 
   --fp-border-primary: #444444;
   --fp-border-secondary: #555555;
-  
+
   /* Warning Panel Colors - Dark */
   --fp-warning-bg: #3d3520;
   --fp-warning-border: #6b5c2d;
   --fp-warning-text: #e0d4b8;
   --fp-warning-accent: #ffb74d;
   --fp-warning-separator: #5a4a20;
-  
+
   /* UI Elements - Dark */
-  --fp-shadow-sm: 0 2px 10px rgba(0,0,0,0.3);
+  --fp-shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.3);
   --fp-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
   --fp-btn-secondary-bg: #555555;
   --fp-btn-secondary-hover: #666666;
-  --fp-resize-handle: rgba(255,255,255,0.2);
-  --fp-resize-handle-hover: rgba(255,255,255,0.4);
+  --fp-resize-handle: rgba(255, 255, 255, 0.2);
+  --fp-resize-handle-hover: rgba(255, 255, 255, 0.4);
 }
 
 /* === Base Styles === */
@@ -92,7 +92,7 @@ body.dark-theme {
   max-height: calc(100vh - 20px);
   overflow-y: auto;
   box-shadow: var(--fp-shadow-md);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 13px;
   color: var(--fp-text-primary);
 }
@@ -125,7 +125,7 @@ body.dark-theme {
 }
 
 .fp-section-header::after {
-  content: '▼';
+  content: "▼";
   font-size: 10px;
   transition: transform 0.2s;
 }
@@ -189,7 +189,7 @@ body.dark-theme {
   background: var(--fp-accent);
   cursor: pointer;
   border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 /* === Buttons === */
@@ -311,7 +311,7 @@ body.dark-theme {
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   opacity: 0.9;
 }
 
@@ -322,7 +322,7 @@ body.dark-theme {
   font-size: 10px;
   white-space: nowrap;
   font-weight: 500;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .width-label {
@@ -397,7 +397,9 @@ body.dark-theme {
   overflow: hidden;
   z-index: 50;
   display: none;
-  transition: left 0.3s ease, bottom 0.3s ease;
+  transition:
+    left 0.3s ease,
+    bottom 0.3s ease;
 }
 
 .fp-overlay-2d.visible {
@@ -431,7 +433,9 @@ body.dark-theme {
   cursor: pointer;
   padding: 0 4px;
   border-radius: 4px;
-  transition: background 0.15s, color 0.15s;
+  transition:
+    background 0.15s,
+    color 0.15s;
 }
 
 .fp-overlay-2d-close:hover {
@@ -508,7 +512,7 @@ body.dark-theme {
   max-height: 80vh;
   overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
   color: var(--fp-text-primary);
 }
 
@@ -576,7 +580,7 @@ body.dark-theme {
   display: inline-block;
   padding: 4px 8px;
   font-size: 11px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.2;
   color: var(--fp-text-primary);
   background: var(--fp-bg-secondary);
@@ -612,7 +616,7 @@ body.dark-theme {
   z-index: 100;
   border: 1px solid #333;
   min-width: 180px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
   display: none; /* Hidden by default */
 }
 
@@ -645,7 +649,7 @@ body.dark-theme {
   padding: 8px 12px;
   background: rgba(0, 0, 0, 0.75);
   border-radius: 6px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
 .fp-selection-mode-toggle input[type="checkbox"] {
@@ -682,18 +686,20 @@ body.dark-theme {
 /* === Validation Warnings Panel === */
 .fp-warnings-panel {
   position: absolute;
-  top: calc(var(--layout-header-offset, 0px) + 10px);  /* Aligned with header */
+  top: calc(var(--layout-header-offset, 0px) + 10px); /* Aligned with header */
   left: calc(var(--layout-editor-width, 0px) + 10px);
   background: var(--fp-warning-bg);
   border: 1px solid var(--fp-warning-border);
   border-radius: 8px;
   max-width: 400px;
   box-shadow: var(--fp-shadow-sm);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 13px;
   z-index: 100;
   display: none;
-  transition: left 0.3s ease, top 0.3s ease;
+  transition:
+    left 0.3s ease,
+    top 0.3s ease;
 }
 
 .fp-warnings-header {
@@ -778,7 +784,7 @@ body.dark-theme {
 .fp-shortcut-info {
   position: absolute;
   bottom: 10px;
-  right: 320px;  /* Offset from control panel on the right */
+  right: 320px; /* Offset from control panel on the right */
   background: rgba(0, 0, 0, 0.75);
   color: white;
   padding: 12px 16px;
@@ -787,8 +793,10 @@ body.dark-theme {
   font-size: 13px;
   max-width: 200px;
   z-index: 50;
-  transition: right 0.3s ease, bottom 0.3s ease;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  transition:
+    right 0.3s ease,
+    bottom 0.3s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, sans-serif;
 }
 
 .fp-shortcut-info h3 {
@@ -803,7 +811,7 @@ body.dark-theme {
 }
 
 .fp-shortcut-info-hint {
-  margin-top: 8px !important;
+  margin-top: 8px;
   opacity: 0.6;
 }
 
@@ -816,83 +824,83 @@ body.dark-theme {
 
 /* Dark theme (default) */
 .fp-control-panel {
-  background: rgba(40, 40, 40, 0.95) !important;
-  color: #e0e0e0 !important;
+  background: rgba(40, 40, 40, 0.95);
+  color: #e0e0e0;
 }
 
 .fp-control-section {
-  background: transparent !important;
+  background: transparent;
 }
 
 .fp-section-header,
 .fp-control-section .collapse-title {
-  color: #e0e0e0 !important;
+  color: #e0e0e0;
 }
 
 .fp-label {
-  color: #aaaaaa !important;
+  color: #aaaaaa;
 }
 
 /* Light theme overrides */
 [data-theme="light"] .fp-control-panel,
 body:not(.dark-theme) .fp-control-panel {
-  background: rgba(255, 255, 255, 0.95) !important;
-  color: #333333 !important;
+  background: rgba(255, 255, 255, 0.95);
+  color: #333333;
 }
 
 [data-theme="light"] .fp-section-header,
 [data-theme="light"] .fp-control-section .collapse-title,
 body:not(.dark-theme) .fp-section-header,
 body:not(.dark-theme) .fp-control-section .collapse-title {
-  color: #333333 !important;
+  color: #333333;
 }
 
 [data-theme="light"] .fp-label,
 body:not(.dark-theme) .fp-label {
-  color: #555555 !important;
+  color: #555555;
 }
 
 /* Button overrides - dark theme */
 .fp-btn {
-  background: var(--fp-accent) !important;
-  color: var(--fp-text-inverted) !important;
+  background: var(--fp-accent);
+  color: var(--fp-text-inverted);
 }
 
 .fp-btn-secondary {
-  background: #555555 !important;
+  background: #555555;
 }
 
 .fp-btn-secondary:hover {
-  background: #666666 !important;
+  background: #666666;
 }
 
 /* Button overrides - light theme */
 [data-theme="light"] .fp-btn-secondary,
 body:not(.dark-theme) .fp-btn-secondary {
-  background: #666666 !important;
+  background: #666666;
 }
 
 [data-theme="light"] .fp-btn-secondary:hover,
 body:not(.dark-theme) .fp-btn-secondary:hover {
-  background: #555555 !important;
+  background: #555555;
 }
 
 /* Input/slider overrides - dark theme */
 .fp-slider {
-  background: #3d3d3d !important;
+  background: #3d3d3d;
 }
 
 .fp-slider::-webkit-slider-thumb {
-  background: #888888 !important;
+  background: #888888;
 }
 
 /* Input/slider overrides - light theme */
 [data-theme="light"] .fp-slider,
 body:not(.dark-theme) .fp-slider {
-  background: #e0e0e0 !important;
+  background: #e0e0e0;
 }
 
 [data-theme="light"] .fp-slider::-webkit-slider-thumb,
 body:not(.dark-theme) .fp-slider::-webkit-slider-thumb {
-  background: #666666 !important;
+  background: #666666;
 }

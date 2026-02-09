@@ -56,7 +56,7 @@
 /* Override fp-editor-panel fixed positioning when inside our layout */
 .editor-panel.fp-editor-panel {
   position: absolute;
-  top: 0 !important;
+  top: 0;
   left: 0;
   height: 100%;
 }
@@ -93,8 +93,6 @@
 .editor-collapse-btn:hover {
   background: oklch(var(--color-base-300));
 }
-
-
 
 /* FAB (phone only) */
 .fab-button {
@@ -143,12 +141,12 @@
   .floorplan-container {
     flex-direction: column;
   }
-  
+
   .editor-panel,
   .control-panel {
     display: none; /* Hidden on phone, use bottom sheet instead */
   }
-  
+
   .floorplan-3d {
     width: 100%;
     height: 100%;
@@ -161,11 +159,11 @@
   .bottom-sheet {
     display: none;
   }
-  
+
   .editor-panel {
     width: 360px;
   }
-  
+
   .control-panel {
     width: 280px;
   }
@@ -177,11 +175,11 @@
   .bottom-sheet {
     display: none;
   }
-  
+
   .editor-panel {
     width: 450px;
   }
-  
+
   .control-panel {
     width: 320px;
   }

@@ -1,12 +1,12 @@
-import { createMemo, createSignal, Show, For, onCleanup } from "solid-js";
-import { useNavigate, A } from "@solidjs/router";
-import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import { A, useNavigate } from '@solidjs/router';
+import type { FunctionReference } from 'convex/server';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 
 // Type-safe API reference builder for when generated files don't exist yet
 const api = {
   projects: {
-    listVersions: "projects:listVersions" as unknown as FunctionReference<"query">,
+    listVersions: 'projects:listVersions' as unknown as FunctionReference<'query'>,
   },
 };
 
@@ -38,7 +38,7 @@ export interface VersionSwitcherProps {
   /** Custom class for the dropdown button */
   class?: string;
   /** Size variant */
-  size?: "sm" | "md" | "lg";
+  size?: 'sm' | 'md' | 'lg';
 }
 
 /**
@@ -58,7 +58,7 @@ export interface VersionSwitcherProps {
 export function VersionSwitcher(props: VersionSwitcherProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = createSignal(false);
-  const [searchQuery, setSearchQuery] = createSignal("");
+  const [searchQuery, setSearchQuery] = createSignal('');
 
   // Query project's versions from Convex
   const versionsQuery = useQuery(api.projects.listVersions, () => ({
@@ -86,23 +86,23 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
   const isLoading = createMemo(() => versionsQuery.isLoading());
 
   // Current version info
-  const currentVersionData = createMemo(() =>
-    versions().find((v) => v.name === props.currentVersion)
+  const _currentVersionData = createMemo(() =>
+    versions().find((v) => v.name === props.currentVersion),
   );
 
   // Close dropdown when clicking outside
-  const handleClickOutside = (e: MouseEvent) => {
+  const _handleClickOutside = (e: MouseEvent) => {
     const target = e.target as HTMLElement;
-    if (!target.closest(".version-switcher-dropdown")) {
+    if (!target.closest('.version-switcher-dropdown')) {
       setIsOpen(false);
-      setSearchQuery("");
+      setSearchQuery('');
     }
   };
 
   // Handle version selection
   const selectVersion = (version: Version) => {
     setIsOpen(false);
-    setSearchQuery("");
+    setSearchQuery('');
 
     // Navigate to the version
     if (version.name === props.defaultVersion) {
@@ -115,21 +115,21 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
 
   // Handle keyboard navigation
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === "Escape") {
+    if (e.key === 'Escape') {
       setIsOpen(false);
-      setSearchQuery("");
+      setSearchQuery('');
     }
   };
 
   // Get size classes
   const sizeClass = () => {
     switch (props.size) {
-      case "sm":
-        return "btn-sm text-sm";
-      case "lg":
-        return "btn-lg text-lg";
+      case 'sm':
+        return 'btn-sm text-sm';
+      case 'lg':
+        return 'btn-lg text-lg';
       default:
-        return "";
+        return '';
     }
   };
 
@@ -141,7 +141,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return "just now";
+    if (minutes < 1) return 'just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
     if (days < 7) return `${days}d ago`;
@@ -150,7 +150,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
 
   return (
     <div
-      class={`version-switcher-dropdown dropdown ${isOpen() ? "dropdown-open" : ""} ${props.class ?? ""}`}
+      class={`version-switcher-dropdown dropdown ${isOpen() ? 'dropdown-open' : ''} ${props.class ?? ''}`}
       onKeyDown={handleKeyDown}
     >
       {/* Trigger Button */}
@@ -162,12 +162,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
         aria-expanded={isOpen()}
       >
         {/* Branch icon */}
-        <svg
-          class="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -181,7 +176,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
         </Show>
         {/* Chevron */}
         <svg
-          class={`w-4 h-4 transition-transform ${isOpen() ? "rotate-180" : ""}`}
+          class={`w-4 h-4 transition-transform ${isOpen() ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -202,16 +197,14 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
           class="fixed inset-0 z-40"
           onClick={() => {
             setIsOpen(false);
-            setSearchQuery("");
+            setSearchQuery('');
           }}
         />
 
         <div class="dropdown-content z-50 bg-base-100 rounded-box shadow-xl border border-base-300 w-72 p-0 mt-2">
           {/* Search Header */}
           <div class="p-3 border-b border-base-300">
-            <div class="text-sm font-medium text-base-content/70 mb-2">
-              Switch versions
-            </div>
+            <div class="text-sm font-medium text-base-content/70 mb-2">Switch versions</div>
             <input
               type="text"
               class="input input-sm input-bordered w-full"
@@ -236,23 +229,20 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
                 when={filteredVersions().length > 0}
                 fallback={
                   <div class="text-center py-6 text-base-content/50">
-                    <Show
-                      when={searchQuery()}
-                      fallback={<span>No versions available</span>}
-                    >
+                    <Show when={searchQuery()} fallback={<span>No versions available</span>}>
                       <span>No versions matching "{searchQuery()}"</span>
                     </Show>
                   </div>
                 }
               >
-                <ul class="menu menu-sm p-2" role="listbox">
+                <ul class="menu menu-sm p-2">
                   <For each={filteredVersions()}>
                     {(version) => (
-                      <li role="option" aria-selected={version.name === props.currentVersion}>
+                      <li aria-selected={version.name === props.currentVersion}>
                         <button
                           type="button"
                           class={`flex items-center justify-between w-full ${
-                            version.name === props.currentVersion ? "active" : ""
+                            version.name === props.currentVersion ? 'active' : ''
                           }`}
                           onClick={() => selectVersion(version)}
                         >
@@ -278,9 +268,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
 
                             {/* Version info */}
                             <div class="flex flex-col items-start min-w-0">
-                              <span class="font-medium truncate max-w-[140px]">
-                                {version.name}
-                              </span>
+                              <span class="font-medium truncate max-w-[140px]">{version.name}</span>
                               <Show when={version.description}>
                                 <span class="text-xs text-base-content/50 truncate max-w-[140px]">
                                   {version.description}
@@ -314,15 +302,10 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
                 class="btn btn-ghost btn-sm w-full justify-start gap-2"
                 onClick={() => {
                   setIsOpen(false);
-                  setSearchQuery("");
+                  setSearchQuery('');
                 }}
               >
-                <svg
-                  class="w-4 h-4"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -339,16 +322,11 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
                   class="btn btn-ghost btn-sm w-full justify-start gap-2 text-primary"
                   onClick={() => {
                     setIsOpen(false);
-                    setSearchQuery("");
+                    setSearchQuery('');
                     props.onCreateNew?.();
                   }}
                 >
-                  <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"

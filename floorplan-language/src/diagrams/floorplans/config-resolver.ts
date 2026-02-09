@@ -1,12 +1,12 @@
 /**
  * Config resolution utilities
- * 
+ *
  * Extracts and normalizes configuration from floorplan DSL,
  * supporting both snake_case and camelCase property names.
  */
 
-import type { Floorplan, ConfigProperty } from "../../generated/ast.js";
-import { normalizeConfigKey, getThemeByName, type FloorplanThemeOptions } from "./styles.js";
+import type { ConfigProperty, Floorplan } from '../../generated/ast.js';
+import { type FloorplanThemeOptions, getThemeByName, normalizeConfigKey } from './styles.js';
 
 /**
  * Parsed configuration object with normalized keys (Mermaid-aligned)
@@ -16,7 +16,7 @@ export interface ParsedConfig {
   // Theme
   theme?: string;
   darkMode?: boolean;
-  
+
   // Dimensions
   wallThickness?: number;
   floorThickness?: number;
@@ -28,16 +28,16 @@ export interface ParsedConfig {
   windowHeight?: number;
   windowSill?: number;
   windowSize?: { width: number; height: number };
-  
+
   // Style
   defaultStyle?: string;
   defaultUnit?: string;
   areaUnit?: string;
-  
+
   // Font (Mermaid-aligned)
   fontFamily?: string;
   fontSize?: number;
-  
+
   // Display toggles
   showLabels?: boolean;
   showDimensions?: boolean;
@@ -73,8 +73,7 @@ function extractPropertyValue(prop: ConfigProperty): unknown {
   if (prop.stringValue !== undefined) {
     // Remove quotes from string value
     const str = prop.stringValue;
-    if ((str.startsWith('"') && str.endsWith('"')) ||
-        (str.startsWith("'") && str.endsWith("'"))) {
+    if ((str.startsWith('"') && str.endsWith('"')) || (str.startsWith("'") && str.endsWith("'"))) {
       return str.slice(1, -1);
     }
     return str;
@@ -89,7 +88,7 @@ function extractPropertyValue(prop: ConfigProperty): unknown {
   if (prop.unitRef !== undefined) return prop.unitRef;
   if (prop.areaUnitRef !== undefined) return prop.areaUnitRef;
   if (prop.styleRef !== undefined) return prop.styleRef;
-  
+
   return undefined;
 }
 
@@ -98,15 +97,15 @@ function extractPropertyValue(prop: ConfigProperty): unknown {
  */
 export function resolveConfig(floorplan: Floorplan): ParsedConfig {
   const config: ParsedConfig = { ...DEFAULT_CONFIG };
-  
+
   if (!floorplan.config) {
     return config;
   }
-  
+
   for (const prop of floorplan.config.properties) {
     const normalizedKey = normalizeConfigKey(prop.name);
     const value = extractPropertyValue(prop);
-    
+
     if (value !== undefined) {
       // Type-safe assignment based on key
       switch (normalizedKey) {
@@ -170,7 +169,7 @@ export function resolveConfig(floorplan: Floorplan): ParsedConfig {
       }
     }
   }
-  
+
   return config;
 }
 
@@ -180,10 +179,10 @@ export function resolveConfig(floorplan: Floorplan): ParsedConfig {
  */
 export function resolveThemeOptions(config: ParsedConfig): Partial<FloorplanThemeOptions> {
   let themeOptions: Partial<FloorplanThemeOptions> = {};
-  
+
   // Determine theme name
   let themeName = 'default';
-  
+
   if (config.theme) {
     // Explicit theme takes precedence
     themeName = config.theme;
@@ -191,13 +190,13 @@ export function resolveThemeOptions(config: ParsedConfig): Partial<FloorplanThem
     // darkMode: true defaults to 'dark' theme
     themeName = 'dark';
   }
-  
+
   // Get base theme options
   const baseTheme = getThemeByName(themeName);
   if (baseTheme) {
     themeOptions = { ...baseTheme };
   }
-  
+
   // Override with explicit font settings
   if (config.fontFamily) {
     themeOptions.fontFamily = config.fontFamily;
@@ -205,7 +204,7 @@ export function resolveThemeOptions(config: ParsedConfig): Partial<FloorplanThem
   if (config.fontSize !== undefined) {
     themeOptions.fontSize = String(config.fontSize);
   }
-  
+
   return themeOptions;
 }
 
@@ -221,4 +220,3 @@ export function getEffectiveThemeName(config: ParsedConfig): string {
   }
   return 'default';
 }
-

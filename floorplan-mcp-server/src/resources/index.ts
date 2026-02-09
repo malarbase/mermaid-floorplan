@@ -1,4 +1,4 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
 const SCHEMA_CONTENT = `# Floorplan DSL Schema
 
@@ -65,17 +65,16 @@ floorplan
 
 export function registerResources(server: McpServer): void {
   server.resource(
-    "floorplan://schema",
-    "Floorplan DSL syntax documentation and examples",
+    'floorplan://schema',
+    'Floorplan DSL syntax documentation and examples',
     async () => ({
       contents: [
         {
-          uri: "floorplan://schema",
-          mimeType: "text/markdown",
+          uri: 'floorplan://schema',
+          mimeType: 'text/markdown',
           text: SCHEMA_CONTENT,
         },
       ],
-    })
+    }),
   );
 }
-

@@ -1,21 +1,21 @@
-import { createSignal, onMount, onCleanup, Suspense, Show, createEffect } from "solid-js";
-import { useLocation, useSearchParams } from "@solidjs/router";
-import { FloorplanBase } from "./FloorplanBase";
-import { ViewerErrorBoundary } from "./ViewerError";
-import { ViewerSkeleton, ControlPanelsSkeleton, EditorSkeleton } from "./skeletons";
-import ControlPanels from "./ControlPanels";
-import EditorBundle from "../editor/EditorBundle";
-import { FAB } from "./FAB";
-import { BottomSheet } from "./BottomSheet";
-import "./viewer-layout.css";
-import { getLayoutManager } from "floorplan-viewer-core";
-import { useAppTheme } from "~/lib/theme";
+import { useLocation, useSearchParams } from '@solidjs/router';
+import { createEffect, createSignal, onCleanup, onMount, Show, Suspense } from 'solid-js';
+import EditorBundle from '../editor/EditorBundle';
+import { BottomSheet } from './BottomSheet';
+import ControlPanels from './ControlPanels';
+import { FAB } from './FAB';
+import { FloorplanBase } from './FloorplanBase';
+import { ControlPanelsSkeleton, EditorSkeleton, ViewerSkeleton } from './skeletons';
+import { ViewerErrorBoundary } from './ViewerError';
+import './viewer-layout.css';
+import { getLayoutManager } from 'floorplan-viewer-core';
+import { useAppTheme } from '~/lib/theme';
 
 // Define the mode types
 export type ViewerMode = 'basic' | 'advanced' | 'editor';
 
 /** localStorage key for "don't ask about DSL theme" preference */
-const DSL_THEME_PROMPT_KEY = "floorplan-app-dsl-theme-prompt-disabled";
+const DSL_THEME_PROMPT_KEY = 'floorplan-app-dsl-theme-prompt-disabled';
 
 interface FloorplanContainerProps {
   dsl: string;
@@ -32,7 +32,7 @@ interface FloorplanContainerProps {
 
 /** Inline theme suggestion banner */
 function ThemeSuggestionBanner(props: {
-  dslTheme: "light" | "dark";
+  dslTheme: 'light' | 'dark';
   onSwitch: () => void;
   onDismiss: () => void;
   onDontAskAgain: () => void;
@@ -43,7 +43,12 @@ function ThemeSuggestionBanner(props: {
     <div class="absolute bottom-4 left-1/2 -translate-x-1/2 z-30 animate-slide-in-up">
       <div class="alert shadow-lg max-w-md border border-base-content/10">
         <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+          />
         </svg>
         <div class="flex-1 min-w-0">
           <p class="text-sm">
@@ -87,8 +92,8 @@ function ThemeSuggestionBanner(props: {
 export function FloorplanContainer(props: FloorplanContainerProps) {
   const { theme, setTheme, toggleTheme } = useAppTheme();
   const [params] = useSearchParams();
-  const location = useLocation();
-  
+  const _location = useLocation();
+
   // Determine mode
   const getMode = (): ViewerMode => {
     if (props.mode) return props.mode;
@@ -104,12 +109,14 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   const [mode, setMode] = createSignal<ViewerMode>(getMode());
   const [coreInstance, setCoreInstance] = createSignal<any>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = createSignal(false);
-  const [isMobile, setIsMobile] = createSignal(typeof window !== 'undefined' ? window.innerWidth < 640 : false);
+  const [isMobile, setIsMobile] = createSignal(
+    typeof window !== 'undefined' ? window.innerWidth < 640 : false,
+  );
   const [isEditorCollapsed, setIsEditorCollapsed] = createSignal(false);
 
   // DSL theme suggestion state
-  const [dslThemeSuggestion, setDslThemeSuggestion] = createSignal<"light" | "dark" | null>(null);
-  
+  const [dslThemeSuggestion, setDslThemeSuggestion] = createSignal<'light' | 'dark' | null>(null);
+
   // Sync mode with props changes
   createEffect(() => {
     const newMode = getMode();
@@ -117,12 +124,12 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
       setMode(newMode);
     }
   });
-  
+
   createEffect(() => {
     const layoutManager = getLayoutManager({ editorWidth: 400 });
     layoutManager.setEditorOpen(!isEditorCollapsed());
   });
-  
+
   onMount(() => {
     const layoutManager = getLayoutManager({ editorWidth: 400 });
     if (mode() === 'editor') {
@@ -138,11 +145,10 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   };
 
   // Handle DSL theme detection from FloorplanBase
-  const handleDslThemeDetected = (dslTheme: "light" | "dark") => {
+  const handleDslThemeDetected = (dslTheme: 'light' | 'dark') => {
     // Check if user has opted out of DSL theme prompts
-    const promptDisabled = typeof window !== "undefined"
-      ? localStorage.getItem(DSL_THEME_PROMPT_KEY) === "true"
-      : false;
+    const promptDisabled =
+      typeof window !== 'undefined' ? localStorage.getItem(DSL_THEME_PROMPT_KEY) === 'true' : false;
     if (!promptDisabled) {
       setDslThemeSuggestion(dslTheme);
     }
@@ -161,8 +167,8 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   };
 
   const handleDontAskAgain = () => {
-    if (typeof window !== "undefined") {
-      localStorage.setItem(DSL_THEME_PROMPT_KEY, "true");
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(DSL_THEME_PROMPT_KEY, 'true');
     }
   };
 
@@ -183,7 +189,7 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     core: coreInstance(),
     dsl: props.dsl,
     theme: theme(),
-    onDslChange: props.onDslChange || (() => {})
+    onDslChange: props.onDslChange || (() => {}),
   });
 
   const controlProps = () => ({
@@ -202,19 +208,19 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
               </Show>
               <button
                 class="editor-collapse-btn"
-                onClick={() => setIsEditorCollapsed(prev => !prev)}
+                onClick={() => setIsEditorCollapsed((prev) => !prev)}
                 title={isEditorCollapsed() ? 'Expand editor' : 'Collapse editor'}
               >
                 {isEditorCollapsed() ? '▶' : '◀'}
               </button>
             </div>
           </Show>
-          
+
           {/* 3D Viewer (always visible) */}
           <div class="floorplan-3d">
             <FloorplanBase {...baseProps()} />
           </div>
-          
+
           {/* Control panel (desktop + tablet) */}
           <Show when={mode() !== 'basic' && !isMobile()}>
             <div class="control-panel">
@@ -223,25 +229,25 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
               </Show>
             </div>
           </Show>
-          
+
           {/* FAB (phone only) */}
           <Show when={isMobile() && mode() !== 'basic'}>
             <FAB mode={mode()} onClick={() => setIsBottomSheetOpen(true)} />
           </Show>
-          
+
           {/* Bottom sheet (phone only) */}
           <Show when={isMobile()}>
             <BottomSheet isOpen={isBottomSheetOpen()} onClose={() => setIsBottomSheetOpen(false)}>
               <Show when={coreInstance()}>
                 <Show when={mode() === 'editor'} fallback={<ControlPanels {...controlProps()} />}>
-                   <div class="flex flex-col gap-4 h-full">
+                  <div class="flex flex-col gap-4 h-full">
                     <div class="flex-1 overflow-y-auto">
                       <EditorBundle {...editorProps()} />
                     </div>
                     <div class="h-64 relative">
                       <ControlPanels {...controlProps()} />
                     </div>
-                   </div>
+                  </div>
                 </Show>
               </Show>
             </BottomSheet>

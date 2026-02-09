@@ -1,16 +1,19 @@
 /**
  * Centralized CSG (Constructive Solid Geometry) management
- * 
+ *
  * Manages the dynamic loading of the three-bvh-csg library and provides
  * access to CSG operations for both walls and floors.
  */
 
-import * as THREE from 'three';
+import type * as THREE from 'three';
 
 // CSG module - loaded dynamically
 let csgModule: {
   Evaluator: new () => CSGEvaluator;
-  Brush: new (geometry: THREE.BufferGeometry, material?: THREE.Material | THREE.Material[]) => CSGBrush;
+  Brush: new (
+    geometry: THREE.BufferGeometry,
+    material?: THREE.Material | THREE.Material[],
+  ) => CSGBrush;
   SUBTRACTION: number;
   ADDITION: number;
   INTERSECTION: number;
@@ -27,7 +30,7 @@ export interface CSGBrush extends THREE.Mesh {
 
 /**
  * Initialize CSG support by dynamically loading three-bvh-csg
- * 
+ *
  * @returns true if CSG is available, false otherwise
  */
 export async function initCSG(): Promise<boolean> {
@@ -67,4 +70,3 @@ export function getCSG() {
   }
   return csgModule;
 }
-

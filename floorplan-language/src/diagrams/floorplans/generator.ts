@@ -1,13 +1,13 @@
 /**
  * Unified Generator API for Floorplan DSL
- * 
+ *
  * Following Langium's generator pattern, this provides a single entry point
  * for converting parsed Floorplan documents into various output formats.
- * 
+ *
  * Supported formats:
  * - 'svg': Vector graphics for 2D visualization
  * - 'json': Structured data for 3D viewer (Three.js)
- * 
+ *
  * @example
  * ```ts
  * const result = generate(document, 'svg', { scale: 15 });
@@ -17,10 +17,10 @@
  * ```
  */
 
-import type { LangiumDocument } from "langium";
-import type { Floorplan } from "../../generated/ast.js";
-import { render, type RenderOptions } from "./renderer.js";
-import { convertFloorplanToJson, type JsonExport, type ConversionError } from "./json-converter.js";
+import type { LangiumDocument } from 'langium';
+import type { Floorplan } from '../../generated/ast.js';
+import { type ConversionError, convertFloorplanToJson, type JsonExport } from './json-converter.js';
+import { type RenderOptions, render } from './renderer.js';
 
 // ============================================================================
 // Generator Types
@@ -78,24 +78,24 @@ export type GeneratorResult = SvgGeneratorResult | JsonGeneratorResult;
 
 /**
  * Generate output from a parsed Floorplan document.
- * 
+ *
  * This is the unified entry point for all code generation, following Langium's
  * generator API pattern. It dispatches to format-specific generators while
  * providing a consistent interface.
- * 
+ *
  * @param document - Parsed Langium document containing the Floorplan AST
  * @param format - Output format: 'svg' for vector graphics, 'json' for 3D data
  * @param options - Format-specific options
  * @returns Generation result with data and any errors
- * 
+ *
  * @example SVG generation
  * ```ts
- * const result = generate(document, 'svg', { 
- *   scale: 15, 
- *   renderAllFloors: true 
+ * const result = generate(document, 'svg', {
+ *   scale: 15,
+ *   renderAllFloors: true
  * });
  * ```
- * 
+ *
  * @example JSON generation for 3D viewer
  * ```ts
  * const result = generate(document, 'json');
@@ -107,28 +107,28 @@ export type GeneratorResult = SvgGeneratorResult | JsonGeneratorResult;
 export function generate(
   document: LangiumDocument<Floorplan>,
   format: 'svg',
-  options?: Omit<SvgGeneratorOptions, 'format'>
+  options?: Omit<SvgGeneratorOptions, 'format'>,
 ): SvgGeneratorResult;
 
 export function generate(
   document: LangiumDocument<Floorplan>,
   format: 'json',
-  options?: Omit<JsonGeneratorOptions, 'format'>
+  options?: Omit<JsonGeneratorOptions, 'format'>,
 ): JsonGeneratorResult;
 
 export function generate(
   document: LangiumDocument<Floorplan>,
   format: GeneratorFormat,
-  options?: Omit<GeneratorOptions, 'format'>
+  options?: Omit<GeneratorOptions, 'format'>,
 ): GeneratorResult {
   // Check for parse errors first
   const parseErrors = document.parseResult.parserErrors;
   if (parseErrors.length > 0) {
-    const errors: GeneratorError[] = parseErrors.map(e => ({
+    const errors: GeneratorError[] = parseErrors.map((e) => ({
       message: e.message,
       type: 'parse' as const,
     }));
-    
+
     if (format === 'svg') {
       return { format: 'svg', data: null, errors };
     } else {
@@ -142,10 +142,11 @@ export function generate(
       return generateSvg(document, options as RenderOptions);
     case 'json':
       return generateJson(document);
-    default:
+    default: {
       // Type guard - should never reach here
       const _exhaustive: never = format;
       throw new Error(`Unknown format: ${_exhaustive}`);
+    }
   }
 }
 
@@ -158,7 +159,7 @@ export function generate(
  */
 function generateSvg(
   document: LangiumDocument<Floorplan>,
-  options?: RenderOptions
+  options?: RenderOptions,
 ): SvgGeneratorResult {
   try {
     const svg = render(document, options);
@@ -171,10 +172,12 @@ function generateSvg(
     return {
       format: 'svg',
       data: null,
-      errors: [{
-        message: error instanceof Error ? error.message : 'Unknown rendering error',
-        type: 'render',
-      }],
+      errors: [
+        {
+          message: error instanceof Error ? error.message : 'Unknown rendering error',
+          type: 'render',
+        },
+      ],
     };
   }
 }
@@ -182,19 +185,17 @@ function generateSvg(
 /**
  * Generate JSON from a Floorplan document
  */
-function generateJson(
-  document: LangiumDocument<Floorplan>
-): JsonGeneratorResult {
+function generateJson(document: LangiumDocument<Floorplan>): JsonGeneratorResult {
   const floorplan = document.parseResult.value;
   const result = convertFloorplanToJson(floorplan);
-  
+
   // Convert ConversionError to GeneratorError
   const errors: GeneratorError[] = result.errors.map((e: ConversionError) => ({
     message: e.message,
     floor: e.floor,
     type: 'resolution' as const,
   }));
-  
+
   return {
     format: 'json',
     data: result.data,
@@ -212,7 +213,7 @@ function generateJson(
  */
 export function generateToSvg(
   document: LangiumDocument<Floorplan>,
-  options?: RenderOptions
+  options?: RenderOptions,
 ): SvgGeneratorResult {
   return generate(document, 'svg', options);
 }
@@ -221,9 +222,6 @@ export function generateToSvg(
  * Generate JSON for 3D viewing
  * Convenience wrapper around generate() for JSON generation
  */
-export function generateToJson(
-  document: LangiumDocument<Floorplan>
-): JsonGeneratorResult {
+export function generateToJson(document: LangiumDocument<Floorplan>): JsonGeneratorResult {
   return generate(document, 'json');
 }
-

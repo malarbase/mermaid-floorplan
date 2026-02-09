@@ -1,12 +1,12 @@
-import { A } from "@solidjs/router";
-import { Show, createMemo, Component } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import { api } from "../../convex/_generated/api";
-import { useSession } from "~/lib/auth-client";
-import { LogoutButton } from "./LogoutButton";
+import { A } from '@solidjs/router';
+import { useQuery } from 'convex-solidjs';
+import { type Component, createMemo, Show } from 'solid-js';
+import { useSession } from '~/lib/auth-client';
+import { api } from '../../convex/_generated/api';
+import { LogoutButton } from './LogoutButton';
 
 export interface UserMenuProps {
-  size?: "sm" | "md";
+  size?: 'sm' | 'md';
 }
 
 export const UserMenu: Component<UserMenuProps> = (props) => {
@@ -15,25 +15,23 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
   const session = createMemo(() => sessionSignal());
   const user = createMemo(() => session()?.data?.user);
   const isLoading = createMemo(() => session()?.isPending ?? true);
-  
+
   // Query current user from Convex for authoritative username
   const currentUserQuery = useQuery(api.users.getCurrentUser, {});
-  
+
   // Use Convex data as source of truth, fallback to session
   const username = createMemo(() => {
     const convexUser = currentUserQuery.data() as { username?: string } | undefined;
-    return convexUser?.username ?? user()?.username ?? user()?.name ?? "";
+    return convexUser?.username ?? user()?.username ?? user()?.name ?? '';
   });
 
-  const avatarSize = () => (props.size === "sm" ? "w-8" : "w-10");
-  const avatarSizeClass = () => (props.size === "sm" ? "w-8 h-8" : "w-10 h-10");
+  const avatarSize = () => (props.size === 'sm' ? 'w-8' : 'w-10');
+  const avatarSizeClass = () => (props.size === 'sm' ? 'w-8 h-8' : 'w-10 h-10');
 
   return (
     <Show
       when={!isLoading()}
-      fallback={
-        <div class={`${avatarSizeClass()} rounded-full bg-base-200 animate-pulse`} />
-      }
+      fallback={<div class={`${avatarSizeClass()} rounded-full bg-base-200 animate-pulse`} />}
     >
       <Show
         when={user()}
@@ -55,22 +53,19 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
                 when={user()?.image}
                 fallback={
                   <div class="bg-neutral text-neutral-content w-full h-full flex items-center justify-center text-lg font-semibold">
-                    {user()?.name?.charAt(0).toUpperCase() ?? "?"}
+                    {user()?.name?.charAt(0).toUpperCase() ?? '?'}
                   </div>
                 }
               >
                 <img
                   alt={`${user()?.name}'s avatar`}
-                  src={user()?.image ?? ""}
+                  src={user()?.image ?? ''}
                   class="w-full h-full object-cover"
                 />
               </Show>
             </div>
           </div>
-          <ul
-            tabIndex={0}
-            class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-xl bg-base-100 rounded-box w-52 border border-base-content/15 ring-1 ring-base-content/10"
-          >
+          <ul class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-xl bg-base-100 rounded-box w-52 border border-base-content/15 ring-1 ring-base-content/10">
             <li class="menu-title px-2 py-1">
               <span class="text-base-content font-medium">{user()?.name}</span>
               <Show when={user()?.email}>
@@ -109,7 +104,12 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
             <li>
               <A href="/new" class="flex items-center gap-2">
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 4v16m8-8H4"
+                  />
                 </svg>
                 New Project
               </A>

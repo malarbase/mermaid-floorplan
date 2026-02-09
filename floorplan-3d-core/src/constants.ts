@@ -21,7 +21,7 @@ export const UNIT_TO_METERS: Record<LengthUnit, number> = {
   m: 1.0,
   ft: 0.3048,
   cm: 0.01,
-  'in': 0.0254,
+  in: 0.0254,
   mm: 0.001,
 } as const;
 
@@ -32,7 +32,7 @@ export const METERS_TO_UNIT: Record<LengthUnit, number> = {
   m: 1.0,
   ft: 3.28084,
   cm: 100.0,
-  'in': 39.3701,
+  in: 39.3701,
   mm: 1000.0,
 } as const;
 
@@ -44,7 +44,7 @@ export const UNIT_SYSTEM: Record<LengthUnit, 'metric' | 'imperial'> = {
   cm: 'metric',
   mm: 'metric',
   ft: 'imperial',
-  'in': 'imperial',
+  in: 'imperial',
 } as const;
 
 /**
@@ -141,10 +141,10 @@ export const COLORS_DARK = {
  * Classic architectural blueprint: deep blue background with light lines
  */
 export const COLORS_BLUEPRINT = {
-  FLOOR: 0x1e3a5f,      // Darker blue for floor
-  WALL: 0x87ceeb,       // Light sky blue for walls (like blueprint lines)
-  WINDOW: 0xadd8e6,     // Light blue for windows
-  DOOR: 0xb8d4e8,       // Pale blue for doors
+  FLOOR: 0x1e3a5f, // Darker blue for floor
+  WALL: 0x87ceeb, // Light sky blue for walls (like blueprint lines)
+  WINDOW: 0xadd8e6, // Light blue for windows
+  DOOR: 0xb8d4e8, // Pale blue for doors
   BACKGROUND: 0x0d2137, // Deep blueprint blue
 } as const;
 
@@ -240,4 +240,3 @@ export const MATERIAL_PROPERTIES = {
     opacity: 0.3,
   },
 } as const;
-

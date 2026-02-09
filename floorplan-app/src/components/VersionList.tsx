@@ -1,13 +1,13 @@
-import { createMemo, Show, For } from "solid-js";
-import { A } from "@solidjs/router";
-import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import { A } from '@solidjs/router';
+import type { FunctionReference } from 'convex/server';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, For, Show } from 'solid-js';
 
 // Type-safe API reference builder for when generated files don't exist yet
 // This will be replaced with proper imports once `npx convex dev` generates the API
 const api = {
   projects: {
-    listVersions: "projects:listVersions" as unknown as FunctionReference<"query">,
+    listVersions: 'projects:listVersions' as unknown as FunctionReference<'query'>,
   },
 };
 
@@ -75,9 +75,9 @@ export function VersionList(props: VersionListProps) {
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (days === 0) {
-      return "Today";
+      return 'Today';
     } else if (days === 1) {
-      return "Yesterday";
+      return 'Yesterday';
     } else if (days < 7) {
       return `${days} days ago`;
     } else {
@@ -114,7 +114,7 @@ export function VersionList(props: VersionListProps) {
               d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span>Failed to load versions: {error()?.message ?? "Unknown error"}</span>
+          <span>Failed to load versions: {error()?.message ?? 'Unknown error'}</span>
         </div>
       </Show>
 
@@ -138,12 +138,7 @@ export function VersionList(props: VersionListProps) {
           class="btn btn-sm btn-outline btn-primary w-full mt-2"
           onClick={() => props.onCreateNew?.()}
         >
-          <svg
-            class="w-4 h-4 mr-1"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -165,7 +160,7 @@ export function VersionList(props: VersionListProps) {
           {(version) => (
             <div
               class={`card bg-base-100 shadow-sm hover:shadow transition-shadow cursor-pointer ${
-                isActive(version) ? "ring-2 ring-primary" : ""
+                isActive(version) ? 'ring-2 ring-primary' : ''
               }`}
               onClick={() => props.onVersionSelect?.(version)}
             >
@@ -202,14 +197,10 @@ export function VersionList(props: VersionListProps) {
                       <span class="badge badge-sm badge-success">current</span>
                     </Show>
                   </div>
-                  <span class="text-xs text-base-content/50">
-                    {formatDate(version.updatedAt)}
-                  </span>
+                  <span class="text-xs text-base-content/50">{formatDate(version.updatedAt)}</span>
                 </div>
                 <Show when={version.description}>
-                  <p class="text-sm text-base-content/70 mt-1">
-                    {version.description}
-                  </p>
+                  <p class="text-sm text-base-content/70 mt-1">{version.description}</p>
                 </Show>
               </div>
             </div>
@@ -228,9 +219,7 @@ export function VersionList(props: VersionListProps) {
             <li>
               <A
                 href={`/u/${props.username}/${props.projectSlug}/v/${version.name}`}
-                class={`flex items-center justify-between ${
-                  isActive(version) ? "active" : ""
-                }`}
+                class={`flex items-center justify-between ${isActive(version) ? 'active' : ''}`}
                 onClick={(e) => {
                   if (props.onVersionSelect) {
                     e.preventDefault();
@@ -239,12 +228,7 @@ export function VersionList(props: VersionListProps) {
                 }}
               >
                 <span class="flex items-center gap-2">
-                  <svg
-                    class="w-4 h-4"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"

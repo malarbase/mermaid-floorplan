@@ -1,45 +1,45 @@
-import { createMemo, Show } from "solid-js";
-import { useNavigate } from "@solidjs/router";
-import { useSession } from "~/lib/auth-client";
-import { FloorplanEditor } from "./FloorplanEditor";
-import { ForkButton } from "./ForkButton";
+import { useNavigate } from '@solidjs/router';
+import { createMemo, Show } from 'solid-js';
+import { useSession } from '~/lib/auth-client';
+import { FloorplanEditor } from './FloorplanEditor';
+import { ForkButton } from './ForkButton';
 
 export interface AuthGatedEditorPanelProps {
   /**
    * Initial DSL content to render
    */
   initialContent: string;
-  
+
   /**
    * The project ID (required for forking)
    */
   projectId: string;
-  
+
   /**
    * The project slug (required for forking)
    */
   projectSlug: string;
-  
+
   /**
    * Project display name (required for forking)
    */
   projectName: string;
-  
+
   /**
    * Owner username (required for forking)
    */
   ownerUsername: string;
-  
+
   /**
    * Optional version name
    */
   versionName?: string;
-  
+
   /**
    * Theme (light or dark)
    */
-  theme?: "light" | "dark";
-  
+  theme?: 'light' | 'dark';
+
   /**
    * Called when content is modified (even if not saved)
    */
@@ -48,7 +48,7 @@ export interface AuthGatedEditorPanelProps {
 
 /**
  * An editor panel that gates editing access based on authentication.
- * 
+ *
  * - Anonymous users: See read-only editor with "Sign in to fork" overlay
  * - Authenticated users: See interactive editor (scratchpad mode) with Fork button
  */
@@ -58,7 +58,7 @@ export function AuthGatedEditorPanel(props: AuthGatedEditorPanelProps) {
   const isLoggedIn = createMemo(() => !!session().data?.user);
 
   const handleLogin = () => {
-    const returnUrl = encodeURIComponent(window.location.pathname + "?fork=true");
+    const returnUrl = encodeURIComponent(`${window.location.pathname}?fork=true`);
     navigate(`/login?returnUrl=${returnUrl}`);
   };
 
@@ -100,8 +100,19 @@ export function AuthGatedEditorPanel(props: AuthGatedEditorPanelProps) {
             <div class="card bg-base-100/95 shadow-2xl border border-base-300 max-w-md mx-4">
               <div class="card-body items-center text-center p-8">
                 <div class="w-12 h-12 bg-primary/10 text-primary rounded-full flex items-center justify-center mb-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="h-6 w-6"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                    />
                   </svg>
                 </div>
                 <h3 class="card-title text-xl mb-1">Sign in to Edit</h3>

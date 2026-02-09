@@ -1,7 +1,7 @@
-import { createSignal, createMemo, Show, For, createEffect, type Accessor } from "solid-js";
-import { useQuery, useMutation } from "convex-solidjs";
-import { api } from "../../convex/_generated/api";
-import { getMockSession, setMockSession } from "~/lib/mock-auth";
+import { useMutation, useQuery } from 'convex-solidjs';
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
+import { getMockSession, setMockSession } from '~/lib/mock-auth';
+import { api } from '../../convex/_generated/api';
 
 interface UsernameSelectionModalProps {
   isOpen: boolean;
@@ -12,39 +12,39 @@ interface UsernameSelectionModalProps {
 /**
  * Modal for selecting/setting a username.
  * Used for first-login username selection or changing username.
- * 
+ *
  * For first login, the modal cannot be dismissed without selecting a username.
  * For username changes, onClose is called to dismiss the modal.
  */
 export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
-  const [username, setUsername] = createSignal("");
-  const [debouncedUsername, setDebouncedUsername] = createSignal(""); // For query
-  const [error, setError] = createSignal("");
+  const [username, setUsername] = createSignal('');
+  const [debouncedUsername, setDebouncedUsername] = createSignal(''); // For query
+  const [error, setError] = createSignal('');
   const [isChecking, setIsChecking] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   // Get suggested usernames using standard Convex hook
   const suggestionsQuery = useQuery(api.users.suggestUsername, {});
-  
+
   // Check if username is available (uses debounced username to avoid excessive queries)
   const availabilityQuery = useQuery(
     api.users.isUsernameAvailable,
     () => ({ username: debouncedUsername() }),
-    () => ({ enabled: debouncedUsername().length >= 3 })
+    () => ({ enabled: debouncedUsername().length >= 3 }),
   );
-  
+
   // Mutation to set username using standard Convex hook
   const setUsernameMutation = useMutation(api.users.setUsername);
 
   // Debounce username availability check
   let debounceTimeout: ReturnType<typeof setTimeout>;
-  
+
   const handleUsernameChange = (value: string) => {
-    const normalized = value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const normalized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     setUsername(normalized);
-    setError("");
+    setError('');
     setIsChecking(true);
-    
+
     // Debounce the query - only update debouncedUsername after user stops typing
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(() => {
@@ -68,41 +68,41 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
 
   const availabilityMessage = createMemo(() => {
     const avail = availability();
-    if (!avail) return "";
-    
+    if (!avail) return '';
+
     if (avail.available) {
-      if (avail.reason === "reclaim") {
-        return "You can reclaim this username (you previously owned it)";
+      if (avail.reason === 'reclaim') {
+        return 'You can reclaim this username (you previously owned it)';
       }
-      return "Username is available!";
+      return 'Username is available!';
     } else {
       switch (avail.reason) {
-        case "invalid_format":
-          return "Username must be 3-30 characters, alphanumeric with underscores";
-        case "taken":
-          return "This username is already taken";
-        case "grace_period":
-          return "This username was recently released and is in a 90-day grace period";
+        case 'invalid_format':
+          return 'Username must be 3-30 characters, alphanumeric with underscores';
+        case 'taken':
+          return 'This username is already taken';
+        case 'grace_period':
+          return 'This username was recently released and is in a 90-day grace period';
         default:
-          return "Username is not available";
+          return 'Username is not available';
       }
     }
   });
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    
+
     if (!isAvailable()) {
-      setError("Please choose an available username");
+      setError('Please choose an available username');
       return;
     }
 
     setIsSubmitting(true);
-    setError("");
+    setError('');
 
     try {
       await setUsernameMutation.mutate({ username: username() });
-      
+
       // Update mock session in dev mode so the UI reflects the new username immediately
       if (import.meta.env.DEV) {
         const currentMockSession = getMockSession();
@@ -110,10 +110,10 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
           setMockSession({ ...currentMockSession, username: username() });
         }
       }
-      
+
       props.onClose?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to set username");
+      setError(err instanceof Error ? err.message : 'Failed to set username');
     } finally {
       setIsSubmitting(false);
     }
@@ -122,7 +122,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
   const selectSuggestion = (suggestion: string) => {
     setUsername(suggestion);
     setDebouncedUsername(suggestion); // Immediate check for clicked suggestions
-    setError("");
+    setError('');
   };
 
   // Get suggestions data
@@ -145,13 +145,13 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
       <div class="modal modal-open">
         <div class="modal-box">
           <h3 class="font-bold text-lg">
-            {props.isFirstLogin ? "Welcome! Choose your username" : "Change username"}
+            {props.isFirstLogin ? 'Welcome! Choose your username' : 'Change username'}
           </h3>
-          
+
           <p class="py-4 text-base-content/70">
             {props.isFirstLogin
-              ? "Your username will be used in your profile URL and to identify you across the platform."
-              : "Change your username. Note: Your old username will be reserved for 90 days."}
+              ? 'Your username will be used in your profile URL and to identify you across the platform.'
+              : 'Change your username. Note: Your old username will be reserved for 90 days.'}
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -159,9 +159,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
             <div class="form-control w-full">
               <label class="label">
                 <span class="label-text">Username</span>
-                <span class="label-text-alt text-base-content/50">
-                  3-30 characters
-                </span>
+                <span class="label-text-alt text-base-content/50">3-30 characters</span>
               </label>
               <div class="join w-full">
                 <span class="join-item btn btn-disabled no-animation">@</span>
@@ -169,11 +167,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
                   type="text"
                   placeholder="yourname"
                   class={`input input-bordered join-item w-full ${
-                    username().length >= 3
-                      ? isAvailable()
-                        ? "input-success"
-                        : "input-error"
-                      : ""
+                    username().length >= 3 ? (isAvailable() ? 'input-success' : 'input-error') : ''
                   }`}
                   value={username()}
                   onInput={(e) => handleUsernameChange(e.currentTarget.value)}
@@ -183,7 +177,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
                   required
                 />
               </div>
-              
+
               {/* Availability status */}
               <label class="label">
                 <Show when={isChecking() || availabilityQuery.isLoading()}>
@@ -192,8 +186,10 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
                     Checking availability...
                   </span>
                 </Show>
-                <Show when={!isChecking() && !availabilityQuery.isLoading() && username().length >= 3}>
-                  <span class={`label-text-alt ${isAvailable() ? "text-success" : "text-error"}`}>
+                <Show
+                  when={!isChecking() && !availabilityQuery.isLoading() && username().length >= 3}
+                >
+                  <span class={`label-text-alt ${isAvailable() ? 'text-success' : 'text-error'}`}>
                     {availabilityMessage()}
                   </span>
                 </Show>
@@ -209,7 +205,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
                     {(suggestion) => (
                       <button
                         type="button"
-                        class={`btn btn-sm ${username() === suggestion ? "btn-primary" : "btn-ghost"}`}
+                        class={`btn btn-sm ${username() === suggestion ? 'btn-primary' : 'btn-ghost'}`}
                         onClick={() => selectSuggestion(suggestion)}
                       >
                         @{suggestion}
@@ -224,7 +220,12 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
             <Show when={error()}>
               <div class="alert alert-error mt-4">
                 <svg class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 <span>{error()}</span>
               </div>
@@ -250,7 +251,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
                 <Show when={isSubmitting()}>
                   <span class="loading loading-spinner loading-sm"></span>
                 </Show>
-                {props.isFirstLogin ? "Get Started" : "Save Username"}
+                {props.isFirstLogin ? 'Get Started' : 'Save Username'}
               </button>
             </div>
           </form>
@@ -265,7 +266,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
             </div>
           </Show>
         </div>
-        
+
         {/* Modal backdrop - only clickable for non-first-login */}
         <Show when={!props.isFirstLogin}>
           <div class="modal-backdrop" onClick={() => props.onClose?.()}></div>
@@ -285,12 +286,12 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
 export function useUsernameSelectionModal() {
   const [isOpen, setIsOpen] = createSignal(false);
   const hasTempUsernameQuery = useQuery(api.users.hasTempUsername, {});
-  
+
   // Get the actual boolean value
   const hasTempUsername = createMemo(() => {
     return hasTempUsernameQuery.data() as boolean | undefined;
   });
-  
+
   // Show modal automatically for users with temp usernames
   createEffect(() => {
     const hasTemp = hasTempUsername();

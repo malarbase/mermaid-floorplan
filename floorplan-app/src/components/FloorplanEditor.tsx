@@ -1,22 +1,16 @@
-import {
-  createSignal,
-  createMemo,
-  createEffect,
-  onCleanup,
-  Show,
-} from "solid-js";
-import { useNavigate } from "@solidjs/router";
-import { clientOnly } from "@solidjs/start";
-import { useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import { useNavigate } from '@solidjs/router';
+import { clientOnly } from '@solidjs/start';
+import type { FunctionReference } from 'convex/server';
+import { useMutation } from 'convex-solidjs';
+import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js';
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanEmbed = clientOnly(() => import("~/components/FloorplanEmbed"));
+const FloorplanEmbed = clientOnly(() => import('~/components/FloorplanEmbed'));
 
 // Type-safe API reference builder for when generated files don't exist yet
 const api = {
   projects: {
-    save: "projects:save" as unknown as FunctionReference<"mutation">,
+    save: 'projects:save' as unknown as FunctionReference<'mutation'>,
   },
 };
 
@@ -47,7 +41,7 @@ export interface FloorplanEditorProps {
   /**
    * Theme (light or dark)
    */
-  theme?: "light" | "dark";
+  theme?: 'light' | 'dark';
 
   /**
    * Project display name (for header)
@@ -99,7 +93,7 @@ export interface FloorplanEditorProps {
  * />
  */
 export function FloorplanEditor(props: FloorplanEditorProps) {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const saveMutation = useMutation(api.projects.save);
 
   // State
@@ -109,20 +103,14 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
   const [showSaveSuccess, setShowSaveSuccess] = createSignal(false);
   const [lastSavedContent, setLastSavedContent] = createSignal(props.initialContent);
   const [showSaveModal, setShowSaveModal] = createSignal(false);
-  const [saveMessage, setSaveMessage] = createSignal("");
+  const [saveMessage, setSaveMessage] = createSignal('');
 
   // Derived state
-  const hasUnsavedChanges = createMemo(
-    () => currentContent() !== lastSavedContent()
-  );
+  const hasUnsavedChanges = createMemo(() => currentContent() !== lastSavedContent());
 
   const canSave = createMemo(
     () =>
-      props.editable &&
-      props.projectId &&
-      props.versionName &&
-      hasUnsavedChanges() &&
-      !isSaving()
+      props.editable && props.projectId && props.versionName && hasUnsavedChanges() && !isSaving(),
   );
 
   // Update initial content when props change
@@ -169,7 +157,7 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
     } finally {
       setIsSaving(false);
       setShowSaveModal(false);
-      setSaveMessage("");
+      setSaveMessage('');
     }
   };
 
@@ -185,7 +173,7 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
 
   // Keyboard shortcut handler (Ctrl+S / Cmd+S)
   const handleKeyDown = (e: KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
       if (canSave()) {
         quickSave();
@@ -196,9 +184,9 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
   // Register keyboard shortcut
   createEffect(() => {
     if (props.editable) {
-      document.addEventListener("keydown", handleKeyDown);
+      document.addEventListener('keydown', handleKeyDown);
       onCleanup(() => {
-        document.removeEventListener("keydown", handleKeyDown);
+        document.removeEventListener('keydown', handleKeyDown);
       });
     }
   });
@@ -208,11 +196,11 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
     if (hasUnsavedChanges()) {
       const handleBeforeUnload = (e: BeforeUnloadEvent) => {
         e.preventDefault();
-        e.returnValue = "";
+        e.returnValue = '';
       };
-      window.addEventListener("beforeunload", handleBeforeUnload);
+      window.addEventListener('beforeunload', handleBeforeUnload);
       onCleanup(() => {
-        window.removeEventListener("beforeunload", handleBeforeUnload);
+        window.removeEventListener('beforeunload', handleBeforeUnload);
       });
     }
   });
@@ -357,18 +345,14 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
         <div class="modal modal-open">
           <div class="modal-box">
             <h3 class="font-bold text-lg">Save Changes</h3>
-            <p class="py-2 text-base-content/70">
-              Add a description of your changes (optional).
-            </p>
+            <p class="py-2 text-base-content/70">Add a description of your changes (optional).</p>
 
             <div class="form-control">
               <textarea
                 class="textarea textarea-bordered"
                 placeholder="e.g., Added kitchen island, Resized living room..."
                 value={saveMessage()}
-                onInput={(e) =>
-                  setSaveMessage((e.target as HTMLTextAreaElement).value)
-                }
+                onInput={(e) => setSaveMessage((e.target as HTMLTextAreaElement).value)}
                 rows={3}
               />
             </div>
@@ -379,7 +363,7 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
                 class="btn btn-ghost"
                 onClick={() => {
                   setShowSaveModal(false);
-                  setSaveMessage("");
+                  setSaveMessage('');
                 }}
               >
                 Cancel
@@ -403,7 +387,7 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
             class="modal-backdrop"
             onClick={() => {
               setShowSaveModal(false);
-              setSaveMessage("");
+              setSaveMessage('');
             }}
           />
         </div>

@@ -1,4 +1,4 @@
-import { Component, ErrorBoundary, JSX } from "solid-js";
+import { type Component, ErrorBoundary, type JSX } from 'solid-js';
 
 interface ViewerErrorProps {
   error?: any;
@@ -11,7 +11,7 @@ export const ViewerErrorState: Component<ViewerErrorProps> = (props) => {
       <div class="card bg-error text-error-content max-w-md shadow-xl">
         <div class="card-body">
           <h2 class="card-title">Viewer Error</h2>
-          <p>{props.error?.message || "An unexpected error occurred in the viewer."}</p>
+          <p>{props.error?.message || 'An unexpected error occurred in the viewer.'}</p>
           <div class="card-actions justify-end">
             <button
               class="btn btn-sm btn-ghost"
@@ -28,9 +28,7 @@ export const ViewerErrorState: Component<ViewerErrorProps> = (props) => {
 
 export const ViewerErrorBoundary: Component<{ children: JSX.Element }> = (props) => {
   return (
-    <ErrorBoundary
-      fallback={(err, reset) => <ViewerErrorState error={err} reset={reset} />}
-    >
+    <ErrorBoundary fallback={(err, reset) => <ViewerErrorState error={err} reset={reset} />}>
       {props.children}
     </ErrorBoundary>
   );

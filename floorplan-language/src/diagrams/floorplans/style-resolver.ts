@@ -3,7 +3,7 @@
  * Provides lookup and fallback logic for room styles
  */
 
-import type { Floorplan, StyleBlock, Room } from "../../generated/ast.js";
+import type { Floorplan, Room, StyleBlock } from '../../generated/ast.js';
 
 /**
  * Resolved style properties for rendering
@@ -21,10 +21,10 @@ export interface ResolvedStyle {
  * Default style when no style is defined
  */
 export const DEFAULT_STYLE: ResolvedStyle = {
-  floor_color: "#E0E0E0",
-  wall_color: "#000000", // Black for walls in SVG
+  floor_color: '#E0E0E0',
+  wall_color: '#000000', // Black for walls in SVG
   roughness: 0.8,
-  metalness: 0.1
+  metalness: 0.1,
 };
 
 /**
@@ -42,11 +42,11 @@ export interface StyleContext {
  */
 export function buildStyleContext(floorplan: Floorplan): StyleContext {
   const styles = new Map<string, StyleBlock>();
-  
+
   for (const style of floorplan.styles) {
     styles.set(style.name, style);
   }
-  
+
   // Get default_style from config
   let defaultStyleName: string | undefined;
   if (floorplan.config) {
@@ -57,7 +57,7 @@ export function buildStyleContext(floorplan: Floorplan): StyleContext {
       }
     }
   }
-  
+
   return { styles, defaultStyleName };
 }
 
@@ -67,10 +67,7 @@ export function buildStyleContext(floorplan: Floorplan): StyleContext {
  * 2. Default style from config
  * 3. Built-in defaults
  */
-export function resolveRoomStyle(
-  room: Room,
-  context: StyleContext
-): ResolvedStyle {
+export function resolveRoomStyle(room: Room, context: StyleContext): ResolvedStyle {
   // Try room's explicit style first
   if (room.styleRef) {
     const style = context.styles.get(room.styleRef);
@@ -78,7 +75,7 @@ export function resolveRoomStyle(
       return styleBlockToResolved(style);
     }
   }
-  
+
   // Try default style
   if (context.defaultStyleName) {
     const style = context.styles.get(context.defaultStyleName);
@@ -86,7 +83,7 @@ export function resolveRoomStyle(
       return styleBlockToResolved(style);
     }
   }
-  
+
   // Return defaults
   return { ...DEFAULT_STYLE };
 }
@@ -96,7 +93,7 @@ export function resolveRoomStyle(
  */
 function styleBlockToResolved(style: StyleBlock): ResolvedStyle {
   const resolved: ResolvedStyle = { ...DEFAULT_STYLE };
-  
+
   for (const prop of style.properties) {
     switch (prop.name) {
       case 'floor_color':
@@ -131,7 +128,7 @@ function styleBlockToResolved(style: StyleBlock): ResolvedStyle {
         break;
     }
   }
-  
+
   return resolved;
 }
 
@@ -140,7 +137,7 @@ function styleBlockToResolved(style: StyleBlock): ResolvedStyle {
  */
 export function getStyleByName(
   styleName: string,
-  context: StyleContext
+  context: StyleContext,
 ): ResolvedStyle | undefined {
   const style = context.styles.get(styleName);
   if (style) {
@@ -148,4 +145,3 @@ export function getStyleByName(
   }
   return undefined;
 }
-

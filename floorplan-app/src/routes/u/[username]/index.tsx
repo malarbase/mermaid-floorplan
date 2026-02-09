@@ -1,10 +1,10 @@
-import { Title } from "@solidjs/meta";
-import { useParams, A } from "@solidjs/router";
-import { Show, For, createMemo, Switch, Match } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import { api } from "../../../../convex/_generated/api";
-import { Header } from "~/components/Header";
-import { useSession } from "~/lib/auth-client";
+import { Title } from '@solidjs/meta';
+import { A, useParams } from '@solidjs/router';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, For, Match, Show, Switch } from 'solid-js';
+import { Header } from '~/components/Header';
+import { useSession } from '~/lib/auth-client';
+import { api } from '../../../../convex/_generated/api';
 
 /**
  * User Renamed component - shown when visiting an old username URL.
@@ -22,60 +22,60 @@ function UserRenamed(props: {
 
       <div class="flex items-center justify-center p-8 min-h-[calc(100vh-4rem)]">
         <div class="card bg-base-100 shadow-xl max-w-md w-full">
-        <div class="card-body text-center">
-          <div class="flex justify-center mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-16 w-16 text-info"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
+          <div class="card-body text-center">
+            <div class="flex justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-16 w-16 text-info"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
 
-          <h1 class="text-2xl font-bold mb-2">Username Changed</h1>
+            <h1 class="text-2xl font-bold mb-2">Username Changed</h1>
 
-          <p class="text-base-content/70 mb-4">
-            The user <span class="font-mono font-semibold">@{props.oldUsername}</span> has
-            changed their username.
-          </p>
+            <p class="text-base-content/70 mb-4">
+              The user <span class="font-mono font-semibold">@{props.oldUsername}</span> has changed
+              their username.
+            </p>
 
-          <div class="divider"></div>
+            <div class="divider"></div>
 
-          <div class="flex items-center justify-center gap-3 mb-4">
-            <div class="avatar placeholder">
-              <div class="bg-neutral text-neutral-content rounded-full w-12">
-                <span class="text-lg">
-                  {(props.displayName || props.newUsername)?.charAt(0).toUpperCase()}
-                </span>
+            <div class="flex items-center justify-center gap-3 mb-4">
+              <div class="avatar placeholder">
+                <div class="bg-neutral text-neutral-content rounded-full w-12">
+                  <span class="text-lg">
+                    {(props.displayName || props.newUsername)?.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              <div class="text-left">
+                <Show when={props.displayName}>
+                  <p class="font-semibold">{props.displayName}</p>
+                </Show>
+                <p class="font-mono text-base-content/70">@{props.newUsername}</p>
               </div>
             </div>
-            <div class="text-left">
-              <Show when={props.displayName}>
-                <p class="font-semibold">{props.displayName}</p>
-              </Show>
-              <p class="font-mono text-base-content/70">@{props.newUsername}</p>
+
+            <A href={`/u/${props.newUsername}`} class="btn btn-primary">
+              Go to New Profile
+            </A>
+
+            <div class="mt-4">
+              <A href="/" class="link link-hover text-sm text-base-content/50">
+                Back to Home
+              </A>
             </div>
           </div>
-
-          <A href={`/u/${props.newUsername}`} class="btn btn-primary">
-            Go to New Profile
-          </A>
-
-          <div class="mt-4">
-            <A href="/" class="link link-hover text-sm text-base-content/50">
-              Back to Home
-            </A>
-          </div>
         </div>
-      </div>
       </div>
     </main>
   );
@@ -92,36 +92,36 @@ function UserNotFound(props: { username: string }) {
 
       <div class="flex items-center justify-center p-8 min-h-[calc(100vh-4rem)]">
         <div class="card bg-base-100 shadow-xl max-w-md w-full">
-        <div class="card-body text-center">
-          <div class="flex justify-center mb-4">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              class="h-16 w-16 text-warning"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
+          <div class="card-body text-center">
+            <div class="flex justify-center mb-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-16 w-16 text-warning"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+            </div>
+
+            <h1 class="text-2xl font-bold mb-2">User Not Found</h1>
+
+            <p class="text-base-content/70 mb-4">
+              The user <span class="font-mono font-semibold">@{props.username}</span> does not
+              exist.
+            </p>
+
+            <A href="/" class="btn btn-primary">
+              Back to Home
+            </A>
           </div>
-
-          <h1 class="text-2xl font-bold mb-2">User Not Found</h1>
-
-          <p class="text-base-content/70 mb-4">
-            The user <span class="font-mono font-semibold">@{props.username}</span> does not
-            exist.
-          </p>
-
-          <A href="/" class="btn btn-primary">
-            Back to Home
-          </A>
         </div>
-      </div>
       </div>
     </main>
   );
@@ -146,26 +146,23 @@ export default function UserProfile() {
     return cur && (cur.username ?? cur.name) === username();
   });
 
-  const userQuery = useQuery(
-    api.users.getByUsername,
-    () => ({ username: username() as string })
-  );
+  const userQuery = useQuery(api.users.getByUsername, () => ({ username: username() as string }));
 
-  const projectsQuery = useQuery(
-    api.projects.listPublicByUsername,
-    () => ({ username: username() as string })
-  );
+  const projectsQuery = useQuery(api.projects.listPublicByUsername, () => ({
+    username: username() as string,
+  }));
 
   const isLoading = () => userQuery.isLoading() || projectsQuery.isLoading();
   const user = () => userQuery.data();
-  
-  const profileAvatarUrl = createMemo(() => 
-    user()?.avatarUrl ?? (isOwnProfile() ? currentUser()?.image : undefined)
+
+  const profileAvatarUrl = createMemo(
+    () => user()?.avatarUrl ?? (isOwnProfile() ? currentUser()?.image : undefined),
   );
   const projects = () => projectsQuery.data() ?? [];
-  
+
   // TODO: Add previousOwner query when username history is implemented
-  const previousOwner = () => null as { oldUsername: string; newUsername: string; displayName?: string } | null;
+  const previousOwner = () =>
+    null as { oldUsername: string; newUsername: string; displayName?: string } | null;
 
   return (
     <Switch
@@ -206,17 +203,12 @@ export default function UserProfile() {
                 >
                   <div class="avatar">
                     <div class="w-16 rounded-full">
-                      <img
-                        src={profileAvatarUrl()!}
-                        alt={userData().displayName || username()}
-                      />
+                      <img src={profileAvatarUrl()!} alt={userData().displayName || username()} />
                     </div>
                   </div>
                 </Show>
                 <div>
-                  <h1 class="text-2xl font-bold">
-                    {userData().displayName || username()}
-                  </h1>
+                  <h1 class="text-2xl font-bold">{userData().displayName || username()}</h1>
                   <p class="text-base-content/70 font-mono">@{username()}</p>
                 </div>
               </div>
@@ -272,7 +264,7 @@ export default function UserProfile() {
 
       {/* User not found and wasn't renamed */}
       <Match when={user() === null && previousOwner() === null}>
-        <UserNotFound username={username() || ""} />
+        <UserNotFound username={username() || ''} />
       </Match>
     </Switch>
   );

@@ -1,6 +1,6 @@
-import { createSignal, Show, createMemo } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import { api } from "../../convex/_generated/api";
+import { useQuery } from 'convex-solidjs';
+import { createMemo, createSignal, Show } from 'solid-js';
+import { api } from '../../convex/_generated/api';
 
 interface TempUsernameNudgeProps {
   onSetUsername: () => void;
@@ -12,10 +12,10 @@ interface TempUsernameNudgeProps {
  */
 export function TempUsernameNudge(props: TempUsernameNudgeProps) {
   const [isDismissed, setIsDismissed] = createSignal(false);
-  
+
   // Query to check if user has a temp username using standard Convex hook
   const hasTempUsernameQuery = useQuery(api.users.hasTempUsername, {});
-  
+
   const hasTempUsername = createMemo(() => {
     return hasTempUsernameQuery.data() as boolean | undefined;
   });
@@ -48,16 +48,10 @@ export function TempUsernameNudge(props: TempUsernameNudgeProps) {
           </div>
         </div>
         <div class="flex gap-2">
-          <button
-            class="btn btn-sm btn-ghost"
-            onClick={() => setIsDismissed(true)}
-          >
+          <button class="btn btn-sm btn-ghost" onClick={() => setIsDismissed(true)}>
             Later
           </button>
-          <button
-            class="btn btn-sm btn-primary"
-            onClick={() => props.onSetUsername()}
-          >
+          <button class="btn btn-sm btn-primary" onClick={() => props.onSetUsername()}>
             Set Username
           </button>
         </div>

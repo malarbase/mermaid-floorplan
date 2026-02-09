@@ -1,6 +1,6 @@
 /**
  * Command Utilities
- * 
+ *
  * Utility functions for creating standard file and view commands.
  * These are used by both FloorplanUI and EditorUI.
  */

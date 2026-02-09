@@ -1,85 +1,84 @@
-import { adminAuditLog } from "./lib/auditLog";
-import { v } from "convex/values";
-import { mutation as rawMutation, query } from "./_generated/server";
-import { requireAdmin, requireSuperAdmin, isSuperAdmin } from "./lib/auth";
-import { customMutation, customCtx } from "convex-helpers/server/customFunctions";
-import { triggers } from "./lib/auditLog";
+import { v } from 'convex/values';
+import { customCtx, customMutation } from 'convex-helpers/server/customFunctions';
+import { query, mutation as rawMutation } from './_generated/server';
+import { adminAuditLog, triggers } from './lib/auditLog';
+import { isSuperAdmin, requireAdmin, requireSuperAdmin } from './lib/auth';
 
 const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
 
 export const setFeatured = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     isFeatured: v.boolean(),
   },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    
+
     const project = await ctx.db.get(args.projectId);
     if (!project) {
-      throw new Error("Project not found");
+      throw new Error('Project not found');
     }
-    
+
     await ctx.db.patch(args.projectId, {
       isFeatured: args.isFeatured,
     });
-    
+
     return { success: true };
   },
 });
 
 export const promoteToAdmin = mutation({
   args: {
-    userId: v.id("users"),
+    userId: v.id('users'),
   },
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx);
-    
+
     const targetUser = await ctx.db.get(args.userId);
     if (!targetUser) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
-    
+
     if (targetUser.isAdmin) {
-      throw new Error("User is already an admin");
+      throw new Error('User is already an admin');
     }
-    
+
     await ctx.db.patch(args.userId, {
       isAdmin: true,
     });
-    
+
     return { success: true };
   },
 });
 
 export const demoteFromAdmin = mutation({
   args: {
-    userId: v.id("users"),
+    userId: v.id('users'),
   },
   handler: async (ctx, args) => {
     const superAdmin = await requireSuperAdmin(ctx);
-    
+
     const targetUser = await ctx.db.get(args.userId);
     if (!targetUser) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
-    
+
     if (!targetUser.isAdmin) {
-      throw new Error("User is not an admin");
+      throw new Error('User is not an admin');
     }
-    
+
     if (targetUser._id === superAdmin._id) {
-      throw new Error("Cannot demote yourself");
+      throw new Error('Cannot demote yourself');
     }
-    
+
     if (isSuperAdmin(targetUser)) {
-      throw new Error("Cannot demote super admin");
+      throw new Error('Cannot demote super admin');
     }
-    
+
     await ctx.db.patch(args.userId, {
       isAdmin: false,
     });
-    
+
     return { success: true };
   },
 });
@@ -99,7 +98,7 @@ export const listAllProjects = query({
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
 
-    let projects = await ctx.db.query("projects").collect();
+    let projects = await ctx.db.query('projects').collect();
 
     // Apply search filter
     if (args.search) {
@@ -107,7 +106,7 @@ export const listAllProjects = query({
       projects = projects.filter(
         (p) =>
           p.displayName.toLowerCase().includes(searchLower) ||
-          p.slug.toLowerCase().includes(searchLower)
+          p.slug.toLowerCase().includes(searchLower),
       );
     }
 
@@ -123,7 +122,7 @@ export const listAllProjects = query({
           _id: p._id,
           displayName: p.displayName,
           slug: p.slug,
-          ownerUsername: owner?.username ?? "Unknown",
+          ownerUsername: owner?.username ?? 'Unknown',
           viewCount: p.viewCount ?? 0,
           forkCount: p.forkCount ?? 0,
           isFeatured: p.isFeatured ?? false,
@@ -131,7 +130,7 @@ export const listAllProjects = query({
           createdAt: p.createdAt,
           updatedAt: p.updatedAt,
         };
-      })
+      }),
     );
 
     return enriched;
@@ -150,7 +149,7 @@ export const listAllUsers = query({
     const currentUser = await requireAdmin(ctx);
     const isSuper = isSuperAdmin(currentUser);
 
-    let users = await ctx.db.query("users").collect();
+    let users = await ctx.db.query('users').collect();
 
     // Apply search filter
     if (args.search) {
@@ -158,7 +157,7 @@ export const listAllUsers = query({
       users = users.filter(
         (u) =>
           u.username.toLowerCase().includes(searchLower) ||
-          (u.displayName?.toLowerCase().includes(searchLower) ?? false)
+          (u.displayName?.toLowerCase().includes(searchLower) ?? false),
       );
     }
 
@@ -202,8 +201,8 @@ export const getStats = query({
   handler: async (ctx) => {
     await requireAdmin(ctx);
 
-    const projects = await ctx.db.query("projects").collect();
-    const users = await ctx.db.query("users").collect();
+    const projects = await ctx.db.query('projects').collect();
+    const users = await ctx.db.query('users').collect();
 
     return {
       totalProjects: projects.length,
@@ -219,22 +218,22 @@ export const getStats = query({
  */
 export const deleteProject = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
   },
   handler: async (ctx, args) => {
     await requireSuperAdmin(ctx);
 
     const project = await ctx.db.get(args.projectId);
     if (!project) {
-      throw new Error("Project not found");
+      throw new Error('Project not found');
     }
 
     // CASCADE: Delete related data
-    
+
     // 1. Delete versions
     const versions = await ctx.db
-      .query("versions")
-      .withIndex("by_project_name", (q) => q.eq("projectId", args.projectId))
+      .query('versions')
+      .withIndex('by_project_name', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const version of versions) {
       await ctx.db.delete(version._id);
@@ -242,8 +241,8 @@ export const deleteProject = mutation({
 
     // 2. Delete snapshots
     const snapshots = await ctx.db
-      .query("snapshots")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .query('snapshots')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const snapshot of snapshots) {
       await ctx.db.delete(snapshot._id);
@@ -251,8 +250,8 @@ export const deleteProject = mutation({
 
     // 3. Delete project access
     const accessEntries = await ctx.db
-      .query("projectAccess")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .query('projectAccess')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const access of accessEntries) {
       await ctx.db.delete(access._id);
@@ -260,8 +259,8 @@ export const deleteProject = mutation({
 
     // 4. Delete share links
     const shareLinks = await ctx.db
-      .query("shareLinks")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .query('shareLinks')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const link of shareLinks) {
       await ctx.db.delete(link._id);
@@ -269,8 +268,8 @@ export const deleteProject = mutation({
 
     // 5. Delete project topics
     const projectTopics = await ctx.db
-      .query("projectTopics")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .query('projectTopics')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const topic of projectTopics) {
       await ctx.db.delete(topic._id);
@@ -299,28 +298,28 @@ export const getAuditLog = query({
 
     const history = await adminAuditLog.listHistory(ctx, maxTs, {
       numItems: limit,
-      cursor: null
+      cursor: null,
     });
 
     return history.page.map((entry) => {
-      let action = "updated";
-      let target = "Unknown";
-      let details = "";
+      let action = 'updated';
+      let target = 'Unknown';
+      let details = '';
 
       if (entry.isDeleted) {
-        action = "deleted";
+        action = 'deleted';
       }
 
       if (entry.doc) {
         if ('displayName' in entry.doc) {
           target = `Project: ${entry.doc.displayName}`;
           if (entry.doc.isFeatured) {
-            details = "Featured status active";
+            details = 'Featured status active';
           }
         } else if ('username' in entry.doc) {
           target = `User: ${entry.doc.username}`;
           if (entry.doc.isAdmin) {
-            details = "Admin privileges active";
+            details = 'Admin privileges active';
           }
         }
       } else {
@@ -332,21 +331,21 @@ export const getAuditLog = query({
         action,
         actor: formatActor(entry.attribution),
         target,
-        details: details || "Property update",
+        details: details || 'Property update',
         rawAction: action,
-        table: entry.doc ? ('displayName' in entry.doc ? 'projects' : 'users') : 'unknown'
+        table: entry.doc ? ('displayName' in entry.doc ? 'projects' : 'users') : 'unknown',
       };
     });
   },
 });
 
 function formatActor(attribution: any): string {
-  if (!attribution) return "System";
+  if (!attribution) return 'System';
   if (typeof attribution === 'object') {
     if (attribution.name) return attribution.name;
     if (attribution.email) return attribution.email;
     if (attribution.tokenIdentifier) {
-        return attribution.tokenIdentifier.split('|').pop() || "Unknown";
+      return attribution.tokenIdentifier.split('|').pop() || 'Unknown';
     }
   }
   return String(attribution);
@@ -358,19 +357,19 @@ function formatActor(attribution: any): string {
  */
 export const startImpersonation = mutation({
   args: {
-    userId: v.id("users"),
+    userId: v.id('users'),
   },
   handler: async (ctx, args) => {
     const superAdmin = await requireSuperAdmin(ctx);
 
     const targetUser = await ctx.db.get(args.userId);
     if (!targetUser) {
-      throw new Error("User not found");
+      throw new Error('User not found');
     }
 
     // Cannot impersonate another super admin
     if (isSuperAdmin(targetUser)) {
-      throw new Error("Cannot impersonate super admin");
+      throw new Error('Cannot impersonate super admin');
     }
 
     // For MVP: Frontend-only impersonation

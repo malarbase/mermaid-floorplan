@@ -1,15 +1,15 @@
 /**
  * Layout Manager
- * 
+ *
  * Centralizes UI layout state management using CSS custom properties.
  * This provides a consistent way for all UI panels to respond to:
  * - Header bar visibility (auto-hide)
  * - Editor panel open/close state
  * - Bottom panel stacking (2D overlay, floor summary)
- * 
+ *
  * CSS custom properties are used instead of hard-coded pixel values,
  * allowing all panels to automatically adjust when layout state changes.
- * 
+ *
  * This approach is designed to work with the current vanilla TypeScript
  * architecture and transition smoothly to Solid.js reactive state in the future.
  */
@@ -63,7 +63,7 @@ export class LayoutManager {
    */
   private initializeCSSVariables(): void {
     const root = document.documentElement;
-    
+
     // Core measurements (constants)
     root.style.setProperty('--layout-header-height', `${this.headerHeight}px`);
     root.style.setProperty('--layout-editor-width-open', `${this.editorWidth}px`);
@@ -92,13 +92,10 @@ export class LayoutManager {
     root.style.setProperty('--layout-bottom-stack-offset', `${bottomStackOffset}px`);
 
     // Individual visibility flags (useful for conditional styling)
-    root.style.setProperty(
-      '--layout-overlay-2d-visible',
-      this.state.overlay2DVisible ? '1' : '0'
-    );
+    root.style.setProperty('--layout-overlay-2d-visible', this.state.overlay2DVisible ? '1' : '0');
     root.style.setProperty(
       '--layout-floor-summary-visible',
-      this.state.floorSummaryVisible ? '1' : '0'
+      this.state.floorSummaryVisible ? '1' : '0',
     );
 
     // Direct inline style updates for panels (bypasses CSS variable caching issues)
@@ -109,7 +106,11 @@ export class LayoutManager {
    * Directly update inline styles on panels for immediate response.
    * This ensures positioning works even if CSS variables aren't being read.
    */
-  private updatePanelPositions(headerOffset: number, editorWidth: number, bottomStackOffset: number): void {
+  private updatePanelPositions(
+    headerOffset: number,
+    editorWidth: number,
+    bottomStackOffset: number,
+  ): void {
     // Control panel - top-right corner
     const controlPanel = document.querySelector('.fp-control-panel') as HTMLElement | null;
     if (controlPanel) {
@@ -271,11 +272,17 @@ export class LayoutManager {
       document.body.classList.toggle('editor-open', updates.editorOpen);
       changed = true;
     }
-    if (updates.overlay2DVisible !== undefined && this.state.overlay2DVisible !== updates.overlay2DVisible) {
+    if (
+      updates.overlay2DVisible !== undefined &&
+      this.state.overlay2DVisible !== updates.overlay2DVisible
+    ) {
       this.state.overlay2DVisible = updates.overlay2DVisible;
       changed = true;
     }
-    if (updates.floorSummaryVisible !== undefined && this.state.floorSummaryVisible !== updates.floorSummaryVisible) {
+    if (
+      updates.floorSummaryVisible !== undefined &&
+      this.state.floorSummaryVisible !== updates.floorSummaryVisible
+    ) {
       this.state.floorSummaryVisible = updates.floorSummaryVisible;
       changed = true;
     }
@@ -291,7 +298,7 @@ export class LayoutManager {
    */
   dispose(): void {
     this.listeners.clear();
-    
+
     // Remove CSS custom properties
     const root = document.documentElement;
     root.style.removeProperty('--layout-header-height');

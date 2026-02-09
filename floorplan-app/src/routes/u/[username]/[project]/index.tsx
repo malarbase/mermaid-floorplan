@@ -1,28 +1,26 @@
-import { useParams, A, useNavigate, useLocation, useSearchParams } from "@solidjs/router";
-import { Show, createMemo, createSignal } from "solid-js";
-import { clientOnly } from "@solidjs/start";
-import { useQuery } from "convex-solidjs";
-import { VisibilityToggle } from "~/components/VisibilityToggle";
-import { VersionSwitcher } from "~/components/VersionSwitcher";
-import { CreateVersionModal } from "~/components/CreateVersionModal";
-import { CopyPermalinkButton } from "~/components/CopyPermalinkButton";
-import { Header } from "~/components/Header";
-import { ForkButton } from "~/components/ForkButton";
+import { A, useLocation, useNavigate, useParams, useSearchParams } from '@solidjs/router';
+import { clientOnly } from '@solidjs/start';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, createSignal, Show } from 'solid-js';
+import { CopyPermalinkButton } from '~/components/CopyPermalinkButton';
+import { CreateVersionModal } from '~/components/CreateVersionModal';
+import { ForkButton } from '~/components/ForkButton';
+import { Header } from '~/components/Header';
 import {
-  ProjectPageLayout,
-  ProjectBreadcrumbs,
-  NotFoundCard,
   ContentMissingCard,
+  NotFoundCard,
+  ProjectBreadcrumbs,
+  ProjectPageLayout,
   SettingsIcon,
-} from "~/components/project/ProjectPageLayout";
-import { useProjectData, useVersionData } from "~/hooks/useProjectData";
-import { projectApi } from "~/lib/project-types";
-import type { ViewerMode } from "~/components/viewer/FloorplanContainer";
+} from '~/components/project/ProjectPageLayout';
+import { VersionSwitcher } from '~/components/VersionSwitcher';
+import { VisibilityToggle } from '~/components/VisibilityToggle';
+import type { ViewerMode } from '~/components/viewer/FloorplanContainer';
+import { useProjectData, useVersionData } from '~/hooks/useProjectData';
+import { projectApi } from '~/lib/project-types';
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanContainer = clientOnly(
-  () => import("~/components/viewer/FloorplanContainer")
-);
+const FloorplanContainer = clientOnly(() => import('~/components/viewer/FloorplanContainer'));
 
 /**
  * Project view page - shows project at default version.
@@ -43,39 +41,29 @@ export default function ProjectView() {
   const projectSlug = createMemo(() => params.project);
 
   // Check for slug redirects before loading project
-  const slugResolveQuery = useQuery(
-    projectApi.projects.resolveSlug,
-    () => ({
-      username: username(),
-      slug: projectSlug(),
-    })
-  );
+  const slugResolveQuery = useQuery(projectApi.projects.resolveSlug, () => ({
+    username: username(),
+    slug: projectSlug(),
+  }));
 
   // Handle redirect if slug has changed
   createMemo(() => {
     const resolved = slugResolveQuery.data();
-    if (resolved && resolved.wasRedirected) {
+    if (resolved?.wasRedirected) {
       const newUrl = `/u/${username()}/${resolved.currentSlug}${location.search}${location.hash}`;
       navigate(newUrl, { replace: true });
     }
   });
 
   // Project data
-  const {
-    project,
-    owner,
-    forkedFrom,
-    projectData,
-    isOwner,
-    isProjectLoading,
-    projectNotFound,
-  } = useProjectData(username, projectSlug);
+  const { project, owner, forkedFrom, projectData, isOwner, isProjectLoading, projectNotFound } =
+    useProjectData(username, projectSlug);
 
   // Version data (default version)
-  const defaultVersion = createMemo(() => project()?.defaultVersion ?? "main");
+  const defaultVersion = createMemo(() => project()?.defaultVersion ?? 'main');
   const { content, currentHash, isVersionLoading } = useVersionData(
     () => project()?._id as string | undefined,
-    defaultVersion
+    defaultVersion,
   );
 
   // Loading state
@@ -94,16 +82,16 @@ export default function ProjectView() {
 
   // Viewer mode
   const mode = createMemo((): ViewerMode => {
-    const modeParam = typeof searchParams.mode === "string" ? searchParams.mode : undefined;
-    if (modeParam && ["basic", "advanced", "editor"].includes(modeParam)) {
+    const modeParam = typeof searchParams.mode === 'string' ? searchParams.mode : undefined;
+    if (modeParam && ['basic', 'advanced', 'editor'].includes(modeParam)) {
       return modeParam as ViewerMode;
     }
-    return isOwner() ? "editor" : "advanced";
+    return isOwner() ? 'editor' : 'advanced';
   });
 
   // Handle save success
-  const handleSaveSuccess = (result: { snapshotId: string; hash: string }) => {
-    console.log("Saved snapshot:", result.hash);
+  const _handleSaveSuccess = (result: { snapshotId: string; hash: string }) => {
+    console.log('Saved snapshot:', result.hash);
   };
 
   // Header actions
@@ -116,7 +104,7 @@ export default function ProjectView() {
           username={username()!}
           projectSlug={projectSlug()!}
           defaultVersion={project()?.defaultVersion}
-          currentVersion={project()?.defaultVersion ?? "main"}
+          currentVersion={project()?.defaultVersion ?? 'main'}
           canCreateVersion={isOwner()}
           onCreateNew={() => setShowCreateVersionModal(true)}
           size="sm"
@@ -143,10 +131,7 @@ export default function ProjectView() {
         </div>
       </Show>
 
-      <A
-        href={`/u/${username()}/${projectSlug()}/history`}
-        class="btn btn-ghost btn-sm"
-      >
+      <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-ghost btn-sm">
         History
       </A>
 
@@ -166,10 +151,7 @@ export default function ProjectView() {
       </Show>
 
       <Show when={isOwner()}>
-        <A
-          href={`/u/${username()}/${projectSlug()}/settings`}
-          class="btn btn-ghost btn-sm"
-        >
+        <A href={`/u/${username()}/${projectSlug()}/settings`} class="btn btn-ghost btn-sm">
           <SettingsIcon />
         </A>
       </Show>
@@ -177,18 +159,14 @@ export default function ProjectView() {
       <button
         class="badge badge-outline cursor-pointer hover:badge-primary transition-colors min-w-[6.5rem] justify-center"
         onClick={() => {
-          const modes: ViewerMode[] = ["basic", "advanced", "editor"];
+          const modes: ViewerMode[] = ['basic', 'advanced', 'editor'];
           const currentIndex = modes.indexOf(mode());
           const nextMode = modes[(currentIndex + 1) % modes.length];
           setSearchParams({ mode: nextMode });
         }}
         title="Click to cycle viewer modes"
       >
-        {mode() === "editor"
-          ? "✏️ Editor"
-          : mode() === "advanced"
-            ? "⚙️ Advanced"
-            : "👁️ Basic"}
+        {mode() === 'editor' ? '✏️ Editor' : mode() === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
       </button>
 
       {/* Fork button for non-owners */}
@@ -253,7 +231,7 @@ export default function ProjectView() {
             dsl={content()!}
             mode={mode()}
             onDslChange={(newDsl: string) => {
-              console.log("DSL changed:", newDsl.slice(0, 100));
+              console.log('DSL changed:', newDsl.slice(0, 100));
             }}
           />
         </Show>
@@ -268,7 +246,7 @@ export default function ProjectView() {
           fromVersion={project()?.defaultVersion}
           username={username()!}
           projectSlug={projectSlug()!}
-          onSuccess={(versionId, versionName) => {
+          onSuccess={(_versionId, _versionName) => {
             // Navigation is handled by the modal
           }}
         />

@@ -1,6 +1,6 @@
 /**
  * DSL Text Generator - Generate floorplan DSL code snippets.
- * 
+ *
  * Used by the properties panel to:
  * - Generate new room definitions
  * - Generate connection statements
@@ -36,7 +36,7 @@ export interface ConnectionGeneratorOptions {
   toRoom: string;
   toWall: 'top' | 'bottom' | 'left' | 'right';
   type: 'door' | 'double-door' | 'window' | 'opening';
-  position?: number;  // Percentage (0-100)
+  position?: number; // Percentage (0-100)
   width?: number;
   height?: number;
   swing?: 'left' | 'right';
@@ -72,7 +72,7 @@ export class DslGenerator {
 
   /**
    * Generate a room definition.
-   * 
+   *
    * @param options - Room options
    * @param indentLevel - Base indentation level (default: 2 for inside floor block)
    * @returns DSL code for the room
@@ -82,7 +82,9 @@ export class DslGenerator {
     const parts: string[] = [];
 
     // Room header: room Name at (x, y) size (w x h)
-    parts.push(`${indent}room ${options.name} at (${options.x}, ${options.y}) size (${options.width} x ${options.height})`);
+    parts.push(
+      `${indent}room ${options.name} at (${options.x}, ${options.y}) size (${options.width} x ${options.height})`,
+    );
 
     // Room height if specified
     if (options.roomHeight !== undefined) {
@@ -102,7 +104,7 @@ export class DslGenerator {
     // Walls specification
     const walls = options.walls ?? { top: 'solid', bottom: 'solid', left: 'solid', right: 'solid' };
     const wallSpecs: string[] = [];
-    
+
     if (walls.top) wallSpecs.push(`top: ${walls.top}`);
     if (walls.right) wallSpecs.push(`right: ${walls.right}`);
     if (walls.bottom) wallSpecs.push(`bottom: ${walls.bottom}`);
@@ -117,7 +119,7 @@ export class DslGenerator {
 
   /**
    * Generate a connection statement.
-   * 
+   *
    * @param options - Connection options
    * @param indentLevel - Base indentation level (default: 1 for top-level)
    * @returns DSL code for the connection
@@ -128,7 +130,7 @@ export class DslGenerator {
 
     // connect FromRoom.wall to ToRoom.wall type
     let line = `${indent}connect ${options.fromRoom}.${options.fromWall} to ${options.toRoom}.${options.toWall}`;
-    
+
     // Connection type
     line += ` ${options.type}`;
 
@@ -161,7 +163,7 @@ export class DslGenerator {
 
   /**
    * Generate a floor block header.
-   * 
+   *
    * @param options - Floor options
    * @param indentLevel - Base indentation level (default: 1)
    * @returns DSL code for the floor header (without closing brace)
@@ -169,18 +171,18 @@ export class DslGenerator {
   generateFloorHeader(options: FloorGeneratorOptions, indentLevel = 1): string {
     const indent = this.indent(indentLevel);
     let line = `${indent}floor ${options.id}`;
-    
+
     if (options.height !== undefined) {
       line += ` height ${options.height}`;
     }
-    
+
     line += ' {';
     return line;
   }
 
   /**
    * Generate a closing brace for a block.
-   * 
+   *
    * @param indentLevel - Indentation level
    * @returns Closing brace with proper indentation
    */
@@ -191,7 +193,7 @@ export class DslGenerator {
   /**
    * Generate a complete room definition with proper formatting.
    * Useful for inserting a new room into an existing floor.
-   * 
+   *
    * @param options - Room options
    * @returns Complete room DSL with newlines
    */
@@ -202,7 +204,7 @@ export class DslGenerator {
   /**
    * Generate a property update for a room.
    * Returns the new value that should replace the old one.
-   * 
+   *
    * @param property - Property name (e.g., 'width', 'x', 'style')
    * @param value - New value
    * @returns Formatted value string
@@ -247,10 +249,7 @@ export class DslGenerator {
   /**
    * Generate default connection options.
    */
-  static defaultConnectionOptions(
-    fromRoom: string,
-    toRoom: string
-  ): ConnectionGeneratorOptions {
+  static defaultConnectionOptions(fromRoom: string, toRoom: string): ConnectionGeneratorOptions {
     return {
       fromRoom,
       fromWall: 'right',
@@ -294,14 +293,14 @@ interface SourceRange {
 
 /**
  * DslPropertyEditor - Generates Monaco edit operations for DSL property changes.
- * 
+ *
  * Given an entity's source range and the property to change, finds the exact
  * location in the DSL text and creates a targeted edit operation.
  */
 export class DslPropertyEditor {
   /**
    * Generate a Monaco edit operation for changing a room property.
-   * 
+   *
    * @param sourceText - The full DSL document text
    * @param sourceRange - The entity's source range (0-indexed)
    * @param property - Property name to edit
@@ -312,25 +311,25 @@ export class DslPropertyEditor {
     sourceText: string,
     sourceRange: SourceRange,
     property: string,
-    newValue: unknown
+    newValue: unknown,
   ): DslEditOperation | null {
     // Get the entity's source text
     const lines = sourceText.split('\n');
     const entityText = this.extractRangeText(lines, sourceRange);
-    
+
     // Find the property location within the entity text
     const propertyLocation = this.findPropertyInRoomText(entityText, property);
     if (!propertyLocation) {
       console.warn(`[DslPropertyEditor] Property '${property}' not found in room definition`);
       return null;
     }
-    
+
     // Calculate absolute position in document
     const absoluteRange = this.relativeToAbsolute(sourceRange, propertyLocation);
-    
+
     // Format the new value
     const newText = this.formatValue(property, newValue);
-    
+
     return {
       range: {
         startLineNumber: absoluteRange.startLine + 1, // Monaco is 1-indexed
@@ -341,7 +340,7 @@ export class DslPropertyEditor {
       text: newText,
     };
   }
-  
+
   /**
    * Generate a Monaco edit operation for changing a connection property.
    */
@@ -349,20 +348,20 @@ export class DslPropertyEditor {
     sourceText: string,
     sourceRange: SourceRange,
     property: string,
-    newValue: unknown
+    newValue: unknown,
   ): DslEditOperation | null {
     const lines = sourceText.split('\n');
     const entityText = this.extractRangeText(lines, sourceRange);
-    
+
     const propertyLocation = this.findPropertyInConnectionText(entityText, property);
     if (!propertyLocation) {
       console.warn(`[DslPropertyEditor] Property '${property}' not found in connection definition`);
       return null;
     }
-    
+
     const absoluteRange = this.relativeToAbsolute(sourceRange, propertyLocation);
     const newText = this.formatValue(property, newValue);
-    
+
     return {
       range: {
         startLineNumber: absoluteRange.startLine + 1,
@@ -373,7 +372,7 @@ export class DslPropertyEditor {
       text: newText,
     };
   }
-  
+
   /**
    * Extract text from a source range.
    */
@@ -381,7 +380,7 @@ export class DslPropertyEditor {
     if (range.startLine === range.endLine) {
       return lines[range.startLine]?.substring(range.startColumn, range.endColumn) ?? '';
     }
-    
+
     const result: string[] = [];
     for (let i = range.startLine; i <= range.endLine; i++) {
       if (i === range.startLine) {
@@ -394,17 +393,17 @@ export class DslPropertyEditor {
     }
     return result.join('\n');
   }
-  
+
   /**
    * Find a property's location within room definition text.
    * Returns relative offsets within the entity text.
    */
   private findPropertyInRoomText(
     text: string,
-    property: string
+    property: string,
   ): { startLine: number; startColumn: number; endLine: number; endColumn: number } | null {
     // Room definition: room Name at (x, y) size (w x h) [height H] [elevation E] [style S] walls [...]
-    
+
     switch (property) {
       case 'name': {
         // Find: room NAME at
@@ -416,7 +415,7 @@ export class DslPropertyEditor {
         }
         break;
       }
-      
+
       case 'x': {
         // Find: at (X, y)
         const match = text.match(/at\s*\(\s*(-?[\d.]+)\s*,/);
@@ -427,7 +426,7 @@ export class DslPropertyEditor {
         }
         break;
       }
-      
+
       case 'y': {
         // Find: at (x, Y)
         const match = text.match(/at\s*\(\s*-?[\d.]+\s*,\s*(-?[\d.]+)\s*\)/);
@@ -443,7 +442,7 @@ export class DslPropertyEditor {
         }
         break;
       }
-      
+
       case 'width': {
         // Find: size (W x h)
         const match = text.match(/size\s*\(\s*(-?[\d.]+)\s*x/i);
@@ -454,7 +453,7 @@ export class DslPropertyEditor {
         }
         break;
       }
-      
+
       case 'height': {
         // Find: size (w x H) - the second number in size
         const match = text.match(/size\s*\(\s*-?[\d.]+\s*x\s*(-?[\d.]+)\s*\)/i);
@@ -471,7 +470,7 @@ export class DslPropertyEditor {
         }
         break;
       }
-      
+
       case 'roomHeight': {
         // Find: height H (after size but before walls)
         const match = text.match(/\)\s+height\s+(-?[\d.]+)/i);
@@ -482,7 +481,7 @@ export class DslPropertyEditor {
         }
         break;
       }
-      
+
       case 'style': {
         // Find: style STYLENAME
         const match = text.match(/style\s+(\S+)/);
@@ -494,14 +493,14 @@ export class DslPropertyEditor {
         break;
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Generate a Monaco edit operation for changing a wall property.
    * Wall specifications have format: "direction: type [at position%]"
-   * 
+   *
    * @param sourceText - The full DSL document text
    * @param sourceRange - The wall's source range (0-indexed)
    * @param property - Property name to edit ('type')
@@ -512,20 +511,20 @@ export class DslPropertyEditor {
     sourceText: string,
     sourceRange: SourceRange,
     property: string,
-    newValue: unknown
+    newValue: unknown,
   ): DslEditOperation | null {
     const lines = sourceText.split('\n');
     const entityText = this.extractRangeText(lines, sourceRange);
-    
+
     const propertyLocation = this.findPropertyInWallText(entityText, property);
     if (!propertyLocation) {
       console.warn(`[DslPropertyEditor] Property '${property}' not found in wall definition`);
       return null;
     }
-    
+
     const absoluteRange = this.relativeToAbsolute(sourceRange, propertyLocation);
     const newText = this.formatValue(property, newValue);
-    
+
     return {
       range: {
         startLineNumber: absoluteRange.startLine + 1,
@@ -536,14 +535,14 @@ export class DslPropertyEditor {
       text: newText,
     };
   }
-  
+
   /**
    * Find a property's location within wall specification text.
    * Wall format: "direction: type [at position%]"
    */
   private findPropertyInWallText(
     text: string,
-    property: string
+    property: string,
   ): { startLine: number; startColumn: number; endLine: number; endColumn: number } | null {
     switch (property) {
       case 'type': {
@@ -557,7 +556,7 @@ export class DslPropertyEditor {
         }
         break;
       }
-      
+
       case 'position': {
         // Find: at N%
         const match = text.match(/at\s+(\d+)%/);
@@ -569,19 +568,19 @@ export class DslPropertyEditor {
         break;
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Find a property's location within connection definition text.
    */
   private findPropertyInConnectionText(
     text: string,
-    property: string
+    property: string,
   ): { startLine: number; startColumn: number; endLine: number; endColumn: number } | null {
     // Connection: connect Room1.wall to Room2.wall type [at position%] [width W] [height H]
-    
+
     switch (property) {
       case 'type': {
         // Find the connection type (door, double-door, window, opening)
@@ -593,7 +592,7 @@ export class DslPropertyEditor {
         }
         break;
       }
-      
+
       case 'position': {
         // Find: at N%
         const match = text.match(/at\s+(\d+)%/);
@@ -605,23 +604,25 @@ export class DslPropertyEditor {
         break;
       }
     }
-    
+
     return null;
   }
-  
+
   /**
    * Convert character offsets to line/column positions within text.
    */
   private offsetToLineColumn(
     text: string,
     startOffset: number,
-    endOffset: number
+    endOffset: number,
   ): { startLine: number; startColumn: number; endLine: number; endColumn: number } {
     let line = 0;
     let column = 0;
-    let startLine = 0, startColumn = 0;
-    let endLine = 0, endColumn = 0;
-    
+    let startLine = 0,
+      startColumn = 0;
+    let endLine = 0,
+      endColumn = 0;
+
     for (let i = 0; i < text.length; i++) {
       if (i === startOffset) {
         startLine = line;
@@ -632,7 +633,7 @@ export class DslPropertyEditor {
         endColumn = column;
         break;
       }
-      
+
       if (text[i] === '\n') {
         line++;
         column = 0;
@@ -640,39 +641,41 @@ export class DslPropertyEditor {
         column++;
       }
     }
-    
+
     // Handle end at text boundary
     if (endOffset >= text.length) {
       endLine = line;
       endColumn = column;
     }
-    
+
     return { startLine, startColumn, endLine, endColumn };
   }
-  
+
   /**
    * Convert relative position (within entity) to absolute position (in document).
    */
   private relativeToAbsolute(
     entityRange: SourceRange,
-    relativeRange: { startLine: number; startColumn: number; endLine: number; endColumn: number }
+    relativeRange: { startLine: number; startColumn: number; endLine: number; endColumn: number },
   ): SourceRange {
     // Add entity's starting position to relative position
     const startLine = entityRange.startLine + relativeRange.startLine;
     const endLine = entityRange.startLine + relativeRange.endLine;
-    
+
     // For first line, add entity's start column
-    const startColumn = relativeRange.startLine === 0
-      ? entityRange.startColumn + relativeRange.startColumn
-      : relativeRange.startColumn;
-    
-    const endColumn = relativeRange.endLine === 0
-      ? entityRange.startColumn + relativeRange.endColumn
-      : relativeRange.endColumn;
-    
+    const startColumn =
+      relativeRange.startLine === 0
+        ? entityRange.startColumn + relativeRange.startColumn
+        : relativeRange.startColumn;
+
+    const endColumn =
+      relativeRange.endLine === 0
+        ? entityRange.startColumn + relativeRange.endColumn
+        : relativeRange.endColumn;
+
     return { startLine, startColumn, endLine, endColumn };
   }
-  
+
   /**
    * Format a value for DSL insertion.
    */
@@ -690,4 +693,3 @@ export class DslPropertyEditor {
  * Singleton instance.
  */
 export const dslPropertyEditor = new DslPropertyEditor();
-

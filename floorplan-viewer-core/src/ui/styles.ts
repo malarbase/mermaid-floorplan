@@ -913,13 +913,13 @@ let stylesInjected = false;
  */
 export function injectStyles(id = 'fp-shared-styles'): void {
   if (stylesInjected) return;
-  
+
   // Check if already injected
   if (document.getElementById(id)) {
     stylesInjected = true;
     return;
   }
-  
+
   const style = document.createElement('style');
   style.id = id;
   style.textContent = SHARED_STYLES;

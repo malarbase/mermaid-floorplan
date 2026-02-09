@@ -12,7 +12,7 @@
  * - Type-safe property changes
  */
 
-import { createSignal, createEffect, For, Show, createMemo } from 'solid-js';
+import { createEffect, createSignal, For, Show } from 'solid-js';
 
 // ============================================================================
 // Types
@@ -76,7 +76,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
 
   // Handle property change
   const handleChange = (property: string, value: string) => {
-    setLocalValues(prev => ({ ...prev, [property]: value }));
+    setLocalValues((prev) => ({ ...prev, [property]: value }));
     props.onPropertyChange?.(property, value);
   };
 
@@ -103,16 +103,14 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
 
                   {/* Readonly */}
                   <Show when={prop.type === 'readonly'}>
-                    <span class="text-xs text-base-content/50 flex-1">
-                      {getValue(prop.name)}
-                    </span>
+                    <span class="text-xs text-base-content/50 flex-1">{getValue(prop.name)}</span>
                   </Show>
 
                   {/* Select */}
                   <Show when={prop.type === 'select' && prop.options}>
                     <select
                       class="select select-xs select-bordered flex-1 bg-base-200 tooltip tooltip-left"
-                      classList={{ 'tooltip': Boolean(prop.tooltip) }}
+                      classList={{ tooltip: Boolean(prop.tooltip) }}
                       data-tip={prop.tooltip}
                       name={prop.name}
                       value={getValue(prop.name)}
@@ -120,9 +118,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                       aria-label={prop.tooltip || `${prop.label} ${prop.name}`}
                     >
                       <For each={prop.options}>
-                        {(opt) => (
-                          <option value={opt.value}>{opt.label}</option>
-                        )}
+                        {(opt) => <option value={opt.value}>{opt.label}</option>}
                       </For>
                     </select>
                   </Show>
@@ -131,7 +127,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                   <Show when={prop.type === 'text'}>
                     <input
                       class="input input-xs input-bordered flex-1 bg-base-200 tooltip tooltip-left"
-                      classList={{ 'tooltip': Boolean(prop.tooltip) }}
+                      classList={{ tooltip: Boolean(prop.tooltip) }}
                       data-tip={prop.tooltip}
                       type="text"
                       name={prop.name}
@@ -151,7 +147,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                   <Show when={prop.type === 'number'}>
                     <input
                       class="input input-xs input-bordered flex-1 bg-base-200 w-16 tooltip tooltip-left"
-                      classList={{ 'tooltip': Boolean(prop.tooltip) }}
+                      classList={{ tooltip: Boolean(prop.tooltip) }}
                       data-tip={prop.tooltip}
                       type="number"
                       name={prop.name}
@@ -166,7 +162,9 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
                           handleChange(prop.name, e.currentTarget.value);
                         }
                       }}
-                      aria-label={prop.tooltip || `${prop.label} ${prop.name} (${prop.min} to ${prop.max})`}
+                      aria-label={
+                        prop.tooltip || `${prop.label} ${prop.name} (${prop.min} to ${prop.max})`
+                      }
                     />
                   </Show>
                 </div>
@@ -176,10 +174,7 @@ export function PropertiesPanel(props: PropertiesPanelProps) {
 
           {/* Actions */}
           <div class="mt-3 pt-2 border-t border-base-content/10">
-            <button
-              class="btn btn-xs btn-error w-full"
-              onClick={() => props.onDelete?.()}
-            >
+            <button class="btn btn-xs btn-error w-full" onClick={() => props.onDelete?.()}>
               Delete
             </button>
           </div>

@@ -3,7 +3,14 @@
  * Single source of truth for unit handling across the codebase
  */
 
-import type { LENGTH_UNIT, ValueWithUnit, SignedValueWithUnit, Dimension, Coordinate, Floorplan } from "../../generated/ast.js";
+import type {
+  Coordinate,
+  Dimension,
+  Floorplan,
+  LENGTH_UNIT,
+  SignedValueWithUnit,
+  ValueWithUnit,
+} from '../../generated/ast.js';
 
 /**
  * Supported length units
@@ -23,7 +30,7 @@ export const UNIT_TO_METERS: Record<LengthUnit, number> = {
   m: 1.0,
   ft: 0.3048,
   cm: 0.01,
-  'in': 0.0254,
+  in: 0.0254,
   mm: 0.001,
 };
 
@@ -34,7 +41,7 @@ export const METERS_TO_UNIT: Record<LengthUnit, number> = {
   m: 1.0,
   ft: 3.28084,
   cm: 100.0,
-  'in': 39.3701,
+  in: 39.3701,
   mm: 1000.0,
 };
 
@@ -46,7 +53,7 @@ export const UNIT_SYSTEM: Record<LengthUnit, 'metric' | 'imperial'> = {
   cm: 'metric',
   mm: 'metric',
   ft: 'imperial',
-  'in': 'imperial',
+  in: 'imperial',
 };
 
 /**
@@ -88,7 +95,7 @@ export function isLengthUnit(unit: string | undefined | null): unit is LengthUni
  */
 export function getConfigDefaultUnit(floorplan: Floorplan): LengthUnit | undefined {
   if (!floorplan.config) return undefined;
-  
+
   for (const prop of floorplan.config.properties) {
     if (prop.name === 'default_unit' && prop.unitRef) {
       return prop.unitRef;
@@ -100,10 +107,7 @@ export function getConfigDefaultUnit(floorplan: Floorplan): LengthUnit | undefin
 /**
  * Get the effective unit from an explicit unit, config default, or system default
  */
-export function resolveUnit(
-  explicitUnit?: LengthUnit,
-  configDefault?: LengthUnit
-): LengthUnit {
+export function resolveUnit(explicitUnit?: LengthUnit, configDefault?: LengthUnit): LengthUnit {
   if (explicitUnit) {
     return explicitUnit;
   }
@@ -130,7 +134,7 @@ function getNumericValue(valueWithUnit: ValueWithUnit | SignedValueWithUnit): nu
  */
 export function resolveValueToMeters(
   valueWithUnit: ValueWithUnit | SignedValueWithUnit,
-  configDefault?: LengthUnit
+  configDefault?: LengthUnit,
 ): number {
   const unit = resolveUnit(valueWithUnit.unit, configDefault);
   const numericValue = getNumericValue(valueWithUnit);
@@ -142,7 +146,7 @@ export function resolveValueToMeters(
  * Returns the value as-is (for backward compatibility where units are not normalized)
  */
 export function resolveValue(
-  valueWithUnit: ValueWithUnit | SignedValueWithUnit | undefined
+  valueWithUnit: ValueWithUnit | SignedValueWithUnit | undefined,
 ): number | undefined {
   if (!valueWithUnit) return undefined;
   return valueWithUnit.value;
@@ -153,7 +157,7 @@ export function resolveValue(
  * For backward compatibility, returns raw values without unit conversion
  */
 export function resolveDimension(
-  dimension: Dimension | undefined
+  dimension: Dimension | undefined,
 ): { width: number; height: number } | undefined {
   if (!dimension) return undefined;
   return {
@@ -167,7 +171,7 @@ export function resolveDimension(
  */
 export function resolveDimensionToMeters(
   dimension: Dimension,
-  configDefault?: LengthUnit
+  configDefault?: LengthUnit,
 ): { width: number; height: number } {
   return {
     width: resolveValueToMeters(dimension.width, configDefault),
@@ -180,7 +184,7 @@ export function resolveDimensionToMeters(
  * For backward compatibility, returns raw values without unit conversion
  */
 export function resolveCoordinate(
-  coordinate: Coordinate | undefined
+  coordinate: Coordinate | undefined,
 ): { x: number; y: number } | undefined {
   if (!coordinate) return undefined;
   return {
@@ -194,7 +198,7 @@ export function resolveCoordinate(
  */
 export function resolveCoordinateToMeters(
   coordinate: Coordinate,
-  configDefault?: LengthUnit
+  configDefault?: LengthUnit,
 ): { x: number; y: number } {
   return {
     x: resolveValueToMeters(coordinate.x, configDefault),
@@ -208,59 +212,62 @@ export function resolveCoordinateToMeters(
  */
 export function collectUnits(floorplan: Floorplan): Set<LengthUnit> {
   const units = new Set<LengthUnit>();
-  
+
   // Check defines
   for (const define of floorplan.defines) {
     if (define.value.width.unit) units.add(define.value.width.unit);
     if (define.value.height.unit) units.add(define.value.height.unit);
   }
-  
+
   // Check floors
   for (const floor of floorplan.floors) {
     if (floor.height?.unit) units.add(floor.height.unit);
-    
+
     for (const room of floor.rooms) {
       collectRoomUnits(room, units);
     }
   }
-  
+
   return units;
 }
 
 /**
  * Recursively collect units from a room and its sub-rooms
  */
-function collectRoomUnits(room: { 
-  position?: Coordinate; 
-  size?: Dimension; 
-  height?: ValueWithUnit;
-  elevation?: SignedValueWithUnit;
-  relativePosition?: { gap?: ValueWithUnit };
-  subRooms: Array<unknown>;
-}, units: Set<LengthUnit>): void {
+function collectRoomUnits(
+  room: {
+    position?: Coordinate;
+    size?: Dimension;
+    height?: ValueWithUnit;
+    elevation?: SignedValueWithUnit;
+    relativePosition?: { gap?: ValueWithUnit };
+    subRooms: Array<unknown>;
+  },
+  units: Set<LengthUnit>,
+): void {
   // Position
   if (room.position) {
     if (room.position.x.unit) units.add(room.position.x.unit);
     if (room.position.y.unit) units.add(room.position.y.unit);
   }
-  
+
   // Size
   if (room.size) {
     if (room.size.width.unit) units.add(room.size.width.unit);
     if (room.size.height.unit) units.add(room.size.height.unit);
   }
-  
+
   // Height
   if (room.height?.unit) units.add(room.height.unit);
-  
+
   // Elevation
   if (room.elevation?.unit) units.add(room.elevation.unit);
-  
+
   // Gap in relative positioning
   if (room.relativePosition?.gap?.unit) {
     units.add(room.relativePosition.gap.unit);
   }
-  
+
   // Sub-rooms
   for (const subRoom of room.subRooms) {
     collectRoomUnits(subRoom as typeof room, units);
@@ -272,15 +279,15 @@ function collectRoomUnits(room: {
  */
 export function hasMixedUnitSystems(floorplan: Floorplan): boolean {
   const units = collectUnits(floorplan);
-  
+
   let hasMetric = false;
   let hasImperial = false;
-  
+
   for (const unit of units) {
     if (UNIT_SYSTEM[unit] === 'metric') hasMetric = true;
     if (UNIT_SYSTEM[unit] === 'imperial') hasImperial = true;
   }
-  
+
   return hasMetric && hasImperial;
 }
 
@@ -290,11 +297,10 @@ export function hasMixedUnitSystems(floorplan: Floorplan): boolean {
 export function getUnitSystems(floorplan: Floorplan): ('metric' | 'imperial')[] {
   const units = collectUnits(floorplan);
   const systems = new Set<'metric' | 'imperial'>();
-  
+
   for (const unit of units) {
     systems.add(UNIT_SYSTEM[unit]);
   }
-  
+
   return Array.from(systems);
 }
-

@@ -1,6 +1,6 @@
-import { Show, createEffect, JSX } from "solid-js";
-import { useNavigate } from "@solidjs/router";
-import { useSession } from "~/lib/auth-client";
+import { useNavigate } from '@solidjs/router';
+import { createEffect, type JSX, Show } from 'solid-js';
+import { useSession } from '~/lib/auth-client';
 
 interface GuardProps {
   children: JSX.Element;
@@ -23,7 +23,7 @@ export function AdminGuard(props: GuardProps) {
     // Only check after session is fully loaded
     if (!isLoading && user && !user.isAdmin) {
       // Not an admin, redirect to dashboard
-      navigate("/dashboard", { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   });
 
@@ -51,7 +51,7 @@ export function SuperAdminGuard(props: GuardProps) {
     // Only check after session is fully loaded
     if (!isLoading && user && !user.isAdmin) {
       // Not an admin, redirect to dashboard
-      navigate("/dashboard", { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   });
 

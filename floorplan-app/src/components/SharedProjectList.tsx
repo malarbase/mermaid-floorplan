@@ -1,8 +1,8 @@
-import { createMemo, Show, For, createSignal } from "solid-js";
-import { A } from "@solidjs/router";
-import { useQuery, useMutation } from "convex-solidjs";
-import { api } from "../../convex/_generated/api";
-import type { Id } from "../../convex/_generated/dataModel";
+import { A } from '@solidjs/router';
+import { useMutation, useQuery } from 'convex-solidjs';
+import { createMemo, createSignal, For, Show } from 'solid-js';
+import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 // Shared project type from getSharedWithMe query
 interface SharedProject {
@@ -18,7 +18,7 @@ interface SharedProject {
     username: string;
     displayName?: string;
   };
-  role: "viewer" | "editor";
+  role: 'viewer' | 'editor';
   sharedAt: number;
 }
 
@@ -66,9 +66,9 @@ export function SharedProjectList(props: SharedProjectListProps) {
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (days === 0) {
-      return "Today";
+      return 'Today';
     } else if (days === 1) {
-      return "Yesterday";
+      return 'Yesterday';
     } else if (days < 7) {
       return `${days} days ago`;
     } else {
@@ -80,11 +80,11 @@ export function SharedProjectList(props: SharedProjectListProps) {
   const handleLeave = async (project: SharedProject) => {
     setLeavingProjectId(project.project._id);
     try {
-      await leaveProjectMutation.mutate({ projectId: project.project._id as Id<"projects"> });
+      await leaveProjectMutation.mutate({ projectId: project.project._id as Id<'projects'> });
       setConfirmLeave(null);
     } catch (err) {
-      console.error("Failed to leave project:", err);
-      alert("Failed to leave project. Please try again.");
+      console.error('Failed to leave project:', err);
+      alert('Failed to leave project. Please try again.');
     } finally {
       setLeavingProjectId(null);
     }
@@ -98,13 +98,13 @@ export function SharedProjectList(props: SharedProjectListProps) {
   return (
     <div class={props.class}>
       <div class="shared-section-header">
-        <svg
-          class="shared-section-icon"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+        <svg class="shared-section-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+          />
         </svg>
         <h2 class="shared-section-title">Shared with me</h2>
       </div>
@@ -132,7 +132,7 @@ export function SharedProjectList(props: SharedProjectListProps) {
               d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span>Failed to load shared projects: {error()?.message ?? "Unknown error"}</span>
+          <span>Failed to load shared projects: {error()?.message ?? 'Unknown error'}</span>
         </div>
       </Show>
 
@@ -153,25 +153,31 @@ export function SharedProjectList(props: SharedProjectListProps) {
                     <div class="flex-1 min-w-0">
                       <h3 class="project-card-title truncate">{shared.project.displayName}</h3>
                       <p class="text-sm text-base-content/60 truncate flex items-center gap-1">
-                        <svg class="w-3.5 h-3.5 inline flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        <svg
+                          class="w-3.5 h-3.5 inline flex-shrink-0"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
                         </svg>
                         {shared.owner.displayName ?? shared.owner.username}
                       </p>
                     </div>
                     <span class={`role-badge ${shared.role}`}>
-                      {shared.role === "editor" ? "Can edit" : "View only"}
+                      {shared.role === 'editor' ? 'Can edit' : 'View only'}
                     </span>
                   </div>
                   <Show when={shared.project.description}>
-                    <p class="project-card-description">
-                      {shared.project.description}
-                    </p>
+                    <p class="project-card-description">{shared.project.description}</p>
                   </Show>
                   <div class="project-card-footer">
-                    <span class="project-card-meta">
-                      Shared {formatDate(shared.sharedAt)}
-                    </span>
+                    <span class="project-card-meta">Shared {formatDate(shared.sharedAt)}</span>
                     <div class="project-card-actions">
                       {/* Leave project button */}
                       <button
@@ -213,13 +219,12 @@ export function SharedProjectList(props: SharedProjectListProps) {
       </Show>
 
       {/* Leave Confirmation Modal */}
-      <dialog class={`modal ${confirmLeave() ? "modal-open" : ""}`}>
+      <dialog class={`modal ${confirmLeave() ? 'modal-open' : ''}`}>
         <div class="modal-box">
           <h3 class="font-bold text-lg">Leave Project?</h3>
           <p class="py-4">
-            Are you sure you want to leave{" "}
-            <strong>{confirmLeave()?.project.displayName}</strong>? You will lose access to this
-            project and will need to be re-invited to access it again.
+            Are you sure you want to leave <strong>{confirmLeave()?.project.displayName}</strong>?
+            You will lose access to this project and will need to be re-invited to access it again.
           </p>
           <div class="modal-action">
             <button class="btn btn-ghost" onClick={() => setConfirmLeave(null)}>

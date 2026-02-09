@@ -1,10 +1,10 @@
-import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
+import { describe, expect, test } from 'vitest';
 import {
+  FACE_INDICES,
+  getWallFaceMaterialIndex,
   normalToMaterialIndex,
   reassignMaterialsByNormal,
-  getWallFaceMaterialIndex,
-  FACE_INDICES,
 } from '../src/csg-utils.js';
 
 describe('CSG Utils', () => {
@@ -86,17 +86,17 @@ describe('CSG Utils', () => {
   describe('reassignMaterialsByNormal', () => {
     test('should create groups for BoxGeometry faces', () => {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
-      
+
       // Clear default groups
       geometry.clearGroups();
-      
+
       // Reassign materials
       reassignMaterialsByNormal(geometry, 6);
-      
+
       // BoxGeometry has 12 triangles (2 per face, 6 faces)
       // Each face should get its own material index
       expect(geometry.groups.length).toBeGreaterThan(0);
-      
+
       // Verify total vertex count covered
       const totalVertices = geometry.groups.reduce((sum, g) => sum + g.count, 0);
       expect(totalVertices).toBe(36); // 12 triangles * 3 vertices
@@ -105,9 +105,9 @@ describe('CSG Utils', () => {
     test('should handle single material', () => {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       geometry.clearGroups();
-      
+
       reassignMaterialsByNormal(geometry, 1);
-      
+
       // All faces should be in one group with material index 0
       expect(geometry.groups.length).toBe(1);
       expect(geometry.groups[0].materialIndex).toBe(0);
@@ -117,26 +117,26 @@ describe('CSG Utils', () => {
     test('should handle geometry without normals', () => {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array([0, 0, 0]), 3));
-      
+
       // Should not throw when normals are missing
       expect(() => reassignMaterialsByNormal(geometry, 6)).not.toThrow();
     });
 
     test('should handle empty geometry', () => {
       const geometry = new THREE.BufferGeometry();
-      
+
       expect(() => reassignMaterialsByNormal(geometry, 6)).not.toThrow();
     });
 
     test('should handle indexed geometry', () => {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
-      
+
       // BoxGeometry is indexed by default
       expect(geometry.index).not.toBeNull();
-      
+
       geometry.clearGroups();
       reassignMaterialsByNormal(geometry, 6);
-      
+
       // Should have groups
       expect(geometry.groups.length).toBeGreaterThan(0);
     });
@@ -144,15 +144,15 @@ describe('CSG Utils', () => {
     test('should handle non-indexed geometry', () => {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       geometry.clearGroups();
-      
+
       // Convert to non-indexed
       const nonIndexed = geometry.toNonIndexed();
-      
+
       reassignMaterialsByNormal(nonIndexed, 6);
-      
+
       // Should have groups
       expect(nonIndexed.groups.length).toBeGreaterThan(0);
-      
+
       // Total vertices should be covered
       const totalVertices = nonIndexed.groups.reduce((sum, g) => sum + g.count, 0);
       expect(totalVertices).toBe(36);
@@ -161,9 +161,9 @@ describe('CSG Utils', () => {
     test('should merge consecutive faces with same material', () => {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       geometry.clearGroups();
-      
+
       reassignMaterialsByNormal(geometry, 6);
-      
+
       // Groups should be optimized - consecutive faces with same material merged
       // BoxGeometry default arrangement may vary, but should have <= 12 groups
       // (worst case: each triangle is separate group)
@@ -218,17 +218,17 @@ describe('CSG Utils', () => {
       // Simulate what happens after a CSG operation
       // Create a box geometry (wall segment)
       const wallGeometry = new THREE.BoxGeometry(2, 3, 0.2);
-      
+
       // Clear the groups (simulating CSG destroying them)
       wallGeometry.clearGroups();
       expect(wallGeometry.groups.length).toBe(0);
-      
+
       // Reassign materials
       reassignMaterialsByNormal(wallGeometry, 6);
-      
+
       // Should have groups again
       expect(wallGeometry.groups.length).toBeGreaterThan(0);
-      
+
       // Each group should have valid material index
       for (const group of wallGeometry.groups) {
         expect(group.materialIndex).toBeGreaterThanOrEqual(0);
@@ -243,21 +243,20 @@ describe('CSG Utils', () => {
       const geometry = new THREE.BoxGeometry(1, 1, 1);
       const normals = geometry.attributes.normal;
       const index = geometry.index!;
-      
+
       geometry.clearGroups();
       reassignMaterialsByNormal(geometry, 6);
-      
+
       // For each group, verify the material index matches the dominant normal
       for (const group of geometry.groups) {
         const firstVertexInGroup = index.getX(group.start);
         const nx = normals.getX(firstVertexInGroup);
         const ny = normals.getY(firstVertexInGroup);
         const nz = normals.getZ(firstVertexInGroup);
-        
+
         const expectedIndex = normalToMaterialIndex(nx, ny, nz, 6);
         expect(group.materialIndex).toBe(expectedIndex);
       }
     });
   });
 });
-

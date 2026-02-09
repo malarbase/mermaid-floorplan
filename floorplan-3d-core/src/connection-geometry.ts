@@ -1,18 +1,17 @@
 /**
  * Connection geometry generation for doors and windows
- * 
+ *
  * Provides platform-agnostic mesh generation for connections (doors/windows)
  * using simple Three.js box geometry (no CSG required).
  */
 
-import * as THREE from 'three';
-import type { JsonConnection, JsonFloor, JsonRoom, JsonWall } from './types.js';
-import { DIMENSIONS } from './constants.js';
-import type { ViewerTheme, ThemeColors } from './constants.js';
-import { getThemeColors } from './constants.js';
-import type { MaterialStyle } from './materials.js';
-import { findMatchingConnections, shouldRenderConnection } from './connection-matcher.js';
 import { calculatePositionWithFallback, type RoomBounds } from 'floorplan-common';
+import * as THREE from 'three';
+import { findMatchingConnections, shouldRenderConnection } from './connection-matcher.js';
+import type { ThemeColors, ViewerTheme } from './constants.js';
+import { DIMENSIONS, getThemeColors } from './constants.js';
+import type { MaterialStyle } from './materials.js';
+import type { JsonConnection, JsonFloor, JsonRoom, JsonWall } from './types.js';
 
 export interface ConnectionGeometryOptions {
   wallThickness: number;
@@ -23,7 +22,7 @@ export interface ConnectionGeometryOptions {
 
 /**
  * Generate all connection meshes for a floor
- * 
+ *
  * @param floor - Floor data with rooms
  * @param allConnections - All connections in the floorplan
  * @param options - Rendering options
@@ -32,7 +31,7 @@ export interface ConnectionGeometryOptions {
 export function generateFloorConnections(
   floor: JsonFloor,
   allConnections: JsonConnection[],
-  options: ConnectionGeometryOptions
+  options: ConnectionGeometryOptions,
 ): THREE.Group {
   const group = new THREE.Group();
   group.name = `floor-${floor.id}-connections`;
@@ -62,7 +61,7 @@ export function generateFloorConnections(
           targetRoom,
           wall,
           options.wallThickness,
-          colors
+          colors,
         );
 
         if (connectionMesh) {
@@ -77,7 +76,7 @@ export function generateFloorConnections(
 
 /**
  * Generate a single connection (door or window) mesh
- * 
+ *
  * @param connection - Connection data
  * @param sourceRoom - Room containing the wall
  * @param targetRoom - Target room (may be undefined for cross-floor connections)
@@ -92,7 +91,7 @@ export function generateConnection(
   targetRoom: JsonRoom | undefined,
   wall: JsonWall,
   wallThickness: number,
-  colors: ThemeColors
+  colors: ThemeColors,
 ): THREE.Object3D | null {
   const isSingleDoor = connection.doorType === 'door';
   const isDoubleDoor = connection.doorType === 'double-door';
@@ -116,7 +115,7 @@ export function generateConnection(
       position,
       wallThickness,
       roomElevation,
-      colors
+      colors,
     );
   } else if (isSingleDoor) {
     return renderDoorGeometry(
@@ -126,7 +125,7 @@ export function generateConnection(
       position,
       wallThickness,
       roomElevation,
-      colors
+      colors,
     );
   } else {
     return renderWindowGeometry(
@@ -136,17 +135,17 @@ export function generateConnection(
       position,
       wallThickness,
       roomElevation,
-      colors
+      colors,
     );
   }
 }
 
 /**
  * Calculate connection position along the wall
- * 
+ *
  * Uses the shared overlap calculation to position doors correctly when
  * rooms have uneven common wall segments (partial overlap).
- * 
+ *
  * @param room - Room data
  * @param targetRoom - Target room (for overlap calculation)
  * @param wall - Wall data
@@ -157,7 +156,7 @@ function calculateConnectionPosition(
   room: JsonRoom,
   targetRoom: JsonRoom | undefined,
   wall: JsonWall,
-  connection: JsonConnection
+  connection: JsonConnection,
 ): { holeX: number; holeZ: number; holeY: number; isVertical: boolean } {
   const roomHeight = room.roomHeight ?? DIMENSIONS.WALL.HEIGHT;
   const roomElevation = room.elevation ?? 0;
@@ -171,16 +170,18 @@ function calculateConnectionPosition(
   // Convert 3D room coordinates to RoomBounds (z -> y for shared utility)
   const sourceBounds: RoomBounds = {
     x: room.x,
-    y: room.z,  // 3D uses z for depth
+    y: room.z, // 3D uses z for depth
     width: room.width,
     height: room.height,
   };
-  const targetBounds: RoomBounds | null = targetRoom ? {
-    x: targetRoom.x,
-    y: targetRoom.z,
-    width: targetRoom.width,
-    height: targetRoom.height,
-  } : null;
+  const targetBounds: RoomBounds | null = targetRoom
+    ? {
+        x: targetRoom.x,
+        y: targetRoom.z,
+        width: targetRoom.width,
+        height: targetRoom.height,
+      }
+    : null;
 
   // Calculate position using shared utility (considers overlap for uneven segments)
   let holeX: number;
@@ -204,7 +205,7 @@ function calculateConnectionPosition(
 
 /**
  * Render door geometry with swing
- * 
+ *
  * @param connection - Connection data
  * @param room - Source room
  * @param wall - Wall data
@@ -219,9 +220,9 @@ function renderDoorGeometry(
   room: JsonRoom,
   wall: JsonWall,
   position: { holeX: number; holeZ: number; holeY: number; isVertical: boolean },
-  wallThickness: number,
+  _wallThickness: number,
   roomElevation: number,
-  colors: ThemeColors
+  colors: ThemeColors,
 ): THREE.Mesh {
   // Door dimensions
   let doorWidth: number;
@@ -239,7 +240,7 @@ function renderDoorGeometry(
   const doorPanelGeom = new THREE.BoxGeometry(
     doorWidth,
     doorHeight,
-    DIMENSIONS.DOOR.PANEL_THICKNESS
+    DIMENSIONS.DOOR.PANEL_THICKNESS,
   );
   // Shift geometry so pivot is at left edge (extending to +x)
   doorPanelGeom.translate(doorWidth / 2, 0, 0);
@@ -259,14 +260,20 @@ function renderDoorGeometry(
     connection,
     wall,
     position,
-    doorWidth
+    doorWidth,
   );
 
   // Position door at hinge
   doorMesh.position.set(hingeX, roomElevation + doorHeight / 2, hingeZ);
 
   // Calculate door rotation (base angle + swing)
-  const rotation = calculateDoorRotation(connection, room, wall, hingeSideSign, position.isVertical);
+  const rotation = calculateDoorRotation(
+    connection,
+    room,
+    wall,
+    hingeSideSign,
+    position.isVertical,
+  );
   doorMesh.rotation.y = rotation;
 
   return doorMesh;
@@ -274,7 +281,7 @@ function renderDoorGeometry(
 
 /**
  * Render double-door geometry with two mirrored panels
- * 
+ *
  * @param connection - Connection data
  * @param room - Source room
  * @param wall - Wall data
@@ -289,9 +296,9 @@ function renderDoubleDoorGeometry(
   room: JsonRoom,
   wall: JsonWall,
   position: { holeX: number; holeZ: number; holeY: number; isVertical: boolean },
-  wallThickness: number,
+  _wallThickness: number,
   roomElevation: number,
-  colors: ThemeColors
+  colors: ThemeColors,
 ): THREE.Group {
   const group = new THREE.Group();
   group.name = `double-door-${connection.fromRoom}-${connection.toRoom}`;
@@ -321,7 +328,7 @@ function renderDoubleDoorGeometry(
     position,
     wall,
     roomElevation,
-    opensIn
+    opensIn,
   );
   leftPanel.name = `double-door-left-${connection.fromRoom}-${connection.toRoom}`;
   group.add(leftPanel);
@@ -335,7 +342,7 @@ function renderDoubleDoorGeometry(
     position,
     wall,
     roomElevation,
-    opensIn
+    opensIn,
   );
   rightPanel.name = `double-door-right-${connection.fromRoom}-${connection.toRoom}`;
   group.add(rightPanel);
@@ -345,7 +352,7 @@ function renderDoubleDoorGeometry(
 
 /**
  * Create a single panel of a double door
- * 
+ *
  * @param panelWidth - Width of this panel
  * @param doorHeight - Height of the door
  * @param material - Material to use
@@ -364,13 +371,13 @@ function createDoubleDoorPanel(
   position: { holeX: number; holeZ: number; isVertical: boolean },
   wall: JsonWall,
   roomElevation: number,
-  opensIn: boolean
+  opensIn: boolean,
 ): THREE.Mesh {
   // Create door panel geometry with pivot at edge
   const doorPanelGeom = new THREE.BoxGeometry(
     panelWidth,
     doorHeight,
-    DIMENSIONS.DOOR.PANEL_THICKNESS
+    DIMENSIONS.DOOR.PANEL_THICKNESS,
   );
   // Shift geometry so pivot is at left edge (extending to +x)
   doorPanelGeom.translate(panelWidth / 2, 0, 0);
@@ -381,7 +388,7 @@ function createDoubleDoorPanel(
   // Left panel hinges at -panelWidth from center
   // Right panel hinges at +panelWidth from center
   const hingeSideSign = side === 'left' ? -1 : 1;
-  
+
   let hingeX = position.holeX;
   let hingeZ = position.holeZ;
 
@@ -424,7 +431,7 @@ function createDoubleDoorPanel(
 
 /**
  * Calculate hinge position along the wall
- * 
+ *
  * @param connection - Connection data
  * @param wall - Wall data
  * @param position - Base position
@@ -435,7 +442,7 @@ function calculateHingePosition(
   connection: JsonConnection,
   wall: JsonWall,
   position: { holeX: number; holeZ: number; isVertical: boolean },
-  doorWidth: number
+  doorWidth: number,
 ): { hingeX: number; hingeZ: number; hingeSideSign: number } {
   // Determine swing side (right vs left)
   const swingRight = connection.swing !== 'left'; // Default to right
@@ -477,7 +484,7 @@ function calculateHingePosition(
 
 /**
  * Calculate door rotation (closed position + swing)
- * 
+ *
  * @param connection - Connection data
  * @param room - Source room
  * @param wall - Wall data
@@ -490,7 +497,7 @@ function calculateDoorRotation(
   room: JsonRoom,
   wall: JsonWall,
   hingeSideSign: number,
-  isVertical: boolean
+  isVertical: boolean,
 ): number {
   // 1. Calculate base angle (closed position)
   let baseAngle = 0;
@@ -528,7 +535,7 @@ function calculateDoorRotation(
 
 /**
  * Render window geometry
- * 
+ *
  * @param connection - Connection data
  * @param room - Source room
  * @param wall - Wall data
@@ -540,23 +547,23 @@ function calculateDoorRotation(
  */
 function renderWindowGeometry(
   connection: JsonConnection,
-  room: JsonRoom,
-  wall: JsonWall,
+  _room: JsonRoom,
+  _wall: JsonWall,
   position: { holeX: number; holeZ: number; isVertical: boolean },
-  wallThickness: number,
+  _wallThickness: number,
   roomElevation: number,
-  colors: ThemeColors
+  colors: ThemeColors,
 ): THREE.Mesh {
   // Window dimensions
   const windowWidth = connection.width ?? DIMENSIONS.WINDOW.WIDTH;
   const windowHeight = connection.height ?? DIMENSIONS.WINDOW.HEIGHT;
-  const sillHeight = roomElevation + (DIMENSIONS.WINDOW.SILL_HEIGHT);
+  const sillHeight = roomElevation + DIMENSIONS.WINDOW.SILL_HEIGHT;
 
   // Create window geometry
   const windowGeom = new THREE.BoxGeometry(
     position.isVertical ? DIMENSIONS.WINDOW.GLASS_THICKNESS : windowWidth,
     windowHeight,
-    position.isVertical ? windowWidth : DIMENSIONS.WINDOW.GLASS_THICKNESS
+    position.isVertical ? windowWidth : DIMENSIONS.WINDOW.GLASS_THICKNESS,
   );
 
   // Create transparent material
@@ -572,12 +579,7 @@ function renderWindowGeometry(
   windowMesh.name = `window-${connection.fromRoom}-${connection.toRoom}`;
 
   // Position window
-  windowMesh.position.set(
-    position.holeX,
-    sillHeight + windowHeight / 2,
-    position.holeZ
-  );
+  windowMesh.position.set(position.holeX, sillHeight + windowHeight / 2, position.holeZ);
 
   return windowMesh;
 }
-

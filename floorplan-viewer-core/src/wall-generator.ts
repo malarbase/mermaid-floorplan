@@ -1,32 +1,40 @@
 /**
  * Wall geometry generation and CSG operations
- * 
+ *
  * Supports wall ownership detection and per-face materials for shared walls.
  * This is the shared WallGenerator used by both viewer and interactive-editor.
  */
 
-import * as THREE from 'three';
-import { Brush, Evaluator, SUBTRACTION } from 'three-bvh-csg';
 // Import shared types and utilities from floorplan-3d-core
-import type { JsonWall, JsonRoom, JsonConnection, JsonConfig } from 'floorplan-3d-core';
+import type { JsonConfig, JsonConnection, JsonRoom, JsonWall } from 'floorplan-3d-core';
 // Import geometry utilities from core (re-exported from floorplan-common)
-import { calculatePositionWithFallback, type RoomBounds } from 'floorplan-3d-core';
-import { 
-  DIMENSIONS, MaterialFactory,
-  type ViewerTheme, type MaterialSet, type MaterialStyle,
-  // Connection matching utilities from core
-  findMatchingConnections, shouldRenderConnection,
+import {
   // Wall ownership and CSG utilities from core
-  analyzeWallOwnership, reassignMaterialsByNormal,
-  type WallSegment,
-  // Door rendering from core
-  generateConnection, getThemeColors, type ThemeColors,
+  analyzeWallOwnership,
+  calculatePositionWithFallback,
+  calculateWallSegmentPosition,
   // Wall segment generation from core
   calculateWallGeometry as coreCalculateWallGeometry,
   createWallSegmentGeometry,
-  calculateWallSegmentPosition,
+  DIMENSIONS,
+  // Connection matching utilities from core
+  findMatchingConnections,
+  // Door rendering from core
+  generateConnection,
+  getThemeColors,
+  MaterialFactory,
+  type MaterialSet,
+  type MaterialStyle,
+  type RoomBounds,
+  reassignMaterialsByNormal,
+  shouldRenderConnection,
+  type ThemeColors,
+  type ViewerTheme,
   type WallGeometry,
+  type WallSegment,
 } from 'floorplan-3d-core';
+import * as THREE from 'three';
+import { Brush, type Evaluator, SUBTRACTION } from 'three-bvh-csg';
 
 // WallGeometry type is imported from floorplan-3d-core
 
@@ -72,11 +80,12 @@ export class WallGenerator {
     connections: JsonConnection[],
     materials: MaterialSet,
     group: THREE.Group,
-    config: JsonConfig = {}
+    config: JsonConfig = {},
   ): void {
     const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
     const elevation = room.elevation || 0;
-    const wallHeight = wall.wallHeight || room.roomHeight || config.default_height || DIMENSIONS.WALL.HEIGHT;
+    const wallHeight =
+      wall.wallHeight || room.roomHeight || config.default_height || DIMENSIONS.WALL.HEIGHT;
 
     // Analyze wall ownership to determine if we should render and get segments
     const styleResolver = this.styleResolver || (() => undefined);
@@ -85,7 +94,16 @@ export class WallGenerator {
     // Skip rendering if this room doesn't own the wall
     if (!ownership.shouldRender) {
       // Still need to process connections for door rendering
-      this.processConnectionsOnly(wall, room, allRooms, connections, materials, group, elevation, config);
+      this.processConnectionsOnly(
+        wall,
+        room,
+        allRooms,
+        connections,
+        materials,
+        group,
+        elevation,
+        config,
+      );
       return;
     }
 
@@ -102,7 +120,7 @@ export class WallGenerator {
         elevation,
         wallHeight,
         wallThickness,
-        config
+        config,
       );
     }
   }
@@ -121,14 +139,14 @@ export class WallGenerator {
     elevation: number,
     wallHeight: number,
     wallThickness: number,
-    config: JsonConfig
+    config: JsonConfig,
   ): void {
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
     const baseGeometry = this.calculateWallGeometry(wall, room, wallThickness);
 
     // Collect all holes first (they apply to all segments)
     const holes: Brush[] = [];
-    
+
     // Handle explicit wall type (window/door)
     if (wall.type === 'door' || wall.type === 'window') {
       this.addExplicitHole(wall, room, baseGeometry, holes, materials, group, elevation, config);
@@ -138,7 +156,19 @@ export class WallGenerator {
     const connectionMatches = findMatchingConnections(room, wall, connections);
     for (const match of connectionMatches) {
       const shouldRender = shouldRenderConnection(match, wall, allRooms);
-      this.addConnectionHoleToList(match.connection, room, wall, baseGeometry, holes, shouldRender, materials, group, elevation, allRooms, config);
+      this.addConnectionHoleToList(
+        match.connection,
+        room,
+        wall,
+        baseGeometry,
+        holes,
+        shouldRender,
+        materials,
+        group,
+        elevation,
+        allRooms,
+        config,
+      );
     }
 
     // Generate each segment
@@ -155,7 +185,7 @@ export class WallGenerator {
         segment.ownerStyle,
         segment.hasAdjacentRoom ? segment.adjacentStyle : undefined,
         wall.direction,
-        this.currentTheme
+        this.currentTheme,
       );
 
       // Create brush for CSG operations
@@ -167,7 +197,11 @@ export class WallGenerator {
       const segmentHoles = this.filterHolesForSegment(holes, segment, wall, room, isVertical);
 
       // Perform CSG and add to scene
-      const resultMesh = this.performCSGWithMaterialArray(segmentBrush, segmentHoles, segmentMaterials);
+      const resultMesh = this.performCSGWithMaterialArray(
+        segmentBrush,
+        segmentHoles,
+        segmentMaterials,
+      );
       if (resultMesh) {
         group.add(resultMesh);
       }
@@ -180,9 +214,9 @@ export class WallGenerator {
   private filterHolesForSegment(
     holes: Brush[],
     segment: WallSegment,
-    _wall: JsonWall,  // Kept for potential future use (e.g., wall-specific filtering)
+    _wall: JsonWall, // Kept for potential future use (e.g., wall-specific filtering)
     room: JsonRoom,
-    isVertical: boolean
+    isVertical: boolean,
   ): Brush[] {
     if (holes.length === 0) return [];
 
@@ -190,7 +224,7 @@ export class WallGenerator {
     const segmentWorldStart = wallStart + segment.startPos;
     const segmentWorldEnd = wallStart + segment.endPos;
 
-    return holes.filter(hole => {
+    return holes.filter((hole) => {
       const holePos = isVertical ? hole.position.z : hole.position.x;
       // Check if hole center is within segment bounds (with some tolerance)
       return holePos >= segmentWorldStart - 0.5 && holePos <= segmentWorldEnd + 0.5;
@@ -208,17 +242,31 @@ export class WallGenerator {
     materials: MaterialSet,
     group: THREE.Group,
     elevation: number,
-    config: JsonConfig
+    config: JsonConfig,
   ): void {
-    const geometry = this.calculateWallGeometry(wall, room, config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS);
-    
+    const geometry = this.calculateWallGeometry(
+      wall,
+      room,
+      config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS,
+    );
+
     // Uses shared connection matching from core
     const connectionMatches = findMatchingConnections(room, wall, connections);
     for (const match of connectionMatches) {
       const shouldRender = shouldRenderConnection(match, wall, allRooms);
       if (shouldRender) {
         // Only render the door, not the wall hole (wall is rendered by owner)
-        this.renderDoorOnly(match.connection, room, wall, geometry, materials, group, elevation, allRooms, config);
+        this.renderDoorOnly(
+          match.connection,
+          room,
+          wall,
+          geometry,
+          materials,
+          group,
+          elevation,
+          allRooms,
+          config,
+        );
       }
     }
   }
@@ -235,7 +283,7 @@ export class WallGenerator {
     group: THREE.Group,
     _elevation: number,
     allRooms: JsonRoom[],
-    _config: JsonConfig
+    _config: JsonConfig,
   ): void {
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
     const targetRoom = allRooms.find((r) => r.name === connection.toRoom);
@@ -245,14 +293,28 @@ export class WallGenerator {
 
     // Check if rooms are actually adjacent before rendering door
     if (targetRoom) {
-      const sourceBounds = { x: sourceRoom.x, y: sourceRoom.z, width: sourceRoom.width, height: sourceRoom.height };
-      const targetBounds = { x: targetRoom.x, y: targetRoom.z, width: targetRoom.width, height: targetRoom.height };
-      const hasOverlap = sourceIsVertical ? 
-        (Math.max(sourceBounds.y, targetBounds.y) < Math.min(sourceBounds.y + sourceBounds.height, targetBounds.y + targetBounds.height)) :
-        (Math.max(sourceBounds.x, targetBounds.x) < Math.min(sourceBounds.x + sourceBounds.width, targetBounds.x + targetBounds.width));
+      const sourceBounds = {
+        x: sourceRoom.x,
+        y: sourceRoom.z,
+        width: sourceRoom.width,
+        height: sourceRoom.height,
+      };
+      const targetBounds = {
+        x: targetRoom.x,
+        y: targetRoom.z,
+        width: targetRoom.width,
+        height: targetRoom.height,
+      };
+      const hasOverlap = sourceIsVertical
+        ? Math.max(sourceBounds.y, targetBounds.y) <
+          Math.min(sourceBounds.y + sourceBounds.height, targetBounds.y + targetBounds.height)
+        : Math.max(sourceBounds.x, targetBounds.x) <
+          Math.min(sourceBounds.x + sourceBounds.width, targetBounds.x + targetBounds.width);
 
       if (!hasOverlap) {
-        console.warn(`[3D Renderer] Skipping door: ${connection.fromRoom}.${connection.fromWall} → ${connection.toRoom}.${connection.toWall} - rooms are not adjacent on this wall`);
+        console.warn(
+          `[3D Renderer] Skipping door: ${connection.fromRoom}.${connection.fromWall} → ${connection.toRoom}.${connection.toWall} - rooms are not adjacent on this wall`,
+        );
         return;
       }
     }
@@ -264,7 +326,7 @@ export class WallGenerator {
       targetRoom,
       wall,
       DIMENSIONS.WALL.THICKNESS,
-      this.themeColors
+      this.themeColors,
     );
     if (doorMesh) {
       group.add(doorMesh);
@@ -285,10 +347,10 @@ export class WallGenerator {
     group: THREE.Group,
     elevation: number,
     allRooms: JsonRoom[],
-    config: JsonConfig
+    config: JsonConfig,
   ): void {
     const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
-    
+
     // Resolve door dimensions with precedence:
     // 1. Connection-specific size
     // 2. Config door_size
@@ -327,8 +389,8 @@ export class WallGenerator {
     }
 
     // For full height, center vertically; otherwise, position from floor
-    const holeY = isFullHeight 
-      ? elevation + doorHeight / 2  // Full height: center at room mid-height
+    const holeY = isFullHeight
+      ? elevation + doorHeight / 2 // Full height: center at room mid-height
       : elevation + doorHeight / 2; // Standard: center at door mid-height
 
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
@@ -341,26 +403,34 @@ export class WallGenerator {
     // Convert 3D room coordinates to RoomBounds (z -> y for shared utility)
     const sourceBounds: RoomBounds = {
       x: sourceRoom.x,
-      y: sourceRoom.z,  // 3D uses z for depth
+      y: sourceRoom.z, // 3D uses z for depth
       width: sourceRoom.width,
       height: sourceRoom.height,
     };
-    const targetBounds: RoomBounds | null = targetRoom ? {
-      x: targetRoom.x,
-      y: targetRoom.z,
-      width: targetRoom.width,
-      height: targetRoom.height,
-    } : null;
+    const targetBounds: RoomBounds | null = targetRoom
+      ? {
+          x: targetRoom.x,
+          y: targetRoom.z,
+          width: targetRoom.width,
+          height: targetRoom.height,
+        }
+      : null;
 
     // Check if rooms are actually adjacent before rendering door
     // This prevents rendering doors in invalid positions when rooms don't share a wall
-    const hasOverlap = targetBounds ? (sourceIsVertical ? 
-      (Math.max(sourceBounds.y, targetBounds.y) < Math.min(sourceBounds.y + sourceBounds.height, targetBounds.y + targetBounds.height)) :
-      (Math.max(sourceBounds.x, targetBounds.x) < Math.min(sourceBounds.x + sourceBounds.width, targetBounds.x + targetBounds.width))) : false;
+    const hasOverlap = targetBounds
+      ? sourceIsVertical
+        ? Math.max(sourceBounds.y, targetBounds.y) <
+          Math.min(sourceBounds.y + sourceBounds.height, targetBounds.y + targetBounds.height)
+        : Math.max(sourceBounds.x, targetBounds.x) <
+          Math.min(sourceBounds.x + sourceBounds.width, targetBounds.x + targetBounds.width)
+      : false;
 
     // Skip rendering door if rooms are not adjacent (no wall overlap)
     if (targetBounds && !hasOverlap) {
-      console.warn(`[3D Renderer] Skipping door: ${connection.fromRoom}.${connection.fromWall} → ${connection.toRoom}.${connection.toWall} - rooms are not adjacent on this wall`);
+      console.warn(
+        `[3D Renderer] Skipping door: ${connection.fromRoom}.${connection.fromWall} → ${connection.toRoom}.${connection.toWall} - rooms are not adjacent on this wall`,
+      );
       return;
     }
 
@@ -382,7 +452,7 @@ export class WallGenerator {
     const holeGeom = new THREE.BoxGeometry(
       geometry.isVertical ? wallThickness * 2 : doorWidth,
       doorHeight,
-      geometry.isVertical ? doorWidth : wallThickness * 2
+      geometry.isVertical ? doorWidth : wallThickness * 2,
     );
     const holeBrush = new Brush(holeGeom);
     holeBrush.position.set(holeX, holeY, holeZ);
@@ -399,7 +469,7 @@ export class WallGenerator {
         targetRoom,
         wall,
         wallThickness,
-        this.themeColors
+        this.themeColors,
       );
       if (doorMesh) {
         group.add(doorMesh);
@@ -409,7 +479,7 @@ export class WallGenerator {
 
   /**
    * Perform CSG with material array preservation
-   * 
+   *
    * After CSG operations, the geometry's material groups are destroyed.
    * This method reassigns materials based on face normals to preserve
    * per-face material assignments for shared walls.
@@ -417,7 +487,7 @@ export class WallGenerator {
   private performCSGWithMaterialArray(
     wallBrush: Brush,
     holes: Brush[],
-    materials: THREE.MeshStandardMaterial[]
+    materials: THREE.MeshStandardMaterial[],
   ): THREE.Mesh | null {
     if (holes.length > 0) {
       let currentBrush = wallBrush;
@@ -442,7 +512,11 @@ export class WallGenerator {
   /**
    * Calculate wall dimensions and position (delegates to core)
    */
-  private calculateWallGeometry(wall: JsonWall, room: JsonRoom, wallThickness: number): WallGeometry {
+  private calculateWallGeometry(
+    wall: JsonWall,
+    room: JsonRoom,
+    wallThickness: number,
+  ): WallGeometry {
     return coreCalculateWallGeometry(wall, room, wallThickness);
   }
 
@@ -457,7 +531,7 @@ export class WallGenerator {
     materials: MaterialSet,
     group: THREE.Group,
     elevation: number,
-    config: JsonConfig = {}
+    config: JsonConfig = {},
   ): void {
     // Use config values with fallback to constants
     const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
@@ -472,42 +546,39 @@ export class WallGenerator {
 
     const holeWidth = wall.width || defaultWidth;
     const holeHeight = wall.height || defaultHeight;
-    
+
     const holeY =
-      elevation +
-      (wall.type === 'door'
-        ? holeHeight / 2
-        : windowSillHeight + holeHeight / 2);
+      elevation + (wall.type === 'door' ? holeHeight / 2 : windowSillHeight + holeHeight / 2);
 
     let holeX = geometry.posX;
     let holeZ = geometry.posZ;
 
     // Calculate position along the wall if specified
     if (wall.position !== undefined) {
-        let ratio = 0.5;
-        if (wall.isPercentage) {
-            ratio = wall.position / 100;
-        } else {
-             // Absolute units
-             const wallLength = geometry.isVertical ? room.height : room.width;
-             ratio = wall.position / wallLength;
-        }
+      let ratio = 0.5;
+      if (wall.isPercentage) {
+        ratio = wall.position / 100;
+      } else {
+        // Absolute units
+        const wallLength = geometry.isVertical ? room.height : room.width;
+        ratio = wall.position / wallLength;
+      }
 
-        if (geometry.isVertical) {
-            const wallStartZ = room.z;
-            const offsetZ = room.height * ratio;
-            holeZ = wallStartZ + offsetZ;
-        } else {
-            const wallStartX = room.x;
-            const offsetX = room.width * ratio;
-            holeX = wallStartX + offsetX;
-        }
+      if (geometry.isVertical) {
+        const wallStartZ = room.z;
+        const offsetZ = room.height * ratio;
+        holeZ = wallStartZ + offsetZ;
+      } else {
+        const wallStartX = room.x;
+        const offsetX = room.width * ratio;
+        holeX = wallStartX + offsetX;
+      }
     }
 
     const holeGeom = new THREE.BoxGeometry(
       geometry.isVertical ? wallThickness * 2 : holeWidth,
       holeHeight,
-      geometry.isVertical ? holeWidth : wallThickness * 2
+      geometry.isVertical ? holeWidth : wallThickness * 2,
     );
     const holeBrush = new Brush(holeGeom);
     holeBrush.position.set(holeX, holeY, holeZ);
@@ -519,13 +590,11 @@ export class WallGenerator {
       const glassGeom = new THREE.BoxGeometry(
         geometry.isVertical ? DIMENSIONS.WINDOW.GLASS_THICKNESS : holeWidth,
         holeHeight,
-        geometry.isVertical ? holeWidth : DIMENSIONS.WINDOW.GLASS_THICKNESS
+        geometry.isVertical ? holeWidth : DIMENSIONS.WINDOW.GLASS_THICKNESS,
       );
       const glassMesh = new THREE.Mesh(glassGeom, materials.window);
       glassMesh.position.set(holeX, holeY, holeZ);
       group.add(glassMesh);
     }
   }
-
 }
-

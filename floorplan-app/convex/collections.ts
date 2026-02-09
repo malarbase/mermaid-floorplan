@@ -1,5 +1,5 @@
-import { v } from "convex/values";
-import { authenticatedMutation } from "./lib/auth";
+import { v } from 'convex/values';
+import { authenticatedMutation } from './lib/auth';
 
 export const create = authenticatedMutation({
   args: {
@@ -11,11 +11,11 @@ export const create = authenticatedMutation({
     const user = ctx.user;
 
     if (!user.isAdmin) {
-      throw new Error("Only admins can create collections");
+      throw new Error('Only admins can create collections');
     }
 
     const now = Date.now();
-    const collectionId = await ctx.db.insert("collections", {
+    const collectionId = await ctx.db.insert('collections', {
       slug: args.slug,
       displayName: args.displayName,
       description: args.description,
@@ -30,7 +30,7 @@ export const create = authenticatedMutation({
 
 export const update = authenticatedMutation({
   args: {
-    collectionId: v.id("collections"),
+    collectionId: v.id('collections'),
     slug: v.string(),
     displayName: v.string(),
     description: v.optional(v.string()),
@@ -39,12 +39,12 @@ export const update = authenticatedMutation({
     const user = ctx.user;
 
     if (!user.isAdmin) {
-      throw new Error("Only admins can update collections");
+      throw new Error('Only admins can update collections');
     }
 
     const collection = await ctx.db.get(args.collectionId);
     if (!collection) {
-      throw new Error("Collection not found");
+      throw new Error('Collection not found');
     }
 
     const now = Date.now();
@@ -61,18 +61,18 @@ export const update = authenticatedMutation({
 
 export const delete_ = authenticatedMutation({
   args: {
-    collectionId: v.id("collections"),
+    collectionId: v.id('collections'),
   },
   handler: async (ctx, args) => {
     const user = ctx.user;
 
     if (!user.isAdmin) {
-      throw new Error("Only admins can delete collections");
+      throw new Error('Only admins can delete collections');
     }
 
     const collection = await ctx.db.get(args.collectionId);
     if (!collection) {
-      throw new Error("Collection not found");
+      throw new Error('Collection not found');
     }
 
     await ctx.db.delete(args.collectionId);
@@ -86,24 +86,24 @@ export { delete_ as delete };
 
 export const addProject = authenticatedMutation({
   args: {
-    collectionId: v.id("collections"),
-    projectId: v.id("projects"),
+    collectionId: v.id('collections'),
+    projectId: v.id('projects'),
   },
   handler: async (ctx, args) => {
     const user = ctx.user;
 
     if (!user.isAdmin) {
-      throw new Error("Only admins can add projects to collections");
+      throw new Error('Only admins can add projects to collections');
     }
 
     const collection = await ctx.db.get(args.collectionId);
     if (!collection) {
-      throw new Error("Collection not found");
+      throw new Error('Collection not found');
     }
 
     const project = await ctx.db.get(args.projectId);
     if (!project) {
-      throw new Error("Project not found");
+      throw new Error('Project not found');
     }
 
     const projectIds = collection.projectIds;
@@ -123,24 +123,22 @@ export const addProject = authenticatedMutation({
 
 export const removeProject = authenticatedMutation({
   args: {
-    collectionId: v.id("collections"),
-    projectId: v.id("projects"),
+    collectionId: v.id('collections'),
+    projectId: v.id('projects'),
   },
   handler: async (ctx, args) => {
     const user = ctx.user;
 
     if (!user.isAdmin) {
-      throw new Error("Only admins can remove projects from collections");
+      throw new Error('Only admins can remove projects from collections');
     }
 
     const collection = await ctx.db.get(args.collectionId);
     if (!collection) {
-      throw new Error("Collection not found");
+      throw new Error('Collection not found');
     }
 
-    const projectIds = collection.projectIds.filter(
-      (id) => id !== args.projectId
-    );
+    const projectIds = collection.projectIds.filter((id) => id !== args.projectId);
 
     const now = Date.now();
     await ctx.db.patch(args.collectionId, {

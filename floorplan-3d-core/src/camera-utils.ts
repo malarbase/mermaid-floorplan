@@ -4,7 +4,7 @@
  */
 
 import * as THREE from 'three';
-import type { SceneBounds, Render3DOptions } from './types.js';
+import type { Render3DOptions, SceneBounds } from './types.js';
 
 /**
  * Camera configuration result
@@ -26,7 +26,7 @@ export interface CameraSetupResult {
  */
 export function computeSceneBounds(scene: THREE.Scene): SceneBounds {
   const box = new THREE.Box3().setFromObject(scene);
-  
+
   // Handle empty scenes
   if (box.isEmpty()) {
     return {
@@ -57,7 +57,7 @@ export function computeSceneBounds(scene: THREE.Scene): SceneBounds {
 export function setupCamera(
   options: Render3DOptions,
   sceneBounds: SceneBounds,
-  aspectRatio: number
+  aspectRatio: number,
 ): CameraSetupResult {
   const projection = options.projection ?? 'isometric';
 
@@ -72,10 +72,7 @@ export function setupCamera(
  * Set up an isometric (orthographic) camera
  * Standard architectural isometric: 30° from horizontal
  */
-function setupIsometricCamera(
-  sceneBounds: SceneBounds,
-  aspectRatio: number
-): CameraSetupResult {
+function setupIsometricCamera(sceneBounds: SceneBounds, aspectRatio: number): CameraSetupResult {
   const { center, size } = sceneBounds;
 
   // Calculate the diagonal distance needed to frame the scene
@@ -103,7 +100,7 @@ function setupIsometricCamera(
     halfHeight,
     -halfHeight,
     0.1,
-    distance * 3
+    distance * 3,
   );
 
   camera.position.set(camX, camY, camZ);
@@ -124,7 +121,7 @@ function setupIsometricCamera(
 function setupPerspectiveCamera(
   options: Render3DOptions,
   sceneBounds: SceneBounds,
-  aspectRatio: number
+  aspectRatio: number,
 ): CameraSetupResult {
   const { center, size } = sceneBounds;
   const fov = options.fov ?? 50;
@@ -138,18 +135,9 @@ function setupPerspectiveCamera(
   ];
 
   // Default target is scene center
-  const target: [number, number, number] = options.cameraTarget ?? [
-    center.x,
-    center.y,
-    center.z,
-  ];
+  const target: [number, number, number] = options.cameraTarget ?? [center.x, center.y, center.z];
 
-  const camera = new THREE.PerspectiveCamera(
-    fov,
-    aspectRatio,
-    0.1,
-    defaultDistance * 5
-  );
+  const camera = new THREE.PerspectiveCamera(fov, aspectRatio, 0.1, defaultDistance * 5);
 
   camera.position.set(...position);
   camera.lookAt(...target);
@@ -170,7 +158,7 @@ function setupPerspectiveCamera(
 export function frameBoundingBox(
   bounds: SceneBounds,
   camera: THREE.Camera,
-  padding: number = 0.2
+  padding: number = 0.2,
 ): void {
   const { center, size } = bounds;
   const maxDim = Math.max(size.x, size.y, size.z) * (1 + padding);
@@ -189,4 +177,3 @@ export function frameBoundingBox(
 
   camera.lookAt(center.x, center.y, center.z);
 }
-

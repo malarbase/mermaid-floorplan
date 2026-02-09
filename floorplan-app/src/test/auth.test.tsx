@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, fireEvent } from '@solidjs/testing-library';
+import { fireEvent, render } from '@solidjs/testing-library';
 import type { JSX } from 'solid-js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockState = vi.hoisted(() => ({
   sessionData: null as { user: { id: string; name: string; email: string } } | null,
@@ -28,7 +28,9 @@ vi.mock('~/lib/auth-client', () => ({
 
 vi.mock('@solidjs/router', () => ({
   A: (props: { href: string; children: JSX.Element; class?: string }) => (
-    <a href={props.href} class={props.class}>{props.children}</a>
+    <a href={props.href} class={props.class}>
+      {props.children}
+    </a>
   ),
   useNavigate: () => vi.fn(),
 }));
@@ -41,8 +43,8 @@ vi.mock('~/components/Header', () => ({
   Header: () => <header data-testid="mock-header">Header</header>,
 }));
 
-import { authClient, useSession } from '~/lib/auth-client';
 import { LogoutButton } from '~/components/LogoutButton';
+import { authClient, useSession } from '~/lib/auth-client';
 
 describe('Auth Flow', () => {
   beforeEach(() => {
@@ -60,9 +62,9 @@ describe('Auth Flow', () => {
     it('should call signOut when clicked', async () => {
       const result = render(() => <LogoutButton />);
       const button = result.getByText('Sign out');
-      
+
       await fireEvent.click(button);
-      
+
       expect(mockState.signOut).toHaveBeenCalled();
     });
 
@@ -80,7 +82,9 @@ describe('Auth Flow', () => {
     });
 
     it('should detect logged in state', () => {
-      mockState.sessionData = { user: { id: 'user-1', name: 'Test User', email: 'test@example.com' } };
+      mockState.sessionData = {
+        user: { id: 'user-1', name: 'Test User', email: 'test@example.com' },
+      };
       const session = useSession();
       expect(session().data?.user.id).toBe('user-1');
       expect(session().data?.user.name).toBe('Test User');

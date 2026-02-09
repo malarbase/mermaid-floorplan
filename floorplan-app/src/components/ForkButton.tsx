@@ -1,17 +1,17 @@
-import { createSignal, createMemo, Show, createEffect } from "solid-js";
-import { useNavigate, useSearchParams } from "@solidjs/router";
-import { useMutation, useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
-import { useSession } from "~/lib/auth-client";
-import { useToast } from "~/components/ui/Toast";
+import { useNavigate, useSearchParams } from '@solidjs/router';
+import type { FunctionReference } from 'convex/server';
+import { useMutation, useQuery } from 'convex-solidjs';
+import { createEffect, createMemo, createSignal, Show } from 'solid-js';
+import { useToast } from '~/components/ui/Toast';
+import { useSession } from '~/lib/auth-client';
 
 // Type-safe API reference for when generated files don't exist yet
 const api = {
   sharing: {
-    forkProject: "sharing:forkProject" as unknown as FunctionReference<"mutation">,
+    forkProject: 'sharing:forkProject' as unknown as FunctionReference<'mutation'>,
   },
   projects: {
-    list: "projects:list" as unknown as FunctionReference<"query">,
+    list: 'projects:list' as unknown as FunctionReference<'query'>,
   },
 };
 
@@ -21,9 +21,9 @@ interface ForkButtonProps {
   projectName: string;
   ownerUsername: string;
   /** Optional size variant */
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   /** Optional variant */
-  variant?: "primary" | "secondary" | "ghost" | "outline";
+  variant?: 'primary' | 'secondary' | 'ghost' | 'outline';
   /** Show label text */
   showLabel?: boolean;
   /** Default name to use when forking */
@@ -32,7 +32,7 @@ interface ForkButtonProps {
 
 /**
  * Fork Button Component
- * 
+ *
  * Allows users to fork a project to their own account.
  * Shows a modal to customize the fork name.
  */
@@ -41,10 +41,10 @@ export function ForkButton(props: ForkButtonProps) {
   const [searchParams, setSearchParams] = useSearchParams();
   const sessionSignal = useSession();
   const toast = useToast();
-  
+
   const [isModalOpen, setIsModalOpen] = createSignal(false);
-  const [slug, setSlug] = createSignal("");
-  const [displayName, setDisplayName] = createSignal("");
+  const [slug, setSlug] = createSignal('');
+  const [displayName, setDisplayName] = createSignal('');
   const [isForking, setIsForking] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -54,7 +54,7 @@ export function ForkButton(props: ForkButtonProps) {
   const session = createMemo(() => sessionSignal());
   const currentUser = createMemo(() => session()?.data?.user);
   const isLoggedIn = createMemo(() => !!currentUser());
-  const currentUsername = createMemo(() => currentUser()?.username ?? currentUser()?.name ?? "");
+  const currentUsername = createMemo(() => currentUser()?.username ?? currentUser()?.name ?? '');
 
   const isOwnProject = createMemo(() => {
     const user = currentUser();
@@ -63,20 +63,29 @@ export function ForkButton(props: ForkButtonProps) {
 
   const sizeClass = createMemo(() => {
     switch (props.size) {
-      case "xs": return "btn-xs";
-      case "sm": return "btn-sm";
-      case "lg": return "btn-lg";
-      default: return "";
+      case 'xs':
+        return 'btn-xs';
+      case 'sm':
+        return 'btn-sm';
+      case 'lg':
+        return 'btn-lg';
+      default:
+        return '';
     }
   });
 
   const variantClass = createMemo(() => {
     switch (props.variant) {
-      case "primary": return "btn-primary";
-      case "secondary": return "btn-secondary";
-      case "ghost": return "btn-ghost";
-      case "outline": return "btn-outline";
-      default: return "";
+      case 'primary':
+        return 'btn-primary';
+      case 'secondary':
+        return 'btn-secondary';
+      case 'ghost':
+        return 'btn-ghost';
+      case 'outline':
+        return 'btn-outline';
+      default:
+        return '';
     }
   });
 
@@ -84,30 +93,31 @@ export function ForkButton(props: ForkButtonProps) {
     const baseName = props.defaultName || `${props.projectName} (fork)`;
     setDisplayName(baseName);
     setError(null);
-    
+
     const projects = userProjects.data() || [];
-    const existingSlugs = new Set((projects as any[]).map(p => p.slug));
-    
-    let baseSlug = baseName.toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "");
-      
-    if (!baseSlug) baseSlug = "fork";
-    
+    const existingSlugs = new Set((projects as any[]).map((p) => p.slug));
+
+    let baseSlug = baseName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    if (!baseSlug) baseSlug = 'fork';
+
     let uniqueSlug = baseSlug;
     let counter = 2;
-    
+
     while (existingSlugs.has(uniqueSlug)) {
       uniqueSlug = `${baseSlug}-${counter}`;
       counter++;
     }
-    
+
     setSlug(uniqueSlug);
     setIsModalOpen(true);
   };
 
   createEffect(() => {
-    if (isLoggedIn() && searchParams.fork === "true" && !isOwnProject()) {
+    if (isLoggedIn() && searchParams.fork === 'true' && !isOwnProject()) {
       setSearchParams({ fork: undefined });
       openModal();
     }
@@ -120,14 +130,14 @@ export function ForkButton(props: ForkButtonProps) {
 
   const handleFork = async () => {
     if (!slug().trim()) {
-      setError("Slug is required");
+      setError('Slug is required');
       return;
     }
 
     // Validate slug format
     const slugValue = slug().toLowerCase().trim();
     if (!/^[a-z0-9-]+$/.test(slugValue)) {
-      setError("Slug can only contain lowercase letters, numbers, and hyphens");
+      setError('Slug can only contain lowercase letters, numbers, and hyphens');
       return;
     }
 
@@ -143,20 +153,20 @@ export function ForkButton(props: ForkButtonProps) {
 
       if (result?.success && result?.projectId) {
         closeModal();
-        toast.success("Now editing your copy");
+        toast.success('Now editing your copy');
         // Navigate to the new forked project
         navigate(`/u/${currentUsername()}/${slugValue}`);
       }
     } catch (err) {
-      console.error("Fork failed:", err);
-      setError(err instanceof Error ? err.message : "Failed to fork project");
+      console.error('Fork failed:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fork project');
     } finally {
       setIsForking(false);
     }
   };
 
   const handleLogin = () => {
-    const returnUrl = encodeURIComponent(window.location.pathname + "?fork=true");
+    const returnUrl = encodeURIComponent(`${window.location.pathname}?fork=true`);
     navigate(`/login?returnUrl=${returnUrl}`);
   };
 
@@ -175,12 +185,7 @@ export function ForkButton(props: ForkButtonProps) {
             onClick={handleLogin}
             title="Sign in to fork this project"
           >
-            <svg
-              class="w-4 h-4"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -199,12 +204,7 @@ export function ForkButton(props: ForkButtonProps) {
           onClick={openModal}
           title="Fork this project"
         >
-          <svg
-            class="w-4 h-4"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -253,18 +253,14 @@ export function ForkButton(props: ForkButtonProps) {
               />
               <label class="label">
                 <span class="label-text-alt text-base-content/60">
-                  Your project will be at: /u/{currentUsername()}/{slug() || "..."}
+                  Your project will be at: /u/{currentUsername()}/{slug() || '...'}
                 </span>
               </label>
             </div>
 
             <Show when={error()}>
               <div class="alert alert-error mt-4">
-                <svg
-                  class="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -277,11 +273,7 @@ export function ForkButton(props: ForkButtonProps) {
             </Show>
 
             <div class="modal-action">
-              <button
-                class="btn btn-ghost"
-                onClick={closeModal}
-                disabled={isForking()}
-              >
+              <button class="btn btn-ghost" onClick={closeModal} disabled={isForking()}>
                 Cancel
               </button>
               <button

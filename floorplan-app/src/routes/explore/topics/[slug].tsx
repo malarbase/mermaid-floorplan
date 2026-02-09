@@ -1,23 +1,23 @@
-import { Title } from "@solidjs/meta";
-import { A, useParams } from "@solidjs/router";
-import { Show, createMemo, createSignal, For } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import { api } from "../../../../convex/_generated/api";
-import { Header } from "~/components/Header";
-import { PublicProjectCard, PublicProject } from "~/components/PublicProjectCard";
+import { Title } from '@solidjs/meta';
+import { A, useParams } from '@solidjs/router';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, createSignal, For, Show } from 'solid-js';
+import { Header } from '~/components/Header';
+import { type PublicProject, PublicProjectCard } from '~/components/PublicProjectCard';
+import { api } from '../../../../convex/_generated/api';
 
 const TOPICS = [
-  { id: "houses", label: "Houses", icon: "🏠" },
-  { id: "apartments", label: "Apartments", icon: "🏢" },
-  { id: "offices", label: "Offices", icon: "💼" },
-  { id: "kitchens", label: "Kitchens", icon: "🍳" },
-  { id: "bathrooms", label: "Bathrooms", icon: "🚿" },
-  { id: "landscape", label: "Landscape", icon: "🌳" },
+  { id: 'houses', label: 'Houses', icon: '🏠' },
+  { id: 'apartments', label: 'Apartments', icon: '🏢' },
+  { id: 'offices', label: 'Offices', icon: '💼' },
+  { id: 'kitchens', label: 'Kitchens', icon: '🍳' },
+  { id: 'bathrooms', label: 'Bathrooms', icon: '🚿' },
+  { id: 'landscape', label: 'Landscape', icon: '🌳' },
 ];
 
 export default function TopicPage() {
   const params = useParams();
-  const slug = createMemo(() => params.slug || "");
+  const slug = createMemo(() => params.slug || '');
   const [limit, setLimit] = createSignal(24);
 
   const topicQuery = useQuery(api.explore.listByTopic, () => ({
@@ -36,9 +36,9 @@ export default function TopicPage() {
     const currentSlug = slug();
     const knownTopic = TOPICS.find((t) => t.id === currentSlug);
     if (knownTopic) return knownTopic;
-    
+
     const label = currentSlug.charAt(0).toUpperCase() + currentSlug.slice(1).replace(/-/g, ' ');
-    return { id: currentSlug, label, icon: "#" };
+    return { id: currentSlug, label, icon: '#' };
   });
 
   const loadMore = () => {
@@ -53,8 +53,19 @@ export default function TopicPage() {
       <div class="container-app py-8">
         <div class="mb-6">
           <A href="/explore" class="btn btn-ghost btn-sm gap-2 pl-0 hover:bg-transparent">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              class="h-4 w-4"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M10 19l-7-7m0 0l7-7m-7 7h18"
+              />
             </svg>
             Back to Explore
           </A>
@@ -88,8 +99,18 @@ export default function TopicPage() {
 
         <Show when={!isLoading() && projects().length === 0}>
           <div class="text-center py-20 bg-base-200/50 rounded-box">
-            <svg class="w-16 h-16 mx-auto text-base-content/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            <svg
+              class="w-16 h-16 mx-auto text-base-content/20 mb-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="1.5"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+              />
             </svg>
             <h3 class="text-lg font-medium opacity-60">No projects found</h3>
             <p class="text-sm opacity-50 mt-1">
@@ -105,19 +126,13 @@ export default function TopicPage() {
 
         <Show when={projects().length > 0}>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            <For each={projects()}>
-              {(project) => <PublicProjectCard project={project} />}
-            </For>
+            <For each={projects()}>{(project) => <PublicProjectCard project={project} />}</For>
           </div>
         </Show>
 
         <Show when={projects().length >= limit()}>
           <div class="flex justify-center mt-12">
-            <button
-              class="btn btn-outline gap-2"
-              onClick={loadMore}
-              disabled={isLoading()}
-            >
+            <button class="btn btn-outline gap-2" onClick={loadMore} disabled={isLoading()}>
               <Show when={isLoading()} fallback="Load More">
                 <span class="loading loading-spinner loading-xs"></span>
                 Loading...

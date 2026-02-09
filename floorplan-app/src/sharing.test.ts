@@ -1,7 +1,7 @@
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-describe("forkProject mutation", () => {
-  describe("fork count denormalization", () => {
+describe('forkProject mutation', () => {
+  describe('fork count denormalization', () => {
     it("should increment source project's forkCount from 0 to 1", () => {
       const sourceProjectForkCount = 0;
       const expectedForkCount = sourceProjectForkCount + 1;
@@ -14,7 +14,7 @@ describe("forkProject mutation", () => {
       expect(expectedForkCount).toBe(6);
     });
 
-    it("should initialize undefined forkCount to 1 when forking", () => {
+    it('should initialize undefined forkCount to 1 when forking', () => {
       const sourceProjectForkCount = undefined;
       const expectedForkCount = (sourceProjectForkCount ?? 0) + 1;
       expect(expectedForkCount).toBe(1);

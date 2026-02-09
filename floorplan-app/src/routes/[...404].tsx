@@ -1,7 +1,7 @@
-import { Title } from "@solidjs/meta";
-import { A } from "@solidjs/router";
-import { HttpStatusCode } from "@solidjs/start";
-import { Header } from "~/components/Header";
+import { Title } from '@solidjs/meta';
+import { A } from '@solidjs/router';
+import { HttpStatusCode } from '@solidjs/start';
+import { Header } from '~/components/Header';
 
 /**
  * 404 Not Found page.
@@ -11,10 +11,10 @@ export default function NotFound() {
     <main class="min-h-screen bg-base-200">
       <Title>Page Not Found - Floorplan</Title>
       <HttpStatusCode code={404} />
-      
+
       {/* Header */}
       <Header />
-      
+
       {/* Content */}
       <div class="min-h-[calc(100vh-4rem)] flex items-center justify-center p-8">
         <div class="card bg-base-100 shadow-xl max-w-md w-full">
@@ -35,14 +35,14 @@ export default function NotFound() {
                 />
               </svg>
             </div>
-            
+
             <h1 class="text-4xl font-bold mb-2">404</h1>
             <h2 class="text-xl font-semibold mb-4">Page Not Found</h2>
-            
+
             <p class="text-base-content/70 mb-6">
               The page you're looking for doesn't exist or has been moved.
             </p>
-            
+
             <div class="flex gap-3 justify-center">
               <A href="/" class="btn btn-primary">
                 Go Home

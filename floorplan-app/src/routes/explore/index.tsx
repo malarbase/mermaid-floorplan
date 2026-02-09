@@ -1,19 +1,19 @@
-import { Title } from "@solidjs/meta";
-import { A, useSearchParams } from "@solidjs/router";
-import { Show, createMemo, createSignal, For, Suspense } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import { api } from "../../../convex/_generated/api";
-import { Header } from "~/components/Header";
-import { PublicProjectCard, PublicProject } from "~/components/PublicProjectCard";
+import { Title } from '@solidjs/meta';
+import { A, useSearchParams } from '@solidjs/router';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, createSignal, For, Show } from 'solid-js';
+import { Header } from '~/components/Header';
+import { type PublicProject, PublicProjectCard } from '~/components/PublicProjectCard';
+import { api } from '../../../convex/_generated/api';
 
 // Hardcoded topics since API doesn't expose list yet
 const TOPICS = [
-  { id: "houses", label: "Houses", icon: "🏠" },
-  { id: "apartments", label: "Apartments", icon: "🏢" },
-  { id: "offices", label: "Offices", icon: "💼" },
-  { id: "kitchens", label: "Kitchens", icon: "🍳" },
-  { id: "bathrooms", label: "Bathrooms", icon: "🚿" },
-  { id: "landscape", label: "Landscape", icon: "🌳" },
+  { id: 'houses', label: 'Houses', icon: '🏠' },
+  { id: 'apartments', label: 'Apartments', icon: '🏢' },
+  { id: 'offices', label: 'Offices', icon: '💼' },
+  { id: 'kitchens', label: 'Kitchens', icon: '🍳' },
+  { id: 'bathrooms', label: 'Bathrooms', icon: '🚿' },
+  { id: 'landscape', label: 'Landscape', icon: '🌳' },
 ];
 
 export default function ExplorePage() {
@@ -30,12 +30,12 @@ export default function ExplorePage() {
   const trendingQuery = useQuery(api.explore.listTrending, () => ({ limit: limit() }));
   const featuredQuery = useQuery(api.explore.listFeatured, { limit: 6 });
   const collectionsQuery = useQuery(api.explore.listCollections, {});
-  
+
   // Topic Query (only if topic selected)
   // We use a dummy slug when inactive to avoid "skip" error, relying on backend to return empty for non-existent topic
-  const topicQuery = useQuery(api.explore.listByTopic, () => ({ 
-    topicSlug: activeTopic() || "_______SKIP_______", 
-    limit: limit() 
+  const topicQuery = useQuery(api.explore.listByTopic, () => ({
+    topicSlug: activeTopic() || '_______SKIP_______',
+    limit: limit(),
   }));
 
   const projects = createMemo(() => {
@@ -68,7 +68,7 @@ export default function ExplorePage() {
   };
 
   const loadMore = () => {
-    setLimit(l => l + 24);
+    setLimit((l) => l + 24);
   };
 
   return (
@@ -78,23 +78,22 @@ export default function ExplorePage() {
 
       <div class="container-app py-6">
         <div class="flex flex-col md:flex-row gap-8">
-          
           {/* Sidebar (Desktop) / Chips (Mobile) */}
           <aside class="w-full md:w-64 flex-shrink-0 space-y-6">
             <div class="sticky top-24">
               <h2 class="text-lg font-bold mb-4 px-1">Topics</h2>
-              
+
               {/* Mobile: Horizontal Scroll */}
               <div class="md:hidden flex overflow-x-auto gap-2 pb-4 -mx-4 px-4 scrollbar-hide">
-                <button 
+                <button
                   class={`btn btn-sm ${!activeTopic() ? 'btn-neutral' : 'btn-ghost'}`}
                   onClick={() => setSearchParams({ topic: undefined })}
                 >
                   All
                 </button>
                 <For each={TOPICS}>
-                  {topic => (
-                    <button 
+                  {(topic) => (
+                    <button
                       class={`btn btn-sm whitespace-nowrap ${activeTopic() === topic.id ? 'btn-neutral' : 'btn-ghost'}`}
                       onClick={() => handleTopicClick(topic.id)}
                     >
@@ -107,18 +106,23 @@ export default function ExplorePage() {
 
               {/* Desktop: Vertical List */}
               <div class="hidden md:flex flex-col gap-1">
-                <button 
+                <button
                   class={`btn btn-ghost justify-start gap-3 ${!activeTopic() ? 'bg-base-200' : ''}`}
                   onClick={() => setSearchParams({ topic: undefined })}
                 >
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
+                    />
                   </svg>
                   Trending
                 </button>
                 <For each={TOPICS}>
-                  {topic => (
-                    <button 
+                  {(topic) => (
+                    <button
                       class={`btn btn-ghost justify-start gap-3 ${activeTopic() === topic.id ? 'bg-base-200' : ''}`}
                       onClick={() => handleTopicClick(topic.id)}
                     >
@@ -136,7 +140,10 @@ export default function ExplorePage() {
                   <div class="flex flex-col gap-2">
                     <For each={collections()}>
                       {(collection: any) => (
-                        <A href={`/explore/collection/${collection.slug}`} class="link link-hover text-sm px-1 block py-1">
+                        <A
+                          href={`/explore/collection/${collection.slug}`}
+                          class="link link-hover text-sm px-1 block py-1"
+                        >
                           {collection.displayName}
                         </A>
                       )}
@@ -149,7 +156,6 @@ export default function ExplorePage() {
 
           {/* Main Content */}
           <div class="flex-1 min-w-0">
-            
             {/* Featured Section (Only when no topic selected) */}
             <Show when={!activeTopic() && featuredProjects().length > 0}>
               <section class="mb-10">
@@ -161,7 +167,7 @@ export default function ExplorePage() {
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <For each={featuredProjects()}>
-                    {project => <PublicProjectCard project={project} />}
+                    {(project) => <PublicProjectCard project={project} />}
                   </For>
                 </div>
               </section>
@@ -171,9 +177,9 @@ export default function ExplorePage() {
             <section>
               <div class="flex items-center justify-between mb-6">
                 <h2 class="text-2xl font-bold">
-                  {activeTopic() 
-                    ? `${TOPICS.find(t => t.id === activeTopic())?.label || activeTopic()} Projects` 
-                    : "Trending Now"}
+                  {activeTopic()
+                    ? `${TOPICS.find((t) => t.id === activeTopic())?.label || activeTopic()} Projects`
+                    : 'Trending Now'}
                 </h2>
               </div>
 
@@ -195,8 +201,18 @@ export default function ExplorePage() {
 
               <Show when={!isLoading() && projects().length === 0}>
                 <div class="text-center py-20 bg-base-200/50 rounded-box">
-                  <svg class="w-16 h-16 mx-auto text-base-content/20 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                  <svg
+                    class="w-16 h-16 mx-auto text-base-content/20 mb-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="1.5"
+                      d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    />
                   </svg>
                   <h3 class="text-lg font-medium opacity-60">No projects found</h3>
                   <p class="text-sm opacity-50 mt-1">Try selecting a different topic</p>
@@ -204,19 +220,13 @@ export default function ExplorePage() {
               </Show>
 
               <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                <For each={projects()}>
-                  {project => <PublicProjectCard project={project} />}
-                </For>
+                <For each={projects()}>{(project) => <PublicProjectCard project={project} />}</For>
               </div>
 
               {/* Load More */}
               <Show when={projects().length >= limit()}>
                 <div class="flex justify-center mt-12">
-                  <button 
-                    class="btn btn-outline gap-2"
-                    onClick={loadMore}
-                    disabled={isLoading()}
-                  >
+                  <button class="btn btn-outline gap-2" onClick={loadMore} disabled={isLoading()}>
                     <Show when={isLoading()} fallback="Load More">
                       <span class="loading loading-spinner loading-xs"></span>
                       Loading...

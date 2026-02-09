@@ -17,8 +17,5 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../floorplan-language/tsconfig.src.json" }
-  ]
+  "references": [{ "path": "../floorplan-language/tsconfig.src.json" }]
 }
-

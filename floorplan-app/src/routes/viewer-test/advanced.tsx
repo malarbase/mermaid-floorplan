@@ -1,9 +1,7 @@
-import { clientOnly } from "@solidjs/start";
+import { clientOnly } from '@solidjs/start';
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanContainer = clientOnly(() =>
-  import("~/components/viewer/FloorplanContainer")
-);
+const FloorplanContainer = clientOnly(() => import('~/components/viewer/FloorplanContainer'));
 
 /**
  * Test page for advanced viewer mode.
@@ -30,12 +28,7 @@ export default function ViewerTestAdvanced() {
 
   return (
     <main class="h-screen w-screen">
-      <FloorplanContainer
-        dsl={testDsl}
-        mode="advanced"
-        theme="dark"
-        onDslChange={() => {}}
-      />
+      <FloorplanContainer dsl={testDsl} mode="advanced" theme="dark" onDslChange={() => {}} />
     </main>
   );
 }

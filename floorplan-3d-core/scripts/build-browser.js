@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Build the browser bundle for floorplan-3d-core
- * 
+ *
  * This script creates an IIFE bundle that:
  * - Exposes FloorplanCore as a global
  * - Uses window.THREE as the Three.js dependency (must be loaded first)
@@ -39,7 +39,7 @@ const optionalPeerDepsPlugin = {
     // Mark optional peer dependencies and their transitive deps as external
     // These will only be available if the consuming app installs them
     const optionalDeps = ['three-bvh-csg', 'three-mesh-bvh'];
-    
+
     build.onResolve({ filter: new RegExp(`^(${optionalDeps.join('|')})$`) }, (args) => ({
       path: args.path,
       external: true,
@@ -74,4 +74,3 @@ async function build() {
 }
 
 build();
-

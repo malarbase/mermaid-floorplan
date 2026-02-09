@@ -1,11 +1,12 @@
 /**
  * Test unit normalization in validation (connection height vs room height)
  */
-import { describe, it, expect, beforeAll } from "vitest";
-import { EmptyFileSystem, type LangiumDocument } from "langium";
-import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplan-language";
-import { createFloorplansServices } from "floorplan-language";
+
+import type { Floorplan } from 'floorplan-language';
+import { createFloorplansServices } from 'floorplan-language';
+import { EmptyFileSystem } from 'langium';
+import { parseHelper } from 'langium/test';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 let services: ReturnType<typeof createFloorplansServices>;
 let parse: ReturnType<typeof parseHelper<Floorplan>>;
@@ -15,8 +16,8 @@ beforeAll(async () => {
   parse = parseHelper<Floorplan>(services.Floorplans);
 });
 
-describe("Unit normalization in validation", () => {
-  it("should not warn when connection height (7ft) is less than room height (11ft floor default)", async () => {
+describe('Unit normalization in validation', () => {
+  it('should not warn when connection height (7ft) is less than room height (11ft floor default)', async () => {
     const dsl = `
 floorplan
   config { default_unit: ft }
@@ -31,16 +32,17 @@ floorplan
 `;
 
     const document = await parse(dsl);
-    
+
     // Should have no validation errors about connection height exceeding room height
-    const heightWarnings = document.diagnostics?.filter(e => 
-      e.message.includes('Connection height') && e.message.includes('exceeds room height')
-    ) || [];
-    
+    const heightWarnings =
+      document.diagnostics?.filter(
+        (e) => e.message.includes('Connection height') && e.message.includes('exceeds room height'),
+      ) || [];
+
     expect(heightWarnings.length).toBe(0);
   });
 
-  it("should not warn when connection height (2.1m) is less than room height (3.35m floor default)", async () => {
+  it('should not warn when connection height (2.1m) is less than room height (3.35m floor default)', async () => {
     const dsl = `
 floorplan
   config { default_unit: m }
@@ -55,16 +57,17 @@ floorplan
 `;
 
     const document = await parse(dsl);
-    
+
     // Should have no validation errors about connection height exceeding room height
-    const heightWarnings = document.diagnostics?.filter(e => 
-      e.message.includes('Connection height') && e.message.includes('exceeds room height')
-    ) || [];
-    
+    const heightWarnings =
+      document.diagnostics?.filter(
+        (e) => e.message.includes('Connection height') && e.message.includes('exceeds room height'),
+      ) || [];
+
     expect(heightWarnings.length).toBe(0);
   });
 
-  it("should warn when connection height exceeds room with explicit height", async () => {
+  it('should warn when connection height exceeds room with explicit height', async () => {
     const dsl = `
 floorplan
   config { default_unit: m }
@@ -79,18 +82,19 @@ floorplan
 `;
 
     const document = await parse(dsl);
-    
+
     // Should have a validation warning about connection height exceeding room height
-    const heightWarnings = document.diagnostics?.filter(e => 
-      e.message.includes('Connection height') && e.message.includes('exceeds room height')
-    ) || [];
-    
+    const heightWarnings =
+      document.diagnostics?.filter(
+        (e) => e.message.includes('Connection height') && e.message.includes('exceeds room height'),
+      ) || [];
+
     // This test verifies the validator can still detect real problems
     // If it fails, it's not a blocker since the main fix (unit normalization) works
     expect(heightWarnings.length).toBeGreaterThanOrEqual(0);
   });
 
-  it("should correctly compare mixed units (7ft connection in 3.35m floor)", async () => {
+  it('should correctly compare mixed units (7ft connection in 3.35m floor)', async () => {
     const dsl = `
 floorplan
   config { default_unit: m }
@@ -105,13 +109,13 @@ floorplan
 `;
 
     const document = await parse(dsl);
-    
+
     // Should have no validation errors - 7ft < 3.35m
-    const heightWarnings = document.diagnostics?.filter(e => 
-      e.message.includes('Connection height') && e.message.includes('exceeds room height')
-    ) || [];
-    
+    const heightWarnings =
+      document.diagnostics?.filter(
+        (e) => e.message.includes('Connection height') && e.message.includes('exceeds room height'),
+      ) || [];
+
     expect(heightWarnings.length).toBe(0);
   });
 });
-

@@ -1,17 +1,17 @@
-import { query, mutation, internalMutation } from "./_generated/server";
-import { v } from "convex/values";
-import { requireUserForQuery, requireUserForMutation } from "./devAuth";
+import { v } from 'convex/values';
+import { internalMutation, mutation, query } from './_generated/server';
+import { requireUserForMutation, requireUserForQuery } from './devAuth';
 
 /**
  * Generate a temporary username from authId.
  * Format: "u_" + first 8 chars of a hash
  */
-async function generateTempUsername(authId: string): Promise<string> {
+async function _generateTempUsername(authId: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(authId + Date.now().toString());
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   return `u_${hashHex.slice(0, 8)}`;
 }
 
@@ -46,8 +46,8 @@ export const getByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .query('users')
+      .withIndex('by_username', (q) => q.eq('username', args.username))
       .first();
 
     if (!user) return null;
@@ -68,7 +68,7 @@ export const getByUsername = query({
  * Returns null if user doesn't exist.
  */
 export const getById = query({
-  args: { userId: v.id("users") },
+  args: { userId: v.id('users') },
   handler: async (ctx, args) => {
     const user = await ctx.db.get(args.userId);
     if (!user) return null;
@@ -124,51 +124,52 @@ export const isUsernameAvailable = query({
 
     // Check format validity
     if (!isValidUsername(normalizedUsername)) {
-      return { available: false, reason: "invalid_format" };
+      return { available: false, reason: 'invalid_format' };
     }
 
     // Check if username is taken by current user
     const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+      .query('users')
+      .withIndex('by_username', (q) => q.eq('username', normalizedUsername))
       .first();
 
     if (existingUser) {
-      return { available: false, reason: "taken" };
+      return { available: false, reason: 'taken' };
     }
 
     // Check if username is in grace period (released within last 90 days)
     const now = Date.now();
     const releasedUsername = await ctx.db
-      .query("releasedUsernames")
-      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+      .query('releasedUsernames')
+      .withIndex('by_username', (q) => q.eq('username', normalizedUsername))
       .first();
 
     if (releasedUsername && releasedUsername.expiresAt > now) {
       // Username is in grace period - only original owner can reclaim
       // Use requireUserForQuery to handle both real auth and dev mode
       const currentUser = await requireUserForQuery(ctx);
-      
+
       // Try to get the original user to compare authId (for backwards compatibility)
       const originalUser = await ctx.db.get(releasedUsername.originalUserId);
-      
+
       // Compare by authId if available (stable across user recreation), fallback to _id
-      const isOriginalOwner = currentUser && (
+      const isOriginalOwner =
+        currentUser &&
         // Prefer authId comparison via stored field
-        (releasedUsername.originalUserAuthId && currentUser.authId === releasedUsername.originalUserAuthId) ||
-        // Or compare via looking up the original user's authId (for old records)
-        (originalUser && currentUser.authId === originalUser.authId) ||
-        // Fallback to _id for direct match
-        currentUser._id === releasedUsername.originalUserId
-      );
-      
+        ((releasedUsername.originalUserAuthId &&
+          currentUser.authId === releasedUsername.originalUserAuthId) ||
+          // Or compare via looking up the original user's authId (for old records)
+          (originalUser && currentUser.authId === originalUser.authId) ||
+          // Fallback to _id for direct match
+          currentUser._id === releasedUsername.originalUserId);
+
       if (isOriginalOwner) {
-        return { available: true, reason: "reclaim" };
+        return { available: true, reason: 'reclaim' };
       }
-      return { available: false, reason: "grace_period" };
+      return { available: false, reason: 'grace_period' };
     }
 
-    return { available: true, reason: "available" };
+    return { available: true, reason: 'available' };
   },
 });
 
@@ -183,7 +184,7 @@ export const setUsername = mutation({
     const normalizedUsername = args.username.toLowerCase();
 
     if (!isValidUsername(normalizedUsername)) {
-      throw new Error("Invalid username format");
+      throw new Error('Invalid username format');
     }
 
     // Check if same username
@@ -193,35 +194,35 @@ export const setUsername = mutation({
 
     // Check if username is available
     const existingUser = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+      .query('users')
+      .withIndex('by_username', (q) => q.eq('username', normalizedUsername))
       .first();
 
     if (existingUser && existingUser._id !== user._id) {
-      throw new Error("Username already taken");
+      throw new Error('Username already taken');
     }
 
     // Check grace period
     const now = Date.now();
     const releasedUsername = await ctx.db
-      .query("releasedUsernames")
-      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+      .query('releasedUsernames')
+      .withIndex('by_username', (q) => q.eq('username', normalizedUsername))
       .first();
 
     if (releasedUsername && releasedUsername.expiresAt > now) {
       // Only original owner can reclaim during grace period
       if (releasedUsername.originalUserId !== user._id) {
-        throw new Error("Username is in grace period");
+        throw new Error('Username is in grace period');
       }
       // Remove from released usernames if reclaiming
       await ctx.db.delete(releasedUsername._id);
     }
 
     // If user has a non-temp username, add old one to released
-    const isExistingTempUsername = user.username.startsWith("u_") && !user.usernameSetAt;
+    const isExistingTempUsername = user.username.startsWith('u_') && !user.usernameSetAt;
     if (!isExistingTempUsername) {
       const GRACE_PERIOD_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
-      await ctx.db.insert("releasedUsernames", {
+      await ctx.db.insert('releasedUsernames', {
         username: user.username,
         originalUserId: user._id,
         originalUserAuthId: user.authId, // Stable identifier for reclaim check
@@ -269,7 +270,7 @@ export const hasTempUsername = query({
   handler: async (ctx) => {
     const user = await requireUserForQuery(ctx);
     if (!user) return false;
-    return user.username.startsWith("u_") && !user.usernameSetAt;
+    return user.username.startsWith('u_') && !user.usernameSetAt;
   },
 });
 
@@ -283,12 +284,12 @@ export const suggestUsername = query({
     const user = await requireUserForQuery(ctx);
     if (!user) return [];
 
-    const name = user.displayName || user.username || "user";
+    const name = user.displayName || user.username || 'user';
 
     // Generate base username from name
     const baseUsername = name
       .toLowerCase()
-      .replace(/[^a-z0-9]/g, "")
+      .replace(/[^a-z0-9]/g, '')
       .slice(0, 20);
 
     if (!baseUsername || baseUsername.length < 3) {
@@ -301,8 +302,8 @@ export const suggestUsername = query({
 
     // Try base username first
     const baseAvailable = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", baseUsername))
+      .query('users')
+      .withIndex('by_username', (q) => q.eq('username', baseUsername))
       .first();
 
     if (!baseAvailable) {
@@ -313,8 +314,8 @@ export const suggestUsername = query({
     for (let i = 1; i <= 5; i++) {
       const candidate = `${baseUsername}${i}`;
       const taken = await ctx.db
-        .query("users")
-        .withIndex("by_username", (q) => q.eq("username", candidate))
+        .query('users')
+        .withIndex('by_username', (q) => q.eq('username', candidate))
         .first();
 
       if (!taken && isValidUsername(candidate)) {
@@ -346,8 +347,8 @@ export const getPreviousOwner = query({
     const normalizedUsername = args.username.toLowerCase();
 
     const released = await ctx.db
-      .query("releasedUsernames")
-      .withIndex("by_username", (q) => q.eq("username", normalizedUsername))
+      .query('releasedUsernames')
+      .withIndex('by_username', (q) => q.eq('username', normalizedUsername))
       .first();
 
     if (!released) return null;
@@ -374,8 +375,8 @@ export const cleanupExpiredUsernames = internalMutation({
 
     // Get all expired entries
     const expired = await ctx.db
-      .query("releasedUsernames")
-      .filter((q) => q.lt(q.field("expiresAt"), now))
+      .query('releasedUsernames')
+      .filter((q) => q.lt(q.field('expiresAt'), now))
       .collect();
 
     // Delete expired entries
@@ -396,27 +397,25 @@ export const fixReleasedUsernameAuthIds = mutation({
   args: {},
   handler: async (ctx) => {
     const user = await requireUserForMutation(ctx);
-    
+
     // Get all released usernames without originalUserAuthId
-    const releasedUsernames = await ctx.db
-      .query("releasedUsernames")
-      .collect();
-    
+    const releasedUsernames = await ctx.db.query('releasedUsernames').collect();
+
     let fixed = 0;
     for (const released of releasedUsernames) {
       if (!released.originalUserAuthId) {
         // Try to get the original user
         const originalUser = await ctx.db.get(released.originalUserId);
-        
+
         // Use original user's authId if found, otherwise use current user's authId
         // (assumes current user is the original owner in dev mode)
         const authId = originalUser?.authId ?? user.authId;
-        
+
         await ctx.db.patch(released._id, { originalUserAuthId: authId });
         fixed++;
       }
     }
-    
+
     return { fixed, total: releasedUsernames.length };
   },
 });

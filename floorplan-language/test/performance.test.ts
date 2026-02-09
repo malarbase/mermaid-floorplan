@@ -8,11 +8,11 @@
  * - Large (50+ rooms): < 500ms
  */
 
-import { beforeAll, describe, expect, test } from 'vitest';
-import { EmptyFileSystem } from 'langium';
-import { parseHelper } from 'langium/test';
 import type { Floorplan } from 'floorplan-language';
 import { createFloorplansServices } from 'floorplan-language';
+import { EmptyFileSystem } from 'langium';
+import { parseHelper } from 'langium/test';
+import { beforeAll, describe, expect, test } from 'vitest';
 
 let services: ReturnType<typeof createFloorplansServices>;
 let parse: ReturnType<typeof parseHelper<Floorplan>>;
@@ -35,7 +35,7 @@ function generateFloorplan(roomCount: number): string {
     const x = col * 15;
     const y = row * 12;
     rooms.push(
-      `        room Room${i + 1} at (${x}, ${y}) size (12 x 10) walls [top: solid, right: solid, bottom: solid, left: solid] label "Room ${i + 1}"`
+      `        room Room${i + 1} at (${x}, ${y}) size (12 x 10) walls [top: solid, right: solid, bottom: solid, left: solid] label "Room ${i + 1}"`,
     );
   }
 
@@ -144,7 +144,7 @@ describe('Parse Performance Details', () => {
     console.log('─'.repeat(50));
     for (const r of results) {
       console.log(
-        `${r.rooms.toString().padStart(5)} | ${r.chars.toString().padStart(10)} | ${r.lines.toString().padStart(5)} | ${r.parseMs.toFixed(2).padStart(10)}ms`
+        `${r.rooms.toString().padStart(5)} | ${r.chars.toString().padStart(10)} | ${r.lines.toString().padStart(5)} | ${r.parseMs.toFixed(2).padStart(10)}ms`,
       );
     }
     console.log('─'.repeat(50));

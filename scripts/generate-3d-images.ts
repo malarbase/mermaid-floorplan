@@ -1,7 +1,7 @@
 /**
  * Script to generate 3D PNG files from a floorplan DSL file
  * Usage: npx tsx scripts/generate-3d-images.ts <input.floorplan> [output-dir] [options]
- * 
+ *
  * Options:
  *   --all               Render all floors in a single 3D view
  *   --projection MODE   Camera projection: 'isometric' (default) or 'perspective'
@@ -11,17 +11,17 @@
  *   --width N           Output width in pixels (default: 1200)
  *   --height N          Output height in pixels (default: 900)
  *   --scale N           Scale factor (for annotation text size)
- * 
+ *
  * Uses the floorplan 3D renderer from the mcp-server package.
  */
 
-import { EmptyFileSystem } from "langium";
-import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplan-language";
-import { createFloorplansServices, convertFloorplanToJson } from "floorplan-language";
-import { render3DToPng, closeBrowser } from "floorplans-mcp-server/utils/renderer3d";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { Floorplan } from 'floorplan-language';
+import { convertFloorplanToJson, createFloorplansServices } from 'floorplan-language';
+import { closeBrowser, render3DToPng } from 'floorplans-mcp-server/utils/renderer3d';
+import { EmptyFileSystem } from 'langium';
+import { parseHelper } from 'langium/test';
 
 const services = createFloorplansServices(EmptyFileSystem);
 const parse = parseHelper<Floorplan>(services.Floorplans);
@@ -41,8 +41,8 @@ interface Options {
 
 function parseArgs(args: string[]): Options {
   const options: Options = {
-    inputFile: "TriplexVilla.floorplan",
-    outputDir: ".",
+    inputFile: 'TriplexVilla.floorplan',
+    outputDir: '.',
     renderAll: false,
     projection: 'isometric',
     fov: 50,
@@ -55,32 +55,32 @@ function parseArgs(args: string[]): Options {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--all") {
+    if (arg === '--all') {
       options.renderAll = true;
-    } else if (arg === "--projection" && i + 1 < args.length) {
+    } else if (arg === '--projection' && i + 1 < args.length) {
       const mode = args[++i] as 'isometric' | 'perspective';
       if (mode === 'isometric' || mode === 'perspective') {
         options.projection = mode;
       }
-    } else if (arg === "--camera-pos" && i + 1 < args.length) {
+    } else if (arg === '--camera-pos' && i + 1 < args.length) {
       const parts = args[++i].split(',').map(Number);
-      if (parts.length === 3 && parts.every(n => !isNaN(n))) {
+      if (parts.length === 3 && parts.every((n) => !Number.isNaN(n))) {
         options.cameraPosition = parts as [number, number, number];
       }
-    } else if (arg === "--camera-target" && i + 1 < args.length) {
+    } else if (arg === '--camera-target' && i + 1 < args.length) {
       const parts = args[++i].split(',').map(Number);
-      if (parts.length === 3 && parts.every(n => !isNaN(n))) {
+      if (parts.length === 3 && parts.every((n) => !Number.isNaN(n))) {
         options.cameraTarget = parts as [number, number, number];
       }
-    } else if (arg === "--fov" && i + 1 < args.length) {
+    } else if (arg === '--fov' && i + 1 < args.length) {
       options.fov = parseInt(args[++i], 10);
-    } else if (arg === "--width" && i + 1 < args.length) {
+    } else if (arg === '--width' && i + 1 < args.length) {
       options.width = parseInt(args[++i], 10);
-    } else if (arg === "--height" && i + 1 < args.length) {
+    } else if (arg === '--height' && i + 1 < args.length) {
       options.height = parseInt(args[++i], 10);
-    } else if (arg === "--scale" && i + 1 < args.length) {
+    } else if (arg === '--scale' && i + 1 < args.length) {
       options.scale = parseInt(args[++i], 10);
-    } else if (!arg.startsWith("--")) {
+    } else if (!arg.startsWith('--')) {
       positionalArgs.push(arg);
     }
   }
@@ -102,11 +102,11 @@ async function main() {
     process.exit(1);
   }
 
-  const dslContent = fs.readFileSync(inputPath, "utf-8");
+  const dslContent = fs.readFileSync(inputPath, 'utf-8');
   const doc = await parse(dslContent);
 
   if (doc.parseResult.parserErrors.length > 0) {
-    console.error("Parse errors:");
+    console.error('Parse errors:');
     for (const error of doc.parseResult.parserErrors) {
       console.error(`  - ${error.message}`);
     }
@@ -114,23 +114,24 @@ async function main() {
   }
 
   // Run validation checks
-  const validationErrors = await services.Floorplans.validation.DocumentValidator.validateDocument(doc);
-  const errors = validationErrors.filter(e => e.severity === 1); // 1 = Error
-  const warnings = validationErrors.filter(e => e.severity === 2); // 2 = Warning
+  const validationErrors =
+    await services.Floorplans.validation.DocumentValidator.validateDocument(doc);
+  const errors = validationErrors.filter((e) => e.severity === 1); // 1 = Error
+  const warnings = validationErrors.filter((e) => e.severity === 2); // 2 = Warning
 
   if (errors.length > 0) {
-    console.error("\nValidation errors:");
+    console.error('\nValidation errors:');
     for (const error of errors) {
-      const line = error.range ? ` (line ${error.range.start.line + 1})` : "";
+      const line = error.range ? ` (line ${error.range.start.line + 1})` : '';
       console.error(`  ✗ ${error.message}${line}`);
     }
     process.exit(1);
   }
 
   if (warnings.length > 0) {
-    console.warn("\n⚠ Validation warnings:");
+    console.warn('\n⚠ Validation warnings:');
     for (const warning of warnings) {
-      const line = warning.range ? ` (line ${warning.range.start.line + 1})` : "";
+      const line = warning.range ? ` (line ${warning.range.start.line + 1})` : '';
       console.warn(`  ⚠ ${warning.message}${line}`);
     }
     console.log(); // blank line after warnings
@@ -146,7 +147,7 @@ async function main() {
   // Convert to JSON for 3D rendering
   const jsonResult = convertFloorplanToJson(floorplan);
   if (!jsonResult.data) {
-    console.error("Error: Failed to convert floorplan to JSON");
+    console.error('Error: Failed to convert floorplan to JSON');
     if (jsonResult.errors?.length) {
       for (const error of jsonResult.errors) {
         console.error(`  - ${error}`);
@@ -183,7 +184,9 @@ async function main() {
       fs.writeFileSync(pngPath, result.pngBuffer);
       console.log(`  ✓ 3D PNG: ${pngPath} (${floor.rooms.length} rooms)`);
     } catch (error) {
-      console.error(`  ✗ Failed to render ${floor.id}: ${error instanceof Error ? error.message : error}`);
+      console.error(
+        `  ✗ Failed to render ${floor.id}: ${error instanceof Error ? error.message : error}`,
+      );
     }
   }
 
@@ -208,18 +211,21 @@ async function main() {
 
       // Log scene bounds for reference
       const bounds = result.metadata.sceneBounds;
-      console.log(`\n  Scene bounds: [${bounds.min.x.toFixed(1)}, ${bounds.min.z.toFixed(1)}] to [${bounds.max.x.toFixed(1)}, ${bounds.max.z.toFixed(1)}]`);
+      console.log(
+        `\n  Scene bounds: [${bounds.min.x.toFixed(1)}, ${bounds.min.z.toFixed(1)}] to [${bounds.max.x.toFixed(1)}, ${bounds.max.z.toFixed(1)}]`,
+      );
     } catch (error) {
-      console.error(`  ✗ Failed to render 3D view: ${error instanceof Error ? error.message : error}`);
+      console.error(
+        `  ✗ Failed to render 3D view: ${error instanceof Error ? error.message : error}`,
+      );
       process.exit(1);
     }
   }
 
-  console.log("\nDone!");
-  
+  console.log('\nDone!');
+
   // Clean up browser instance
   await closeBrowser();
 }
 
 main().catch(console.error);
-

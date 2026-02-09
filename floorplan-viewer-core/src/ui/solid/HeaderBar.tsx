@@ -14,7 +14,7 @@
  * - Theme-aware icons
  */
 
-import { createSignal, createEffect, Show, onCleanup, type Accessor } from 'solid-js';
+import { type Accessor, createEffect, createSignal, onCleanup, Show } from 'solid-js';
 
 // ============================================================================
 // Types
@@ -126,10 +126,7 @@ export function HeaderBar(props: HeaderBarProps) {
     <>
       {/* Hover zone for auto-hide detection */}
       <Show when={props.autoHide}>
-        <div 
-          class="fp-header-hover-zone"
-          onMouseEnter={handleMouseEnter}
-        />
+        <div class="fp-header-hover-zone" onMouseEnter={handleMouseEnter} />
       </Show>
 
       {/* Header bar */}
@@ -171,9 +168,7 @@ export function HeaderBar(props: HeaderBarProps) {
             title="Toggle Editor Panel"
             onClick={() => props.onEditorToggle?.()}
           >
-            <span class="fp-editor-toggle-icon">
-              {getEditorOpen() ? '◀' : '▶'}
-            </span>
+            <span class="fp-editor-toggle-icon">{getEditorOpen() ? '◀' : '▶'}</span>
             <span class="fp-editor-toggle-label">Editor</span>
           </button>
 
@@ -183,9 +178,7 @@ export function HeaderBar(props: HeaderBarProps) {
             title={getTheme() === 'dark' ? 'Switch to Light Theme' : 'Switch to Dark Theme'}
             onClick={() => props.onThemeToggle?.()}
           >
-            <span class="fp-theme-toggle-icon">
-              {getTheme() === 'dark' ? '☀️' : '🌙'}
-            </span>
+            <span class="fp-theme-toggle-icon">{getTheme() === 'dark' ? '☀️' : '🌙'}</span>
           </button>
 
           {/* Command Palette Trigger */}

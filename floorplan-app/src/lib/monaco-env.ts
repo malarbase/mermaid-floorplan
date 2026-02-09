@@ -1,15 +1,15 @@
 /**
  * Monaco Editor Environment Configuration
- * 
+ *
  * Sets up the web worker configuration for Monaco Editor.
  * Must be imported before any Monaco usage.
- * 
+ *
  * For our floorplan DSL editor, we only need basic editor features
  * (syntax highlighting via Monarch tokenizer). We don't need:
  * - TypeScript/JavaScript language services
  * - JSON schema validation
  * - CSS/HTML language features
- * 
+ *
  * So we use a minimal worker setup that just satisfies Monaco's requirements.
  */
 
@@ -28,7 +28,7 @@ if (typeof window !== 'undefined' && !(window as any).MonacoEnvironment) {
           };
           `,
         ],
-        { type: 'application/javascript' }
+        { type: 'application/javascript' },
       );
       return new Worker(URL.createObjectURL(blob));
     },

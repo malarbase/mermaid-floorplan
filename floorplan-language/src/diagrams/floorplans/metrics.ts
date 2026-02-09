@@ -3,7 +3,7 @@
  * Computes room areas, floor metrics, and floorplan summary
  */
 
-import type { JsonRoom, JsonFloor, JsonExport } from "./json-converter.js";
+import type { JsonExport, JsonFloor, JsonRoom } from './json-converter.js';
 
 // ============================================================================
 // Metrics Types
@@ -70,13 +70,13 @@ export interface FloorplanSummary {
  */
 export function computeRoomMetrics(room: JsonRoom): RoomMetrics {
   const area = room.width * room.height;
-  
+
   const metrics: RoomMetrics = { area };
-  
+
   if (room.roomHeight !== undefined) {
     metrics.volume = area * room.roomHeight;
   }
-  
+
   return metrics;
 }
 
@@ -102,27 +102,27 @@ export function computeBoundingBox(rooms: JsonRoom[]): BoundingBox {
   if (rooms.length === 0) {
     return { width: 0, height: 0, area: 0, minX: 0, minY: 0 };
   }
-  
+
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
   let maxY = -Infinity;
-  
+
   for (const room of rooms) {
     const roomMinX = room.x;
     const roomMinY = room.z;
     const roomMaxX = room.x + room.width;
     const roomMaxY = room.z + room.height;
-    
+
     minX = Math.min(minX, roomMinX);
     minY = Math.min(minY, roomMinY);
     maxX = Math.max(maxX, roomMaxX);
     maxY = Math.max(maxY, roomMaxY);
   }
-  
+
   const width = maxX - minX;
   const height = maxY - minY;
-  
+
   return {
     width,
     height,
@@ -138,18 +138,18 @@ export function computeBoundingBox(rooms: JsonRoom[]): BoundingBox {
 export function computeFloorMetrics(floor: JsonFloor): FloorMetrics {
   const rooms = floor.rooms;
   const boundingBox = computeBoundingBox(rooms);
-  
+
   // Compute net area (sum of all room areas)
   let netArea = 0;
   for (const room of rooms) {
     netArea += room.width * room.height;
   }
-  
+
   const roomCount = rooms.length;
-  
+
   // Efficiency: ratio of usable space to total bounding box
   const efficiency = boundingBox.area > 0 ? netArea / boundingBox.area : 0;
-  
+
   return {
     netArea,
     boundingBox,
@@ -161,10 +161,12 @@ export function computeFloorMetrics(floor: JsonFloor): FloorMetrics {
 /**
  * Compute and attach metrics to a floor, returning an enhanced floor object
  */
-export function enhanceFloorWithMetrics(floor: JsonFloor): JsonFloor & { metrics: FloorMetrics; rooms: (JsonRoom & RoomMetrics)[] } {
+export function enhanceFloorWithMetrics(
+  floor: JsonFloor,
+): JsonFloor & { metrics: FloorMetrics; rooms: (JsonRoom & RoomMetrics)[] } {
   const metrics = computeFloorMetrics(floor);
   const enhancedRooms = floor.rooms.map(enhanceRoomWithMetrics);
-  
+
   return {
     ...floor,
     rooms: enhancedRooms,
@@ -182,13 +184,13 @@ export function enhanceFloorWithMetrics(floor: JsonFloor): JsonFloor & { metrics
 export function computeFloorplanSummary(floors: JsonFloor[]): FloorplanSummary {
   let grossFloorArea = 0;
   let totalRoomCount = 0;
-  
+
   for (const floor of floors) {
     const floorMetrics = computeFloorMetrics(floor);
     grossFloorArea += floorMetrics.netArea;
     totalRoomCount += floorMetrics.roomCount;
   }
-  
+
   return {
     grossFloorArea,
     totalRoomCount,
@@ -199,13 +201,13 @@ export function computeFloorplanSummary(floors: JsonFloor[]): FloorplanSummary {
 /**
  * Compute all metrics for a JsonExport, returning an enhanced export with metrics
  */
-export function computeFloorplanMetrics(jsonExport: JsonExport): JsonExport & { 
+export function computeFloorplanMetrics(jsonExport: JsonExport): JsonExport & {
   floors: (JsonFloor & { metrics: FloorMetrics; rooms: (JsonRoom & RoomMetrics)[] })[];
   summary: FloorplanSummary;
 } {
   const enhancedFloors = jsonExport.floors.map(enhanceFloorWithMetrics);
   const summary = computeFloorplanSummary(jsonExport.floors);
-  
+
   return {
     ...jsonExport,
     floors: enhancedFloors,
@@ -235,24 +237,34 @@ export function formatEfficiency(efficiency: number): string {
 /**
  * Format a summary table for CLI output
  */
-export function formatSummaryTable(summary: FloorplanSummary, floorMetrics: FloorMetrics[]): string {
+export function formatSummaryTable(
+  summary: FloorplanSummary,
+  floorMetrics: FloorMetrics[],
+): string {
   const lines: string[] = [];
-  
-  lines.push("┌─────────────────────────────────────────────────┐");
-  lines.push("│              Floorplan Summary                  │");
-  lines.push("├─────────────────────────────────────────────────┤");
-  lines.push(`│  Floors: ${summary.floorCount.toString().padStart(5)}                                  │`);
-  lines.push(`│  Total Rooms: ${summary.totalRoomCount.toString().padStart(5)}                             │`);
-  lines.push(`│  Gross Floor Area: ${summary.grossFloorArea.toFixed(2).padStart(10)} sq units     │`);
-  lines.push("├─────────────────────────────────────────────────┤");
-  
+
+  lines.push('┌─────────────────────────────────────────────────┐');
+  lines.push('│              Floorplan Summary                  │');
+  lines.push('├─────────────────────────────────────────────────┤');
+  lines.push(
+    `│  Floors: ${summary.floorCount.toString().padStart(5)}                                  │`,
+  );
+  lines.push(
+    `│  Total Rooms: ${summary.totalRoomCount.toString().padStart(5)}                             │`,
+  );
+  lines.push(
+    `│  Gross Floor Area: ${summary.grossFloorArea.toFixed(2).padStart(10)} sq units     │`,
+  );
+  lines.push('├─────────────────────────────────────────────────┤');
+
   for (let i = 0; i < floorMetrics.length; i++) {
     const fm = floorMetrics[i];
-    lines.push(`│  Floor ${(i + 1).toString().padEnd(2)}: ${fm.roomCount} rooms, ${fm.netArea.toFixed(2)} sq units (${formatEfficiency(fm.efficiency)}) │`);
+    lines.push(
+      `│  Floor ${(i + 1).toString().padEnd(2)}: ${fm.roomCount} rooms, ${fm.netArea.toFixed(2)} sq units (${formatEfficiency(fm.efficiency)}) │`,
+    );
   }
-  
-  lines.push("└─────────────────────────────────────────────────┘");
-  
-  return lines.join("\n");
-}
 
+  lines.push('└─────────────────────────────────────────────────┘');
+
+  return lines.join('\n');
+}

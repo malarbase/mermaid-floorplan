@@ -1,44 +1,44 @@
-import { test, expect } from "@playwright/test";
-import { loginAsDevUser } from "../fixtures";
+import { expect, test } from '@playwright/test';
+import { loginAsDevUser } from '../fixtures';
 
-test.describe("3D Viewer", () => {
+test.describe('3D Viewer', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsDevUser(page);
   });
 
-  test("viewer-test page renders canvas", async ({ page }) => {
-    await page.goto("/viewer-test");
+  test('viewer-test page renders canvas', async ({ page }) => {
+    await page.goto('/viewer-test');
 
     // Wait for canvas to appear (3D viewer)
-    const canvas = page.locator("canvas");
+    const canvas = page.locator('canvas');
 
     // Give it time to initialize WebGL
     await expect(canvas).toBeVisible({ timeout: 15000 });
   });
 
-  test("no WebGL errors in console", async ({ page }) => {
+  test('no WebGL errors in console', async ({ page }) => {
     const errors: string[] = [];
-    page.on("console", (msg) => {
-      if (msg.type() === "error") {
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
         errors.push(msg.text());
       }
     });
 
-    await page.goto("/viewer-test");
+    await page.goto('/viewer-test');
     await page.waitForTimeout(3000); // Wait for WebGL initialization
 
     // Filter for WebGL-specific errors
     const webglErrors = errors.filter(
-      (e) => e.includes("WebGL") || e.includes("GL_") || e.includes("shader")
+      (e) => e.includes('WebGL') || e.includes('GL_') || e.includes('shader'),
     );
 
     expect(webglErrors).toHaveLength(0);
   });
 
-  test("viewer container has expected dimensions", async ({ page }) => {
-    await page.goto("/viewer-test");
+  test('viewer container has expected dimensions', async ({ page }) => {
+    await page.goto('/viewer-test');
 
-    const canvas = page.locator("canvas");
+    const canvas = page.locator('canvas');
     await expect(canvas).toBeVisible({ timeout: 15000 });
 
     // Canvas should have reasonable dimensions
@@ -51,16 +51,16 @@ test.describe("3D Viewer", () => {
   });
 });
 
-test.describe("3D Viewer Controls", () => {
+test.describe('3D Viewer Controls', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsDevUser(page);
-    await page.goto("/viewer-test");
+    await page.goto('/viewer-test');
     // Wait for canvas
-    await page.locator("canvas").waitFor({ state: "visible", timeout: 15000 });
+    await page.locator('canvas').waitFor({ state: 'visible', timeout: 15000 });
   });
 
-  test("canvas responds to mouse interaction", async ({ page }) => {
-    const canvas = page.locator("canvas");
+  test('canvas responds to mouse interaction', async ({ page }) => {
+    const canvas = page.locator('canvas');
 
     // Perform mouse drag (rotate)
     const box = await canvas.boundingBox();
@@ -75,8 +75,8 @@ test.describe("3D Viewer Controls", () => {
     await expect(canvas).toBeVisible();
   });
 
-  test("canvas responds to scroll (zoom)", async ({ page }) => {
-    const canvas = page.locator("canvas");
+  test('canvas responds to scroll (zoom)', async ({ page }) => {
+    const canvas = page.locator('canvas');
 
     // Scroll on canvas (zoom)
     await canvas.hover();

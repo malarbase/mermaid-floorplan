@@ -1,24 +1,22 @@
-import { useParams, A, useSearchParams } from "@solidjs/router";
-import { Show, createMemo, createSignal } from "solid-js";
-import { clientOnly } from "@solidjs/start";
-import { PermalinkDisplay } from "~/components/PermalinkDisplay";
-import { CopyPermalinkButton } from "~/components/CopyPermalinkButton";
-import { Header } from "~/components/Header";
+import { A, useParams, useSearchParams } from '@solidjs/router';
+import { clientOnly } from '@solidjs/start';
+import { createMemo, Show } from 'solid-js';
+import { CopyPermalinkButton } from '~/components/CopyPermalinkButton';
+import { Header } from '~/components/Header';
+import { PermalinkDisplay } from '~/components/PermalinkDisplay';
 import {
-  ProjectPageLayout,
-  ProjectBreadcrumbs,
-  InfoBanner,
-  NotFoundCard,
   ContentMissingCard,
+  InfoBanner,
   LinkIcon,
-} from "~/components/project/ProjectPageLayout";
-import { useProjectData, useSnapshotData } from "~/hooks/useProjectData";
-import type { ViewerMode } from "~/components/viewer/FloorplanContainer";
+  NotFoundCard,
+  ProjectBreadcrumbs,
+  ProjectPageLayout,
+} from '~/components/project/ProjectPageLayout';
+import type { ViewerMode } from '~/components/viewer/FloorplanContainer';
+import { useProjectData, useSnapshotData } from '~/hooks/useProjectData';
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanContainer = clientOnly(
-  () => import("~/components/viewer/FloorplanContainer")
-);
+const FloorplanContainer = clientOnly(() => import('~/components/viewer/FloorplanContainer'));
 
 /**
  * Snapshot permalink page - shows project at a specific immutable snapshot.
@@ -37,19 +35,13 @@ export default function SnapshotView() {
   const hash = createMemo(() => params.hash);
 
   // Project data
-  const {
-    project,
-    forkedFrom,
-    projectData,
-    isOwner,
-    isProjectLoading,
-    projectNotFound,
-  } = useProjectData(username, projectSlug);
+  const { project, forkedFrom, projectData, isOwner, isProjectLoading, projectNotFound } =
+    useProjectData(username, projectSlug);
 
   // Snapshot data
   const { snapshot, content, isSnapshotLoading, snapshotNotFound } = useSnapshotData(
     () => project()?._id as string | undefined,
-    hash
+    hash,
   );
 
   // Loading state
@@ -68,17 +60,17 @@ export default function SnapshotView() {
 
   // Viewer mode (read-only: no editor mode for snapshots)
   const mode = createMemo((): ViewerMode => {
-    const modeParam = typeof searchParams.mode === "string" ? searchParams.mode : undefined;
-    if (modeParam && ["basic", "advanced"].includes(modeParam)) {
+    const modeParam = typeof searchParams.mode === 'string' ? searchParams.mode : undefined;
+    if (modeParam && ['basic', 'advanced'].includes(modeParam)) {
       return modeParam as ViewerMode;
     }
-    return "advanced";
+    return 'advanced';
   });
 
   // Format timestamp
   const formatDate = (ts: number) => {
     const date = new Date(ts);
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
   // Header actions (consistent with other project pages)
@@ -111,14 +103,14 @@ export default function SnapshotView() {
       <button
         class="badge badge-outline cursor-pointer hover:badge-primary transition-colors min-w-[6.5rem] justify-center"
         onClick={() => {
-          const modes: ViewerMode[] = ["basic", "advanced"];
+          const modes: ViewerMode[] = ['basic', 'advanced'];
           const currentIndex = modes.indexOf(mode());
           const nextMode = modes[(currentIndex + 1) % modes.length];
           setSearchParams({ mode: nextMode });
         }}
         title="Click to cycle viewer modes"
       >
-        {mode() === "advanced" ? "⚙️ Advanced" : "👁️ Basic"}
+        {mode() === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
       </button>
     </>
   );
@@ -130,7 +122,7 @@ export default function SnapshotView() {
       showNotFound={projectNotFound() || (!isLoading() && snapshotNotFound())}
       notFoundFallback={
         <NotFoundCard
-          title={!projectData() ? "Project not found" : "Snapshot not found"}
+          title={!projectData() ? 'Project not found' : 'Snapshot not found'}
           message={
             !projectData()
               ? "This project doesn't exist or you don't have access."
@@ -142,10 +134,7 @@ export default function SnapshotView() {
                 <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary">
                   View Project
                 </A>
-                <A
-                  href={`/u/${username()}/${projectSlug()}/history`}
-                  class="btn btn-ghost"
-                >
+                <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-ghost">
                   View History
                 </A>
               </Show>
@@ -169,9 +158,7 @@ export default function SnapshotView() {
             forkedFrom={forkedFrom()}
             compact
             breadcrumbSuffix={`s/${hash()}`}
-            titleSuffix={
-              <span class="font-mono text-base-content/50">#{hash()}</span>
-            }
+            titleSuffix={<span class="font-mono text-base-content/50">#{hash()}</span>}
           />
         }
         actions={headerActions()}
@@ -186,7 +173,7 @@ export default function SnapshotView() {
           <span class="text-xs opacity-60">&mdash; {snapshot()?.message}</span>
         </Show>
         <span class="text-xs opacity-50 hidden sm:inline">
-          {snapshot()?.createdAt ? formatDate(snapshot()!.createdAt) : ""}
+          {snapshot()?.createdAt ? formatDate(snapshot()!.createdAt) : ''}
         </span>
         <Show when={username() && projectSlug() && hash()}>
           <div class="hidden sm:block ml-auto">
@@ -214,10 +201,7 @@ export default function SnapshotView() {
             />
           }
         >
-          <FloorplanContainer
-            dsl={content()!}
-            mode={mode()}
-          />
+          <FloorplanContainer dsl={content()!} mode={mode()} />
         </Show>
       </div>
     </ProjectPageLayout>

@@ -1,12 +1,12 @@
-import { createSignal, Show } from "solid-js";
-import { Portal } from "solid-js/web";
-import { useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import type { FunctionReference } from 'convex/server';
+import { useMutation } from 'convex-solidjs';
+import { createSignal, Show } from 'solid-js';
+import { Portal } from 'solid-js/web';
 
 // Type-safe API reference builder for when generated files don't exist yet
 const api = {
   projects: {
-    remove: "projects:remove" as unknown as FunctionReference<"mutation">,
+    remove: 'projects:remove' as unknown as FunctionReference<'mutation'>,
   },
 };
 
@@ -27,7 +27,7 @@ interface DeleteProjectButtonProps {
  */
 export function DeleteProjectButton(props: DeleteProjectButtonProps) {
   const [isModalOpen, setIsModalOpen] = createSignal(false);
-  const [confirmText, setConfirmText] = createSignal("");
+  const [confirmText, setConfirmText] = createSignal('');
   const [isDeleting, setIsDeleting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
@@ -44,10 +44,10 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
     try {
       await removeMutation.mutate({ projectId: props.projectId });
       setIsModalOpen(false);
-      setConfirmText("");
+      setConfirmText('');
       props.onDeleted?.();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete project");
+      setError(err instanceof Error ? err.message : 'Failed to delete project');
     } finally {
       setIsDeleting(false);
     }
@@ -61,7 +61,7 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
 
   const handleCloseModal = () => {
     setIsModalOpen(false);
-    setConfirmText("");
+    setConfirmText('');
     setError(null);
   };
 
@@ -70,16 +70,11 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
       {/* Delete Button */}
       <button
         type="button"
-        class={`btn btn-ghost btn-sm text-error hover:bg-error hover:text-error-content ${props.class ?? ""}`}
+        class={`btn btn-ghost btn-sm text-error hover:bg-error hover:text-error-content ${props.class ?? ''}`}
         onClick={handleOpenModal}
         title="Delete project"
       >
-        <svg
-          class="w-4 h-4"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -95,13 +90,12 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
             <div class="modal-box">
               <h3 class="font-bold text-lg text-error">Delete Project</h3>
               <p class="py-4">
-                Are you sure you want to delete{" "}
-                <strong class="text-error">{props.projectName}</strong>? This action
-                cannot be undone.
+                Are you sure you want to delete{' '}
+                <strong class="text-error">{props.projectName}</strong>? This action cannot be
+                undone.
               </p>
               <p class="text-sm text-base-content/70 mb-4">
-                All versions, snapshots, and collaborator access will be permanently
-                deleted.
+                All versions, snapshots, and collaborator access will be permanently deleted.
               </p>
 
               <div class="form-control w-full">
@@ -160,7 +154,7 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
                       Deleting...
                     </>
                   ) : (
-                    "Delete Project"
+                    'Delete Project'
                   )}
                 </button>
               </div>

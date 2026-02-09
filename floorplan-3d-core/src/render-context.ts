@@ -1,11 +1,11 @@
 /**
  * Platform-agnostic render context interface
- * 
+ *
  * This interface abstracts the WebGL renderer creation, allowing the same
  * scene-building code to work in both browser and headless (Node.js) contexts.
  */
 
-import * as THREE from 'three';
+import type * as THREE from 'three';
 
 /**
  * Abstract render context that both browser and headless implementations must provide
@@ -48,8 +48,7 @@ export type RenderContextFactory = (options: RenderContextOptions) => RenderCont
 export function renderScene(
   scene: THREE.Scene,
   camera: THREE.Camera,
-  context: RenderContext
+  context: RenderContext,
 ): void {
   context.renderer.render(scene, camera);
 }
-

@@ -1,6 +1,13 @@
+import { createMemoryHistory, MemoryRouter } from '@solidjs/router';
 import { render as solidRender } from '@solidjs/testing-library';
-import { createSignal, createContext, useContext, type ParentComponent, type Accessor, Suspense } from 'solid-js';
-import { MemoryRouter, createMemoryHistory } from '@solidjs/router';
+import {
+  type Accessor,
+  createContext,
+  createSignal,
+  type ParentComponent,
+  Suspense,
+  useContext,
+} from 'solid-js';
 
 export interface MockUser {
   id: string;
@@ -23,11 +30,7 @@ export const MockAuthProvider: ParentComponent<{ user?: MockUser | null }> = (pr
     user: props.user ?? null,
     isLoading,
   };
-  return (
-    <MockAuthContext.Provider value={session}>
-      {props.children}
-    </MockAuthContext.Provider>
-  );
+  return <MockAuthContext.Provider value={session}>{props.children}</MockAuthContext.Provider>;
 };
 
 export const useMockAuth = () => {
@@ -73,22 +76,20 @@ export interface RenderOptions {
 
 export function renderWithProviders(
   ui: () => import('solid-js').JSX.Element,
-  options: RenderOptions = {}
+  options: RenderOptions = {},
 ) {
   const { user = null, convexData = {} } = options;
 
   return solidRender(() => (
     <MockAuthProvider user={user}>
-      <MockConvexProvider initialData={convexData}>
-        {ui()}
-      </MockConvexProvider>
+      <MockConvexProvider initialData={convexData}>{ui()}</MockConvexProvider>
     </MockAuthProvider>
   ));
 }
 
 export function renderWithRouter(
   ui: () => import('solid-js').JSX.Element,
-  options: RenderOptions = {}
+  options: RenderOptions = {},
 ) {
   const { user = null, route = '/', convexData = {} } = options;
   const history = createMemoryHistory();
@@ -100,9 +101,7 @@ export function renderWithRouter(
       root={(props) => (
         <Suspense>
           <MockAuthProvider user={user}>
-            <MockConvexProvider initialData={convexData}>
-              {props.children}
-            </MockConvexProvider>
+            <MockConvexProvider initialData={convexData}>{props.children}</MockConvexProvider>
           </MockAuthProvider>
         </Suspense>
       )}
@@ -120,13 +119,15 @@ export const createMockUser = (overrides: Partial<MockUser> = {}): MockUser => (
   ...overrides,
 });
 
-export const createMockProject = (overrides: Partial<{
-  _id: string;
-  slug: string;
-  name: string;
-  ownerId: string;
-  isPublic: boolean;
-}> = {}) => ({
+export const createMockProject = (
+  overrides: Partial<{
+    _id: string;
+    slug: string;
+    name: string;
+    ownerId: string;
+    isPublic: boolean;
+  }> = {},
+) => ({
   _id: 'project-123',
   slug: 'my-project',
   name: 'My Project',
@@ -135,12 +136,14 @@ export const createMockProject = (overrides: Partial<{
   ...overrides,
 });
 
-export const createMockVersion = (overrides: Partial<{
-  _id: string;
-  projectId: string;
-  name: string;
-  currentSnapshotId: string;
-}> = {}) => ({
+export const createMockVersion = (
+  overrides: Partial<{
+    _id: string;
+    projectId: string;
+    name: string;
+    currentSnapshotId: string;
+  }> = {},
+) => ({
   _id: 'version-123',
   projectId: 'project-123',
   name: 'main',
@@ -148,12 +151,14 @@ export const createMockVersion = (overrides: Partial<{
   ...overrides,
 });
 
-export const createMockSnapshot = (overrides: Partial<{
-  _id: string;
-  versionId: string;
-  contentHash: string;
-  dsl: string;
-}> = {}) => ({
+export const createMockSnapshot = (
+  overrides: Partial<{
+    _id: string;
+    versionId: string;
+    contentHash: string;
+    dsl: string;
+  }> = {},
+) => ({
   _id: 'snapshot-123',
   versionId: 'version-123',
   contentHash: 'abc123',

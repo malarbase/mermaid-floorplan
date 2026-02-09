@@ -1,7 +1,7 @@
-import { Show, type JSX } from "solid-js";
+import { Show } from 'solid-js';
 
-export type LoadingSize = "xs" | "sm" | "md" | "lg";
-export type LoadingVariant = "spinner" | "dots" | "ring" | "ball" | "bars" | "infinity";
+export type LoadingSize = 'xs' | 'sm' | 'md' | 'lg';
+export type LoadingVariant = 'spinner' | 'dots' | 'ring' | 'ball' | 'bars' | 'infinity';
 
 export interface LoadingProps {
   /** Size of the loading indicator */
@@ -17,48 +17,48 @@ export interface LoadingProps {
   /** Whether to show in a card container */
   card?: boolean;
   /** Primary color (uses DaisyUI color classes) */
-  color?: "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "error";
+  color?: 'primary' | 'secondary' | 'accent' | 'info' | 'success' | 'warning' | 'error';
 }
 
 /**
  * Loading component - displays various loading indicators.
- * 
+ *
  * Uses DaisyUI loading styles for consistency.
- * 
+ *
  * @example
  * // Simple spinner
  * <Loading />
- * 
+ *
  * @example
  * // Full-page loading with text
  * <Loading fullPage text="Loading your projects..." />
- * 
+ *
  * @example
  * // Custom size and variant
  * <Loading size="lg" variant="dots" color="primary" />
  */
 export function Loading(props: LoadingProps) {
-  const size = () => props.size ?? "md";
-  const variant = () => props.variant ?? "spinner";
-  const color = () => props.color ?? "primary";
+  const size = () => props.size ?? 'md';
+  const variant = () => props.variant ?? 'spinner';
+  const color = () => props.color ?? 'primary';
 
   const loadingClasses = () => {
-    const classes = ["loading"];
-    
+    const classes = ['loading'];
+
     // Size classes
     classes.push(`loading-${size()}`);
-    
+
     // Variant classes
     classes.push(`loading-${variant()}`);
-    
+
     // Color classes
     classes.push(`text-${color()}`);
-    
-    return classes.join(" ");
+
+    return classes.join(' ');
   };
 
   const LoadingIndicator = () => (
-    <div class={`flex flex-col items-center justify-center gap-3 ${props.class ?? ""}`}>
+    <div class={`flex flex-col items-center justify-center gap-3 ${props.class ?? ''}`}>
       <span class={loadingClasses()}></span>
       <Show when={props.text}>
         <p class="text-base-content/70 text-sm">{props.text}</p>
@@ -92,7 +92,7 @@ export function Loading(props: LoadingProps) {
 
 /**
  * LoadingSkeleton - placeholder content while loading.
- * 
+ *
  * @example
  * <LoadingSkeleton lines={3} />
  */
@@ -112,7 +112,7 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
 
   if (props.card) {
     return (
-      <div class={`card bg-base-100 shadow animate-pulse ${props.class ?? ""}`}>
+      <div class={`card bg-base-100 shadow animate-pulse ${props.class ?? ''}`}>
         <div class="card-body">
           <Show when={props.avatar}>
             <div class="flex items-center gap-3 mb-4">
@@ -134,7 +134,7 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
   }
 
   return (
-    <div class={`space-y-2 ${props.class ?? ""}`}>
+    <div class={`space-y-2 ${props.class ?? ''}`}>
       <Show when={props.avatar}>
         <div class="flex items-center gap-3 mb-4">
           <div class="skeleton w-10 h-10 rounded-full"></div>
@@ -145,7 +145,9 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
         </div>
       </Show>
       {Array.from({ length: lines() }).map((_, i) => (
-        <div class={`skeleton h-4 ${i === 0 ? "w-3/4" : i === lines() - 1 ? "w-1/2" : "w-full"}`}></div>
+        <div
+          class={`skeleton h-4 ${i === 0 ? 'w-3/4' : i === lines() - 1 ? 'w-1/2' : 'w-full'}`}
+        ></div>
       ))}
     </div>
   );
@@ -157,7 +159,7 @@ export function LoadingSkeleton(props: LoadingSkeletonProps) {
 export function PageLoading(props: { text?: string }) {
   return (
     <div class="flex justify-center items-center min-h-[60vh]">
-      <Loading size="lg" text={props.text ?? "Loading..."} />
+      <Loading size="lg" text={props.text ?? 'Loading...'} />
     </div>
   );
 }
@@ -166,14 +168,14 @@ export function PageLoading(props: { text?: string }) {
  * InlineLoading - small inline loading indicator.
  */
 export function InlineLoading(props: { class?: string }) {
-  return <span class={`loading loading-spinner loading-xs ${props.class ?? ""}`}></span>;
+  return <span class={`loading loading-spinner loading-xs ${props.class ?? ''}`}></span>;
 }
 
 /**
  * ButtonLoading - loading state specifically for buttons.
  */
 export function ButtonLoading(props: { size?: LoadingSize }) {
-  return <span class={`loading loading-spinner loading-${props.size ?? "xs"}`}></span>;
+  return <span class={`loading loading-spinner loading-${props.size ?? 'xs'}`}></span>;
 }
 
 export default Loading;

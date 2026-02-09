@@ -1,12 +1,12 @@
-import { createSignal, createMemo, Show, createEffect } from "solid-js";
-import { useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import type { FunctionReference } from 'convex/server';
+import { useMutation } from 'convex-solidjs';
+import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 
 // Type-safe API reference builder for when generated files don't exist yet
 // This will be replaced with proper imports once `npx convex dev` generates the API
 const api = {
   sharing: {
-    inviteByUsername: "sharing:inviteByUsername" as unknown as FunctionReference<"mutation">,
+    inviteByUsername: 'sharing:inviteByUsername' as unknown as FunctionReference<'mutation'>,
   },
 };
 
@@ -18,7 +18,7 @@ interface InviteByUsernameModalProps {
   /** Project ID to invite to */
   projectId: string;
   /** Callback when invitation is successful */
-  onSuccess?: (username: string, role: "viewer" | "editor") => void;
+  onSuccess?: (username: string, role: 'viewer' | 'editor') => void;
 }
 
 /**
@@ -26,10 +26,10 @@ interface InviteByUsernameModalProps {
  * Only project owners can use this functionality.
  */
 export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
-  const [username, setUsername] = createSignal("");
-  const [role, setRole] = createSignal<"viewer" | "editor">("viewer");
-  const [error, setError] = createSignal("");
-  const [success, setSuccess] = createSignal("");
+  const [username, setUsername] = createSignal('');
+  const [role, setRole] = createSignal<'viewer' | 'editor'>('viewer');
+  const [error, setError] = createSignal('');
+  const [success, setSuccess] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   // Mutation to invite by username
@@ -38,19 +38,19 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
   // Reset form when modal opens
   createEffect(() => {
     if (props.isOpen) {
-      setUsername("");
-      setRole("viewer");
-      setError("");
-      setSuccess("");
+      setUsername('');
+      setRole('viewer');
+      setError('');
+      setSuccess('');
     }
   });
 
   // Normalize username (lowercase, alphanumeric + underscores)
   const handleUsernameChange = (value: string) => {
-    const normalized = value.toLowerCase().replace(/[^a-z0-9_]/g, "");
+    const normalized = value.toLowerCase().replace(/[^a-z0-9_]/g, '');
     setUsername(normalized);
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
   };
 
   // Validation
@@ -63,48 +63,48 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
 
   const validationMessage = createMemo(() => {
     const name = username();
-    if (name.length === 0) return "";
-    if (name.length < 3) return "Username must be at least 3 characters";
-    if (name.length > 30) return "Username must be 30 characters or less";
-    return "";
+    if (name.length === 0) return '';
+    if (name.length < 3) return 'Username must be at least 3 characters';
+    if (name.length > 30) return 'Username must be 30 characters or less';
+    return '';
   });
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
 
     if (!isValid()) {
-      setError("Please enter a valid username");
+      setError('Please enter a valid username');
       return;
     }
 
     setIsSubmitting(true);
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
 
     try {
-      const result = await inviteByUsernameMutation.mutate({
+      const result = (await inviteByUsernameMutation.mutate({
         projectId: props.projectId,
         username: username(),
         role: role(),
-      }) as { success: boolean; action: string };
+      })) as { success: boolean; action: string };
 
       // Show success message based on action
-      const actionMessage = result.action === "created" 
-        ? `@${username()} has been invited as ${role()}`
-        : result.action === "updated"
-        ? `@${username()}'s role has been updated to ${role()}`
-        : `@${username()} already has ${role()} access`;
-      
+      const actionMessage =
+        result.action === 'created'
+          ? `@${username()} has been invited as ${role()}`
+          : result.action === 'updated'
+            ? `@${username()}'s role has been updated to ${role()}`
+            : `@${username()} already has ${role()} access`;
+
       setSuccess(actionMessage);
       props.onSuccess?.(username(), role());
-      
+
       // Close modal after a short delay on success
       setTimeout(() => {
         props.onClose();
       }, 1500);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to invite user";
+      const message = err instanceof Error ? err.message : 'Failed to invite user';
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -116,12 +116,7 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
       <div class="modal modal-open">
         <div class="modal-box">
           <h3 class="font-bold text-lg flex items-center gap-2">
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -133,8 +128,8 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
           </h3>
 
           <p class="py-4 text-base-content/70">
-            Invite a user to collaborate on this project. They will receive
-            access to the project with the role you specify.
+            Invite a user to collaborate on this project. They will receive access to the project
+            with the role you specify.
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -142,9 +137,7 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
             <div class="form-control w-full">
               <label class="label">
                 <span class="label-text">Username</span>
-                <span class="label-text-alt text-base-content/50">
-                  3-30 characters
-                </span>
+                <span class="label-text-alt text-base-content/50">3-30 characters</span>
               </label>
               <div class="join w-full">
                 <span class="join-item btn btn-disabled no-animation">@</span>
@@ -152,11 +145,7 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
                   type="text"
                   placeholder="username"
                   class={`input input-bordered join-item w-full ${
-                    username().length > 0
-                      ? isValid()
-                        ? "input-success"
-                        : "input-error"
-                      : ""
+                    username().length > 0 ? (isValid() ? 'input-success' : 'input-error') : ''
                   }`}
                   value={username()}
                   onInput={(e) => handleUsernameChange(e.currentTarget.value)}
@@ -169,9 +158,7 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
               {/* Validation message */}
               <label class="label">
                 <Show when={validationMessage()}>
-                  <span class="label-text-alt text-warning">
-                    {validationMessage()}
-                  </span>
+                  <span class="label-text-alt text-warning">{validationMessage()}</span>
                 </Show>
               </label>
             </div>
@@ -187,8 +174,8 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
                     type="radio"
                     name="role"
                     class="radio radio-primary"
-                    checked={role() === "viewer"}
-                    onChange={() => setRole("viewer")}
+                    checked={role() === 'viewer'}
+                    onChange={() => setRole('viewer')}
                   />
                   <span class="label-text flex flex-col">
                     <span class="font-medium">Viewer</span>
@@ -202,14 +189,12 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
                     type="radio"
                     name="role"
                     class="radio radio-primary"
-                    checked={role() === "editor"}
-                    onChange={() => setRole("editor")}
+                    checked={role() === 'editor'}
+                    onChange={() => setRole('editor')}
                   />
                   <span class="label-text flex flex-col">
                     <span class="font-medium">Editor</span>
-                    <span class="text-xs text-base-content/60">
-                      Can view and edit the project
-                    </span>
+                    <span class="text-xs text-base-content/60">Can view and edit the project</span>
                   </span>
                 </label>
               </div>
@@ -218,11 +203,7 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
             {/* Error message */}
             <Show when={error()}>
               <div class="alert alert-error mt-4">
-                <svg
-                  class="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -237,11 +218,7 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
             {/* Success message */}
             <Show when={success()}>
               <div class="alert alert-success mt-4">
-                <svg
-                  class="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -263,11 +240,7 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                disabled={!isValid() || isSubmitting()}
-              >
+              <button type="submit" class="btn btn-primary" disabled={!isValid() || isSubmitting()}>
                 <Show when={isSubmitting()}>
                   <span class="loading loading-spinner loading-sm"></span>
                 </Show>

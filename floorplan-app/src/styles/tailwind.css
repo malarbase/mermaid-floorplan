@@ -1,6 +1,6 @@
 /**
  * Tailwind CSS + DaisyUI styles for floorplan-app
- * 
+ *
  * ARCHITECTURAL BLUEPRINT THEME
  * A distinctive dark theme with technical precision aesthetics
  */
@@ -12,84 +12,86 @@
 
 /* Bebas Neue - Display/Heading font */
 @font-face {
-  font-family: 'Bebas Neue';
+  font-family: "Bebas Neue";
   font-style: normal;
   font-weight: 400;
   font-display: block;
-  src: url('/fonts/bebas-neue-v16-latin-regular.woff2') format('woff2');
+  src: url("/fonts/bebas-neue-v16-latin-regular.woff2") format("woff2");
 }
 
 /* DM Sans - Body font */
 @font-face {
-  font-family: 'DM Sans';
+  font-family: "DM Sans";
   font-style: normal;
   font-weight: 400;
   font-display: block;
-  src: url('/fonts/dm-sans-v17-latin-regular.woff2') format('woff2');
+  src: url("/fonts/dm-sans-v17-latin-regular.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'DM Sans';
+  font-family: "DM Sans";
   font-style: italic;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/dm-sans-v17-latin-italic.woff2') format('woff2');
+  src: url("/fonts/dm-sans-v17-latin-italic.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'DM Sans';
+  font-family: "DM Sans";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/dm-sans-v17-latin-500.woff2') format('woff2');
+  src: url("/fonts/dm-sans-v17-latin-500.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'DM Sans';
+  font-family: "DM Sans";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/dm-sans-v17-latin-600.woff2') format('woff2');
+  src: url("/fonts/dm-sans-v17-latin-600.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'DM Sans';
+  font-family: "DM Sans";
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: url('/fonts/dm-sans-v17-latin-700.woff2') format('woff2');
+  src: url("/fonts/dm-sans-v17-latin-700.woff2") format("woff2");
 }
 
 /* JetBrains Mono - Code/Monospace font */
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: "JetBrains Mono";
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: url('/fonts/jetbrains-mono-v24-latin-regular.woff2') format('woff2');
+  src: url("/fonts/jetbrains-mono-v24-latin-regular.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: "JetBrains Mono";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/fonts/jetbrains-mono-v24-latin-500.woff2') format('woff2');
+  src: url("/fonts/jetbrains-mono-v24-latin-500.woff2") format("woff2");
 }
 
 @font-face {
-  font-family: 'JetBrains Mono';
+  font-family: "JetBrains Mono";
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: url('/fonts/jetbrains-mono-v24-latin-600.woff2') format('woff2');
+  src: url("/fonts/jetbrains-mono-v24-latin-600.woff2") format("woff2");
 }
 
 @import "tailwindcss";
 
 /* === DaisyUI v5 Configuration === */
 @plugin "daisyui" {
-  themes: light, dark --default;
+  themes:
+    light,
+    dark --default;
   logs: true;
 }
 
@@ -97,29 +99,29 @@
 @plugin "daisyui/theme" {
   name: "light";
   color-scheme: light;
-  
+
   /* Clean white/gray backgrounds */
-  --color-base-100: oklch(100% 0 0);            /* #ffffff - Background */
-  --color-base-200: oklch(97% 0.01 250);        /* #f5f7fa - Card backgrounds */
-  --color-base-300: oklch(93% 0.01 250);        /* #e8ecf0 - Hover states */
-  --color-base-content: oklch(20% 0.02 250);    /* #1a2030 - Primary text */
-  
+  --color-base-100: oklch(100% 0 0); /* #ffffff - Background */
+  --color-base-200: oklch(97% 0.01 250); /* #f5f7fa - Card backgrounds */
+  --color-base-300: oklch(93% 0.01 250); /* #e8ecf0 - Hover states */
+  --color-base-content: oklch(20% 0.02 250); /* #1a2030 - Primary text */
+
   /* Technical cyan accent (same as dark) */
-  --color-primary: oklch(60% 0.18 195);         /* Slightly darker cyan for light bg */
-  --color-primary-content: oklch(100% 0 0);     /* White text on cyan */
-  
+  --color-primary: oklch(60% 0.18 195); /* Slightly darker cyan for light bg */
+  --color-primary-content: oklch(100% 0 0); /* White text on cyan */
+
   /* Muted secondary */
-  --color-secondary: oklch(45% 0.08 250);       /* Darker blue-gray */
+  --color-secondary: oklch(45% 0.08 250); /* Darker blue-gray */
   --color-secondary-content: oklch(100% 0 0);
-  
+
   /* Accent matches primary */
   --color-accent: oklch(60% 0.18 195);
   --color-accent-content: oklch(100% 0 0);
-  
+
   /* Neutral for borders */
-  --color-neutral: oklch(85% 0.01 250);         /* Light border color */
+  --color-neutral: oklch(85% 0.01 250); /* Light border color */
   --color-neutral-content: oklch(20% 0.02 250);
-  
+
   /* Status colors */
   --color-info: oklch(55% 0.15 220);
   --color-info-content: oklch(100% 0 0);
@@ -129,7 +131,7 @@
   --color-warning-content: oklch(15% 0.05 75);
   --color-error: oklch(55% 0.22 25);
   --color-error-content: oklch(100% 0 0);
-  
+
   /* Sharper corners for technical feel */
   --radius-selector: 0.375rem;
   --radius-field: 0.25rem;
@@ -144,39 +146,39 @@
   default: true;
   prefersdark: true;
   color-scheme: dark;
-  
+
   /* Deep navy/charcoal backgrounds */
-  --color-base-100: oklch(8% 0.02 250);         /* #0a0f14 - Deepest background */
-  --color-base-200: oklch(12% 0.02 250);        /* #141b24 - Card backgrounds */
-  --color-base-300: oklch(18% 0.03 250);        /* #1e2836 - Hover states */
-  --color-base-content: oklch(95% 0.01 250);    /* #f0f4f8 - Primary text */
-  
+  --color-base-100: oklch(8% 0.02 250); /* #0a0f14 - Deepest background */
+  --color-base-200: oklch(12% 0.02 250); /* #141b24 - Card backgrounds */
+  --color-base-300: oklch(18% 0.03 250); /* #1e2836 - Hover states */
+  --color-base-content: oklch(95% 0.01 250); /* #f0f4f8 - Primary text */
+
   /* Technical cyan accent */
-  --color-primary: oklch(75% 0.18 195);         /* #00d4ff - Bright cyan */
+  --color-primary: oklch(75% 0.18 195); /* #00d4ff - Bright cyan */
   --color-primary-content: oklch(10% 0.02 250); /* Dark text on cyan */
-  
+
   /* Muted secondary */
-  --color-secondary: oklch(55% 0.08 250);       /* #5a7090 - Muted blue-gray */
+  --color-secondary: oklch(55% 0.08 250); /* #5a7090 - Muted blue-gray */
   --color-secondary-content: oklch(95% 0.01 250);
-  
+
   /* Accent matches primary for consistency */
-  --color-accent: oklch(75% 0.18 195);          /* #00d4ff */
+  --color-accent: oklch(75% 0.18 195); /* #00d4ff */
   --color-accent-content: oklch(10% 0.02 250);
-  
+
   /* Neutral for borders and subtle elements */
-  --color-neutral: oklch(25% 0.02 250);         /* #2a3444 - Border color */
+  --color-neutral: oklch(25% 0.02 250); /* #2a3444 - Border color */
   --color-neutral-content: oklch(85% 0.01 250);
-  
+
   /* Status colors - keeping functional */
-  --color-info: oklch(65% 0.15 220);            /* Blue info */
+  --color-info: oklch(65% 0.15 220); /* Blue info */
   --color-info-content: oklch(100% 0 0);
-  --color-success: oklch(70% 0.18 145);         /* Green success */
+  --color-success: oklch(70% 0.18 145); /* Green success */
   --color-success-content: oklch(10% 0.02 145);
-  --color-warning: oklch(80% 0.15 75);          /* Amber warning */
+  --color-warning: oklch(80% 0.15 75); /* Amber warning */
   --color-warning-content: oklch(15% 0.05 75);
-  --color-error: oklch(65% 0.22 25);            /* Red error */
+  --color-error: oklch(65% 0.22 25); /* Red error */
   --color-error-content: oklch(100% 0 0);
-  
+
   /* Sharper corners for technical feel */
   --radius-selector: 0.375rem;
   --radius-field: 0.25rem;
@@ -188,26 +190,34 @@
  * This is required in monorepos because Tailwind v4's automatic detection
  * may not follow cross-package imports correctly.
  */
-@source "../";                                  /* All floorplan-app source */
-@source "../../floorplan-viewer-core/src";     /* Viewer core source */
+@source "../"; /* All floorplan-app source */
+@source "../../floorplan-viewer-core/src"; /* Viewer core source */
 
 @layer base {
   body {
-    font-family: 'DM Sans', system-ui, sans-serif;
+    font-family: "DM Sans", system-ui, sans-serif;
     background-color: oklch(var(--color-base-100));
   }
-  
-  html, body {
+
+  html,
+  body {
     height: 100%;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
-    font-family: 'Bebas Neue', 'DM Sans', system-ui, sans-serif;
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: "Bebas Neue", "DM Sans", system-ui, sans-serif;
     letter-spacing: 0.02em;
   }
-  
-  code, pre, .font-mono {
-    font-family: 'JetBrains Mono', ui-monospace, monospace;
+
+  code,
+  pre,
+  .font-mono {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
   }
 }
 
@@ -218,30 +228,45 @@
     flex-direction: column;
     background-color: oklch(var(--color-base-100));
     background-image:
-      repeating-linear-gradient(0deg, transparent, transparent 49px, oklch(var(--color-base-content) / 0.06) 49px, oklch(var(--color-base-content) / 0.06) 50px),
-      repeating-linear-gradient(90deg, transparent, transparent 49px, oklch(var(--color-base-content) / 0.06) 49px, oklch(var(--color-base-content) / 0.06) 50px);
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 49px,
+        oklch(var(--color-base-content) / 0.06) 49px,
+        oklch(var(--color-base-content) / 0.06) 50px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 49px,
+        oklch(var(--color-base-content) / 0.06) 49px,
+        oklch(var(--color-base-content) / 0.06) 50px
+      );
   }
-  
+
   .main-content {
     flex: 1;
   }
-  
+
   .card-hover {
-    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    transition:
+      transform 0.2s ease,
+      box-shadow 0.2s ease,
+      border-color 0.2s ease;
   }
-  
+
   .card-hover:hover {
     transform: translateY(-2px);
     box-shadow: 0 0 30px oklch(var(--color-primary) / 0.15);
     border-color: oklch(var(--color-primary) / 0.5);
   }
-  
+
   .form-field {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
   }
-  
+
   .auth-button {
     display: flex;
     align-items: center;
@@ -254,19 +279,19 @@
     transition: all 0.2s ease;
     border: 1px solid oklch(var(--color-neutral));
   }
-  
+
   .auth-button-google {
     background-color: oklch(var(--color-base-200));
     color: oklch(var(--color-base-content));
     border: 1px solid oklch(var(--color-neutral));
   }
-  
+
   .auth-button-google:hover {
     background-color: oklch(var(--color-base-300));
     border-color: oklch(var(--color-primary));
     box-shadow: 0 0 15px oklch(var(--color-primary) / 0.2);
   }
-  
+
   .project-card {
     position: relative;
     border-radius: 0.5rem;
@@ -275,12 +300,12 @@
     border: 1px solid oklch(var(--color-neutral));
     transition: all 0.25s ease;
   }
-  
+
   .project-card:hover {
     border-color: oklch(var(--color-primary) / 0.6);
     box-shadow: 0 0 25px oklch(var(--color-primary) / 0.12);
   }
-  
+
   /* Version badge */
   .version-badge {
     display: inline-flex;
@@ -292,7 +317,7 @@
     background-color: oklch(var(--color-base-200));
     color: oklch(var(--color-base-content));
   }
-  
+
   /* Collaborator avatar */
   .collaborator-avatar {
     width: 2rem;
@@ -306,7 +331,7 @@
     background-color: oklch(var(--color-primary));
     color: oklch(var(--color-primary-content));
   }
-  
+
   /* Empty state */
   .empty-state {
     display: flex;
@@ -317,7 +342,7 @@
     text-align: center;
     color: oklch(var(--color-base-content) / 0.6);
   }
-  
+
   .empty-state-icon {
     font-size: 3rem;
     margin-bottom: 1rem;
@@ -333,7 +358,7 @@
     transition-duration: 150ms;
     transition-timing-function: ease;
   }
-  
+
   /* Scrollbar styling */
   .scrollbar-thin {
     scrollbar-width: thin;
@@ -356,7 +381,7 @@
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     background: oklch(var(--color-neutral) / 0.5);
   }
-  
+
   /* Text truncation */
   .truncate-2-lines {
     display: -webkit-box;

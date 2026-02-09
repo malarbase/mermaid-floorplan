@@ -5,15 +5,12 @@
 
 import {
   type JsonExport,
+  normalizeToMeters,
   type Render3DOptions,
   type Render3DResult,
   type SceneBounds,
-  normalizeToMeters,
 } from 'floorplan-3d-core';
-import {
-  renderWithPuppeteer,
-  closeBrowser,
-} from './puppeteer-renderer.js';
+import { closeBrowser, renderWithPuppeteer } from './puppeteer-renderer.js';
 
 // Re-export closeBrowser for cleanup
 export { closeBrowser };
@@ -27,7 +24,7 @@ export { closeBrowser };
  */
 export async function render3DToPng(
   jsonData: JsonExport,
-  options: Render3DOptions = {}
+  options: Render3DOptions = {},
 ): Promise<Render3DResult> {
   // Normalize all dimensions to meters for consistent 3D rendering
   // This ensures stairs, lifts, rooms, and other elements are correctly scaled

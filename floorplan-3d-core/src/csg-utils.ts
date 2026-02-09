@@ -1,14 +1,14 @@
 /**
  * CSG (Constructive Solid Geometry) utilities for material preservation
- * 
+ *
  * After CSG operations, Three.js geometry material groups are destroyed.
  * These utilities help reassign materials based on face normals.
- * 
+ *
  * Note: CSG operations require the optional `three-bvh-csg` dependency.
  * These utilities work with any BufferGeometry regardless of how it was created.
  */
 
-import * as THREE from 'three';
+import type * as THREE from 'three';
 
 /**
  * BoxGeometry face indices following Three.js conventions:
@@ -30,29 +30,29 @@ export const FACE_INDICES = {
 
 /**
  * Map a face normal to a material index following BoxGeometry conventions.
- * 
+ *
  * Determines the dominant axis of the normal vector and returns the
  * corresponding material index (0-5).
- * 
+ *
  * @param nx Normal X component
- * @param ny Normal Y component  
+ * @param ny Normal Y component
  * @param nz Normal Z component
  * @param materialCount Number of materials in the array (returns 0 if <= 1)
  * @returns Material index (0-5 for 6-material array, 0 for single material)
  */
 export function normalToMaterialIndex(
-  nx: number, 
-  ny: number, 
-  nz: number, 
-  materialCount: number = 6
+  nx: number,
+  ny: number,
+  nz: number,
+  materialCount: number = 6,
 ): number {
   // For single material, always return 0
   if (materialCount <= 1) return 0;
-  
+
   const absX = Math.abs(nx);
   const absY = Math.abs(ny);
   const absZ = Math.abs(nz);
-  
+
   // Determine dominant axis and direction
   if (absX >= absY && absX >= absZ) {
     // X-dominant: right (+X) or left (-X)
@@ -68,56 +68,56 @@ export function normalToMaterialIndex(
 
 /**
  * Reassign material groups based on face normals after CSG operations.
- * 
+ *
  * CSG operations destroy the original material group assignments.
  * This function analyzes each face's normal and assigns it to the
  * appropriate material index following BoxGeometry conventions.
- * 
+ *
  * Consecutive faces with the same material are merged into single groups
  * to optimize rendering.
- * 
+ *
  * @param geometry The BufferGeometry to reassign materials for
  * @param materialCount Number of materials in the material array
  */
 export function reassignMaterialsByNormal(
   geometry: THREE.BufferGeometry,
-  materialCount: number
+  materialCount: number,
 ): void {
   const normals = geometry.attributes.normal;
   const index = geometry.index;
-  
+
   if (!normals) return;
-  
+
   // Clear existing groups
   geometry.clearGroups();
-  
+
   // Determine face count based on indexed vs non-indexed geometry
   const vertexCount = index ? index.count : normals.count;
   const faceCount = Math.floor(vertexCount / 3);
-  
+
   if (faceCount === 0) return;
-  
+
   // Track current group for optimization (merge consecutive faces with same material)
   let currentGroupStart = 0;
   let currentGroupMaterial = -1;
-  
+
   for (let face = 0; face < faceCount; face++) {
     // Get the first vertex index of this face
     const vertexIndex = index ? index.getX(face * 3) : face * 3;
-    
+
     // Get normal components
     const nx = normals.getX(vertexIndex);
     const ny = normals.getY(vertexIndex);
     const nz = normals.getZ(vertexIndex);
-    
+
     // Map normal to material index
     const materialIndex = normalToMaterialIndex(nx, ny, nz, materialCount);
-    
+
     // Optimize by merging consecutive faces with same material
     if (materialIndex !== currentGroupMaterial) {
       // Close previous group if it exists
       if (currentGroupMaterial !== -1) {
-        const groupVertexCount = (face * 3) - currentGroupStart;
+        const groupVertexCount = face * 3 - currentGroupStart;
         geometry.addGroup(currentGroupStart, groupVertexCount, currentGroupMaterial);
       }
       // Start new group
@@ -125,24 +125,24 @@ export function reassignMaterialsByNormal(
       currentGroupMaterial = materialIndex;
     }
   }
-  
+
   // Close the final group
   if (currentGroupMaterial !== -1) {
-    const groupVertexCount = (faceCount * 3) - currentGroupStart;
+    const groupVertexCount = faceCount * 3 - currentGroupStart;
     geometry.addGroup(currentGroupStart, groupVertexCount, currentGroupMaterial);
   }
 }
 
 /**
  * Get the expected material index for a wall face based on wall direction.
- * 
+ *
  * @param wallDirection The direction of the wall ('top', 'bottom', 'left', 'right')
  * @param isInterior Whether this is the interior face (facing adjacent room)
  * @returns The material index for this face
  */
 export function getWallFaceMaterialIndex(
   wallDirection: 'top' | 'bottom' | 'left' | 'right',
-  isInterior: boolean
+  isInterior: boolean,
 ): number {
   // For walls, the interior face is the one facing the adjacent room
   // The exterior face uses the owner's material
@@ -161,4 +161,3 @@ export function getWallFaceMaterialIndex(
       return isInterior ? FACE_INDICES.POSITIVE_X : FACE_INDICES.NEGATIVE_X;
   }
 }
-

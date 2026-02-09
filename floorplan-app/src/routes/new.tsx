@@ -1,21 +1,21 @@
-import { Title } from "@solidjs/meta";
-import { useNavigate } from "@solidjs/router";
-import { createMemo, createEffect, Show } from "solid-js";
-import { useSession } from "~/lib/auth-client";
-import { Header } from "~/components/Header";
-import { ProjectForm } from "~/components/ProjectForm";
+import { Title } from '@solidjs/meta';
+import { useNavigate } from '@solidjs/router';
+import { createEffect, createMemo, Show } from 'solid-js';
+import { Header } from '~/components/Header';
+import { ProjectForm } from '~/components/ProjectForm';
+import { useSession } from '~/lib/auth-client';
 
 /**
  * Create new project page (protected route).
  * Route: /new
- * 
+ *
  * Uses the ProjectForm component for creating new floorplan projects.
  * After successful creation, navigates to the project view page.
  */
 export default function NewProject() {
   const sessionSignal = useSession();
   const navigate = useNavigate();
-  
+
   const session = createMemo(() => sessionSignal());
   const isLoading = createMemo(() => session()?.isPending ?? true);
   const user = createMemo(() => session()?.data?.user);
@@ -23,27 +23,27 @@ export default function NewProject() {
   // Redirect to login if not authenticated
   createEffect(() => {
     if (!isLoading() && !user()) {
-      navigate("/login?redirect=/new", { replace: true });
+      navigate('/login?redirect=/new', { replace: true });
     }
   });
 
   // Get username for URL (use username field, not display name)
-  const username = createMemo(() => user()?.username ?? user()?.name ?? "you");
+  const username = createMemo(() => user()?.username ?? user()?.name ?? 'you');
 
   // Handle successful project creation
-  const handleSuccess = (projectId: string, slug?: string) => {
+  const handleSuccess = (_projectId: string, slug?: string) => {
     // If we have the slug, navigate directly to the project
     if (slug && username()) {
       navigate(`/u/${username()}/${slug}`);
     } else {
       // Fallback to dashboard
-      navigate("/dashboard");
+      navigate('/dashboard');
     }
   };
 
   // Handle cancel
   const handleCancel = () => {
-    navigate("/dashboard");
+    navigate('/dashboard');
   };
 
   return (

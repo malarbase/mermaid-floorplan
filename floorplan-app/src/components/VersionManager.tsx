@@ -1,7 +1,7 @@
-import { createSignal, Show } from "solid-js";
-import { useNavigate } from "@solidjs/router";
-import { VersionList } from "./VersionList";
-import { CreateVersionModal } from "./CreateVersionModal";
+import { useNavigate } from '@solidjs/router';
+import { createSignal, Show } from 'solid-js';
+import { CreateVersionModal } from './CreateVersionModal';
+import { VersionList } from './VersionList';
 
 // Version type from Convex schema
 interface Version {
@@ -40,7 +40,7 @@ interface VersionManagerProps {
  * Complete version management component that combines:
  * - VersionList: Display all project versions
  * - CreateVersionModal: Create new versions (branches)
- * 
+ *
  * Use this component when you need full version management functionality.
  */
 export function VersionManager(props: VersionManagerProps) {
@@ -49,7 +49,7 @@ export function VersionManager(props: VersionManagerProps) {
 
   const handleVersionCreated = (versionId: string, versionName: string) => {
     props.onVersionCreated?.(versionId, versionName);
-    
+
     // Navigate to new version if enabled
     if (props.navigateOnCreate !== false) {
       navigate(`/u/${props.username}/${props.projectSlug}/v/${versionName}`);

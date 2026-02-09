@@ -12,4 +12,3 @@ export default defineConfig({
     exclude: ['**/solid-*.test.ts', '**/node_modules/**'],
   },
 });
-

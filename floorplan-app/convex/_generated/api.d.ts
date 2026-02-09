@@ -8,25 +8,21 @@
  * @module
  */
 
-import type * as admin from "../admin.js";
-import type * as auth from "../auth.js";
-import type * as collections from "../collections.js";
-import type * as crons from "../crons.js";
-import type * as devAuth from "../devAuth.js";
-import type * as explore from "../explore.js";
-import type * as lib_auditLog from "../lib/auditLog.js";
-import type * as lib_auth from "../lib/auth.js";
-import type * as projects from "../projects.js";
-import type * as sharing from "../sharing.js";
-import type * as topics from "../topics.js";
-import type * as trending from "../trending.js";
-import type * as users from "../users.js";
+import type * as admin from '../admin.js';
+import type * as auth from '../auth.js';
+import type * as collections from '../collections.js';
+import type * as crons from '../crons.js';
+import type * as devAuth from '../devAuth.js';
+import type * as explore from '../explore.js';
+import type * as lib_auditLog from '../lib/auditLog.js';
+import type * as lib_auth from '../lib/auth.js';
+import type * as projects from '../projects.js';
+import type * as sharing from '../sharing.js';
+import type * as topics from '../topics.js';
+import type * as trending from '../trending.js';
+import type * as users from '../users.js';
 
-import type {
-  ApiFromModules,
-  FilterApi,
-  FunctionReference,
-} from "convex/server";
+import type { ApiFromModules, FilterApi, FunctionReference } from 'convex/server';
 
 declare const fullApi: ApiFromModules<{
   admin: typeof admin;
@@ -35,8 +31,8 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   devAuth: typeof devAuth;
   explore: typeof explore;
-  "lib/auditLog": typeof lib_auditLog;
-  "lib/auth": typeof lib_auth;
+  'lib/auditLog': typeof lib_auditLog;
+  'lib/auth': typeof lib_auth;
   projects: typeof projects;
   sharing: typeof sharing;
   topics: typeof topics;
@@ -52,10 +48,7 @@ declare const fullApi: ApiFromModules<{
  * const myFunctionReference = api.myModule.myFunction;
  * ```
  */
-export declare const api: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "public">
->;
+export declare const api: FilterApi<typeof fullApi, FunctionReference<any, 'public'>>;
 
 /**
  * A utility for referencing Convex functions in your app's internal API.
@@ -65,17 +58,14 @@ export declare const api: FilterApi<
  * const myFunctionReference = internal.myModule.myFunction;
  * ```
  */
-export declare const internal: FilterApi<
-  typeof fullApi,
-  FunctionReference<any, "internal">
->;
+export declare const internal: FilterApi<typeof fullApi, FunctionReference<any, 'internal'>>;
 
 export declare const components: {
   adminAuditLog: {
     lib: {
       listDocumentHistory: FunctionReference<
-        "query",
-        "internal",
+        'query',
+        'internal',
         {
           id: string;
           maxTs: number;
@@ -101,8 +91,8 @@ export declare const components: {
         }
       >;
       listHistory: FunctionReference<
-        "query",
-        "internal",
+        'query',
+        'internal',
         {
           maxTs: number;
           paginationOpts: {
@@ -127,8 +117,8 @@ export declare const components: {
         }
       >;
       listSnapshot: FunctionReference<
-        "query",
-        "internal",
+        'query',
+        'internal',
         {
           currentTs: number;
           paginationOpts: {
@@ -151,27 +141,22 @@ export declare const components: {
             isDeleted: boolean;
             ts: number;
           }>;
-          pageStatus?: "SplitRecommended";
+          pageStatus?: 'SplitRecommended';
           splitCursor?: string;
         }
       >;
       update: FunctionReference<
-        "mutation",
-        "internal",
+        'mutation',
+        'internal',
         {
           attribution: any;
           doc: any | null;
           id: string;
-          serializability: "table" | "document" | "wallclock";
+          serializability: 'table' | 'document' | 'wallclock';
         },
         number
       >;
-      vacuumHistory: FunctionReference<
-        "mutation",
-        "internal",
-        { minTsToKeep: number },
-        any
-      >;
+      vacuumHistory: FunctionReference<'mutation', 'internal', { minTsToKeep: number }, any>;
     };
   };
 };

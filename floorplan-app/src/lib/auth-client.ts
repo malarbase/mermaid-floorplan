@@ -1,32 +1,32 @@
-import { createAuthClient } from "better-auth/solid";
-import { createSignal, createMemo, onMount, type Accessor } from "solid-js";
-import { getMockSession, type MockUser } from "./mock-auth";
+import { createAuthClient } from 'better-auth/solid';
+import { type Accessor, createMemo, createSignal, onMount } from 'solid-js';
+import { getMockSession, type MockUser } from './mock-auth';
 
 /**
  * Client-side auth utilities for Solid.js components.
- * 
+ *
  * Usage:
  * ```tsx
  * import { authClient, useSession } from "~/lib/auth-client";
- * 
+ *
  * function MyComponent() {
  *   const session = useSession();
- *   
+ *
  *   if (session().isPending) return <div>Loading...</div>;
  *   if (!session().data) return <div>Not logged in</div>;
- *   
+ *
  *   return <div>Hello, {session().data?.user.name}!</div>;
  * }
- * 
+ *
  * // Sign in with Google
  * authClient.signIn.social({ provider: "google" });
- * 
+ *
  * // Sign out
  * authClient.signOut();
  * ```
  */
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.VITE_BETTER_AUTH_URL ?? "http://localhost:3000",
+  baseURL: import.meta.env.VITE_BETTER_AUTH_URL ?? 'http://localhost:3000',
 });
 
 // Re-export the real useSession for non-mock mode
@@ -59,29 +59,29 @@ export function useSession(): Accessor<SessionData> {
   if (import.meta.env.DEV) {
     const [mockUser, setMockUser] = createSignal<MockUser | null>(null);
     const [isChecked, setIsChecked] = createSignal(false);
-    
+
     // Check localStorage on mount (client-side only)
     onMount(() => {
       const user = getMockSession();
       setMockUser(user);
       setIsChecked(true);
     });
-    
+
     // Use real auth hook for when no mock session exists
     const realSession = realUseSession();
-    
+
     return createMemo(() => {
       // Still checking localStorage
       if (!isChecked()) {
         return { data: null, isPending: true, error: null };
       }
-      
+
       // Mock session exists - use it
       const mock = mockUser();
       if (mock) {
         return { data: { user: mock as SessionUser }, isPending: false, error: null };
       }
-      
+
       // No mock session - fall back to real auth
       // Map the Better Auth response to our common interface
       const session = realSession();
@@ -92,7 +92,7 @@ export function useSession(): Accessor<SessionData> {
       };
     });
   }
-  
+
   // Production: always use real Better Auth session
   // Map the Better Auth response to our common interface
   const realSession = realUseSession();
@@ -107,11 +107,7 @@ export function useSession(): Accessor<SessionData> {
 }
 
 // Re-export other auth methods
-export const {
-  signIn,
-  signOut,
-  signUp,
-} = authClient;
+export const { signIn, signOut, signUp } = authClient;
 
 // Type exports
 export type Session = Accessor<SessionData>;

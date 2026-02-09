@@ -1,38 +1,31 @@
 /**
  * FloorplanUI - Unified Solid.js UI Root Component
- * 
+ *
  * This component owns all 2D UI state and renders the complete UI layer:
  * - HeaderBar with file dropdown trigger
  * - FileDropdown with file operations
  * - CommandPalette with keyboard shortcut (⌘K)
  * - (Editor mode) PropertiesPanel, AddRoomDialog, DeleteConfirmDialog, ErrorBanner
- * 
+ *
  * Key architecture principles:
  * - All UI state lives in Solid signals (no imperative APIs)
  * - Components coordinate via shared signals (not callbacks)
  * - FloorplanAppCore/InteractiveEditorCore handles 3D rendering separately
  * - Communication with 3D is via event subscription and method calls
  * - Mode-based rendering: 'viewer' (read-only) vs 'editor' (full editing)
- * 
+ *
  * This module imports standalone components and provides state coordination.
  */
 
-import { 
-  createSignal, 
-  createEffect,
-  onMount, 
-  onCleanup,
-  Show,
-  For,
-} from 'solid-js';
-import { render } from 'solid-js/web';
 import { getUIThemeMode, type ViewerTheme } from 'floorplan-3d-core';
+import { createEffect, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import { render } from 'solid-js/web';
 import type { FloorplanAppCore } from '../../floorplan-app-core.js';
 import type { InteractiveEditorCore } from '../../interactive-editor-core.js';
 import type { SelectableObject } from '../../scene-context.js';
-import { HeaderBar } from './HeaderBar.jsx';
+import { type Command, CommandPalette } from './CommandPalette.jsx';
 import { FileDropdown, type FileOperation, type RecentFile } from './FileDropdown.jsx';
-import { CommandPalette, type Command } from './CommandPalette.jsx';
+import { HeaderBar } from './HeaderBar.jsx';
 import { PropertiesPanel, type PropertyDefinition } from './PropertiesPanel.jsx';
 
 // ============================================================================
@@ -66,7 +59,7 @@ export interface FloorplanUIProps {
   commands?: Command[];
   /** Recent files for file dropdown */
   recentFiles?: RecentFile[];
-  
+
   // Feature flags (derived from mode by default, but overridable)
   /** Show properties panel when entity selected (default: mode === 'editor') */
   showPropertiesPanel?: boolean;
@@ -76,10 +69,15 @@ export interface FloorplanUIProps {
   showDeleteConfirm?: boolean;
   /** Show export menu (default: true) */
   showExportMenu?: boolean;
-  
+
   // Editor-specific callbacks (only used when mode === 'editor')
   /** Callback when a property changes */
-  onPropertyChange?: (entityType: string, entityId: string, property: string, value: string) => void;
+  onPropertyChange?: (
+    entityType: string,
+    entityId: string,
+    property: string,
+    value: string,
+  ) => void;
   /** Callback when delete is requested */
   onDelete?: (entityType: string, entityId: string) => void;
   /** Callback to get entity data for properties panel */
@@ -134,39 +132,43 @@ export function createUIState(props: FloorplanUIProps) {
   // Determine mode and feature flags
   const mode = props.mode ?? 'viewer';
   const isEditorMode = mode === 'editor';
-  
+
   // Feature flags with mode-based defaults
   const showPropertiesPanel = props.showPropertiesPanel ?? isEditorMode;
   const showAddRoomButton = props.showAddRoomButton ?? isEditorMode;
   const showDeleteConfirm = props.showDeleteConfirm ?? isEditorMode;
   const showExportMenu = props.showExportMenu ?? true;
-  
+
   // Core state signals
   const [filename, setFilename] = createSignal(props.initialFilename ?? 'Untitled.floorplan');
   const [editorOpen, setEditorOpen] = createSignal(props.initialEditorOpen ?? false);
   const [isAuthenticated, setIsAuthenticated] = createSignal(props.initialAuthenticated ?? false);
   const [theme, setTheme] = createSignal<Theme>(props.initialTheme ?? 'dark');
-  
+
   // UI visibility signals
   const [headerVisible, setHeaderVisible] = createSignal(!props.headerAutoHide);
   const [dropdownOpen, setDropdownOpen] = createSignal(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = createSignal(false);
-  
+
   // Dropdown anchor for positioning
   const [dropdownAnchor, setDropdownAnchor] = createSignal<DOMRect | null>(null);
-  
+
   // Commands and recent files
   const [commands, setCommands] = createSignal<Command[]>(props.commands ?? []);
   const [recentFiles, setRecentFiles] = createSignal<RecentFile[]>(props.recentFiles ?? []);
-  
+
   // Editor-specific state (only used when mode === 'editor')
   const [hasParseError, setHasParseError] = createSignal(false);
   const [parseErrorMessage, setParseErrorMessage] = createSignal<string | undefined>();
   const [selection, setSelection] = createSignal<ReadonlySet<SelectableObject>>(new Set());
   const [propertiesPanelVisible, setPropertiesPanelVisible] = createSignal(false);
-  const [selectedEntity, setSelectedEntity] = createSignal<{ type: string; id: string; floorId: string } | null>(null);
+  const [selectedEntity, setSelectedEntity] = createSignal<{
+    type: string;
+    id: string;
+    floorId: string;
+  } | null>(null);
   const [properties, setProperties] = createSignal<PropertyDefinition[]>([]);
-  
+
   // Dialog state (editor mode)
   const [addRoomDialogOpen, setAddRoomDialogOpen] = createSignal(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = createSignal(false);
@@ -176,10 +178,10 @@ export function createUIState(props: FloorplanUIProps) {
     message: string;
     cascadeItems?: string[];
   } | null>(null);
-  
+
   // Validation state
   const [existingRoomNames, setExistingRoomNames] = createSignal<Set<string>>(new Set());
-  
+
   return {
     // Mode and flags
     mode,
@@ -188,40 +190,60 @@ export function createUIState(props: FloorplanUIProps) {
     showAddRoomButton,
     showDeleteConfirm,
     showExportMenu,
-    
+
     // Core state
-    filename, setFilename,
-    editorOpen, setEditorOpen,
-    isAuthenticated, setIsAuthenticated,
-    theme, setTheme,
-    
+    filename,
+    setFilename,
+    editorOpen,
+    setEditorOpen,
+    isAuthenticated,
+    setIsAuthenticated,
+    theme,
+    setTheme,
+
     // UI visibility
-    headerVisible, setHeaderVisible,
-    dropdownOpen, setDropdownOpen,
-    commandPaletteOpen, setCommandPaletteOpen,
-    
+    headerVisible,
+    setHeaderVisible,
+    dropdownOpen,
+    setDropdownOpen,
+    commandPaletteOpen,
+    setCommandPaletteOpen,
+
     // Dropdown positioning
-    dropdownAnchor, setDropdownAnchor,
-    
+    dropdownAnchor,
+    setDropdownAnchor,
+
     // Commands and files
-    commands, setCommands,
-    recentFiles, setRecentFiles,
-    
+    commands,
+    setCommands,
+    recentFiles,
+    setRecentFiles,
+
     // Editor-specific state
-    hasParseError, setHasParseError,
-    parseErrorMessage, setParseErrorMessage,
-    selection, setSelection,
-    propertiesPanelVisible, setPropertiesPanelVisible,
-    selectedEntity, setSelectedEntity,
-    properties, setProperties,
-    
+    hasParseError,
+    setHasParseError,
+    parseErrorMessage,
+    setParseErrorMessage,
+    selection,
+    setSelection,
+    propertiesPanelVisible,
+    setPropertiesPanelVisible,
+    selectedEntity,
+    setSelectedEntity,
+    properties,
+    setProperties,
+
     // Dialog state
-    addRoomDialogOpen, setAddRoomDialogOpen,
-    deleteDialogOpen, setDeleteDialogOpen,
-    deleteTarget, setDeleteTarget,
-    
+    addRoomDialogOpen,
+    setAddRoomDialogOpen,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    deleteTarget,
+    setDeleteTarget,
+
     // Validation
-    existingRoomNames, setExistingRoomNames,
+    existingRoomNames,
+    setExistingRoomNames,
   };
 }
 
@@ -260,37 +282,39 @@ function AddRoomDialog(props: AddRoomDialogProps) {
 
   const validate = (): boolean => {
     const roomName = name().trim();
-    
+
     if (!roomName) {
       setError('Room name is required');
       return false;
     }
-    
+
     if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(roomName)) {
-      setError('Room name must start with a letter and contain only letters, numbers, and underscores');
+      setError(
+        'Room name must start with a letter and contain only letters, numbers, and underscores',
+      );
       return false;
     }
-    
+
     if (props.existingNames?.has(roomName)) {
       setError(`Room '${roomName}' already exists`);
       return false;
     }
-    
+
     const w = parseFloat(width()) || 4;
     const h = parseFloat(height()) || 4;
-    
+
     if (w < 0.5 || h < 0.5) {
       setError('Width and height must be at least 0.5');
       return false;
     }
-    
+
     setError('');
     return true;
   };
 
   const handleAdd = () => {
     if (!validate()) return;
-    
+
     props.onAdd({
       name: name().trim(),
       x: parseFloat(x()) || 0,
@@ -298,7 +322,7 @@ function AddRoomDialog(props: AddRoomDialogProps) {
       width: parseFloat(width()) || 4,
       height: parseFloat(height()) || 4,
     });
-    
+
     props.onClose();
   };
 
@@ -383,8 +407,12 @@ function AddRoomDialog(props: AddRoomDialogProps) {
             <div class="text-error text-sm mb-3">{error()}</div>
           </Show>
           <div class="modal-action">
-            <button class="btn" onClick={props.onClose}>Cancel</button>
-            <button class="btn btn-primary" onClick={handleAdd}>Add Room</button>
+            <button class="btn" onClick={props.onClose}>
+              Cancel
+            </button>
+            <button class="btn btn-primary" onClick={handleAdd}>
+              Add Room
+            </button>
           </div>
         </div>
         <div class="modal-backdrop" onClick={props.onClose}></div>
@@ -425,16 +453,18 @@ function DeleteConfirmDialog(props: DeleteConfirmDialogProps) {
               <div>
                 <div class="font-semibold">⚠️ This will also delete:</div>
                 <ul class="list-disc list-inside mt-1">
-                  <For each={props.cascadeItems}>
-                    {(item) => <li>{item}</li>}
-                  </For>
+                  <For each={props.cascadeItems}>{(item) => <li>{item}</li>}</For>
                 </ul>
               </div>
             </div>
           </Show>
           <div class="modal-action">
-            <button class="btn" onClick={props.onClose}>Cancel</button>
-            <button class="btn btn-error" onClick={props.onConfirm}>Delete</button>
+            <button class="btn" onClick={props.onClose}>
+              Cancel
+            </button>
+            <button class="btn btn-error" onClick={props.onConfirm}>
+              Delete
+            </button>
           </div>
         </div>
         <div class="modal-backdrop" onClick={props.onClose}></div>
@@ -447,24 +477,53 @@ function DeleteConfirmDialog(props: DeleteConfirmDialogProps) {
 // Property Definition Builder
 // ============================================================================
 
-function buildPropertyDefinitions(entityType: string, data: Record<string, unknown>): PropertyDefinition[] {
+function buildPropertyDefinitions(
+  entityType: string,
+  data: Record<string, unknown>,
+): PropertyDefinition[] {
   const props: PropertyDefinition[] = [];
 
   if (entityType === 'room') {
     props.push({ name: 'name', label: 'Name', type: 'text', value: String(data.name ?? '') });
     props.push({ name: 'x', label: 'X', type: 'number', value: Number(data.x ?? 0), step: 0.5 });
     props.push({ name: 'y', label: 'Y', type: 'number', value: Number(data.y ?? 0), step: 0.5 });
-    props.push({ name: 'width', label: 'Width', type: 'number', value: Number(data.width ?? 4), min: 0.5, step: 0.5 });
-    props.push({ name: 'height', label: 'Height', type: 'number', value: Number(data.height ?? 4), min: 0.5, step: 0.5 });
+    props.push({
+      name: 'width',
+      label: 'Width',
+      type: 'number',
+      value: Number(data.width ?? 4),
+      min: 0.5,
+      step: 0.5,
+    });
+    props.push({
+      name: 'height',
+      label: 'Height',
+      type: 'number',
+      value: Number(data.height ?? 4),
+      min: 0.5,
+      step: 0.5,
+    });
     if (data.roomHeight) {
-      props.push({ name: 'roomHeight', label: 'Room Height', type: 'number', value: Number(data.roomHeight), min: 0.5, step: 0.1 });
+      props.push({
+        name: 'roomHeight',
+        label: 'Room Height',
+        type: 'number',
+        value: Number(data.roomHeight),
+        min: 0.5,
+        step: 0.1,
+      });
     }
     if (data.style) {
       props.push({ name: 'style', label: 'Style', type: 'text', value: String(data.style) });
     }
   } else if (entityType === 'wall') {
     props.push({ name: 'room', label: 'Room', type: 'readonly', value: String(data.room ?? '') });
-    props.push({ name: 'direction', label: 'Direction', type: 'readonly', value: String(data.direction ?? '') });
+    props.push({
+      name: 'direction',
+      label: 'Direction',
+      type: 'readonly',
+      value: String(data.direction ?? ''),
+    });
     props.push({
       name: 'type',
       label: 'Type',
@@ -477,8 +536,18 @@ function buildPropertyDefinitions(entityType: string, data: Record<string, unkno
       ],
     });
   } else if (entityType === 'connection') {
-    props.push({ name: 'fromRoom', label: 'From Room', type: 'readonly', value: String(data.fromRoom ?? '') });
-    props.push({ name: 'toRoom', label: 'To Room', type: 'readonly', value: String(data.toRoom ?? '') });
+    props.push({
+      name: 'fromRoom',
+      label: 'From Room',
+      type: 'readonly',
+      value: String(data.fromRoom ?? ''),
+    });
+    props.push({
+      name: 'toRoom',
+      label: 'To Room',
+      type: 'readonly',
+      value: String(data.toRoom ?? ''),
+    });
     props.push({
       name: 'type',
       label: 'Type',
@@ -490,7 +559,14 @@ function buildPropertyDefinitions(entityType: string, data: Record<string, unkno
         { value: 'opening', label: 'Opening' },
       ],
     });
-    props.push({ name: 'position', label: 'Position %', type: 'number', value: Number(data.position ?? 50), min: 0, max: 100 });
+    props.push({
+      name: 'position',
+      label: 'Position %',
+      type: 'number',
+      value: Number(data.position ?? 50),
+      min: 0,
+      max: 100,
+    });
   }
 
   return props;
@@ -505,7 +581,7 @@ const isMac = typeof navigator !== 'undefined' && navigator.platform.includes('M
 
 export function FloorplanUI(props: FloorplanUIProps) {
   const state = createUIState(props);
-  
+
   // Set data-theme attribute on document for DaisyUI theming
   createEffect(() => {
     const currentTheme = state.theme();
@@ -513,50 +589,53 @@ export function FloorplanUI(props: FloorplanUIProps) {
     // Also maintain body.dark-theme for backward compatibility during migration
     document.body.classList.toggle('dark-theme', currentTheme === 'dark');
   });
-  
+
   // Subscribe to appCore events
   onMount(() => {
     const { appCore } = props;
-    
+
     // Cast to FloorplanAppCore for common events (works for both base and editor core)
     const baseCore = appCore as FloorplanAppCore;
-    
+
     const unsubFilename = baseCore.on('filenameChange', ({ filename }: { filename: string }) => {
       state.setFilename(filename);
     });
-    
+
     const unsubTheme = baseCore.on('themeChange', ({ theme }: { theme: string }) => {
       // Convert ViewerTheme (light/dark/blueprint) to UI Theme (light/dark)
       state.setTheme(getUIThemeMode(theme as ViewerTheme));
     });
-    
-    const unsubAuth = baseCore.on('authChange', ({ isAuthenticated }: { isAuthenticated: boolean }) => {
-      state.setIsAuthenticated(isAuthenticated);
-    });
-    
+
+    const unsubAuth = baseCore.on(
+      'authChange',
+      ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+        state.setIsAuthenticated(isAuthenticated);
+      },
+    );
+
     const unsubEditor = baseCore.on('editorToggle', ({ isOpen }: { isOpen: boolean }) => {
       state.setEditorOpen(isOpen);
     });
-    
+
     // Editor-specific event subscriptions
     let unsubParseError: (() => void) | undefined;
     let unsubSelection: (() => void) | undefined;
     let unsubFloorplan: (() => void) | undefined;
-    
+
     if (state.isEditorMode) {
       // Cast to InteractiveEditorCore for editor-specific events
       const editorCore = appCore as InteractiveEditorCore;
-      
+
       unsubParseError = editorCore.on('parseError', ({ hasError, errorMessage }) => {
         state.setHasParseError(hasError);
         state.setParseErrorMessage(errorMessage);
       });
-      
+
       unsubSelection = editorCore.on('selectionChange', ({ selection }) => {
         state.setSelection(selection);
         updatePropertiesPanel(selection);
       });
-      
+
       unsubFloorplan = editorCore.on('floorplanLoaded', ({ data }) => {
         // Update existing room names for validation
         const names = new Set<string>();
@@ -568,7 +647,7 @@ export function FloorplanUI(props: FloorplanUIProps) {
         state.setExistingRoomNames(names);
       });
     }
-    
+
     onCleanup(() => {
       unsubFilename();
       unsubTheme();
@@ -579,27 +658,27 @@ export function FloorplanUI(props: FloorplanUIProps) {
       unsubFloorplan?.();
     });
   });
-  
+
   // Register ⌘K shortcut for command palette
   onMount(() => {
     const handleShortcut = (e: KeyboardEvent) => {
       const modKey = isMac ? e.metaKey : e.ctrlKey;
       if (modKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        state.setCommandPaletteOpen(prev => !prev);
+        state.setCommandPaletteOpen((prev) => !prev);
       }
     };
-    
+
     document.addEventListener('keydown', handleShortcut);
     onCleanup(() => {
       document.removeEventListener('keydown', handleShortcut);
     });
   });
-  
+
   // Update properties panel based on selection (editor mode)
   const updatePropertiesPanel = (selection: ReadonlySet<SelectableObject>) => {
     if (!state.showPropertiesPanel) return;
-    
+
     if (selection.size === 1) {
       const entity = Array.from(selection)[0];
       state.setSelectedEntity({
@@ -621,7 +700,7 @@ export function FloorplanUI(props: FloorplanUIProps) {
       state.setSelectedEntity(null);
     }
   };
-  
+
   // Handlers
   const handleFileDropdownClick = (anchor: HTMLElement) => {
     if (state.dropdownOpen()) {
@@ -631,24 +710,24 @@ export function FloorplanUI(props: FloorplanUIProps) {
       state.setDropdownOpen(true);
     }
   };
-  
+
   const handleEditorToggle = () => {
     props.appCore.toggleEditorPanel();
   };
-  
+
   const handleThemeToggle = () => {
     props.appCore.handleThemeToggle();
   };
-  
+
   const handleFileAction = (action: FileOperation, data?: unknown) => {
     state.setDropdownOpen(false);
     props.appCore.handleFileAction(action, data);
   };
-  
+
   const handleCommandExecute = (cmd: Command) => {
     cmd.execute?.();
   };
-  
+
   // Editor-specific handlers
   const handlePropertyChange = (property: string, value: string) => {
     const entity = state.selectedEntity();
@@ -656,7 +735,7 @@ export function FloorplanUI(props: FloorplanUIProps) {
       props.onPropertyChange(entity.type, entity.id, property, value);
     }
   };
-  
+
   const handleDelete = () => {
     const entity = state.selectedEntity();
     if (!entity) return;
@@ -664,14 +743,15 @@ export function FloorplanUI(props: FloorplanUIProps) {
     state.setDeleteTarget({
       entityType: entity.type,
       entityId: entity.id,
-      message: entity.type === 'wall'
-        ? `This will change the wall to "open" (removing the wall). Continue?`
-        : `Are you sure you want to delete ${entity.type} "${entity.id}"?`,
+      message:
+        entity.type === 'wall'
+          ? `This will change the wall to "open" (removing the wall). Continue?`
+          : `Are you sure you want to delete ${entity.type} "${entity.id}"?`,
       cascadeItems: [],
     });
     state.setDeleteDialogOpen(true);
   };
-  
+
   const handleDeleteConfirm = () => {
     const target = state.deleteTarget();
     if (target && props.onDelete) {
@@ -681,11 +761,17 @@ export function FloorplanUI(props: FloorplanUIProps) {
     state.setDeleteTarget(null);
     state.setPropertiesPanelVisible(false);
   };
-  
-  const handleAddRoom = (room: { name: string; x: number; y: number; width: number; height: number }) => {
+
+  const handleAddRoom = (room: {
+    name: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => {
     props.onAddRoom?.(room);
   };
-  
+
   return (
     <>
       {/* Header Bar */}
@@ -702,7 +788,7 @@ export function FloorplanUI(props: FloorplanUIProps) {
         onCommandPaletteClick={() => state.setCommandPaletteOpen(true)}
         onVisibilityChange={(visible) => props.appCore.layoutManager.setHeaderVisible(visible)}
       />
-      
+
       {/* File Dropdown */}
       <FileDropdown
         isOpen={state.dropdownOpen}
@@ -712,7 +798,7 @@ export function FloorplanUI(props: FloorplanUIProps) {
         onAction={handleFileAction}
         onClose={() => state.setDropdownOpen(false)}
       />
-      
+
       {/* Command Palette */}
       <CommandPalette
         commands={state.commands}
@@ -721,7 +807,7 @@ export function FloorplanUI(props: FloorplanUIProps) {
         onClose={() => state.setCommandPaletteOpen(false)}
         onExecute={handleCommandExecute}
       />
-      
+
       {/* Editor-specific components */}
       <Show when={state.isEditorMode}>
         {/* Properties Panel */}
@@ -736,14 +822,14 @@ export function FloorplanUI(props: FloorplanUIProps) {
             onClose={() => state.setPropertiesPanelVisible(false)}
           />
         </Show>
-        
+
         {/* Parse Error Banner */}
         <Show when={state.hasParseError()}>
           <div class="alert alert-error fixed top-0 left-0 right-0 z-[300]">
             {state.parseErrorMessage() ?? 'Parse error'}
           </div>
         </Show>
-        
+
         {/* Add Room Dialog */}
         <Show when={state.showAddRoomButton}>
           <AddRoomDialog
@@ -753,7 +839,7 @@ export function FloorplanUI(props: FloorplanUIProps) {
             existingNames={state.existingRoomNames()}
           />
         </Show>
-        
+
         {/* Delete Confirmation Dialog */}
         <Show when={state.showDeleteConfirm}>
           <DeleteConfirmDialog
@@ -762,7 +848,10 @@ export function FloorplanUI(props: FloorplanUIProps) {
             entityId={state.deleteTarget()?.entityId}
             message={state.deleteTarget()?.message}
             cascadeItems={state.deleteTarget()?.cascadeItems}
-            onClose={() => { state.setDeleteDialogOpen(false); state.setDeleteTarget(null); }}
+            onClose={() => {
+              state.setDeleteDialogOpen(false);
+              state.setDeleteTarget(null);
+            }}
             onConfirm={handleDeleteConfirm}
           />
         </Show>
@@ -777,17 +866,17 @@ export function FloorplanUI(props: FloorplanUIProps) {
 
 /**
  * Create FloorplanUI with vanilla-compatible API.
- * 
+ *
  * This unified factory mounts the Solid root component and returns an API
  * for external code to interact with the UI imperatively.
- * 
+ *
  * Supports both viewer mode (read-only) and editor mode (full editing).
- * 
+ *
  * @example Viewer mode
  * ```ts
  * const ui = createFloorplanUI(appCore, { mode: 'viewer' });
  * ```
- * 
+ *
  * @example Editor mode
  * ```ts
  * const ui = createFloorplanUI(editorCore, {
@@ -800,20 +889,20 @@ export function FloorplanUI(props: FloorplanUIProps) {
  */
 export function createFloorplanUI(
   appCore: AppCore,
-  config: FloorplanUIConfig = {}
+  config: FloorplanUIConfig = {},
 ): FloorplanUIAPI {
   const container = config.container ?? document.createElement('div');
   container.id = config.mode === 'editor' ? 'editor-ui-root' : 'floorplan-ui-root';
-  
+
   // If no container provided, we need to add ours to the DOM
   if (!config.container) {
     document.body.appendChild(container);
   }
-  
+
   // Determine mode and feature flags
   const mode = config.mode ?? 'viewer';
   const isEditorMode = mode === 'editor';
-  
+
   // Create reactive setters that will be bound during render
   let setFilename: (f: string) => void;
   let setEditorOpen: (o: boolean) => void;
@@ -822,12 +911,12 @@ export function createFloorplanUI(
   let setCommands: (c: Command[]) => void;
   let setRecentFiles: (f: RecentFile[]) => void;
   let setCommandPaletteOpen: (o: boolean) => void;
-  
+
   // Editor-specific setters
   let setAddRoomDialogOpen: (o: boolean) => void;
   let setPropertiesPanelVisible: (v: boolean) => void;
   let setExistingRoomNames: (names: Set<string>) => void;
-  
+
   // Render the Solid component
   const dispose = render(() => {
     const state = createUIState({
@@ -849,7 +938,7 @@ export function createFloorplanUI(
       getEntityData: config.getEntityData,
       onAddRoom: config.onAddRoom,
     });
-    
+
     // Bind setters for external API
     setFilename = state.setFilename;
     setEditorOpen = state.setEditorOpen;
@@ -861,7 +950,7 @@ export function createFloorplanUI(
     setAddRoomDialogOpen = state.setAddRoomDialogOpen;
     setPropertiesPanelVisible = state.setPropertiesPanelVisible;
     setExistingRoomNames = state.setExistingRoomNames;
-    
+
     // Set data-theme attribute on document for DaisyUI theming
     createEffect(() => {
       const currentTheme = state.theme();
@@ -869,41 +958,44 @@ export function createFloorplanUI(
       // Also maintain body.dark-theme for backward compatibility during migration
       document.body.classList.toggle('dark-theme', currentTheme === 'dark');
     });
-    
+
     // Subscribe to appCore events
     // Cast to FloorplanAppCore for common events (works for both base and editor core)
     const baseCore = appCore as FloorplanAppCore;
-    
+
     const unsubFilename = baseCore.on('filenameChange', ({ filename }: { filename: string }) => {
       state.setFilename(filename);
     });
-    
+
     const unsubTheme = baseCore.on('themeChange', ({ theme }: { theme: string }) => {
       // Convert ViewerTheme (light/dark/blueprint) to UI Theme (light/dark)
       state.setTheme(getUIThemeMode(theme as ViewerTheme));
     });
-    
-    const unsubAuth = baseCore.on('authChange', ({ isAuthenticated }: { isAuthenticated: boolean }) => {
-      state.setIsAuthenticated(isAuthenticated);
-    });
-    
+
+    const unsubAuth = baseCore.on(
+      'authChange',
+      ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+        state.setIsAuthenticated(isAuthenticated);
+      },
+    );
+
     const unsubEditor = baseCore.on('editorToggle', ({ isOpen }: { isOpen: boolean }) => {
       state.setEditorOpen(isOpen);
     });
-    
+
     // Editor-specific event subscriptions
     let unsubParseError: (() => void) | undefined;
     let unsubSelection: (() => void) | undefined;
     let unsubFloorplan: (() => void) | undefined;
-    
+
     if (isEditorMode) {
       const editorCore = appCore as InteractiveEditorCore;
-      
+
       unsubParseError = editorCore.on('parseError', ({ hasError, errorMessage }) => {
         state.setHasParseError(hasError);
         state.setParseErrorMessage(errorMessage);
       });
-      
+
       unsubSelection = editorCore.on('selectionChange', ({ selection }) => {
         state.setSelection(selection);
         // Update properties panel visibility
@@ -915,13 +1007,13 @@ export function createFloorplanUI(
               id: entity.entityId,
               floorId: entity.floorId,
             });
-            
+
             if (config.getEntityData) {
               const data = config.getEntityData(entity.entityType, entity.entityId);
               const propDefs = buildPropertyDefinitions(entity.entityType, data);
               state.setProperties(propDefs);
             }
-            
+
             state.setPropertiesPanelVisible(true);
           } else {
             state.setPropertiesPanelVisible(false);
@@ -929,7 +1021,7 @@ export function createFloorplanUI(
           }
         }
       });
-      
+
       unsubFloorplan = editorCore.on('floorplanLoaded', ({ data }) => {
         const names = new Set<string>();
         for (const floor of data.floors) {
@@ -940,7 +1032,7 @@ export function createFloorplanUI(
         state.setExistingRoomNames(names);
       });
     }
-    
+
     onCleanup(() => {
       unsubFilename();
       unsubTheme();
@@ -950,21 +1042,21 @@ export function createFloorplanUI(
       unsubSelection?.();
       unsubFloorplan?.();
     });
-    
+
     // Register ⌘K shortcut
     const handleShortcut = (e: KeyboardEvent) => {
       const modKey = isMac ? e.metaKey : e.ctrlKey;
       if (modKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        state.setCommandPaletteOpen(prev => !prev);
+        state.setCommandPaletteOpen((prev) => !prev);
       }
     };
-    
+
     document.addEventListener('keydown', handleShortcut);
     onCleanup(() => {
       document.removeEventListener('keydown', handleShortcut);
     });
-    
+
     // Handlers
     const handleFileDropdownClick = (anchor: HTMLElement) => {
       if (state.dropdownOpen()) {
@@ -974,24 +1066,24 @@ export function createFloorplanUI(
         state.setDropdownOpen(true);
       }
     };
-    
+
     const handleEditorToggle = () => {
       appCore.toggleEditorPanel();
     };
-    
+
     const handleThemeToggle = () => {
       appCore.handleThemeToggle();
     };
-    
+
     const handleFileAction = (action: FileOperation, data?: unknown) => {
       state.setDropdownOpen(false);
       appCore.handleFileAction(action, data);
     };
-    
+
     const handleCommandExecute = (cmd: Command) => {
       cmd.execute?.();
     };
-    
+
     // Editor-specific handlers
     const handlePropertyChange = (property: string, value: string) => {
       const entity = state.selectedEntity();
@@ -999,7 +1091,7 @@ export function createFloorplanUI(
         config.onPropertyChange(entity.type, entity.id, property, value);
       }
     };
-    
+
     const handleDelete = () => {
       const entity = state.selectedEntity();
       if (!entity) return;
@@ -1007,14 +1099,15 @@ export function createFloorplanUI(
       state.setDeleteTarget({
         entityType: entity.type,
         entityId: entity.id,
-        message: entity.type === 'wall'
-          ? `This will change the wall to "open" (removing the wall). Continue?`
-          : `Are you sure you want to delete ${entity.type} "${entity.id}"?`,
+        message:
+          entity.type === 'wall'
+            ? `This will change the wall to "open" (removing the wall). Continue?`
+            : `Are you sure you want to delete ${entity.type} "${entity.id}"?`,
         cascadeItems: [],
       });
       state.setDeleteDialogOpen(true);
     };
-    
+
     const handleDeleteConfirm = () => {
       const target = state.deleteTarget();
       if (target && config.onDelete) {
@@ -1024,11 +1117,17 @@ export function createFloorplanUI(
       state.setDeleteTarget(null);
       state.setPropertiesPanelVisible(false);
     };
-    
-    const handleAddRoom = (room: { name: string; x: number; y: number; width: number; height: number }) => {
+
+    const handleAddRoom = (room: {
+      name: string;
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    }) => {
       config.onAddRoom?.(room);
     };
-    
+
     return (
       <>
         <HeaderBar
@@ -1044,7 +1143,7 @@ export function createFloorplanUI(
           onCommandPaletteClick={() => state.setCommandPaletteOpen(true)}
           onVisibilityChange={(visible) => appCore.layoutManager.setHeaderVisible(visible)}
         />
-        
+
         <FileDropdown
           isOpen={state.dropdownOpen}
           anchorRect={state.dropdownAnchor}
@@ -1053,7 +1152,7 @@ export function createFloorplanUI(
           onAction={handleFileAction}
           onClose={() => state.setDropdownOpen(false)}
         />
-        
+
         <CommandPalette
           commands={state.commands}
           isOpen={state.commandPaletteOpen}
@@ -1061,7 +1160,7 @@ export function createFloorplanUI(
           onClose={() => state.setCommandPaletteOpen(false)}
           onExecute={handleCommandExecute}
         />
-        
+
         {/* Editor-specific components */}
         <Show when={isEditorMode}>
           {/* Properties Panel */}
@@ -1076,14 +1175,14 @@ export function createFloorplanUI(
               onClose={() => state.setPropertiesPanelVisible(false)}
             />
           </Show>
-          
+
           {/* Parse Error Banner */}
           <Show when={state.hasParseError()}>
             <div class="alert alert-error fixed top-0 left-0 right-0 z-[300]">
               {state.parseErrorMessage() ?? 'Parse error'}
             </div>
           </Show>
-          
+
           {/* Add Room Dialog */}
           <Show when={state.showAddRoomButton}>
             <AddRoomDialog
@@ -1093,7 +1192,7 @@ export function createFloorplanUI(
               existingNames={state.existingRoomNames()}
             />
           </Show>
-          
+
           {/* Delete Confirmation Dialog */}
           <Show when={state.showDeleteConfirm}>
             <DeleteConfirmDialog
@@ -1102,7 +1201,10 @@ export function createFloorplanUI(
               entityId={state.deleteTarget()?.entityId}
               message={state.deleteTarget()?.message}
               cascadeItems={state.deleteTarget()?.cascadeItems}
-              onClose={() => { state.setDeleteDialogOpen(false); state.setDeleteTarget(null); }}
+              onClose={() => {
+                state.setDeleteDialogOpen(false);
+                state.setDeleteTarget(null);
+              }}
               onConfirm={handleDeleteConfirm}
             />
           </Show>
@@ -1110,10 +1212,10 @@ export function createFloorplanUI(
       </>
     );
   }, container);
-  
+
   return {
     element: container,
-    
+
     setFilename: (filename: string) => setFilename?.(filename),
     setEditorOpen: (open: boolean) => setEditorOpen?.(open),
     setAuthenticated: (auth: boolean) => setAuthenticated?.(auth),
@@ -1125,7 +1227,7 @@ export function createFloorplanUI(
     showAddRoomDialog: () => setAddRoomDialogOpen?.(true),
     hidePropertiesPanel: () => setPropertiesPanelVisible?.(false),
     setExistingRoomNames: (names: Set<string>) => setExistingRoomNames?.(names),
-    
+
     dispose: () => {
       dispose();
       if (!config.container) {

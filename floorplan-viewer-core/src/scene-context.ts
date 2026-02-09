@@ -1,10 +1,10 @@
 /**
  * SceneContext - Interface for Three.js scene, camera, renderer, and controls.
- * 
+ *
  * Provides a common interface for both the read-only viewer and interactive editor
  * to access the underlying Three.js objects without exposing implementation details.
  */
-import * as THREE from 'three';
+import type * as THREE from 'three';
 import type { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 
 /**
@@ -47,25 +47,25 @@ export interface SourceRange {
 export interface SceneContext {
   /** Get the Three.js scene */
   readonly scene: THREE.Scene;
-  
+
   /** Get the currently active camera */
   readonly activeCamera: THREE.Camera;
-  
+
   /** Get the perspective camera */
   readonly perspectiveCamera: THREE.PerspectiveCamera;
-  
+
   /** Get the orthographic camera */
   readonly orthographicCamera: THREE.OrthographicCamera;
-  
+
   /** Get the WebGL renderer */
   readonly renderer: THREE.WebGLRenderer;
-  
+
   /** Get the orbit controls */
   readonly controls: OrbitControls;
-  
+
   /** Get the DOM element for the renderer */
   readonly domElement: HTMLCanvasElement;
-  
+
   /** Get all floor groups in the scene */
   readonly floors: readonly THREE.Group[];
 }
@@ -77,11 +77,10 @@ export interface SceneContext {
 export interface MutableSceneContext extends SceneContext {
   /** Add an object to the scene */
   addToScene(object: THREE.Object3D): void;
-  
+
   /** Remove an object from the scene */
   removeFromScene(object: THREE.Object3D): void;
-  
+
   /** Request a re-render of the scene */
   requestRender(): void;
 }
-

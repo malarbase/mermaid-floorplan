@@ -3,14 +3,14 @@
  * Used across route components that display floorplan projects.
  */
 
-import type { Id } from "../../convex/_generated/dataModel";
-import type { FunctionReference } from "convex/server";
+import type { FunctionReference } from 'convex/server';
+import type { Id } from '../../convex/_generated/dataModel';
 
 /**
  * Project entity from Convex
  */
 export interface Project {
-  _id: Id<"projects"> | string;
+  _id: Id<'projects'> | string;
   displayName: string;
   description?: string;
   isPublic: boolean;
@@ -70,10 +70,10 @@ export interface ProjectQueryResult {
  */
 export const projectApi = {
   projects: {
-    getBySlug: "projects:getBySlug" as unknown as FunctionReference<"query">,
-    getVersion: "projects:getVersion" as unknown as FunctionReference<"query">,
-    getByHash: "projects:getByHash" as unknown as FunctionReference<"query">,
-    resolveSlug: "projects:resolveSlug" as unknown as FunctionReference<"query">,
-    save: "projects:save" as unknown as FunctionReference<"mutation">,
+    getBySlug: 'projects:getBySlug' as unknown as FunctionReference<'query'>,
+    getVersion: 'projects:getVersion' as unknown as FunctionReference<'query'>,
+    getByHash: 'projects:getByHash' as unknown as FunctionReference<'query'>,
+    resolveSlug: 'projects:resolveSlug' as unknown as FunctionReference<'query'>,
+    save: 'projects:save' as unknown as FunctionReference<'mutation'>,
   },
 };

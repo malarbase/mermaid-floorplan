@@ -1,9 +1,9 @@
-import { createMemo, Show, For } from "solid-js";
-import { A } from "@solidjs/router";
-import { useQuery } from "convex-solidjs";
-import { api } from "../../convex/_generated/api";
-import { DeleteProjectButton } from "./DeleteProjectButton";
-import { VisibilityToggle } from "./VisibilityToggle";
+import { A } from '@solidjs/router';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, For, Show } from 'solid-js';
+import { api } from '../../convex/_generated/api';
+import { DeleteProjectButton } from './DeleteProjectButton';
+import { VisibilityToggle } from './VisibilityToggle';
 
 // Project type from Convex schema
 interface Project {
@@ -56,9 +56,9 @@ export function ProjectList(props: ProjectListProps) {
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
     if (days === 0) {
-      return "Today";
+      return 'Today';
     } else if (days === 1) {
-      return "Yesterday";
+      return 'Yesterday';
     } else if (days < 7) {
       return `${days} days ago`;
     } else {
@@ -91,19 +91,14 @@ export function ProjectList(props: ProjectListProps) {
               d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
             />
           </svg>
-          <span>Failed to load projects: {error()?.message ?? "Unknown error"}</span>
+          <span>Failed to load projects: {error()?.message ?? 'Unknown error'}</span>
         </div>
       </Show>
 
       {/* Empty State */}
       <Show when={!isLoading() && !hasError() && projects().length === 0}>
         <div class="empty-state">
-          <svg
-            class="empty-state-icon"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
+          <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
               stroke-linecap="round"
               stroke-linejoin="round"
@@ -113,8 +108,8 @@ export function ProjectList(props: ProjectListProps) {
           </svg>
           <h2 class="empty-state-title">No projects yet</h2>
           <p class="empty-state-description">
-            Get started by creating your first floorplan project. Use our
-            simple DSL to design beautiful spaces.
+            Get started by creating your first floorplan project. Use our simple DSL to design
+            beautiful spaces.
           </p>
           <Show when={props.onCreateNew}>
             <button
@@ -122,7 +117,12 @@ export function ProjectList(props: ProjectListProps) {
               onClick={() => props.onCreateNew?.()}
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Create Your First Project
             </button>
@@ -130,7 +130,12 @@ export function ProjectList(props: ProjectListProps) {
           <Show when={!props.onCreateNew}>
             <A href="/new" class="btn btn-primary btn-lg gap-2 shadow-md">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
               </svg>
               Create Your First Project
             </A>
@@ -146,7 +151,7 @@ export function ProjectList(props: ProjectListProps) {
               <div class="project-card group">
                 {/* Link overlay for entire card */}
                 <A
-                  href={`/u/${props.username ?? "me"}/${project.slug}`}
+                  href={`/u/${props.username ?? 'me'}/${project.slug}`}
                   class="absolute inset-0 z-0"
                   aria-label={`Open ${project.displayName}`}
                 />
@@ -185,14 +190,10 @@ export function ProjectList(props: ProjectListProps) {
                 <div class="project-card-body">
                   <h2 class="project-card-title">{project.displayName}</h2>
                   <Show when={project.description}>
-                    <p class="project-card-description">
-                      {project.description}
-                    </p>
+                    <p class="project-card-description">{project.description}</p>
                   </Show>
                   <div class="project-card-footer">
-                    <span class="project-card-meta">
-                      {formatDate(project.updatedAt)}
-                    </span>
+                    <span class="project-card-meta">{formatDate(project.updatedAt)}</span>
                     <div class="project-card-actions">
                       <VisibilityToggle
                         projectId={project._id}
@@ -200,7 +201,7 @@ export function ProjectList(props: ProjectListProps) {
                         compact
                       />
                       <A
-                        href={`/u/${props.username ?? "me"}/${project.slug}/settings`}
+                        href={`/u/${props.username ?? 'me'}/${project.slug}/settings`}
                         class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity z-10"
                         title="Project Settings"
                         onClick={(e) => e.stopPropagation()}

@@ -1,15 +1,15 @@
-import { test, expect } from "@playwright/test";
-import { loginAsDevUser } from "../fixtures";
+import { expect, test } from '@playwright/test';
+import { loginAsDevUser } from '../fixtures';
 
-test.describe("Selection Interactions", () => {
+test.describe('Selection Interactions', () => {
   test.beforeEach(async ({ page }) => {
     await loginAsDevUser(page);
-    await page.goto("/viewer-test");
-    await page.locator("canvas").waitFor({ state: "visible", timeout: 15000 });
+    await page.goto('/viewer-test');
+    await page.locator('canvas').waitFor({ state: 'visible', timeout: 15000 });
   });
 
-  test("clicking canvas triggers selection", async ({ page }) => {
-    const canvas = page.locator("canvas");
+  test('clicking canvas triggers selection', async ({ page }) => {
+    const canvas = page.locator('canvas');
     const box = await canvas.boundingBox();
 
     if (box) {
@@ -22,8 +22,8 @@ test.describe("Selection Interactions", () => {
     await expect(canvas).toBeVisible();
   });
 
-  test("shift-click adds to selection", async ({ page }) => {
-    const canvas = page.locator("canvas");
+  test('shift-click adds to selection', async ({ page }) => {
+    const canvas = page.locator('canvas');
     const box = await canvas.boundingBox();
 
     if (box) {
@@ -32,9 +32,9 @@ test.describe("Selection Interactions", () => {
       await page.waitForTimeout(200);
 
       // Shift-click for multi-select
-      await page.keyboard.down("Shift");
+      await page.keyboard.down('Shift');
       await page.mouse.click(box.x + (box.width * 2) / 3, box.y + box.height / 2);
-      await page.keyboard.up("Shift");
+      await page.keyboard.up('Shift');
       await page.waitForTimeout(200);
     }
 
@@ -42,8 +42,8 @@ test.describe("Selection Interactions", () => {
     await expect(canvas).toBeVisible();
   });
 
-  test("marquee selection with drag", async ({ page }) => {
-    const canvas = page.locator("canvas");
+  test('marquee selection with drag', async ({ page }) => {
+    const canvas = page.locator('canvas');
     const box = await canvas.boundingBox();
 
     if (box) {

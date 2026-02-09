@@ -1,6 +1,6 @@
-import { describe, expect, test } from 'vitest';
+import type { JsonConfig, JsonConnection, JsonExport, JsonRoom } from 'floorplan-3d-core';
 import { normalizeToMeters } from 'floorplan-3d-core';
-import type { JsonExport, JsonConfig, JsonConnection, JsonRoom, JsonFloor } from 'floorplan-3d-core';
+import { describe, expect, test } from 'vitest';
 
 /**
  * Helper to create a minimal JsonExport for testing
@@ -8,18 +8,23 @@ import type { JsonExport, JsonConfig, JsonConnection, JsonRoom, JsonFloor } from
 function createExport(
   config: Partial<JsonConfig>,
   connections: JsonConnection[] = [],
-  rooms: JsonRoom[] = []
+  rooms: JsonRoom[] = [],
 ): JsonExport {
   return {
     config: {
       default_unit: 'ft',
       ...config,
     } as JsonConfig,
-    floors: rooms.length > 0 ? [{
-      id: 'test-floor',
-      index: 0,
-      rooms,
-    }] : [],
+    floors:
+      rooms.length > 0
+        ? [
+            {
+              id: 'test-floor',
+              index: 0,
+              rooms,
+            },
+          ]
+        : [],
     connections,
     styles: [],
   };
@@ -50,7 +55,7 @@ function createRoom(name: string, x: number, z: number, width: number, height: n
 function createConnection(
   fromRoom: string,
   toRoom: string,
-  options: Partial<JsonConnection> = {}
+  options: Partial<JsonConnection> = {},
 ): JsonConnection {
   return {
     fromRoom,
@@ -71,7 +76,7 @@ describe('unit-normalizer', () => {
     test('should return unchanged if already in meters', () => {
       const input = createExport({ default_unit: 'm', wall_thickness: 0.2 });
       const result = normalizeToMeters(input);
-      
+
       expect(result.config?.wall_thickness).toBe(0.2);
       expect(result.config?.default_unit).toBe('m');
     });
@@ -79,14 +84,14 @@ describe('unit-normalizer', () => {
     test('should convert wall_thickness from feet to meters', () => {
       const input = createExport({ wall_thickness: 1 }); // 1 foot
       const result = normalizeToMeters(input);
-      
+
       expect(result.config?.wall_thickness).toBeCloseTo(FT_TO_M, 5);
     });
 
     test('should convert default_height from feet to meters', () => {
       const input = createExport({ default_height: 10 }); // 10 feet
       const result = normalizeToMeters(input);
-      
+
       expect(result.config?.default_height).toBeCloseTo(10 * FT_TO_M, 5);
     });
 
@@ -94,7 +99,7 @@ describe('unit-normalizer', () => {
       test('should convert door_size [width, height] from feet to meters', () => {
         const input = createExport({ door_size: [3, 7] }); // 3ft x 7ft
         const result = normalizeToMeters(input);
-        
+
         expect(result.config?.door_size).toBeDefined();
         expect(result.config?.door_size![0]).toBeCloseTo(3 * FT_TO_M, 5); // ~0.91m
         expect(result.config?.door_size![1]).toBeCloseTo(7 * FT_TO_M, 5); // ~2.13m
@@ -103,7 +108,7 @@ describe('unit-normalizer', () => {
       test('should handle undefined door_size', () => {
         const input = createExport({});
         const result = normalizeToMeters(input);
-        
+
         expect(result.config?.door_size).toBeUndefined();
       });
     });
@@ -112,7 +117,7 @@ describe('unit-normalizer', () => {
       test('should convert window_size [width, height] from feet to meters', () => {
         const input = createExport({ window_size: [5, 4] }); // 5ft x 4ft
         const result = normalizeToMeters(input);
-        
+
         expect(result.config?.window_size).toBeDefined();
         expect(result.config?.window_size![0]).toBeCloseTo(5 * FT_TO_M, 5); // ~1.52m
         expect(result.config?.window_size![1]).toBeCloseTo(4 * FT_TO_M, 5); // ~1.22m
@@ -123,14 +128,14 @@ describe('unit-normalizer', () => {
       test('should convert door_width from feet to meters', () => {
         const input = createExport({ door_width: 3 }); // 3 feet
         const result = normalizeToMeters(input);
-        
+
         expect(result.config?.door_width).toBeCloseTo(3 * FT_TO_M, 5);
       });
 
       test('should convert door_height from feet to meters', () => {
         const input = createExport({ door_height: 7 }); // 7 feet
         const result = normalizeToMeters(input);
-        
+
         expect(result.config?.door_height).toBeCloseTo(7 * FT_TO_M, 5);
       });
     });
@@ -140,7 +145,7 @@ describe('unit-normalizer', () => {
         const connection = createConnection('RoomA', 'RoomB', { width: 4 }); // 4 feet
         const input = createExport({}, [connection]);
         const result = normalizeToMeters(input);
-        
+
         expect(result.connections[0].width).toBeCloseTo(4 * FT_TO_M, 5); // ~1.22m
       });
 
@@ -148,18 +153,18 @@ describe('unit-normalizer', () => {
         const connection = createConnection('RoomA', 'RoomB', { height: 8 }); // 8 feet
         const input = createExport({}, [connection]);
         const result = normalizeToMeters(input);
-        
+
         expect(result.connections[0].height).toBeCloseTo(8 * FT_TO_M, 5); // ~2.44m
       });
 
       test('should convert both width and height together', () => {
-        const connection = createConnection('RoomA', 'RoomB', { 
-          width: 3.5,  // 3.5 feet
-          height: 8    // 8 feet
+        const connection = createConnection('RoomA', 'RoomB', {
+          width: 3.5, // 3.5 feet
+          height: 8, // 8 feet
         });
         const input = createExport({}, [connection]);
         const result = normalizeToMeters(input);
-        
+
         expect(result.connections[0].width).toBeCloseTo(3.5 * FT_TO_M, 5);
         expect(result.connections[0].height).toBeCloseTo(8 * FT_TO_M, 5);
       });
@@ -168,19 +173,19 @@ describe('unit-normalizer', () => {
         const connection = createConnection('RoomA', 'RoomB', {});
         const input = createExport({}, [connection]);
         const result = normalizeToMeters(input);
-        
+
         expect(result.connections[0].width).toBeUndefined();
         expect(result.connections[0].height).toBeUndefined();
       });
 
       test('should preserve fullHeight boolean (not convert)', () => {
-        const connection = createConnection('RoomA', 'RoomB', { 
+        const connection = createConnection('RoomA', 'RoomB', {
           width: 4,
-          fullHeight: true 
+          fullHeight: true,
         });
         const input = createExport({}, [connection]);
         const result = normalizeToMeters(input);
-        
+
         expect(result.connections[0].fullHeight).toBe(true);
         expect(result.connections[0].width).toBeCloseTo(4 * FT_TO_M, 5);
       });
@@ -189,7 +194,7 @@ describe('unit-normalizer', () => {
         const connection = createConnection('RoomA', 'RoomB', { position: 50 });
         const input = createExport({}, [connection]);
         const result = normalizeToMeters(input);
-        
+
         // Position should remain as percentage, not converted
         expect(result.connections[0].position).toBe(50);
       });
@@ -200,7 +205,7 @@ describe('unit-normalizer', () => {
         const room = createRoom('TestRoom', 10, 20, 15, 12); // All in feet
         const input = createExport({}, [], [room]);
         const result = normalizeToMeters(input);
-        
+
         const convertedRoom = result.floors[0].rooms[0];
         expect(convertedRoom.x).toBeCloseTo(10 * FT_TO_M, 5);
         expect(convertedRoom.z).toBeCloseTo(20 * FT_TO_M, 5);
@@ -212,7 +217,7 @@ describe('unit-normalizer', () => {
         const room = { ...createRoom('TestRoom', 0, 0, 10, 10), roomHeight: 12 };
         const input = createExport({}, [], [room]);
         const result = normalizeToMeters(input);
-        
+
         expect(result.floors[0].rooms[0].roomHeight).toBeCloseTo(12 * FT_TO_M, 5);
       });
     });
@@ -232,11 +237,11 @@ describe('unit-normalizer', () => {
             default_height: 10,
           },
           [connection],
-          [room]
+          [room],
         );
-        
+
         const result = normalizeToMeters(input);
-        
+
         // Config conversions
         expect(result.config?.wall_thickness).toBeCloseTo(FT_TO_M, 5);
         expect(result.config?.door_size![0]).toBeCloseTo(3 * FT_TO_M, 5);
@@ -244,19 +249,18 @@ describe('unit-normalizer', () => {
         expect(result.config?.window_size![0]).toBeCloseTo(5 * FT_TO_M, 5);
         expect(result.config?.window_size![1]).toBeCloseTo(4 * FT_TO_M, 5);
         expect(result.config?.default_height).toBeCloseTo(10 * FT_TO_M, 5);
-        
+
         // Connection conversions
         expect(result.connections[0].width).toBeCloseTo(4 * FT_TO_M, 5);
         expect(result.connections[0].height).toBeCloseTo(8 * FT_TO_M, 5);
-        
+
         // Room conversions
         expect(result.floors[0].rooms[0].width).toBeCloseTo(20 * FT_TO_M, 5);
         expect(result.floors[0].rooms[0].height).toBeCloseTo(16 * FT_TO_M, 5);
-        
+
         // User's display preference should be preserved
         expect(result.config?.default_unit).toBe('ft');
       });
     });
   });
 });
-

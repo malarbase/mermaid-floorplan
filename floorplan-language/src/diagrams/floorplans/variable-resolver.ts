@@ -3,7 +3,7 @@
  * Resolves dimension variables and config defaults
  */
 
-import type { CONFIG_KEY, Floorplan, Room, LENGTH_UNIT, Dimension } from "../../generated/ast.js";
+import type { CONFIG_KEY, Dimension, Floorplan, LENGTH_UNIT, Room } from '../../generated/ast.js';
 
 /**
  * Resolved dimension with optional unit information
@@ -45,7 +45,7 @@ export interface VariableResolutionError {
   variableName: string;
   roomName?: string;
   message: string;
-  type: "undefined_variable" | "duplicate_definition";
+  type: 'undefined_variable' | 'duplicate_definition';
 }
 
 /**
@@ -64,7 +64,7 @@ export function resolveVariables(floorplan: Floorplan): VariableResolutionResult
       errors.push({
         variableName: define.name,
         message: `Variable '${define.name}' is defined multiple times`,
-        type: "duplicate_definition",
+        type: 'duplicate_definition',
       });
     } else {
       variables.set(define.name, {
@@ -115,12 +115,12 @@ function dimensionToResolvedSize(dimension: Dimension): ResolvedSize {
  */
 export function getResolvedSize(
   room: Room,
-  variables: Map<string, ResolvedDimension>
+  variables: Map<string, ResolvedDimension>,
 ): ResolvedDimension | undefined {
   // If the room has an inline size, use it
   if (room.size) {
-    return { 
-      width: room.size.width.value, 
+    return {
+      width: room.size.width.value,
       height: room.size.height.value,
       widthUnit: room.size.width.unit,
       heightUnit: room.size.height.unit,
@@ -140,7 +140,7 @@ export function getResolvedSize(
  */
 export function validateSizeReferences(
   floorplan: Floorplan,
-  variables: Map<string, ResolvedDimension>
+  variables: Map<string, ResolvedDimension>,
 ): VariableResolutionError[] {
   const errors: VariableResolutionError[] = [];
 
@@ -150,7 +150,7 @@ export function validateSizeReferences(
         variableName: room.sizeRef,
         roomName: room.name,
         message: `Room '${room.name}' references undefined variable '${room.sizeRef}'`,
-        type: "undefined_variable",
+        type: 'undefined_variable',
       });
     }
 
@@ -194,7 +194,7 @@ const CONFIG_DEFAULTS = {
 /**
  * Get resolved config with default values
  * Supports both door_size/window_size (preferred) and door_width/door_height (legacy)
- * 
+ *
  * Precedence:
  * 1. door_size/window_size dimension property
  * 2. door_width/door_height individual properties
@@ -202,43 +202,43 @@ const CONFIG_DEFAULTS = {
  */
 export function getResolvedConfig(
   config: Map<CONFIG_KEY, number>,
-  configSizes?: Map<string, ResolvedSize>
+  configSizes?: Map<string, ResolvedSize>,
 ): ResolvedConfig {
   // Resolve door dimensions (door_size takes precedence)
   let doorWidth = CONFIG_DEFAULTS.doorWidth;
   let doorHeight = CONFIG_DEFAULTS.doorHeight;
-  
-  const doorSize = configSizes?.get("door_size");
+
+  const doorSize = configSizes?.get('door_size');
   if (doorSize) {
     doorWidth = doorSize.width;
     doorHeight = doorSize.height;
   } else {
     // Fallback to individual properties
-    doorWidth = config.get("door_width") ?? CONFIG_DEFAULTS.doorWidth;
-    doorHeight = config.get("door_height") ?? CONFIG_DEFAULTS.doorHeight;
+    doorWidth = config.get('door_width') ?? CONFIG_DEFAULTS.doorWidth;
+    doorHeight = config.get('door_height') ?? CONFIG_DEFAULTS.doorHeight;
   }
 
   // Resolve window dimensions (window_size takes precedence)
   let windowWidth = CONFIG_DEFAULTS.windowWidth;
   let windowHeight = CONFIG_DEFAULTS.windowHeight;
-  
-  const windowSize = configSizes?.get("window_size");
+
+  const windowSize = configSizes?.get('window_size');
   if (windowSize) {
     windowWidth = windowSize.width;
     windowHeight = windowSize.height;
   } else {
     // Fallback to individual properties
-    windowWidth = config.get("window_width") ?? CONFIG_DEFAULTS.windowWidth;
-    windowHeight = config.get("window_height") ?? CONFIG_DEFAULTS.windowHeight;
+    windowWidth = config.get('window_width') ?? CONFIG_DEFAULTS.windowWidth;
+    windowHeight = config.get('window_height') ?? CONFIG_DEFAULTS.windowHeight;
   }
 
   return {
-    wallThickness: config.get("wall_thickness") ?? CONFIG_DEFAULTS.wallThickness,
+    wallThickness: config.get('wall_thickness') ?? CONFIG_DEFAULTS.wallThickness,
     doorWidth,
     doorHeight,
     windowWidth,
     windowHeight,
-    defaultHeight: config.get("default_height") ?? CONFIG_DEFAULTS.defaultHeight,
+    defaultHeight: config.get('default_height') ?? CONFIG_DEFAULTS.defaultHeight,
   };
 }
 
@@ -250,7 +250,7 @@ export function getResolvedConfig(
  */
 export function getRoomSize(
   room: Room,
-  variables?: Map<string, ResolvedDimension>
+  variables?: Map<string, ResolvedDimension>,
 ): { width: number; height: number } {
   // If the room has an inline size, use it
   if (room.size) {
@@ -268,7 +268,9 @@ export function getRoomSize(
   // If sizeRef but no variables passed, this is likely old code path
   // Return a fallback to avoid breaking existing code
   if (room.sizeRef) {
-    throw new Error(`Room '${room.name}' uses variable '${room.sizeRef}' but no variables provided`);
+    throw new Error(
+      `Room '${room.name}' uses variable '${room.sizeRef}' but no variables provided`,
+    );
   }
 
   throw new Error(`Room '${room.name}' has no size defined`);
@@ -281,12 +283,12 @@ export function getRoomSize(
  */
 export function getRoomSizeWithUnits(
   room: Room,
-  variables?: Map<string, ResolvedDimension>
+  variables?: Map<string, ResolvedDimension>,
 ): ResolvedDimension {
   // If the room has an inline size, use it
   if (room.size) {
-    return { 
-      width: room.size.width.value, 
+    return {
+      width: room.size.width.value,
       height: room.size.height.value,
       widthUnit: room.size.width.unit,
       heightUnit: room.size.height.unit,
@@ -303,9 +305,10 @@ export function getRoomSizeWithUnits(
 
   // If sizeRef but no variables passed, this is likely old code path
   if (room.sizeRef) {
-    throw new Error(`Room '${room.name}' uses variable '${room.sizeRef}' but no variables provided`);
+    throw new Error(
+      `Room '${room.name}' uses variable '${room.sizeRef}' but no variables provided`,
+    );
   }
 
   throw new Error(`Room '${room.name}' has no size defined`);
 }
-

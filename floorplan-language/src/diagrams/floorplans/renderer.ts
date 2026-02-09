@@ -1,25 +1,34 @@
 /**
  * Floorplan diagram renderer
  * Following Mermaid's rendering conventions
- * 
+ *
  * This is the main entry point for rendering floorplan diagrams.
  * It takes a parsed Langium document and produces SVG output.
  */
 
-import type { Floorplan, Floor, Connection } from "../../generated/ast.js";
-import type { LangiumDocument } from "langium";
-import { calculateFloorBounds, generateFloorRectangle, type FloorBounds } from "./floor.js";
-import { generateRoomSvg, generateRoomLabels, type RoomRenderOptions } from "./room.js";
-import { generateConnections } from "./connection.js";
-import { getStyles, type FloorplanThemeOptions } from "./styles.js";
-import { resolveFloorPositions, type ResolvedPosition, type PositionResolutionResult } from "./position-resolver.js";
-import { resolveVariables, getRoomSize } from "./variable-resolver.js";
-import { buildStyleContext, type StyleContext } from "./style-resolver.js";
-import { computeFloorMetrics, type FloorMetrics, formatEfficiency } from "./metrics.js";
-import { convertFloorplanToJson, type JsonFloor } from "./json-converter.js";
-import { generateFloorDimensions, type DimensionType, type DimensionRenderOptions, type LengthUnit } from "./dimension.js";
-import { resolveConfig, resolveThemeOptions } from "./config-resolver.js";
-import { generateFloorCirculation } from "./stair-renderer.js";
+import type { LangiumDocument } from 'langium';
+import type { Connection, Floor, Floorplan } from '../../generated/ast.js';
+import { resolveConfig, resolveThemeOptions } from './config-resolver.js';
+import { generateConnections } from './connection.js';
+import {
+  type DimensionRenderOptions,
+  type DimensionType,
+  generateFloorDimensions,
+  type LengthUnit,
+} from './dimension.js';
+import { calculateFloorBounds, type FloorBounds, generateFloorRectangle } from './floor.js';
+import { convertFloorplanToJson, type JsonFloor } from './json-converter.js';
+import { computeFloorMetrics, type FloorMetrics, formatEfficiency } from './metrics.js';
+import {
+  type PositionResolutionResult,
+  type ResolvedPosition,
+  resolveFloorPositions,
+} from './position-resolver.js';
+import { generateRoomLabels, generateRoomSvg, type RoomRenderOptions } from './room.js';
+import { generateFloorCirculation } from './stair-renderer.js';
+import { buildStyleContext, type StyleContext } from './style-resolver.js';
+import { type FloorplanThemeOptions, getStyles } from './styles.js';
+import { getRoomSize, resolveVariables } from './variable-resolver.js';
 
 /**
  * Generate floor summary panel SVG
@@ -29,37 +38,37 @@ function generateFloorSummaryPanel(
   bounds: FloorBounds,
   offsetX: number,
   offsetY: number,
-  areaUnit: AreaUnit = 'sqft'
+  areaUnit: AreaUnit = 'sqft',
 ): string {
   const panelWidth = bounds.width;
   const panelHeight = 3;
   const panelX = offsetX + bounds.minX;
   const panelY = offsetY + bounds.maxY + 1;
-  
+
   const fontSize = 0.5;
   const lineHeight = 0.8;
   let currentY = panelY + 0.8;
-  
+
   let svg = `<g class="floor-summary" transform="translate(0, 0)">`;
-  
+
   // Panel background
   svg += `<rect x="${panelX}" y="${panelY}" width="${panelWidth}" height="${panelHeight}" 
     fill="#f5f5f5" stroke="#ccc" stroke-width="0.05" rx="0.2" />`;
-  
+
   // Title
   svg += `<text x="${panelX + panelWidth / 2}" y="${currentY}" text-anchor="middle" 
     font-size="${fontSize * 1.2}" font-weight="bold" fill="#333">Floor Summary</text>`;
   currentY += lineHeight;
-  
+
   // Bounding box
   const bbText = `Bounding: ${metrics.boundingBox.width.toFixed(1)} × ${metrics.boundingBox.height.toFixed(1)} (${metrics.boundingBox.area.toFixed(1)} ${areaUnit})`;
   svg += `<text x="${panelX + 0.3}" y="${currentY}" font-size="${fontSize}" fill="#666">${bbText}</text>`;
   currentY += lineHeight;
-  
+
   // Net area and efficiency
   const netText = `Net Area: ${metrics.netArea.toFixed(1)} ${areaUnit} | Rooms: ${metrics.roomCount} | Efficiency: ${formatEfficiency(metrics.efficiency)}`;
   svg += `<text x="${panelX + 0.3}" y="${currentY}" font-size="${fontSize}" fill="#666">${netText}</text>`;
-  
+
   svg += `</g>`;
   return svg;
 }
@@ -78,7 +87,7 @@ export interface RenderOptions {
   padding?: number;
   /** Scale factor for output dimensions */
   scale?: number;
-  /** 
+  /**
    * Array of floor IDs to render.
    * - undefined/empty: renders all floors
    * - single floor: renders just that floor
@@ -99,17 +108,17 @@ export interface RenderOptions {
   showDimensions?: boolean;
   /** Types of dimensions to show */
   dimensionTypes?: DimensionType[];
-  
+
   // ===== DEPRECATED OPTIONS =====
-  
-  /** 
+
+  /**
    * @deprecated Use `visibleFloors: [floors[index].id]` instead.
-   * Floor index to render (default: 0 for backward compatibility) 
+   * Floor index to render (default: 0 for backward compatibility)
    */
   floorIndex?: number;
-  /** 
+  /**
    * @deprecated Use `visibleFloors` instead. Omit or pass all floor IDs to render all floors.
-   * Render all floors in a single SVG 
+   * Render all floors in a single SVG
    */
   renderAllFloors?: boolean;
 }
@@ -134,22 +143,19 @@ const defaultRenderOptions: RenderOptions = {
 /**
  * Render a floorplan document to SVG
  */
-export function render(
-  document: LangiumDocument<Floorplan>,
-  options: RenderOptions = {}
-): string {
+export function render(document: LangiumDocument<Floorplan>, options: RenderOptions = {}): string {
   const floorplan = document.parseResult.value;
-  
+
   if (floorplan.floors.length === 0) {
     return '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
   }
 
   // Resolve config from DSL (supports theme, darkMode, fontFamily, etc.)
   const resolvedConfig = resolveConfig(floorplan);
-  
+
   // Resolve theme options from config (handles theme + darkMode)
   const configTheme = resolveThemeOptions(resolvedConfig);
-  
+
   // Merge options: defaults < config < explicit options
   const opts: RenderOptions = {
     ...defaultRenderOptions,
@@ -159,7 +165,7 @@ export function render(
     theme: { ...configTheme, ...options.theme },
     ...options,
   };
-  
+
   // If showLabels is set in config, we need to pass it through
   // (Currently handled by room renderer, but exposed via config)
   const showLabels = resolvedConfig.showLabels ?? true;
@@ -167,16 +173,16 @@ export function render(
   // Resolve variables from the floorplan
   const variableResolution = resolveVariables(floorplan);
   const variables = variableResolution.variables;
-  
+
   // Build style context for the floorplan
   const styleContext = buildStyleContext(floorplan);
 
   // Determine which floors to render
   let floorsToRender: Floor[];
-  
+
   if (opts.visibleFloors !== undefined) {
     // New API: filter by visibleFloors (empty array = nothing visible)
-    floorsToRender = floorplan.floors.filter(f => opts.visibleFloors!.includes(f.id));
+    floorsToRender = floorplan.floors.filter((f) => opts.visibleFloors!.includes(f.id));
   } else if (opts.renderAllFloors) {
     // Deprecated: renderAllFloors flag - render all floors
     floorsToRender = floorplan.floors;
@@ -186,16 +192,30 @@ export function render(
     const floor = floorplan.floors[floorIndex];
     floorsToRender = floor ? [floor] : [];
   }
-  
+
   if (floorsToRender.length === 0) {
     return '<svg xmlns="http://www.w3.org/2000/svg"></svg>';
   }
-  
+
   // Single floor vs multi-floor rendering
   if (floorsToRender.length === 1) {
-    return renderFloor(floorsToRender[0], opts, floorplan.connections, variables, styleContext, showLabels);
+    return renderFloor(
+      floorsToRender[0],
+      opts,
+      floorplan.connections,
+      variables,
+      styleContext,
+      showLabels,
+    );
   } else {
-    return renderMultipleFloors(floorsToRender, floorplan, opts, variables, styleContext, showLabels);
+    return renderMultipleFloors(
+      floorsToRender,
+      floorplan,
+      opts,
+      variables,
+      styleContext,
+      showLabels,
+    );
   }
 }
 
@@ -208,7 +228,7 @@ function renderMultipleFloors(
   options: RenderOptions,
   variables?: Map<string, { width: number; height: number }>,
   styleContext?: StyleContext,
-  showLabels: boolean = true
+  showLabels: boolean = true,
 ): string {
   const resolvedConfig = resolveConfig(floorplan);
   const opts = { ...defaultRenderOptions, ...options };
@@ -216,29 +236,35 @@ function renderMultipleFloors(
   const floorGap = 5; // Gap between floors
   const labelHeight = 2; // Height reserved for floor labels
   const summaryHeight = opts.showFloorSummary ? 4 : 0; // Height for floor summary panel (3) + gap (1)
-  
+
   // Resolve positions for the floors to render
   const floorResolutions = new Map<string, PositionResolutionResult>();
   for (const floor of floors) {
     floorResolutions.set(floor.id, resolveFloorPositions(floor, variables));
   }
-  
+
   // Calculate bounds for all floors
-  const floorData: Array<{ floor: Floor; bounds: FloorBounds; offsetX: number; offsetY: number; resolvedPositions: Map<string, ResolvedPosition> }> = [];
+  const floorData: Array<{
+    floor: Floor;
+    bounds: FloorBounds;
+    offsetX: number;
+    offsetY: number;
+    resolvedPositions: Map<string, ResolvedPosition>;
+  }> = [];
   let totalWidth = 0;
   let totalHeight = 0;
   let currentOffset = 0;
-  
+
   // Get default unit from config for proper bounds calculation
   const defaultUnit = (resolvedConfig.defaultUnit as LengthUnit) ?? 'ft';
-  
+
   for (const floor of floors) {
     const resolution = floorResolutions.get(floor.id)!;
     const resolvedPositions = resolution.positions;
     const bounds = calculateFloorBounds(floor, resolvedPositions, variables, defaultUnit);
     let offsetX = 0;
     let offsetY = 0;
-    
+
     if (opts.multiFloorLayout === 'sideBySide') {
       offsetX = currentOffset - bounds.minX;
       offsetY = labelHeight - bounds.minY;
@@ -253,10 +279,10 @@ function renderMultipleFloors(
       totalWidth = Math.max(totalWidth, bounds.width);
       totalHeight = currentOffset - floorGap;
     }
-    
+
     floorData.push({ floor, bounds, offsetX, offsetY, resolvedPositions });
   }
-  
+
   // For stacked layout, reverse so floor 1 is at bottom
   if (opts.multiFloorLayout === 'stacked') {
     floorData.reverse();
@@ -267,21 +293,19 @@ function renderMultipleFloors(
       currentOffset += data.bounds.height + labelHeight + floorGap;
     }
   }
-  
+
   const viewBox = `${-padding} ${-padding} ${totalWidth + padding * 2} ${totalHeight + padding * 2}`;
-  
-  let svg = "";
-  
+
+  let svg = '';
+
   if (opts.includeXmlDeclaration) {
     svg += '<?xml version="1.0" encoding="UTF-8"?>\n';
   }
 
   const width = opts.scale ? (totalWidth + padding * 2) * opts.scale : undefined;
   const height = opts.scale ? (totalHeight + padding * 2) * opts.scale : undefined;
-  
-  const dimensionAttrs = width && height 
-    ? `width="${width}" height="${height}"` 
-    : "";
+
+  const dimensionAttrs = width && height ? `width="${width}" height="${height}"` : '';
 
   svg += `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg" ${dimensionAttrs} role="img" aria-roledescription="floorplan">`;
 
@@ -311,27 +335,35 @@ function renderMultipleFloors(
     const labelX = offsetX + bounds.minX + bounds.width / 2;
     const labelY = offsetY + bounds.minY - 0.5;
     svg += `<text x="${labelX}" y="${labelY}" text-anchor="middle" class="floor-label" font-size="1.2" font-weight="bold" fill="black">${floor.id}</text>`;
-    
+
     // Add floor group
     svg += `<g class="floor" aria-label="Floor: ${floor.id}" transform="translate(${offsetX}, ${offsetY})">`;
     svg += generateFloorRectangle(floor, resolvedPositions, variables, defaultUnit);
-    
+
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext, roomRenderOpts);
+      svg += generateRoomSvg(
+        room,
+        0,
+        0,
+        resolvedPositions,
+        variables,
+        styleContext,
+        roomRenderOpts,
+      );
     }
-    
+
     // Render connections for this floor
     svg += generateConnections(floor, floorplan.connections, resolvedPositions, variables);
-    
+
     // Render stairs and lifts
-    svg += generateFloorCirculation(floor, resolvedPositions, { 
+    svg += generateFloorCirculation(floor, resolvedPositions, {
       showLabels: showLabels,
-      defaultUnit: resolvedConfig.defaultUnit
+      defaultUnit: resolvedConfig.defaultUnit,
     });
-    
+
     // Render room labels AFTER circulation elements for proper z-order
     svg += generateRoomLabels(floor.rooms, 0, 0, resolvedPositions, variables, roomRenderOpts);
-    
+
     // Render dimension lines if enabled
     if (opts.showDimensions) {
       const dimensionOpts: DimensionRenderOptions = {
@@ -341,20 +373,26 @@ function renderMultipleFloors(
       };
       svg += generateFloorDimensions(floor.rooms, resolvedPositions, variables, dimensionOpts);
     }
-    
-    svg += "</g>";
-    
+
+    svg += '</g>';
+
     // Add floor summary panel if enabled
     if (opts.showFloorSummary) {
       const jsonResult = convertFloorplanToJson(floorplan);
-      const jsonFloor = jsonResult.data?.floors.find(f => f.id === floor.id);
+      const jsonFloor = jsonResult.data?.floors.find((f) => f.id === floor.id);
       if (jsonFloor?.metrics) {
-        svg += generateFloorSummaryPanel(jsonFloor.metrics, bounds, offsetX, offsetY, opts.areaUnit);
+        svg += generateFloorSummaryPanel(
+          jsonFloor.metrics,
+          bounds,
+          offsetX,
+          offsetY,
+          opts.areaUnit,
+        );
       }
     }
   }
 
-  svg += "</g></svg>";
+  svg += '</g></svg>';
   return svg;
 }
 
@@ -367,48 +405,48 @@ export function renderFloor(
   connections: Connection[] = [],
   variables?: Map<string, { width: number; height: number }>,
   styleContext?: StyleContext,
-  showLabels: boolean = true
+  showLabels: boolean = true,
 ): string {
   const opts = { ...defaultRenderOptions, ...options };
-  
+
   // Try to resolve config from parent floorplan to get default unit
   let defaultUnit: LengthUnit | undefined;
   try {
-    // @ts-ignore - Accessing parent container safely
+    // @ts-expect-error - Accessing parent container safely
     const floorplan = floor.$container;
     if (floorplan) {
-       const config = resolveConfig(floorplan as Floorplan);
-       defaultUnit = config.defaultUnit as LengthUnit;
+      const config = resolveConfig(floorplan as Floorplan);
+      defaultUnit = config.defaultUnit as LengthUnit;
     }
-  } catch (e) {
+  } catch (_e) {
     // Ignore error if container not accessible
   }
 
   // Resolve relative positions first
   const resolution = resolveFloorPositions(floor, variables);
   const resolvedPositions = resolution.positions;
-  
+
   const bounds = calculateFloorBounds(floor, resolvedPositions, variables, defaultUnit ?? 'ft');
   const padding = opts.padding ?? 0;
-  
+
   // Calculate extra height needed for summary panel
   const summaryHeight = opts.showFloorSummary ? 4 : 0;
-  
+
   const viewBox = `${bounds.minX - padding} ${bounds.minY - padding} ${bounds.width + padding * 2} ${bounds.height + padding * 2 + summaryHeight}`;
-  
-  let svg = "";
-  
+
+  let svg = '';
+
   if (opts.includeXmlDeclaration) {
     svg += '<?xml version="1.0" encoding="UTF-8"?>\n';
   }
 
   // Calculate dimensions with scale
   const width = opts.scale ? (bounds.width + padding * 2) * opts.scale : undefined;
-  const height = opts.scale ? (bounds.height + padding * 2 + summaryHeight) * opts.scale : undefined;
-  
-  const dimensionAttrs = width && height 
-    ? `width="${width}" height="${height}"` 
-    : "";
+  const height = opts.scale
+    ? (bounds.height + padding * 2 + summaryHeight) * opts.scale
+    : undefined;
+
+  const dimensionAttrs = width && height ? `width="${width}" height="${height}"` : '';
 
   svg += `<svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg" ${dimensionAttrs} role="img" aria-roledescription="floorplan">`;
 
@@ -437,21 +475,29 @@ export function renderFloor(
   if (floor.rooms.length > 0) {
     svg += generateFloorRectangle(floor, resolvedPositions, variables, defaultUnit ?? 'ft');
     for (const room of floor.rooms) {
-      svg += generateRoomSvg(room, 0, 0, resolvedPositions, variables, styleContext, roomRenderOpts);
+      svg += generateRoomSvg(
+        room,
+        0,
+        0,
+        resolvedPositions,
+        variables,
+        styleContext,
+        roomRenderOpts,
+      );
     }
-    
+
     // Render connections for this floor
     svg += generateConnections(floor, connections, resolvedPositions, variables);
-    
+
     // Render stairs and lifts
-    svg += generateFloorCirculation(floor, resolvedPositions, { 
+    svg += generateFloorCirculation(floor, resolvedPositions, {
       showLabels: showLabels,
-      defaultUnit: defaultUnit
+      defaultUnit: defaultUnit,
     });
-    
+
     // Render room labels AFTER circulation elements for proper z-order
     svg += generateRoomLabels(floor.rooms, 0, 0, resolvedPositions, variables, roomRenderOpts);
-    
+
     // Render dimension lines if enabled
     if (opts.showDimensions) {
       const dimensionOpts: DimensionRenderOptions = {
@@ -461,14 +507,14 @@ export function renderFloor(
       };
       svg += generateFloorDimensions(floor.rooms, resolvedPositions, variables, dimensionOpts);
     }
-    
+
     // Add floor summary panel if enabled
     if (opts.showFloorSummary) {
       // Build a minimal JsonFloor for metrics computation
       const jsonFloor: JsonFloor = {
         id: floor.id,
         index: 0,
-        rooms: floor.rooms.map(room => {
+        rooms: floor.rooms.map((room) => {
           const resolved = resolvedPositions.get(room.name);
           const size = getRoomSize(room, variables);
           return {
@@ -489,7 +535,7 @@ export function renderFloor(
     }
   }
 
-  svg += "</g></svg>";
+  svg += '</g></svg>';
   return svg;
 }
 
@@ -506,18 +552,27 @@ export function renderToFile(floor: Floor, options: RenderOptions = {}): string 
   });
 }
 
+export { generateConnection, generateConnections } from './connection.js';
+export type { DimensionType, LengthUnit } from './dimension.js';
+export { generateDoor } from './door.js';
+export type { FloorBounds } from './floor.js';
 // Re-export utilities for direct access
-export { calculateFloorBounds, generateFloorRectangle } from "./floor.js";
-export { generateRoomSvg, generateRoomText, generateRoomLabels } from "./room.js";
-export { wallRectangle } from "./wall.js";
-export { generateDoor } from "./door.js";
-export { generateWindow } from "./window.js";
-export { generateConnection, generateConnections } from "./connection.js";
-export { getStyles, defaultThemeOptions, darkTheme, blueprintTheme } from "./styles.js";
-export { resolveFloorPositions, resolveAllPositions, getResolvedPosition } from "./position-resolver.js";
-export type { FloorBounds } from "./floor.js";
-export type { FloorplanThemeOptions } from "./styles.js";
-export type { ResolvedPosition, PositionResolutionResult, PositionResolutionError, OverlapWarning } from "./position-resolver.js";
-export { buildStyleContext, resolveRoomStyle, DEFAULT_STYLE } from "./style-resolver.js";
-export type { StyleContext, ResolvedStyle } from "./style-resolver.js";
-export type { DimensionType, LengthUnit } from "./dimension.js";
+export { calculateFloorBounds, generateFloorRectangle } from './floor.js';
+export type {
+  OverlapWarning,
+  PositionResolutionError,
+  PositionResolutionResult,
+  ResolvedPosition,
+} from './position-resolver.js';
+export {
+  getResolvedPosition,
+  resolveAllPositions,
+  resolveFloorPositions,
+} from './position-resolver.js';
+export { generateRoomLabels, generateRoomSvg, generateRoomText } from './room.js';
+export type { ResolvedStyle, StyleContext } from './style-resolver.js';
+export { buildStyleContext, DEFAULT_STYLE, resolveRoomStyle } from './style-resolver.js';
+export type { FloorplanThemeOptions } from './styles.js';
+export { blueprintTheme, darkTheme, defaultThemeOptions, getStyles } from './styles.js';
+export { wallRectangle } from './wall.js';
+export { generateWindow } from './window.js';

@@ -1,14 +1,10 @@
-import { onMount, onCleanup, createSignal, createEffect } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
 // Monaco environment must be configured before Monaco loads
-import "~/lib/monaco-env";
+import '~/lib/monaco-env';
 
+import type { JsonExport } from 'floorplan-3d-core';
 // Import types only (compile-time, no runtime cost)
-import type { 
-  ParseResult, 
-  ParseError,
-  DslEditorInstance 
-} from "floorplan-viewer-core";
-import type { JsonExport } from "floorplan-3d-core";
+import type { DslEditorInstance, ParseError, ParseResult } from 'floorplan-viewer-core';
 
 // Define interfaces for dynamically imported modules
 type ParseFloorplanDSL = (content: string) => Promise<ParseResult>;
@@ -26,9 +22,9 @@ interface MeshRegistry {
 interface SelectionManager {
   select(entity: SelectableEntity, isAdditive: boolean): void;
   selectMultiple(
-    entities: SelectableEntity[], 
-    isAdditive: boolean, 
-    options?: { primaryEntity?: SelectableEntity; isHierarchical?: boolean }
+    entities: SelectableEntity[],
+    isAdditive: boolean,
+    options?: { primaryEntity?: SelectableEntity; isHierarchical?: boolean },
   ): void;
   highlight(entity: SelectableEntity): void;
   clearHighlight(): void;
@@ -44,7 +40,9 @@ interface EditorCore {
 
 interface EditorViewerSyncInstance {
   onEditorSelect(callback: (entityKey: string, isAdditive: boolean) => void): void;
-  onEditorHierarchicalSelect(callback: (result: { primaryKey: string; allKeys: string[] }, isAdditive: boolean) => void): void;
+  onEditorHierarchicalSelect(
+    callback: (result: { primaryKey: string; allKeys: string[] }, isAdditive: boolean) => void,
+  ): void;
   onEditorHighlight(callback: (entityKeys: string[]) => void): void;
   onEditorHighlightClear(callback: () => void): void;
   scrollToEntity?(entityKey: string): void;
@@ -53,7 +51,7 @@ interface EditorViewerSyncInstance {
 
 interface EditorPanelProps {
   dsl: string;
-  theme: "light" | "dark";
+  theme: 'light' | 'dark';
   onDslChange: (dsl: string) => void;
   onSave?: () => void;
   core: EditorCore;
@@ -66,7 +64,7 @@ export default function EditorPanel(props: EditorPanelProps) {
   let parseDebounceTimeout: NodeJS.Timeout | null = null;
   let errorMarkerTimeout: NodeJS.Timeout | null = null;
   let unsubSelection: (() => void) | null = null;
-  
+
   const [isInitialized, setIsInitialized] = createSignal(false);
 
   onMount(async () => {
@@ -74,8 +72,8 @@ export default function EditorPanel(props: EditorPanelProps) {
 
     try {
       const [viewerCore, editorModule] = await Promise.all([
-        import("floorplan-viewer-core"),
-        import("floorplan-editor")
+        import('floorplan-viewer-core'),
+        import('floorplan-editor'),
       ]);
 
       const { createDslEditor, parseFloorplanDSL } = viewerCore;
@@ -104,14 +102,14 @@ export default function EditorPanel(props: EditorPanelProps) {
 
       setIsInitialized(true);
     } catch (error) {
-      console.error("Failed to initialize editor:", error);
+      console.error('Failed to initialize editor:', error);
     }
   });
 
   createEffect(async () => {
     const theme = props.theme;
     if (dslEditor?.editor) {
-      const { monaco } = await import("floorplan-viewer-core");
+      const { monaco } = await import('floorplan-viewer-core');
       monaco.editor.setTheme(theme === 'dark' ? 'vs-dark' : 'vs');
     }
   });
@@ -138,23 +136,23 @@ export default function EditorPanel(props: EditorPanelProps) {
   });
 
   async function parseAndUpdate(
-    content: string, 
-    parseFloorplanDSL: ParseFloorplanDSL, 
-    core: EditorCore
+    content: string,
+    parseFloorplanDSL: ParseFloorplanDSL,
+    core: EditorCore,
   ): Promise<void> {
     try {
       const result = await parseFloorplanDSL(content);
-      
+
       // Check for parse errors (ParseResult has errors array, not success boolean)
       if (result.errors.length > 0 || !result.data) {
         // Parse errors are expected during editing (incomplete statements, typos, etc.)
         // Show error markers after a delay if the DSL remains invalid
         if (errorMarkerTimeout) clearTimeout(errorMarkerTimeout);
         // Map ParseError to the format expected by setErrorMarkers (line/column required)
-        const errors = result.errors
-          .filter((e): e is ParseError & { line: number; column: number } => 
-            e.line !== undefined && e.column !== undefined
-          );
+        const errors = result.errors.filter(
+          (e): e is ParseError & { line: number; column: number } =>
+            e.line !== undefined && e.column !== undefined,
+        );
         errorMarkerTimeout = setTimeout(() => {
           if (dslEditor && errors.length > 0) {
             dslEditor.setErrorMarkers(errors);
@@ -174,7 +172,7 @@ export default function EditorPanel(props: EditorPanelProps) {
       core.loadFloorplan?.(result.data);
     } catch (error) {
       // Unexpected errors (not parse errors) should still be logged
-      console.error("Unexpected parse error:", error);
+      console.error('Unexpected parse error:', error);
     }
   }
 
@@ -182,21 +180,21 @@ export default function EditorPanel(props: EditorPanelProps) {
    * Initialize EditorViewerSync for bidirectional cursor <-> selection sync
    */
   function initEditorViewerSync(
-    EditorViewerSyncClass: new (editor: unknown, selectionManager: SelectionManager, config: { debug: boolean }) => EditorViewerSyncInstance,
+    EditorViewerSyncClass: new (
+      editor: unknown,
+      selectionManager: SelectionManager,
+      config: { debug: boolean },
+    ) => EditorViewerSyncInstance,
     editor: DslEditorInstance,
-    core: EditorCore
+    core: EditorCore,
   ): void {
     const selectionManager = core.getSelectionManager?.();
     if (!selectionManager) {
-      console.warn("Selection manager not available");
+      console.warn('Selection manager not available');
       return;
     }
 
-    editorSync = new EditorViewerSyncClass(
-      editor.editor,
-      selectionManager,
-      { debug: false }
-    );
+    editorSync = new EditorViewerSyncClass(editor.editor, selectionManager, { debug: false });
 
     // Handle editor cursor → 3D selection (simple mode)
     editorSync.onEditorSelect((entityKey: string, isAdditive: boolean) => {
@@ -222,52 +220,45 @@ export default function EditorPanel(props: EditorPanelProps) {
     });
 
     // Handle editor cursor → 3D hierarchical selection
-    editorSync.onEditorHierarchicalSelect(
-      (result, isAdditive: boolean) => {
-        const registry = core.meshRegistry;
-        if (!registry) return;
+    editorSync.onEditorHierarchicalSelect((result, isAdditive: boolean) => {
+      const registry = core.meshRegistry;
+      if (!registry) return;
 
-        const allEntities = registry.getAllEntities();
+      const allEntities = registry.getAllEntities();
 
-        // Find the primary entity
-        const primaryParts = result.primaryKey.split(':');
-        let primaryEntity: SelectableEntity | null = null;
-        if (primaryParts.length === 3) {
-          const [floorId, entityType, entityId] = primaryParts;
-          primaryEntity = allEntities.find(
-            (e) =>
-              e.floorId === floorId &&
-              e.entityType === entityType &&
-              e.entityId === entityId
+      // Find the primary entity
+      const primaryParts = result.primaryKey.split(':');
+      let primaryEntity: SelectableEntity | null = null;
+      if (primaryParts.length === 3) {
+        const [floorId, entityType, entityId] = primaryParts;
+        primaryEntity =
+          allEntities.find(
+            (e) => e.floorId === floorId && e.entityType === entityType && e.entityId === entityId,
           ) ?? null;
-        }
+      }
 
-        // Collect all entities to select
-        const entitiesToSelect: SelectableEntity[] = [];
-        for (const entityKey of result.allKeys) {
-          const parts = entityKey.split(':');
-          if (parts.length !== 3) continue;
+      // Collect all entities to select
+      const entitiesToSelect: SelectableEntity[] = [];
+      for (const entityKey of result.allKeys) {
+        const parts = entityKey.split(':');
+        if (parts.length !== 3) continue;
 
-          const [floorId, entityType, entityId] = parts;
-          const entity = allEntities.find(
-            (e) =>
-              e.floorId === floorId &&
-              e.entityType === entityType &&
-              e.entityId === entityId
-          );
-          if (entity) {
-            entitiesToSelect.push(entity);
-          }
-        }
-
-        if (entitiesToSelect.length > 0) {
-          selectionManager.selectMultiple(entitiesToSelect, isAdditive, {
-            primaryEntity: primaryEntity ?? undefined,
-            isHierarchical: true,
-          });
+        const [floorId, entityType, entityId] = parts;
+        const entity = allEntities.find(
+          (e) => e.floorId === floorId && e.entityType === entityType && e.entityId === entityId,
+        );
+        if (entity) {
+          entitiesToSelect.push(entity);
         }
       }
-    );
+
+      if (entitiesToSelect.length > 0) {
+        selectionManager.selectMultiple(entitiesToSelect, isAdditive, {
+          primaryEntity: primaryEntity ?? undefined,
+          isHierarchical: true,
+        });
+      }
+    });
 
     // Handle editor text highlight → 3D preview
     editorSync.onEditorHighlight((entityKeys: string[]) => {
@@ -302,18 +293,20 @@ export default function EditorPanel(props: EditorPanelProps) {
     });
 
     // Handle 3D selection → editor scroll
-    unsubSelection = selectionManager.onSelectionChange((event: { source?: string; selection: ReadonlySet<SelectableEntity> }) => {
-      if (event.source === 'editor') return; // Avoid circular updates
-      
-      const arr = Array.from(event.selection);
-      if (arr.length > 0) {
-        const entity = arr[0];
-        const entityKey = `${entity.floorId}:${entity.entityType}:${entity.entityId}`;
-        
-        // Scroll to the entity in the editor
-        editorSync?.scrollToEntity?.(entityKey);
-      }
-    });
+    unsubSelection = selectionManager.onSelectionChange(
+      (event: { source?: string; selection: ReadonlySet<SelectableEntity> }) => {
+        if (event.source === 'editor') return; // Avoid circular updates
+
+        const arr = Array.from(event.selection);
+        if (arr.length > 0) {
+          const entity = arr[0];
+          const entityKey = `${entity.floorId}:${entity.entityType}:${entity.entityId}`;
+
+          // Scroll to the entity in the editor
+          editorSync?.scrollToEntity?.(entityKey);
+        }
+      },
+    );
   }
 
   return (
@@ -321,8 +314,8 @@ export default function EditorPanel(props: EditorPanelProps) {
       ref={editorContainerRef}
       class="w-full h-full"
       style={{
-        opacity: isInitialized() ? "1" : "0",
-        transition: "opacity 0.3s ease-out",
+        opacity: isInitialized() ? '1' : '0',
+        transition: 'opacity 0.3s ease-out',
       }}
     />
   );

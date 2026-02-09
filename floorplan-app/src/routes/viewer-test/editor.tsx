@@ -1,10 +1,8 @@
-import { clientOnly } from "@solidjs/start";
-import { Header } from "~/components/Header";
+import { clientOnly } from '@solidjs/start';
+import { Header } from '~/components/Header';
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanContainer = clientOnly(() =>
-  import("~/components/viewer/FloorplanContainer")
-);
+const FloorplanContainer = clientOnly(() => import('~/components/viewer/FloorplanContainer'));
 
 /**
  * Test page for editor viewer mode.
@@ -32,17 +30,11 @@ export default function ViewerTestEditor() {
   return (
     <main class="h-screen flex flex-col bg-base-200">
       <Header
-        centerContent={
-          <div class="text-lg font-semibold">Viewer Test - Editor Mode</div>
-        }
+        centerContent={<div class="text-lg font-semibold">Viewer Test - Editor Mode</div>}
         hideUserMenu
       />
       <div class="flex-1 overflow-hidden">
-        <FloorplanContainer
-          dsl={testDsl}
-          mode="editor"
-          onDslChange={() => {}}
-        />
+        <FloorplanContainer dsl={testDsl} mode="editor" onDslChange={() => {}} />
       </div>
     </main>
   );

@@ -3,11 +3,11 @@
  * Reduces duplication across project route components.
  */
 
-import { createMemo, createSignal, createEffect, type Accessor } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import { useSession } from "~/lib/auth-client";
-import type { Project, Owner, ForkedFrom, ProjectQueryResult, VersionData, Snapshot } from "~/lib/project-types";
-import { projectApi } from "~/lib/project-types";
+import { useQuery } from 'convex-solidjs';
+import { type Accessor, createEffect, createMemo, createSignal } from 'solid-js';
+import { useSession } from '~/lib/auth-client';
+import type { ProjectQueryResult, Snapshot, VersionData } from '~/lib/project-types';
+import { projectApi } from '~/lib/project-types';
 
 /**
  * Hook for fetching and managing project data.
@@ -15,7 +15,7 @@ import { projectApi } from "~/lib/project-types";
  */
 export function useProjectData(
   username: Accessor<string | undefined>,
-  projectSlug: Accessor<string | undefined>
+  projectSlug: Accessor<string | undefined>,
 ) {
   const sessionSignal = useSession();
 
@@ -71,15 +71,15 @@ export function useProjectData(
  */
 export function useVersionData(
   projectId: Accessor<string | undefined>,
-  versionName: Accessor<string | undefined>
+  versionName: Accessor<string | undefined>,
 ) {
   const versionQuery = useQuery(
     projectApi.projects.getVersion,
     () => ({
-      projectId: projectId() ?? ("" as any),
-      versionName: versionName() ?? "main",
+      projectId: projectId() ?? ('' as any),
+      versionName: versionName() ?? 'main',
     }),
-    () => ({ enabled: !!projectId() })
+    () => ({ enabled: !!projectId() }),
   );
 
   const versionData = createMemo(() => {
@@ -109,15 +109,15 @@ export function useVersionData(
  */
 export function useSnapshotData(
   projectId: Accessor<string | undefined>,
-  hash: Accessor<string | undefined>
+  hash: Accessor<string | undefined>,
 ) {
   const snapshotQuery = useQuery(
     projectApi.projects.getByHash,
     () => ({
-      projectId: projectId() ?? ("" as any),
+      projectId: projectId() ?? ('' as any),
       hash: hash(),
     }),
-    () => ({ enabled: !!projectId() })
+    () => ({ enabled: !!projectId() }),
   );
 
   const snapshot = createMemo(() => {
@@ -146,31 +146,32 @@ export function useSnapshotData(
 /**
  * localStorage key for persisted theme preference.
  */
-const THEME_STORAGE_KEY = "floorplan-app-theme";
+const THEME_STORAGE_KEY = 'floorplan-app-theme';
 
 /**
  * Hook for managing theme state with document sync and localStorage persistence.
- * 
+ *
  * Priority: localStorage saved preference > initialTheme parameter > "dark"
  */
-export function useTheme(initialTheme: "light" | "dark" = "dark") {
+export function useTheme(initialTheme: 'light' | 'dark' = 'dark') {
   // Read from localStorage first, fall back to parameter
-  const stored = typeof window !== "undefined"
-    ? (localStorage.getItem(THEME_STORAGE_KEY) as "light" | "dark" | null)
-    : null;
-  const [theme, setTheme] = createSignal<"light" | "dark">(stored ?? initialTheme);
+  const stored =
+    typeof window !== 'undefined'
+      ? (localStorage.getItem(THEME_STORAGE_KEY) as 'light' | 'dark' | null)
+      : null;
+  const [theme, setTheme] = createSignal<'light' | 'dark'>(stored ?? initialTheme);
 
   // Sync theme to document for DaisyUI and viewer-core CSS, and persist
   createEffect(() => {
     const currentTheme = theme();
     document.documentElement.dataset.theme = currentTheme;
-    document.body.classList.toggle("dark-theme", currentTheme === "dark");
-    if (typeof window !== "undefined") {
+    document.body.classList.toggle('dark-theme', currentTheme === 'dark');
+    if (typeof window !== 'undefined') {
       localStorage.setItem(THEME_STORAGE_KEY, currentTheme);
     }
   });
 
-  const toggleTheme = () => setTheme((t) => (t === "light" ? "dark" : "light"));
+  const toggleTheme = () => setTheme((t) => (t === 'light' ? 'dark' : 'light'));
 
   return {
     theme,

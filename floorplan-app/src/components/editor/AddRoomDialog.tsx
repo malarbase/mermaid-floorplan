@@ -1,4 +1,4 @@
-import { createSignal } from "solid-js";
+import { createSignal } from 'solid-js';
 
 interface AddRoomDialogProps {
   isOpen: boolean;
@@ -7,20 +7,20 @@ interface AddRoomDialogProps {
 }
 
 const ROOM_TYPES = [
-  "bedroom",
-  "kitchen",
-  "livingroom",
-  "bathroom",
-  "dining",
-  "hallway",
-  "office",
-  "storage",
+  'bedroom',
+  'kitchen',
+  'livingroom',
+  'bathroom',
+  'dining',
+  'hallway',
+  'office',
+  'storage',
 ];
 
 export default function AddRoomDialog(props: AddRoomDialogProps) {
   const [formData, setFormData] = createSignal({
-    name: "",
-    type: "bedroom",
+    name: '',
+    type: 'bedroom',
     width: 4,
     height: 4,
   });
@@ -28,17 +28,17 @@ export default function AddRoomDialog(props: AddRoomDialogProps) {
   const handleSubmit = () => {
     const data = formData();
     if (!data.name.trim()) return;
-    
+
     props.onConfirm(data);
-    setFormData({ name: "", type: "bedroom", width: 4, height: 4 });
+    setFormData({ name: '', type: 'bedroom', width: 4, height: 4 });
     props.onClose();
   };
 
   return (
-    <dialog class="modal" classList={{ "modal-open": props.isOpen }}>
+    <dialog class="modal" classList={{ 'modal-open': props.isOpen }}>
       <div class="modal-box">
         <h3 class="font-bold text-lg">Add Room</h3>
-        
+
         <div class="py-4 space-y-4">
           <div class="form-control">
             <label class="label">
@@ -48,9 +48,7 @@ export default function AddRoomDialog(props: AddRoomDialogProps) {
               type="text"
               class="input input-bordered"
               value={formData().name}
-              onInput={(e) =>
-                setFormData({ ...formData(), name: e.target.value })
-              }
+              onInput={(e) => setFormData({ ...formData(), name: e.target.value })}
               placeholder="e.g., Master Bedroom"
             />
           </div>
@@ -62,9 +60,7 @@ export default function AddRoomDialog(props: AddRoomDialogProps) {
             <select
               class="select select-bordered"
               value={formData().type}
-              onChange={(e) =>
-                setFormData({ ...formData(), type: e.target.value })
-              }
+              onChange={(e) => setFormData({ ...formData(), type: e.target.value })}
             >
               {ROOM_TYPES.map((type) => (
                 <option value={type}>{type}</option>
@@ -82,9 +78,7 @@ export default function AddRoomDialog(props: AddRoomDialogProps) {
               value={formData().width}
               min={1}
               step={0.5}
-              onInput={(e) =>
-                setFormData({ ...formData(), width: parseFloat(e.target.value) })
-              }
+              onInput={(e) => setFormData({ ...formData(), width: parseFloat(e.target.value) })}
             />
           </div>
 
@@ -98,9 +92,7 @@ export default function AddRoomDialog(props: AddRoomDialogProps) {
               value={formData().height}
               min={1}
               step={0.5}
-              onInput={(e) =>
-                setFormData({ ...formData(), height: parseFloat(e.target.value) })
-              }
+              onInput={(e) => setFormData({ ...formData(), height: parseFloat(e.target.value) })}
             />
           </div>
         </div>
@@ -109,11 +101,7 @@ export default function AddRoomDialog(props: AddRoomDialogProps) {
           <button class="btn" onClick={props.onClose}>
             Cancel
           </button>
-          <button
-            class="btn btn-primary"
-            onClick={handleSubmit}
-            disabled={!formData().name.trim()}
-          >
+          <button class="btn btn-primary" onClick={handleSubmit} disabled={!formData().name.trim()}>
             Add
           </button>
         </div>

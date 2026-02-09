@@ -1,5 +1,5 @@
-import { cronJobs } from "convex/server";
-import { internal } from "./_generated/api";
+import { cronJobs } from 'convex/server';
+import { internal } from './_generated/api';
 
 /**
  * Scheduled jobs for periodic tasks.
@@ -12,9 +12,9 @@ const crons = cronJobs();
  * owner can reclaim them. After expiration, they become available to anyone.
  */
 crons.daily(
-  "cleanup-expired-usernames",
+  'cleanup-expired-usernames',
   { hourUTC: 3, minuteUTC: 0 }, // Run at 3:00 AM UTC daily
-  internal.users.cleanupExpiredUsernames
+  internal.users.cleanupExpiredUsernames,
 );
 
 /**
@@ -22,9 +22,9 @@ crons.daily(
  * Uses view/fork counts with time decay based on project age.
  */
 crons.interval(
-  "calculate-trending-scores",
+  'calculate-trending-scores',
   { hours: 6 },
-  internal.trending.calculateTrendingScores
+  internal.trending.calculateTrendingScores,
 );
 
 export default crons;

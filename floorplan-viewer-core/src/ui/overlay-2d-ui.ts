@@ -27,22 +27,22 @@ export interface Overlay2DUI {
  */
 export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI {
   injectStyles();
-  
+
   const { initialVisible = false, onClose, onVisibilityChange } = options;
-  
+
   const container = document.createElement('div');
   container.className = 'fp-overlay-2d';
   container.id = 'overlay-2d';
   if (initialVisible) container.classList.add('visible');
-  
+
   // Header with title and close button
   const header = document.createElement('div');
   header.className = 'fp-overlay-2d-header';
   header.id = 'overlay-2d-header';
-  
+
   const title = document.createElement('span');
   title.textContent = '2D View';
-  
+
   const closeButton = document.createElement('button');
   closeButton.className = 'fp-overlay-2d-close';
   closeButton.id = 'overlay-2d-close';
@@ -53,37 +53,37 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     onClose?.();
     onVisibilityChange?.(false);
   });
-  
+
   header.appendChild(title);
   header.appendChild(closeButton);
-  
+
   // Content area
   const content = document.createElement('div');
   content.className = 'fp-overlay-2d-content';
   content.id = 'overlay-2d-content';
-  
+
   const emptyMsg = document.createElement('div');
   emptyMsg.className = 'fp-overlay-2d-empty';
   emptyMsg.id = 'overlay-2d-empty';
   emptyMsg.textContent = 'Load a floorplan to see 2D view';
   content.appendChild(emptyMsg);
-  
+
   // Resize handle
   const resizeHandle = document.createElement('div');
   resizeHandle.className = 'fp-overlay-2d-resize';
   resizeHandle.id = 'overlay-2d-resize';
-  
+
   container.appendChild(header);
   container.appendChild(content);
   container.appendChild(resizeHandle);
-  
+
   // Drag functionality
   let isDragging = false;
   let dragStartX = 0;
   let dragStartY = 0;
   let initialLeft = 0;
   let initialBottom = 0;
-  
+
   header.addEventListener('mousedown', (e) => {
     if (e.target === closeButton) return;
     isDragging = true;
@@ -95,7 +95,7 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     initialBottom = window.innerHeight - rect.bottom;
     e.preventDefault();
   });
-  
+
   document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
     const dx = e.clientX - dragStartX;
@@ -103,21 +103,21 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     container.style.left = `${initialLeft + dx}px`;
     container.style.bottom = `${initialBottom - dy}px`;
   });
-  
+
   document.addEventListener('mouseup', () => {
     if (isDragging) {
       isDragging = false;
       container.classList.remove('dragging');
     }
   });
-  
+
   // Resize functionality
   let isResizing = false;
   let resizeStartX = 0;
   let resizeStartY = 0;
   let initialWidth = 0;
   let initialHeight = 0;
-  
+
   resizeHandle.addEventListener('mousedown', (e) => {
     isResizing = true;
     resizeStartX = e.clientX;
@@ -127,7 +127,7 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     e.preventDefault();
     e.stopPropagation();
   });
-  
+
   document.addEventListener('mousemove', (e) => {
     if (!isResizing) return;
     const dx = e.clientX - resizeStartX;
@@ -135,11 +135,11 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     container.style.width = `${Math.max(200, initialWidth + dx)}px`;
     container.style.height = `${Math.max(150, initialHeight + dy)}px`;
   });
-  
+
   document.addEventListener('mouseup', () => {
     isResizing = false;
   });
-  
+
   return {
     element: container,
     header,
@@ -172,4 +172,3 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     },
   };
 }
-

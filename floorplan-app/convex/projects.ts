@@ -1,7 +1,6 @@
-import { query, mutation } from "./_generated/server";
-import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
-import { requireUserForMutation, requireUserForQuery } from "./devAuth";
+import { v } from 'convex/values';
+import { mutation, query } from './_generated/server';
+import { requireUserForMutation, requireUserForQuery } from './devAuth';
 
 /**
  * Generate content hash (first 8 chars of SHA256)
@@ -10,9 +9,9 @@ import { requireUserForMutation, requireUserForQuery } from "./devAuth";
 async function contentHash(content: string): Promise<string> {
   const encoder = new TextEncoder();
   const data = encoder.encode(content);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   return hashHex.slice(0, 8);
 }
 
@@ -23,9 +22,9 @@ export const list = query({
     if (!user) return [];
 
     return ctx.db
-      .query("projects")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .order("desc")
+      .query('projects')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .order('desc')
       .collect();
   },
 });
@@ -34,17 +33,17 @@ export const listPublicByUsername = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .query('users')
+      .withIndex('by_username', (q) => q.eq('username', args.username))
       .first();
 
     if (!user) return [];
 
     return ctx.db
-      .query("projects")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => q.eq(q.field("isPublic"), true))
-      .order("desc")
+      .query('projects')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .filter((q) => q.eq(q.field('isPublic'), true))
+      .order('desc')
       .collect();
   },
 });
@@ -56,17 +55,15 @@ export const getBySlug = query({
   args: { username: v.string(), projectSlug: v.string() },
   handler: async (ctx, args) => {
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .query('users')
+      .withIndex('by_username', (q) => q.eq('username', args.username))
       .first();
 
     if (!user) return null;
 
     const project = await ctx.db
-      .query("projects")
-      .withIndex("by_user_slug", (q) =>
-        q.eq("userId", user._id).eq("slug", args.projectSlug)
-      )
+      .query('projects')
+      .withIndex('by_user_slug', (q) => q.eq('userId', user._id).eq('slug', args.projectSlug))
       .first();
 
     if (!project) return null;
@@ -77,9 +74,9 @@ export const getBySlug = query({
 
       if (currentUser._id !== project.userId) {
         const access = await ctx.db
-          .query("projectAccess")
-          .withIndex("by_project", (q) => q.eq("projectId", project._id))
-          .filter((q) => q.eq(q.field("userId"), currentUser._id))
+          .query('projectAccess')
+          .withIndex('by_project', (q) => q.eq('projectId', project._id))
+          .filter((q) => q.eq(q.field('userId'), currentUser._id))
           .first();
 
         if (!access) return null;
@@ -117,24 +114,22 @@ export const create = mutation({
     const user = await requireUserForMutation(ctx);
 
     if (!/^[a-z0-9-]+$/.test(args.slug)) {
-      throw new Error("Slug must contain only lowercase letters, numbers, and hyphens");
+      throw new Error('Slug must contain only lowercase letters, numbers, and hyphens');
     }
 
     const existing = await ctx.db
-      .query("projects")
-      .withIndex("by_user_slug", (q) =>
-        q.eq("userId", user._id).eq("slug", args.slug)
-      )
+      .query('projects')
+      .withIndex('by_user_slug', (q) => q.eq('userId', user._id).eq('slug', args.slug))
       .first();
 
     if (existing) {
-      throw new Error("Project with this slug already exists");
+      throw new Error('Project with this slug already exists');
     }
 
     const redirectsWithSlug = await ctx.db
-      .query("slugRedirects")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => q.eq(q.field("fromSlug"), args.slug))
+      .query('slugRedirects')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .filter((q) => q.eq(q.field('fromSlug'), args.slug))
       .collect();
 
     for (const redirect of redirectsWithSlug) {
@@ -144,29 +139,29 @@ export const create = mutation({
     const now = Date.now();
     const hash = await contentHash(args.content);
 
-    const projectId = await ctx.db.insert("projects", {
+    const projectId = await ctx.db.insert('projects', {
       userId: user._id,
       slug: args.slug,
       displayName: args.displayName,
       description: args.description,
       isPublic: args.isPublic,
-      defaultVersion: "main",
+      defaultVersion: 'main',
       createdAt: now,
       updatedAt: now,
     });
 
-    const snapshotId = await ctx.db.insert("snapshots", {
+    const snapshotId = await ctx.db.insert('snapshots', {
       projectId,
       contentHash: hash,
       content: args.content,
-      message: "Initial version",
+      message: 'Initial version',
       authorId: user.authId,
       createdAt: now,
     });
 
-    await ctx.db.insert("versions", {
+    await ctx.db.insert('versions', {
       projectId,
-      name: "main",
+      name: 'main',
       snapshotId,
       createdAt: now,
       updatedAt: now,
@@ -181,7 +176,7 @@ export const create = mutation({
  */
 export const save = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     versionName: v.string(),
     content: v.string(),
     message: v.optional(v.string()),
@@ -190,22 +185,17 @@ export const save = mutation({
     const user = await requireUserForMutation(ctx);
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error('Project not found');
 
     const isOwner = project.userId === user._id;
     if (!isOwner) {
       const access = await ctx.db
-        .query("projectAccess")
-        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("userId"), user._id),
-            q.eq(q.field("role"), "editor")
-          )
-        )
+        .query('projectAccess')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.and(q.eq(q.field('userId'), user._id), q.eq(q.field('role'), 'editor')))
         .first();
 
-      if (!access) throw new Error("Not authorized");
+      if (!access) throw new Error('Not authorized');
     }
 
     const now = Date.now();
@@ -213,14 +203,14 @@ export const save = mutation({
 
     // Get current version to find parent snapshot
     const version = await ctx.db
-      .query("versions")
-      .withIndex("by_project_name", (q) =>
-        q.eq("projectId", args.projectId).eq("name", args.versionName)
+      .query('versions')
+      .withIndex('by_project_name', (q) =>
+        q.eq('projectId', args.projectId).eq('name', args.versionName),
       )
       .first();
 
     // Create new snapshot
-    const snapshotId = await ctx.db.insert("snapshots", {
+    const snapshotId = await ctx.db.insert('snapshots', {
       projectId: args.projectId,
       contentHash: hash,
       content: args.content,
@@ -234,7 +224,7 @@ export const save = mutation({
     if (version) {
       await ctx.db.patch(version._id, { snapshotId, updatedAt: now });
     } else {
-      await ctx.db.insert("versions", {
+      await ctx.db.insert('versions', {
         projectId: args.projectId,
         name: args.versionName,
         snapshotId,
@@ -251,46 +241,46 @@ export const save = mutation({
 });
 
 export const remove = mutation({
-  args: { projectId: v.id("projects") },
+  args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
     const user = await requireUserForMutation(ctx);
-    if (!user) throw new Error("Unauthenticated");
+    if (!user) throw new Error('Unauthenticated');
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error('Project not found');
 
     if (project.userId !== user._id) {
-      throw new Error("Not authorized");
+      throw new Error('Not authorized');
     }
 
     // Delete all related data
     const versions = await ctx.db
-      .query("versions")
-      .withIndex("by_project_name", (q) => q.eq("projectId", args.projectId))
+      .query('versions')
+      .withIndex('by_project_name', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const version of versions) {
       await ctx.db.delete(version._id);
     }
 
     const snapshots = await ctx.db
-      .query("snapshots")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .query('snapshots')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const snapshot of snapshots) {
       await ctx.db.delete(snapshot._id);
     }
 
     const accessList = await ctx.db
-      .query("projectAccess")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .query('projectAccess')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const access of accessList) {
       await ctx.db.delete(access._id);
     }
 
     const shareLinks = await ctx.db
-      .query("shareLinks")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
+      .query('shareLinks')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
       .collect();
     for (const link of shareLinks) {
       await ctx.db.delete(link._id);
@@ -308,27 +298,27 @@ export const remove = mutation({
  * Returns null if project is not public
  */
 export const getPublic = query({
-  args: { projectId: v.id("projects") },
+  args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
     if (!project) return null;
-    
+
     // Only return if project is public
     if (!project.isPublic) return null;
-    
+
     // Get the default version and its snapshot
     const version = await ctx.db
-      .query("versions")
-      .withIndex("by_project_name", (q) =>
-        q.eq("projectId", args.projectId).eq("name", project.defaultVersion)
+      .query('versions')
+      .withIndex('by_project_name', (q) =>
+        q.eq('projectId', args.projectId).eq('name', project.defaultVersion),
       )
       .first();
-    
+
     if (!version) return null;
-    
+
     const snapshot = await ctx.db.get(version.snapshotId);
     if (!snapshot) return null;
-    
+
     return {
       project,
       version,
@@ -341,13 +331,11 @@ export const getPublic = query({
  * Get snapshot by hash (for permalinks)
  */
 export const getByHash = query({
-  args: { projectId: v.id("projects"), hash: v.string() },
+  args: { projectId: v.id('projects'), hash: v.string() },
   handler: async (ctx, args) => {
     return ctx.db
-      .query("snapshots")
-      .withIndex("by_hash", (q) =>
-        q.eq("projectId", args.projectId).eq("contentHash", args.hash)
-      )
+      .query('snapshots')
+      .withIndex('by_hash', (q) => q.eq('projectId', args.projectId).eq('contentHash', args.hash))
       .first();
   },
 });
@@ -356,12 +344,12 @@ export const getByHash = query({
  * Get version by name (includes snapshot content)
  */
 export const getVersion = query({
-  args: { projectId: v.id("projects"), versionName: v.string() },
+  args: { projectId: v.id('projects'), versionName: v.string() },
   handler: async (ctx, args) => {
     const version = await ctx.db
-      .query("versions")
-      .withIndex("by_project_name", (q) =>
-        q.eq("projectId", args.projectId).eq("name", args.versionName)
+      .query('versions')
+      .withIndex('by_project_name', (q) =>
+        q.eq('projectId', args.projectId).eq('name', args.versionName),
       )
       .first();
 
@@ -376,11 +364,11 @@ export const getVersion = query({
  * Get all versions for a project
  */
 export const listVersions = query({
-  args: { projectId: v.id("projects") },
+  args: { projectId: v.id('projects') },
   handler: async (ctx, args) => {
     return ctx.db
-      .query("versions")
-      .withIndex("by_project_name", (q) => q.eq("projectId", args.projectId))
+      .query('versions')
+      .withIndex('by_project_name', (q) => q.eq('projectId', args.projectId))
       .collect();
   },
 });
@@ -394,18 +382,18 @@ const DEBOUNCE_WINDOW_MS = 60 * 60 * 1000;
  */
 export const trackView = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     sessionToken: v.string(),
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error('Project not found');
 
     const encoder = new TextEncoder();
     const data = encoder.encode(args.sessionToken);
-    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
     const hashArray = Array.from(new Uint8Array(hashBuffer));
-    const sessionHash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    const sessionHash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
     const cacheKey = `${args.projectId}-${sessionHash}`;
     const now = Date.now();
 
@@ -434,12 +422,12 @@ export const trackView = mutation({
  * Get snapshot history for a project
  */
 export const getHistory = query({
-  args: { projectId: v.id("projects"), limit: v.optional(v.number()) },
+  args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
     return ctx.db
-      .query("snapshots")
-      .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-      .order("desc")
+      .query('snapshots')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
       .take(args.limit ?? 50);
   },
 });
@@ -449,7 +437,7 @@ export const getHistory = query({
  */
 export const update = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     displayName: v.optional(v.string()),
     description: v.optional(v.string()),
     isPublic: v.optional(v.boolean()),
@@ -459,18 +447,17 @@ export const update = mutation({
     const user = await requireUserForMutation(ctx);
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error('Project not found');
 
     if (project.userId !== user._id) {
-      throw new Error("Not authorized");
+      throw new Error('Not authorized');
     }
 
     const updates: Partial<typeof project> = { updatedAt: Date.now() };
     if (args.displayName !== undefined) updates.displayName = args.displayName;
     if (args.description !== undefined) updates.description = args.description;
     if (args.isPublic !== undefined) updates.isPublic = args.isPublic;
-    if (args.defaultVersion !== undefined)
-      updates.defaultVersion = args.defaultVersion;
+    if (args.defaultVersion !== undefined) updates.defaultVersion = args.defaultVersion;
 
     await ctx.db.patch(args.projectId, updates);
 
@@ -483,7 +470,7 @@ export const update = mutation({
  */
 export const createVersion = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     name: v.string(),
     fromVersion: v.optional(v.string()),
     description: v.optional(v.string()),
@@ -492,46 +479,39 @@ export const createVersion = mutation({
     const user = await requireUserForMutation(ctx);
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error('Project not found');
 
     const isOwner = project.userId === user._id;
     if (!isOwner) {
       const access = await ctx.db
-        .query("projectAccess")
-        .withIndex("by_project", (q) => q.eq("projectId", args.projectId))
-        .filter((q) =>
-          q.and(
-            q.eq(q.field("userId"), user._id),
-            q.eq(q.field("role"), "editor")
-          )
-        )
+        .query('projectAccess')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.and(q.eq(q.field('userId'), user._id), q.eq(q.field('role'), 'editor')))
         .first();
 
-      if (!access) throw new Error("Not authorized");
+      if (!access) throw new Error('Not authorized');
     }
 
     const existing = await ctx.db
-      .query("versions")
-      .withIndex("by_project_name", (q) =>
-        q.eq("projectId", args.projectId).eq("name", args.name)
-      )
+      .query('versions')
+      .withIndex('by_project_name', (q) => q.eq('projectId', args.projectId).eq('name', args.name))
       .first();
 
-    if (existing) throw new Error("Version with this name already exists");
+    if (existing) throw new Error('Version with this name already exists');
 
     const sourceVersionName = args.fromVersion ?? project.defaultVersion;
     const sourceVersion = await ctx.db
-      .query("versions")
-      .withIndex("by_project_name", (q) =>
-        q.eq("projectId", args.projectId).eq("name", sourceVersionName)
+      .query('versions')
+      .withIndex('by_project_name', (q) =>
+        q.eq('projectId', args.projectId).eq('name', sourceVersionName),
       )
       .first();
 
-    if (!sourceVersion) throw new Error("Source version not found");
+    if (!sourceVersion) throw new Error('Source version not found');
 
     const now = Date.now();
 
-    const versionId = await ctx.db.insert("versions", {
+    const versionId = await ctx.db.insert('versions', {
       projectId: args.projectId,
       name: args.name,
       snapshotId: sourceVersion.snapshotId,
@@ -549,42 +529,40 @@ export const createVersion = mutation({
  */
 export const updateSlug = mutation({
   args: {
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     newSlug: v.string(),
   },
   handler: async (ctx, args) => {
     const user = await requireUserForMutation(ctx);
 
     if (!/^[a-z0-9-]+$/.test(args.newSlug)) {
-      throw new Error("Slug must contain only lowercase letters, numbers, and hyphens");
+      throw new Error('Slug must contain only lowercase letters, numbers, and hyphens');
     }
 
     const project = await ctx.db.get(args.projectId);
-    if (!project) throw new Error("Project not found");
+    if (!project) throw new Error('Project not found');
 
     if (project.userId !== user._id) {
-      throw new Error("Not authorized");
+      throw new Error('Not authorized');
     }
 
     if (project.slug === args.newSlug) {
-      throw new Error("New slug is the same as current slug");
+      throw new Error('New slug is the same as current slug');
     }
 
     const existing = await ctx.db
-      .query("projects")
-      .withIndex("by_user_slug", (q) =>
-        q.eq("userId", user._id).eq("slug", args.newSlug)
-      )
+      .query('projects')
+      .withIndex('by_user_slug', (q) => q.eq('userId', user._id).eq('slug', args.newSlug))
       .first();
 
     if (existing) {
-      throw new Error("A project with this slug already exists");
+      throw new Error('A project with this slug already exists');
     }
 
     const now = Date.now();
     const oldSlug = project.slug;
 
-    await ctx.db.insert("slugRedirects", {
+    await ctx.db.insert('slugRedirects', {
       fromSlug: oldSlug,
       toSlug: args.newSlug,
       userId: user._id,
@@ -608,17 +586,15 @@ export const resolveSlug = query({
   args: { username: v.string(), slug: v.string() },
   handler: async (ctx, args) => {
     const user = await ctx.db
-      .query("users")
-      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .query('users')
+      .withIndex('by_username', (q) => q.eq('username', args.username))
       .first();
 
     if (!user) return null;
 
     const project = await ctx.db
-      .query("projects")
-      .withIndex("by_user_slug", (q) =>
-        q.eq("userId", user._id).eq("slug", args.slug)
-      )
+      .query('projects')
+      .withIndex('by_user_slug', (q) => q.eq('userId', user._id).eq('slug', args.slug))
       .first();
 
     if (project) {
@@ -626,18 +602,16 @@ export const resolveSlug = query({
     }
 
     const redirect = await ctx.db
-      .query("slugRedirects")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => q.eq(q.field("fromSlug"), args.slug))
+      .query('slugRedirects')
+      .withIndex('by_user', (q) => q.eq('userId', user._id))
+      .filter((q) => q.eq(q.field('fromSlug'), args.slug))
       .first();
 
     if (!redirect) return null;
 
     const targetProject = await ctx.db
-      .query("projects")
-      .withIndex("by_user_slug", (q) =>
-        q.eq("userId", user._id).eq("slug", redirect.toSlug)
-      )
+      .query('projects')
+      .withIndex('by_user_slug', (q) => q.eq('userId', user._id).eq('slug', redirect.toSlug))
       .first();
 
     if (!targetProject) return null;

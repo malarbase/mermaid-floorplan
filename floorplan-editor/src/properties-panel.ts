@@ -1,6 +1,6 @@
 /**
  * PropertiesPanel - UI for viewing and editing selected element properties.
- * 
+ *
  * Features:
  * - Displays properties based on selected entity type
  * - Supports editing common properties (position, size, style)
@@ -15,8 +15,8 @@ export interface PropertyDef {
   name: string;
   label: string;
   type: 'text' | 'number' | 'select' | 'readonly';
-  options?: string[];  // For select type
-  step?: number;       // For number type
+  options?: string[]; // For select type
+  step?: number; // For number type
   min?: number;
   max?: number;
 }
@@ -50,12 +50,22 @@ const PROPERTY_DEFINITIONS: Record<string, PropertyDef[]> = {
   wall: [
     { name: 'room', label: 'Parent Room', type: 'readonly' },
     { name: 'direction', label: 'Direction', type: 'readonly' },
-    { name: 'type', label: 'Wall Type', type: 'select', options: ['solid', 'open', 'door', 'window'] },
+    {
+      name: 'type',
+      label: 'Wall Type',
+      type: 'select',
+      options: ['solid', 'open', 'door', 'window'],
+    },
   ],
   connection: [
     { name: 'fromRoom', label: 'From Room', type: 'readonly' },
     { name: 'toRoom', label: 'To Room', type: 'readonly' },
-    { name: 'type', label: 'Type', type: 'select', options: ['door', 'double-door', 'window', 'opening'] },
+    {
+      name: 'type',
+      label: 'Type',
+      type: 'select',
+      options: ['door', 'double-door', 'window', 'opening'],
+    },
     { name: 'position', label: 'Position %', type: 'number', step: 5, min: 0, max: 100 },
   ],
 };
@@ -128,7 +138,7 @@ export class PropertiesPanel {
     this.titleEl = this.container.querySelector('.fp-properties-panel-title')!;
     this.formEl = this.container.querySelector('.fp-properties-panel-form')!;
     this.actionsEl = this.container.querySelector('.fp-properties-panel-actions')!;
-    
+
     // Wire up delete button
     const deleteBtn = this.actionsEl.querySelector('.fp-delete-btn')!;
     deleteBtn.addEventListener('click', () => this.handleDelete());
@@ -139,20 +149,20 @@ export class PropertiesPanel {
 
   /**
    * Show the properties panel for a selected entity.
-   * 
+   *
    * @param selection - The selected entity
    * @param data - Entity data (from JSON or mesh userData)
    */
   show(selection: SelectableObject, data: Record<string, unknown>): void {
     this.currentSelection = selection;
     this.currentData = { ...data };
-    
+
     // Update title
     this.titleEl.textContent = `${this.capitalize(selection.entityType)}: ${selection.entityId}`;
-    
+
     // Render form
     this.renderForm();
-    
+
     // Show panel
     this.container.style.display = 'block';
   }
@@ -245,13 +255,11 @@ export class PropertiesPanel {
         if (def.max !== undefined) (input as HTMLInputElement).max = String(def.max);
         (input as HTMLInputElement).addEventListener('change', () => {
           const numValue = parseFloat((input as HTMLInputElement).value);
-          if (!isNaN(numValue)) {
+          if (!Number.isNaN(numValue)) {
             this.handlePropertyChange(def.name, numValue);
           }
         });
         break;
-
-      case 'text':
       default:
         input = document.createElement('input');
         input.className = 'fp-property-input';
@@ -286,13 +294,13 @@ export class PropertiesPanel {
       sourceRange: this.currentSelection.sourceRange,
     });
   }
-  
+
   /**
    * Handle delete button click.
    */
   private handleDelete(): void {
     if (!this.currentSelection || !this.onDelete) return;
-    
+
     this.onDelete({
       entityType: this.currentSelection.entityType,
       entityId: this.currentSelection.entityId,
@@ -318,4 +326,3 @@ export class PropertiesPanel {
     return '';
   }
 }
-

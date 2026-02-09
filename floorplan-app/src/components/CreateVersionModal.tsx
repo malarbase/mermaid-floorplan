@@ -1,12 +1,12 @@
-import { createSignal, createMemo, Show, For, createEffect } from "solid-js";
-import { useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import type { FunctionReference } from 'convex/server';
+import { useMutation } from 'convex-solidjs';
+import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
 
 // Type-safe API reference builder for when generated files don't exist yet
 // This will be replaced with proper imports once `npx convex dev` generates the API
 const api = {
   projects: {
-    createVersion: "projects:createVersion" as unknown as FunctionReference<"mutation">,
+    createVersion: 'projects:createVersion' as unknown as FunctionReference<'mutation'>,
   },
 };
 
@@ -33,9 +33,9 @@ interface CreateVersionModalProps {
  * pointing to the same snapshot as the source version.
  */
 export function CreateVersionModal(props: CreateVersionModalProps) {
-  const [versionName, setVersionName] = createSignal("");
-  const [description, setDescription] = createSignal("");
-  const [error, setError] = createSignal("");
+  const [versionName, setVersionName] = createSignal('');
+  const [description, setDescription] = createSignal('');
+  const [error, setError] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   // Mutation to create version
@@ -44,9 +44,9 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
   // Reset form when modal opens
   createEffect(() => {
     if (props.isOpen) {
-      setVersionName("");
-      setDescription("");
-      setError("");
+      setVersionName('');
+      setDescription('');
+      setError('');
     }
   });
 
@@ -55,11 +55,11 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
     // Allow alphanumeric, hyphens, underscores, and dots
     const normalized = value
       .toLowerCase()
-      .replace(/[^a-z0-9\-_.]/g, "-")
-      .replace(/--+/g, "-")
-      .replace(/^-|-$/g, "");
+      .replace(/[^a-z0-9\-_.]/g, '-')
+      .replace(/--+/g, '-')
+      .replace(/^-|-$/g, '');
     setVersionName(normalized);
-    setError("");
+    setError('');
   };
 
   // Validation
@@ -68,28 +68,28 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
     if (name.length < 1) return false;
     if (name.length > 50) return false;
     // Reserved names
-    if (name === "main" && !props.fromVersion) return false;
+    if (name === 'main' && !props.fromVersion) return false;
     return true;
   });
 
   const validationMessage = createMemo(() => {
     const name = versionName();
-    if (name.length === 0) return "";
-    if (name.length > 50) return "Version name must be 50 characters or less";
-    if (name === "main") return "'main' is usually the default version";
-    return "";
+    if (name.length === 0) return '';
+    if (name.length > 50) return 'Version name must be 50 characters or less';
+    if (name === 'main') return "'main' is usually the default version";
+    return '';
   });
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
 
     if (!isValid()) {
-      setError("Please enter a valid version name");
+      setError('Please enter a valid version name');
       return;
     }
 
     setIsSubmitting(true);
-    setError("");
+    setError('');
 
     try {
       const versionId = await createVersionMutation.mutate({
@@ -102,8 +102,7 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
       props.onSuccess?.(versionId as string, versionName());
       props.onClose();
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Failed to create version";
+      const message = err instanceof Error ? err.message : 'Failed to create version';
       setError(message);
     } finally {
       setIsSubmitting(false);
@@ -112,20 +111,14 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
 
   // Suggested version names
   const suggestions = createMemo(() => {
-    const baseSuggestions = [
-      "draft",
-      "v2",
-      "client-review",
-      "final",
-      "experiment",
-    ];
+    const baseSuggestions = ['draft', 'v2', 'client-review', 'final', 'experiment'];
     // Filter out the source version name if present
     return baseSuggestions.filter((s) => s !== props.fromVersion);
   });
 
   const selectSuggestion = (suggestion: string) => {
     setVersionName(suggestion);
-    setError("");
+    setError('');
   };
 
   return (
@@ -133,12 +126,7 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
       <div class="modal modal-open">
         <div class="modal-box">
           <h3 class="font-bold text-lg flex items-center gap-2">
-            <svg
-              class="w-5 h-5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -150,12 +138,9 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
           </h3>
 
           <p class="py-4 text-base-content/70">
-            Create a new version (branch) from{" "}
-            <span class="font-mono font-medium">
-              {props.fromVersion || "main"}
-            </span>
-            . The new version will start with the same content and can be edited
-            independently.
+            Create a new version (branch) from{' '}
+            <span class="font-mono font-medium">{props.fromVersion || 'main'}</span>. The new
+            version will start with the same content and can be edited independently.
           </p>
 
           <form onSubmit={handleSubmit}>
@@ -163,19 +148,13 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
             <div class="form-control w-full">
               <label class="label">
                 <span class="label-text">Version Name</span>
-                <span class="label-text-alt text-base-content/50">
-                  1-50 characters
-                </span>
+                <span class="label-text-alt text-base-content/50">1-50 characters</span>
               </label>
               <input
                 type="text"
                 placeholder="e.g., v2, draft, client-review"
                 class={`input input-bordered w-full ${
-                  versionName().length > 0
-                    ? isValid()
-                      ? "input-success"
-                      : "input-error"
-                    : ""
+                  versionName().length > 0 ? (isValid() ? 'input-success' : 'input-error') : ''
                 }`}
                 value={versionName()}
                 onInput={(e) => handleVersionNameChange(e.currentTarget.value)}
@@ -187,9 +166,7 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
               {/* Validation message */}
               <label class="label">
                 <Show when={validationMessage()}>
-                  <span class="label-text-alt text-warning">
-                    {validationMessage()}
-                  </span>
+                  <span class="label-text-alt text-warning">{validationMessage()}</span>
                 </Show>
               </label>
             </div>
@@ -203,9 +180,7 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
                     <button
                       type="button"
                       class={`btn btn-sm ${
-                        versionName() === suggestion
-                          ? "btn-primary"
-                          : "btn-ghost"
+                        versionName() === suggestion ? 'btn-primary' : 'btn-ghost'
                       }`}
                       onClick={() => selectSuggestion(suggestion)}
                     >
@@ -233,11 +208,7 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
             {/* Error message */}
             <Show when={error()}>
               <div class="alert alert-error mt-4">
-                <svg
-                  class="stroke-current shrink-0 h-6 w-6"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -259,11 +230,7 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
               >
                 Cancel
               </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                disabled={!isValid() || isSubmitting()}
-              >
+              <button type="submit" class="btn btn-primary" disabled={!isValid() || isSubmitting()}>
                 <Show when={isSubmitting()}>
                   <span class="loading loading-spinner loading-sm"></span>
                 </Show>

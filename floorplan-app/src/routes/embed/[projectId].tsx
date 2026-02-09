@@ -1,12 +1,12 @@
-import { useParams } from "@solidjs/router";
-import { Show, Suspense, createMemo } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
-import { FloorplanEmbed } from "~/components/FloorplanEmbed";
+import { useParams } from '@solidjs/router';
+import type { FunctionReference } from 'convex/server';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, Show, Suspense } from 'solid-js';
+import { FloorplanEmbed } from '~/components/FloorplanEmbed';
 
 const api = {
   projects: {
-    getPublic: "projects:getPublic" as unknown as FunctionReference<"query">,
+    getPublic: 'projects:getPublic' as unknown as FunctionReference<'query'>,
   },
 };
 
@@ -54,9 +54,7 @@ export default function EmbedPage() {
             <div class="flex items-center justify-center w-full h-full">
               <div class="card bg-base-100 shadow-xl max-w-md">
                 <div class="card-body text-center">
-                  <h2 class="card-title text-error justify-center">
-                    Floorplan Not Found
-                  </h2>
+                  <h2 class="card-title text-error justify-center">Floorplan Not Found</h2>
                   <p class="text-base-content/60">
                     This floorplan is not available or is not public.
                   </p>
@@ -66,11 +64,7 @@ export default function EmbedPage() {
           }
         >
           {(project: ProjectData) => (
-            <FloorplanEmbed
-              dsl={project.snapshot.content}
-              theme="dark"
-              withUI={false}
-            />
+            <FloorplanEmbed dsl={project.snapshot.content} theme="dark" withUI={false} />
           )}
         </Show>
       </Suspense>

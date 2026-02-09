@@ -1,18 +1,18 @@
-import { Title } from "@solidjs/meta";
-import { useParams, A, useNavigate } from "@solidjs/router";
-import { Show, For, createMemo, createSignal } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
-import { useSession } from "~/lib/auth-client";
-import { CreateVersionModal } from "~/components/CreateVersionModal";
-import { copyToClipboard, generatePermalink } from "~/lib/permalink";
+import { Title } from '@solidjs/meta';
+import { A, useNavigate, useParams } from '@solidjs/router';
+import type { FunctionReference } from 'convex/server';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, createSignal, For, Show } from 'solid-js';
+import { CreateVersionModal } from '~/components/CreateVersionModal';
+import { useSession } from '~/lib/auth-client';
+import { copyToClipboard, generatePermalink } from '~/lib/permalink';
 
 // Type-safe API reference builder for when generated files don't exist yet
 const api = {
   projects: {
-    getBySlug: "projects:getBySlug" as unknown as FunctionReference<"query">,
-    listVersions: "projects:listVersions" as unknown as FunctionReference<"query">,
-    getHistory: "projects:getHistory" as unknown as FunctionReference<"query">,
+    getBySlug: 'projects:getBySlug' as unknown as FunctionReference<'query'>,
+    listVersions: 'projects:listVersions' as unknown as FunctionReference<'query'>,
+    getHistory: 'projects:getHistory' as unknown as FunctionReference<'query'>,
   },
 };
 
@@ -77,7 +77,10 @@ export default function ProjectHistory() {
   }));
 
   const projectData = createMemo(() => {
-    const data = projectQuery.data() as { project: Project; owner: Owner; forkedFrom: ForkedFrom | null } | null | undefined;
+    const data = projectQuery.data() as
+      | { project: Project; owner: Owner; forkedFrom: ForkedFrom | null }
+      | null
+      | undefined;
     return data;
   });
 
@@ -96,8 +99,8 @@ export default function ProjectHistory() {
   // Query versions
   const versionsQuery = useQuery(
     api.projects.listVersions,
-    () => ({ projectId: project()?._id ?? "" }),
-    () => ({ enabled: !!project() })
+    () => ({ projectId: project()?._id ?? '' }),
+    () => ({ enabled: !!project() }),
   );
 
   const versions = createMemo(() => {
@@ -115,8 +118,8 @@ export default function ProjectHistory() {
   // Query snapshots
   const historyQuery = useQuery(
     api.projects.getHistory,
-    () => ({ projectId: project()?._id ?? "", limit: 50 }),
-    () => ({ enabled: !!project() })
+    () => ({ projectId: project()?._id ?? '', limit: 50 }),
+    () => ({ enabled: !!project() }),
   );
 
   const snapshots = createMemo(() => {
@@ -126,7 +129,7 @@ export default function ProjectHistory() {
 
   // Loading states
   const isLoading = createMemo(
-    () => projectQuery.isLoading() || versionsQuery.isLoading() || historyQuery.isLoading()
+    () => projectQuery.isLoading() || versionsQuery.isLoading() || historyQuery.isLoading(),
   );
 
   // Create version modal state
@@ -135,7 +138,7 @@ export default function ProjectHistory() {
   // Track which snapshot hash was just copied
   const [copiedHash, setCopiedHash] = createSignal<string | null>(null);
 
-  const handleVersionCreated = (versionId: string, versionName: string) => {
+  const handleVersionCreated = (_versionId: string, versionName: string) => {
     navigate(`/u/${username()}/${projectSlug()}/v/${versionName}`);
   };
 
@@ -143,11 +146,11 @@ export default function ProjectHistory() {
   const handleCopyPermalink = async (hash: string, e: MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
+
     const u = username();
     const p = projectSlug();
     if (!u || !p) return;
-    
+
     const url = generatePermalink(u, p, hash, true);
     const success = await copyToClipboard(url);
     if (success) {
@@ -158,7 +161,7 @@ export default function ProjectHistory() {
 
   const formatDate = (ts: number) => {
     const date = new Date(ts);
-    return date.toLocaleDateString() + " " + date.toLocaleTimeString();
+    return `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
   };
 
   const formatRelativeDate = (ts: number) => {
@@ -167,10 +170,10 @@ export default function ProjectHistory() {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor(diff / (1000 * 60));
 
-    if (minutes < 1) return "just now";
+    if (minutes < 1) return 'just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
-    if (days === 1) return "yesterday";
+    if (days === 1) return 'yesterday';
     if (days < 7) return `${days}d ago`;
     return formatDate(ts);
   };
@@ -195,7 +198,9 @@ export default function ProjectHistory() {
                 <div class="card-body text-center">
                   <h2 class="card-title">Project not found</h2>
                   <p>This project doesn't exist or you don't have access.</p>
-                  <A href="/" class="btn btn-ghost mt-4">Go Home</A>
+                  <A href="/" class="btn btn-ghost mt-4">
+                    Go Home
+                  </A>
                 </div>
               </div>
             </div>
@@ -206,14 +211,25 @@ export default function ProjectHistory() {
             <div class="mb-6 sm:mb-8">
               <div class="text-xs sm:text-sm breadcrumbs mb-2">
                 <ul>
-                  <li><A href={`/u/${username()}`}>{username()}</A></li>
-                  <li><A href={`/u/${username()}/${projectSlug()}`} class="truncate max-w-[100px] sm:max-w-none">{projectSlug()}</A></li>
+                  <li>
+                    <A href={`/u/${username()}`}>{username()}</A>
+                  </li>
+                  <li>
+                    <A
+                      href={`/u/${username()}/${projectSlug()}`}
+                      class="truncate max-w-[100px] sm:max-w-none"
+                    >
+                      {projectSlug()}
+                    </A>
+                  </li>
                   <li>History</li>
                 </ul>
               </div>
               <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <div>
-                  <h1 class="text-xl sm:text-2xl md:text-3xl font-bold">{project()?.displayName} - History</h1>
+                  <h1 class="text-xl sm:text-2xl md:text-3xl font-bold">
+                    {project()?.displayName} - History
+                  </h1>
                   {/* Forked from attribution */}
                   <Show when={forkedFrom()}>
                     <div class="text-sm text-base-content/60 flex items-center gap-1 mt-1">
@@ -254,7 +270,12 @@ export default function ProjectHistory() {
               <div class="flex items-center justify-between mb-4">
                 <h2 class="text-xl font-semibold flex items-center gap-2">
                   <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7" />
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M4 6h16M4 12h16m-7 6h7"
+                    />
                   </svg>
                   Versions ({versions().length})
                 </h2>
@@ -264,7 +285,12 @@ export default function ProjectHistory() {
                     onClick={() => setShowCreateVersionModal(true)}
                   >
                     <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M12 4v16m8-8H4"
+                      />
                     </svg>
                     New Version
                   </button>
@@ -272,9 +298,10 @@ export default function ProjectHistory() {
               </div>
 
               <div class="text-sm text-base-content/70 mb-4">
-                Versions are mutable references (like Git branches). Content changes when the version is updated.
+                Versions are mutable references (like Git branches). Content changes when the
+                version is updated.
               </div>
-              
+
               <div class="grid gap-3">
                 <Show
                   when={versions().length > 0}
@@ -295,12 +322,26 @@ export default function ProjectHistory() {
                         <div class="card-body py-3 sm:py-4 px-4">
                           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                             <div class="flex flex-wrap items-center gap-1 sm:gap-2">
-                              <svg class="w-4 sm:w-5 h-4 sm:h-5 text-base-content/50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              <svg
+                                class="w-4 sm:w-5 h-4 sm:h-5 text-base-content/50 flex-shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                                />
                               </svg>
-                              <span class="font-mono font-semibold text-sm sm:text-base">{version.name}</span>
+                              <span class="font-mono font-semibold text-sm sm:text-base">
+                                {version.name}
+                              </span>
                               <Show when={version.name === project()?.defaultVersion}>
-                                <span class="badge badge-primary badge-xs sm:badge-sm">default</span>
+                                <span class="badge badge-primary badge-xs sm:badge-sm">
+                                  default
+                                </span>
                               </Show>
                               <Show when={version.description}>
                                 <span class="text-xs sm:text-sm text-base-content/70 truncate max-w-[150px] sm:max-w-none">
@@ -312,7 +353,9 @@ export default function ProjectHistory() {
                               <span class="text-base-content/50">
                                 {formatRelativeDate(version.updatedAt)}
                               </span>
-                              <span class="badge badge-info badge-xs sm:badge-sm badge-outline">mutable</span>
+                              <span class="badge badge-info badge-xs sm:badge-sm badge-outline">
+                                mutable
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -327,7 +370,12 @@ export default function ProjectHistory() {
             <section>
               <h2 class="text-xl font-semibold mb-4 flex items-center gap-2">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
                 </svg>
                 Snapshots ({snapshots().length})
               </h2>
@@ -335,7 +383,7 @@ export default function ProjectHistory() {
               <div class="text-sm text-base-content/70 mb-4">
                 Snapshots are immutable permalinks (like Git commits). Content never changes.
               </div>
-              
+
               <div class="grid gap-3">
                 <Show
                   when={snapshots().length > 0}
@@ -352,12 +400,22 @@ export default function ProjectHistory() {
                       <div class="card bg-base-100 shadow hover:shadow-lg transition-shadow">
                         <div class="card-body py-3 sm:py-4 px-4">
                           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                            <A 
+                            <A
                               href={`/u/${username()}/${projectSlug()}/s/${snapshot.contentHash}`}
                               class="flex flex-wrap items-center gap-1 sm:gap-2 flex-1 hover:text-primary transition-colors min-w-0"
                             >
-                              <svg class="w-4 sm:w-5 h-4 sm:h-5 text-base-content/50 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                              <svg
+                                class="w-4 sm:w-5 h-4 sm:h-5 text-base-content/50 flex-shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                                />
                               </svg>
                               <span class="font-mono text-xs sm:text-sm bg-base-200 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded truncate max-w-[120px] sm:max-w-none">
                                 #{snapshot.contentHash}
@@ -380,15 +438,35 @@ export default function ProjectHistory() {
                                   when={copiedHash() !== snapshot.contentHash}
                                   fallback={
                                     <>
-                                      <svg class="w-3 h-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                      <svg
+                                        class="w-3 h-3 text-success"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path
+                                          stroke-linecap="round"
+                                          stroke-linejoin="round"
+                                          stroke-width="2"
+                                          d="M5 13l4 4L19 7"
+                                        />
                                       </svg>
                                       <span class="text-success text-xs">Copied!</span>
                                     </>
                                   }
                                 >
-                                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                  <svg
+                                    class="w-3 h-3"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                      stroke-width="2"
+                                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                                    />
                                   </svg>
                                   <span class="text-xs hidden sm:inline">Copy</span>
                                 </Show>
@@ -399,7 +477,9 @@ export default function ProjectHistory() {
                               <span class="text-base-content/50 sm:hidden">
                                 {formatRelativeDate(snapshot.createdAt).split(' ')[0]}
                               </span>
-                              <span class="badge badge-success badge-xs sm:badge-sm badge-outline hidden sm:inline-flex">permanent</span>
+                              <span class="badge badge-success badge-xs sm:badge-sm badge-outline hidden sm:inline-flex">
+                                permanent
+                              </span>
                             </div>
                           </div>
                         </div>

@@ -1,6 +1,6 @@
-import { useNavigate } from "@solidjs/router";
-import { authClient } from "~/lib/auth-client";
-import { clearMockSession } from "~/lib/mock-auth";
+import { useNavigate } from '@solidjs/router';
+import { authClient } from '~/lib/auth-client';
+import { clearMockSession } from '~/lib/mock-auth';
 
 interface LogoutButtonProps {
   class?: string;
@@ -21,14 +21,11 @@ export function LogoutButton(props: LogoutButtonProps) {
     }
     // Sign out from real auth
     await authClient.signOut();
-    navigate("/", { replace: true });
+    navigate('/', { replace: true });
   };
 
   return (
-    <button
-      class={props.class ?? "btn btn-ghost btn-sm"}
-      onClick={handleLogout}
-    >
+    <button class={props.class ?? 'btn btn-ghost btn-sm'} onClick={handleLogout}>
       Sign out
     </button>
   );

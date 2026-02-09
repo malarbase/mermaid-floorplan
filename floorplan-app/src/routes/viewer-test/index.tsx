@@ -1,14 +1,14 @@
-import { Title } from "@solidjs/meta";
-import { clientOnly } from "@solidjs/start";
-import { Header } from "~/components/Header";
+import { Title } from '@solidjs/meta';
+import { clientOnly } from '@solidjs/start';
+import { Header } from '~/components/Header';
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanEmbed = clientOnly(() => import("~/components/FloorplanEmbed"));
+const FloorplanEmbed = clientOnly(() => import('~/components/FloorplanEmbed'));
 
 /**
  * Test page for 3D viewer rendering.
  * Route: /viewer-test
- * 
+ *
  * This page is used to test the FloorplanEmbed component
  * and verify 3D rendering works correctly in SolidStart.
  */
@@ -48,10 +48,7 @@ export default function ViewerTest() {
 
       {/* Viewer Container - Full height minus header */}
       <div class="h-[calc(100vh-140px)]">
-        <FloorplanEmbed
-          dsl={testDsl}
-          editable={false}
-        />
+        <FloorplanEmbed dsl={testDsl} editable={false} />
       </div>
     </main>
   );

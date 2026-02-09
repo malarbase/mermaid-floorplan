@@ -1,8 +1,8 @@
-import { Title } from "@solidjs/meta";
-import { A, useNavigate } from "@solidjs/router";
-import { createEffect, createMemo } from "solid-js";
-import { authClient, useSession } from "~/lib/auth-client";
-import { Header } from "~/components/Header";
+import { Title } from '@solidjs/meta';
+import { A, useNavigate } from '@solidjs/router';
+import { createEffect, createMemo } from 'solid-js';
+import { Header } from '~/components/Header';
+import { authClient, useSession } from '~/lib/auth-client';
 
 /**
  * Login page with Google OAuth sign-in.
@@ -20,37 +20,37 @@ export default function Login() {
   // Redirect to dashboard if already logged in
   createEffect(() => {
     if (isLoggedIn()) {
-      navigate("/dashboard", { replace: true });
+      navigate('/dashboard', { replace: true });
     }
   });
 
   const handleGoogleSignIn = () => {
     authClient.signIn.social({
-      provider: "google",
-      callbackURL: "/dashboard",
+      provider: 'google',
+      callbackURL: '/dashboard',
     });
   };
 
   return (
     <main class="min-h-screen bg-gradient-to-br from-base-200 via-base-100 to-base-200">
       <Title>Login - Floorplan App</Title>
-      
+
       {/* Header */}
       <Header variant="minimal" hideUserMenu />
-      
+
       {/* Decorative background pattern */}
       <div class="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
         <div class="absolute -top-40 -right-40 w-80 h-80 bg-primary/5 rounded-full blur-3xl" />
         <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-secondary/5 rounded-full blur-3xl" />
         {/* Grid pattern overlay */}
-        <div 
+        <div
           class="absolute inset-0 opacity-[0.02]"
           style={{
-            "background-image": `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            'background-image': `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
           }}
         />
       </div>
-      
+
       {/* Main content */}
       <div class="relative min-h-[calc(100vh-4rem)] flex items-center justify-center px-4 py-8">
         <div class="w-full max-w-md animate-fade-in">
@@ -61,21 +61,21 @@ export default function Login() {
               <div class="flex flex-col items-center mb-6">
                 {/* Floorplan icon */}
                 <div class="w-16 h-16 mb-4 rounded-2xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-                  <svg 
-                    class="w-9 h-9 text-primary-content" 
-                    fill="none" 
-                    viewBox="0 0 24 24" 
+                  <svg
+                    class="w-9 h-9 text-primary-content"
+                    fill="none"
+                    viewBox="0 0 24 24"
                     stroke="currentColor"
                     stroke-width="1.5"
                   >
-                    <path 
-                      stroke-linecap="round" 
-                      stroke-linejoin="round" 
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
                       d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
                     />
                   </svg>
                 </div>
-                
+
                 <h1 class="text-2xl sm:text-3xl font-bold text-base-content">
                   Welcome to Floorplan
                 </h1>
@@ -121,21 +121,25 @@ export default function Login() {
               <div class="divider text-xs text-base-content/40 my-6">or</div>
 
               {/* Guest option */}
-              <A 
-                href="/" 
+              <A
+                href="/"
                 class="btn btn-ghost btn-sm w-full text-base-content/70 hover:text-base-content"
               >
                 Continue as guest (view only)
               </A>
             </div>
           </div>
-          
+
           {/* Footer note */}
           <p class="text-center text-xs text-base-content/40 mt-6">
-            By signing in, you agree to our{" "}
-            <A href="/terms" class="link link-hover">Terms of Service</A>
-            {" "}and{" "}
-            <A href="/privacy" class="link link-hover">Privacy Policy</A>
+            By signing in, you agree to our{' '}
+            <A href="/terms" class="link link-hover">
+              Terms of Service
+            </A>{' '}
+            and{' '}
+            <A href="/privacy" class="link link-hover">
+              Privacy Policy
+            </A>
           </p>
         </div>
       </div>

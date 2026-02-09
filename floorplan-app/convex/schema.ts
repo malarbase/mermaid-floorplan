@@ -1,5 +1,5 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from 'convex/server';
+import { v } from 'convex/values';
 
 /**
  * Database schema using GitHub-inspired versioning model:
@@ -23,28 +23,28 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_auth_id", ["authId"])
-    .index("by_username", ["username"]),
+    .index('by_auth_id', ['authId'])
+    .index('by_username', ['username']),
 
   // Released usernames (for 90-day grace period)
   releasedUsernames: defineTable({
     username: v.string(),
-    originalUserId: v.id("users"),
+    originalUserId: v.id('users'),
     originalUserAuthId: v.optional(v.string()), // For stable comparison (authId doesn't change if user is recreated)
     releasedAt: v.number(),
     expiresAt: v.number(), // 90 days after release
-  }).index("by_username", ["username"]),
+  }).index('by_username', ['username']),
 
   // Projects (like GitHub repos)
   projects: defineTable({
-    userId: v.id("users"), // Owner
+    userId: v.id('users'), // Owner
     slug: v.string(), // URL-safe name: "beach-house"
     displayName: v.string(), // "Beach House Design"
     description: v.optional(v.string()),
     isPublic: v.boolean(),
     defaultVersion: v.string(), // "main" - like default branch
     thumbnail: v.optional(v.string()),
-    forkedFrom: v.optional(v.id("projects")), // Source project if forked
+    forkedFrom: v.optional(v.id('projects')), // Source project if forked
     viewCount: v.optional(v.number()), // Discovery feature
     forkCount: v.optional(v.number()), // Discovery feature
     isFeatured: v.optional(v.boolean()), // Discovery feature
@@ -53,56 +53,56 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_user_slug", ["userId", "slug"])
-    .index("by_user", ["userId", "updatedAt"])
-    .index("by_public", ["isPublic", "updatedAt"])
-    .index("by_trending", ["trendingScore", "updatedAt"])
-    .index("by_featured", ["isFeatured", "updatedAt"]),
+    .index('by_user_slug', ['userId', 'slug'])
+    .index('by_user', ['userId', 'updatedAt'])
+    .index('by_public', ['isPublic', 'updatedAt'])
+    .index('by_trending', ['trendingScore', 'updatedAt'])
+    .index('by_featured', ['isFeatured', 'updatedAt']),
 
   // Versions (like Git branches - mutable pointers)
   versions: defineTable({
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     name: v.string(), // "main", "v1.0", "client-review"
-    snapshotId: v.id("snapshots"), // Points to current snapshot
+    snapshotId: v.id('snapshots'), // Points to current snapshot
     description: v.optional(v.string()),
     createdAt: v.number(),
     updatedAt: v.number(),
-  }).index("by_project_name", ["projectId", "name"]),
+  }).index('by_project_name', ['projectId', 'name']),
 
   // Snapshots (like Git commits - immutable)
   snapshots: defineTable({
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     contentHash: v.string(), // SHA256 prefix for permalinks
     content: v.string(), // DSL content
     message: v.optional(v.string()), // "Added kitchen island"
-    parentId: v.optional(v.id("snapshots")), // For history chain
+    parentId: v.optional(v.id('snapshots')), // For history chain
     authorId: v.string(), // User who created this snapshot (authId)
     createdAt: v.number(),
   })
-    .index("by_project", ["projectId", "createdAt"])
-    .index("by_hash", ["projectId", "contentHash"]),
+    .index('by_project', ['projectId', 'createdAt'])
+    .index('by_hash', ['projectId', 'contentHash']),
 
   // Project access control (invites)
   projectAccess: defineTable({
-    projectId: v.id("projects"),
-    userId: v.id("users"),
-    role: v.union(v.literal("viewer"), v.literal("editor")),
-    invitedBy: v.id("users"),
+    projectId: v.id('projects'),
+    userId: v.id('users'),
+    role: v.union(v.literal('viewer'), v.literal('editor')),
+    invitedBy: v.id('users'),
     createdAt: v.number(),
   })
-    .index("by_project", ["projectId"])
-    .index("by_user", ["userId"]),
+    .index('by_project', ['projectId'])
+    .index('by_user', ['userId']),
 
   // Share links (for "anyone with link" access)
   shareLinks: defineTable({
-    projectId: v.id("projects"),
+    projectId: v.id('projects'),
     token: v.string(), // Random URL-safe token
-    role: v.union(v.literal("viewer"), v.literal("editor")),
+    role: v.union(v.literal('viewer'), v.literal('editor')),
     expiresAt: v.optional(v.number()),
     createdAt: v.number(),
   })
-    .index("by_token", ["token"])
-    .index("by_project", ["projectId"]),
+    .index('by_token', ['token'])
+    .index('by_project', ['projectId']),
 
   // Topics (for project discovery and categorization)
   topics: defineTable({
@@ -114,36 +114,34 @@ export default defineSchema({
     projectCount: v.optional(v.number()), // Cached count
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_slug", ["slug"]),
+  }).index('by_slug', ['slug']),
 
   // Junction table: projects linked to topics
   projectTopics: defineTable({
-    projectId: v.id("projects"),
-    topicId: v.id("topics"),
+    projectId: v.id('projects'),
+    topicId: v.id('topics'),
     createdAt: v.number(),
   })
-    .index("by_project", ["projectId"])
-    .index("by_topic", ["topicId"]),
+    .index('by_project', ['projectId'])
+    .index('by_topic', ['topicId']),
 
   // Collections (curated groups of projects)
   collections: defineTable({
     slug: v.string(), // URL-safe: "featured-homes"
     displayName: v.string(), // "Featured Home Designs"
     description: v.optional(v.string()),
-    projectIds: v.array(v.id("projects")), // Ordered array of project IDs
+    projectIds: v.array(v.id('projects')), // Ordered array of project IDs
     createdAt: v.number(),
     updatedAt: v.number(),
-  })
-    .index("by_slug", ["slug"]),
+  }).index('by_slug', ['slug']),
 
   // Slug redirects (for URL migration history)
   slugRedirects: defineTable({
     fromSlug: v.string(), // Old slug
     toSlug: v.string(), // New slug
-    userId: v.id("users"), // User who owns the project
+    userId: v.id('users'), // User who owns the project
     createdAt: v.number(),
   })
-    .index("by_from_slug", ["fromSlug"])
-    .index("by_user", ["userId"]),
+    .index('by_from_slug', ['fromSlug'])
+    .index('by_user', ['userId']),
 });

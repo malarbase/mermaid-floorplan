@@ -4,20 +4,20 @@
 
 import { describe, expect, test } from 'vitest';
 import {
-  toMeters,
-  fromMeters,
-  convertUnit,
-  isLengthUnit,
-  resolveUnit,
-  getThemeColors,
-  DIMENSIONS,
   COLORS,
-  COLORS_DARK,
   COLORS_BLUEPRINT,
-  UNIT_TO_METERS,
-  METERS_TO_UNIT,
+  COLORS_DARK,
+  convertUnit,
   DEFAULT_UNIT,
+  DIMENSIONS,
+  fromMeters,
+  getThemeColors,
+  isLengthUnit,
   type LengthUnit,
+  METERS_TO_UNIT,
+  resolveUnit,
+  toMeters,
+  UNIT_TO_METERS,
 } from '../src/constants';
 
 describe('Unit Conversion', () => {
@@ -208,7 +208,7 @@ describe('DIMENSIONS', () => {
 describe('Unit Conversion Tables', () => {
   test('should have reciprocal conversion factors', () => {
     const units: LengthUnit[] = ['m', 'ft', 'cm', 'in', 'mm'];
-    
+
     for (const unit of units) {
       const toMeters = UNIT_TO_METERS[unit];
       const fromMeters = METERS_TO_UNIT[unit];
@@ -216,4 +216,3 @@ describe('Unit Conversion Tables', () => {
     }
   });
 });
-

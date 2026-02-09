@@ -1,7 +1,13 @@
-import { createSignal, For, Show, createContext, useContext, type ParentProps, type JSX } from "solid-js";
+import { createContext, createSignal, For, type ParentProps, Show, useContext } from 'solid-js';
 
-export type ToastType = "success" | "error" | "warning" | "info";
-export type ToastPosition = "top-right" | "top-left" | "bottom-right" | "bottom-left" | "top-center" | "bottom-center";
+export type ToastType = 'success' | 'error' | 'warning' | 'info';
+export type ToastPosition =
+  | 'top-right'
+  | 'top-left'
+  | 'bottom-right'
+  | 'bottom-left'
+  | 'top-center'
+  | 'bottom-center';
 
 export interface Toast {
   id: string;
@@ -14,7 +20,7 @@ export interface Toast {
 
 interface ToastContextValue {
   toasts: () => Toast[];
-  addToast: (toast: Omit<Toast, "id">) => string;
+  addToast: (toast: Omit<Toast, 'id'>) => string;
   removeToast: (id: string) => void;
   clearAll: () => void;
   // Convenience methods
@@ -28,7 +34,7 @@ const ToastContext = createContext<ToastContextValue>();
 
 /**
  * Hook to access toast functions.
- * 
+ *
  * @example
  * const toast = useToast();
  * toast.success("Project saved!");
@@ -37,7 +43,7 @@ const ToastContext = createContext<ToastContextValue>();
 export function useToast() {
   const context = useContext(ToastContext);
   if (!context) {
-    throw new Error("useToast must be used within a ToastProvider");
+    throw new Error('useToast must be used within a ToastProvider');
   }
   return context;
 }
@@ -51,7 +57,7 @@ interface ToastProviderProps extends ParentProps {
 
 /**
  * ToastProvider - provides toast notification functionality to the app.
- * 
+ *
  * @example
  * // In app.tsx
  * <ToastProvider position="top-right" defaultDuration={5000}>
@@ -61,12 +67,12 @@ interface ToastProviderProps extends ParentProps {
 export function ToastProvider(props: ToastProviderProps) {
   const [toasts, setToasts] = createSignal<Toast[]>([]);
 
-  const position = () => props.position ?? "top-right";
+  const position = () => props.position ?? 'top-right';
   const defaultDuration = () => props.defaultDuration ?? 5000;
 
   const generateId = () => `toast-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-  const addToast = (toast: Omit<Toast, "id">): string => {
+  const addToast = (toast: Omit<Toast, 'id'>): string => {
     const id = generateId();
     const duration = toast.duration ?? defaultDuration();
 
@@ -92,16 +98,14 @@ export function ToastProvider(props: ToastProviderProps) {
 
   // Convenience methods
   const success = (message: string, title?: string) =>
-    addToast({ type: "success", message, title });
+    addToast({ type: 'success', message, title });
 
-  const error = (message: string, title?: string) =>
-    addToast({ type: "error", message, title });
+  const error = (message: string, title?: string) => addToast({ type: 'error', message, title });
 
   const warning = (message: string, title?: string) =>
-    addToast({ type: "warning", message, title });
+    addToast({ type: 'warning', message, title });
 
-  const info = (message: string, title?: string) =>
-    addToast({ type: "info", message, title });
+  const info = (message: string, title?: string) => addToast({ type: 'info', message, title });
 
   const value: ToastContextValue = {
     toasts,
@@ -117,35 +121,29 @@ export function ToastProvider(props: ToastProviderProps) {
   // Position classes
   const positionClasses = () => {
     switch (position()) {
-      case "top-left":
-        return "toast-start toast-top";
-      case "top-center":
-        return "toast-center toast-top";
-      case "top-right":
-        return "toast-end toast-top";
-      case "bottom-left":
-        return "toast-start toast-bottom";
-      case "bottom-center":
-        return "toast-center toast-bottom";
-      case "bottom-right":
+      case 'top-left':
+        return 'toast-start toast-top';
+      case 'top-center':
+        return 'toast-center toast-top';
+      case 'top-right':
+        return 'toast-end toast-top';
+      case 'bottom-left':
+        return 'toast-start toast-bottom';
+      case 'bottom-center':
+        return 'toast-center toast-bottom';
       default:
-        return "toast-end toast-bottom";
+        return 'toast-end toast-bottom';
     }
   };
 
   return (
     <ToastContext.Provider value={value}>
       {props.children}
-      
+
       {/* Toast Container */}
       <div class={`toast ${positionClasses()} z-50`}>
         <For each={toasts()}>
-          {(toast) => (
-            <ToastItem
-              toast={toast}
-              onDismiss={() => removeToast(toast.id)}
-            />
-          )}
+          {(toast) => <ToastItem toast={toast} onDismiss={() => removeToast(toast.id)} />}
         </For>
       </div>
     </ToastContext.Provider>
@@ -163,29 +161,27 @@ function ToastItem(props: ToastItemProps) {
 
   const alertClass = () => {
     switch (toast.type) {
-      case "success":
-        return "alert-success";
-      case "error":
-        return "alert-error";
-      case "warning":
-        return "alert-warning";
-      case "info":
+      case 'success':
+        return 'alert-success';
+      case 'error':
+        return 'alert-error';
+      case 'warning':
+        return 'alert-warning';
       default:
-        return "alert-info";
+        return 'alert-info';
     }
   };
 
   const iconPath = () => {
     switch (toast.type) {
-      case "success":
-        return "M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z";
-      case "error":
-        return "M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z";
-      case "warning":
-        return "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z";
-      case "info":
+      case 'success':
+        return 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z';
+      case 'error':
+        return 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z';
+      case 'warning':
+        return 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
       default:
-        return "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z";
+        return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
     }
   };
 
@@ -197,12 +193,7 @@ function ToastItem(props: ToastItemProps) {
         fill="none"
         viewBox="0 0 24 24"
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d={iconPath()}
-        />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPath()} />
       </svg>
       <div class="flex-1 min-w-0">
         <Show when={toast.title}>
@@ -249,7 +240,7 @@ export function setGlobalToastHandler(handler: ToastContextValue) {
 
 export function toast(type: ToastType, message: string, title?: string): string | null {
   if (!globalToastHandler) {
-    console.warn("Toast handler not initialized. Make sure ToastProvider is mounted.");
+    console.warn('Toast handler not initialized. Make sure ToastProvider is mounted.');
     return null;
   }
   return globalToastHandler.addToast({ type, message, title });

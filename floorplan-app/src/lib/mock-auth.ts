@@ -1,7 +1,7 @@
 // Development utilities for mocking auth sessions
 // Use these in development to bypass OAuth
 
-import { createSignal } from "solid-js";
+import { createSignal } from 'solid-js';
 
 export interface MockUser {
   id: string;
@@ -14,44 +14,47 @@ export interface MockUser {
 // Mock user presets for testing different scenarios
 export const mockUsers = {
   admin: {
-    id: "dev-user-admin",
-    email: "admin@example.com",
-    name: "Admin User",
-    username: "admin",
-    image: "https://api.dicebear.com/7.x/avataaars/svg?seed=admin",
+    id: 'dev-user-admin',
+    email: 'admin@example.com',
+    name: 'Admin User',
+    username: 'admin',
+    image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=admin',
   },
   regularUser: {
-    id: "dev-user-1",
-    email: "user@example.com",
-    name: "Test User",
-    username: "testuser",
-    image: "https://api.dicebear.com/7.x/avataaars/svg?seed=test",
+    id: 'dev-user-1',
+    email: 'user@example.com',
+    name: 'Test User',
+    username: 'testuser',
+    image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=test',
   },
   newUser: {
-    id: "dev-user-new",
-    email: "new@example.com",
-    name: "New User",
+    id: 'dev-user-new',
+    email: 'new@example.com',
+    name: 'New User',
     username: undefined, // Simulates first-time login without username
     image: null,
   },
 } as const;
 
 // Store mock session in localStorage for persistence across page reloads
-const MOCK_SESSION_KEY = "mock-dev-session";
+const MOCK_SESSION_KEY = 'mock-dev-session';
 
 export function setMockSession(user: MockUser) {
   if (import.meta.env.PROD) {
-    console.warn("Mock sessions are only available in development");
+    console.warn('Mock sessions are only available in development');
     return;
   }
 
-  localStorage.setItem(MOCK_SESSION_KEY, JSON.stringify({
-    user,
-    expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
-    createdAt: Date.now(),
-  }));
+  localStorage.setItem(
+    MOCK_SESSION_KEY,
+    JSON.stringify({
+      user,
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+      createdAt: Date.now(),
+    }),
+  );
 
-  console.log("Mock session created:", user);
+  console.log('Mock session created:', user);
 }
 
 export function getMockSession(): MockUser | null {
@@ -74,14 +77,14 @@ export function getMockSession(): MockUser | null {
 
 export function clearMockSession() {
   localStorage.removeItem(MOCK_SESSION_KEY);
-  console.log("Mock session cleared");
+  console.log('Mock session cleared');
 }
 
 // Hook to check if we're using a mock session
 export function useMockSession() {
   const [user, setUser] = createSignal<MockUser | null>(getMockSession());
 
-  const login = (preset: keyof typeof mockUsers = "regularUser") => {
+  const login = (preset: keyof typeof mockUsers = 'regularUser') => {
     const mockUser = mockUsers[preset];
     setMockSession(mockUser);
     setUser(mockUser);
@@ -100,7 +103,7 @@ export function getAuthUser(realAuthUser: any): MockUser | null {
   if (import.meta.env.DEV) {
     const mockUser = getMockSession();
     if (mockUser) {
-      console.log("Using mock session:", mockUser.email);
+      console.log('Using mock session:', mockUser.email);
       return mockUser;
     }
   }

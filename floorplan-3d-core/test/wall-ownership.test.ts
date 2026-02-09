@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'vitest';
-import {
-  checkAdjacency,
-  shouldRenderWall,
-  findAdjacentRooms,
-  computeWallSegments,
-  analyzeWallOwnership,
-  type AdjacentRoomInfo,
-} from '../src/wall-ownership.js';
-import type { JsonRoom, JsonWall } from '../src/types.js';
 import type { MaterialStyle } from '../src/materials.js';
+import type { JsonRoom, JsonWall } from '../src/types.js';
+import {
+  type AdjacentRoomInfo,
+  analyzeWallOwnership,
+  checkAdjacency,
+  computeWallSegments,
+  findAdjacentRooms,
+  shouldRenderWall,
+} from '../src/wall-ownership.js';
 
 /**
  * Helper to create a room with minimal required fields
@@ -19,7 +19,7 @@ function createRoom(
   z: number,
   width: number,
   height: number,
-  walls: JsonWall[] = []
+  walls: JsonWall[] = [],
 ): JsonRoom {
   return {
     name,
@@ -27,26 +27,34 @@ function createRoom(
     z,
     width,
     height,
-    walls: walls.length > 0 ? walls : [
-      { direction: 'top', type: 'solid' },
-      { direction: 'bottom', type: 'solid' },
-      { direction: 'left', type: 'solid' },
-      { direction: 'right', type: 'solid' },
-    ],
+    walls:
+      walls.length > 0
+        ? walls
+        : [
+            { direction: 'top', type: 'solid' },
+            { direction: 'bottom', type: 'solid' },
+            { direction: 'left', type: 'solid' },
+            { direction: 'right', type: 'solid' },
+          ],
   };
 }
 
 /**
  * Helper to create a wall spec
  */
-function createWall(direction: 'top' | 'bottom' | 'left' | 'right', type: string = 'solid'): JsonWall {
+function createWall(
+  direction: 'top' | 'bottom' | 'left' | 'right',
+  type: string = 'solid',
+): JsonWall {
   return { direction, type };
 }
 
 /**
  * Mock style resolver
  */
-function createStyleResolver(styles: Record<string, MaterialStyle>): (room: JsonRoom) => MaterialStyle | undefined {
+function createStyleResolver(
+  styles: Record<string, MaterialStyle>,
+): (room: JsonRoom) => MaterialStyle | undefined {
   return (room: JsonRoom) => styles[room.name];
 }
 
@@ -97,8 +105,8 @@ describe('Wall Ownership', () => {
       const result = checkAdjacency(roomA, wallA, roomB);
 
       expect(result).not.toBeNull();
-      expect(result!.overlapStart).toBe(5);  // Relative to wall start
-      expect(result!.overlapEnd).toBe(15);   // Relative to wall start
+      expect(result!.overlapStart).toBe(5); // Relative to wall start
+      expect(result!.overlapEnd).toBe(15); // Relative to wall start
     });
 
     test('should handle rooms with no overlap along wall length', () => {
@@ -194,8 +202,8 @@ describe('Wall Ownership', () => {
       const allRooms = [roomA, roomB];
       const wallA = createWall('right');
       const styleResolver = createStyleResolver({
-        'RoomA': { wall_color: '#ff0000' },
-        'RoomB': { wall_color: '#00ff00' },
+        RoomA: { wall_color: '#ff0000' },
+        RoomB: { wall_color: '#00ff00' },
       });
 
       const result = findAdjacentRooms(roomA, wallA, allRooms, styleResolver);
@@ -215,9 +223,9 @@ describe('Wall Ownership', () => {
       const allRooms = [roomA, roomB, roomC];
       const wallA = createWall('right');
       const styleResolver = createStyleResolver({
-        'RoomA': { wall_color: '#ff0000' },
-        'RoomB': { wall_color: '#00ff00' },
-        'RoomC': { wall_color: '#0000ff' },
+        RoomA: { wall_color: '#ff0000' },
+        RoomB: { wall_color: '#00ff00' },
+        RoomC: { wall_color: '#0000ff' },
       });
 
       const result = findAdjacentRooms(roomA, wallA, allRooms, styleResolver);
@@ -265,12 +273,14 @@ describe('Wall Ownership', () => {
       const room = createRoom('RoomA', 0, 0, 10, 10);
       const wall = createWall('right');
       const adjStyle: MaterialStyle = { wall_color: '#00ff00' };
-      const adjacentRooms: AdjacentRoomInfo[] = [{
-        room: createRoom('RoomB', 10, 0, 10, 10),
-        style: adjStyle,
-        overlapStart: 0,
-        overlapEnd: 10,
-      }];
+      const adjacentRooms: AdjacentRoomInfo[] = [
+        {
+          room: createRoom('RoomB', 10, 0, 10, 10),
+          style: adjStyle,
+          overlapStart: 0,
+          overlapEnd: 10,
+        },
+      ];
 
       const segments = computeWallSegments(room, wall, adjacentRooms, ownerStyle);
 
@@ -285,27 +295,29 @@ describe('Wall Ownership', () => {
       const room = createRoom('RoomA', 0, 0, 10, 20);
       const wall = createWall('right');
       const adjStyle: MaterialStyle = { wall_color: '#00ff00' };
-      const adjacentRooms: AdjacentRoomInfo[] = [{
-        room: createRoom('RoomB', 10, 5, 10, 10),
-        style: adjStyle,
-        overlapStart: 5,
-        overlapEnd: 15,
-      }];
+      const adjacentRooms: AdjacentRoomInfo[] = [
+        {
+          room: createRoom('RoomB', 10, 5, 10, 10),
+          style: adjStyle,
+          overlapStart: 5,
+          overlapEnd: 15,
+        },
+      ];
 
       const segments = computeWallSegments(room, wall, adjacentRooms, ownerStyle);
 
       expect(segments).toHaveLength(3);
-      
+
       // Exterior segment at start
       expect(segments[0].startPos).toBe(0);
       expect(segments[0].endPos).toBe(5);
       expect(segments[0].hasAdjacentRoom).toBe(false);
-      
+
       // Adjacent segment in middle
       expect(segments[1].startPos).toBe(5);
       expect(segments[1].endPos).toBe(15);
       expect(segments[1].hasAdjacentRoom).toBe(true);
-      
+
       // Exterior segment at end
       expect(segments[2].startPos).toBe(15);
       expect(segments[2].endPos).toBe(20);
@@ -335,18 +347,18 @@ describe('Wall Ownership', () => {
       const segments = computeWallSegments(room, wall, adjacentRooms, ownerStyle);
 
       expect(segments).toHaveLength(3);
-      
+
       // RoomB segment
       expect(segments[0].startPos).toBe(0);
       expect(segments[0].endPos).toBe(10);
       expect(segments[0].hasAdjacentRoom).toBe(true);
       expect(segments[0].adjacentStyle).toBe(styleB);
-      
+
       // Exterior gap
       expect(segments[1].startPos).toBe(10);
       expect(segments[1].endPos).toBe(20);
       expect(segments[1].hasAdjacentRoom).toBe(false);
-      
+
       // RoomC segment
       expect(segments[2].startPos).toBe(20);
       expect(segments[2].endPos).toBe(30);
@@ -377,8 +389,8 @@ describe('Wall Ownership', () => {
       const allRooms = [roomA, roomB];
       const wallA = createWall('right'); // RoomA's right wall
       const styleResolver = createStyleResolver({
-        'RoomA': { wall_color: '#ff0000' },
-        'RoomB': { wall_color: '#00ff00' },
+        RoomA: { wall_color: '#ff0000' },
+        RoomB: { wall_color: '#00ff00' },
       });
 
       const result = analyzeWallOwnership(roomA, wallA, allRooms, styleResolver);
@@ -395,7 +407,7 @@ describe('Wall Ownership', () => {
       const allRooms = [roomA];
       const wallA = createWall('left');
       const styleResolver = createStyleResolver({
-        'RoomA': { wall_color: '#ff0000' },
+        RoomA: { wall_color: '#ff0000' },
       });
 
       const result = analyzeWallOwnership(roomA, wallA, allRooms, styleResolver);
@@ -422,13 +434,18 @@ describe('Wall Ownership', () => {
       const roomC = createRoom('RoomC', 0, 10, 10, 10);
       const allRooms = [roomA, roomB, roomC];
       const styleResolver = createStyleResolver({
-        'RoomA': { wall_color: '#ff0000' },
-        'RoomB': { wall_color: '#00ff00' },
-        'RoomC': { wall_color: '#0000ff' },
+        RoomA: { wall_color: '#ff0000' },
+        RoomB: { wall_color: '#00ff00' },
+        RoomC: { wall_color: '#0000ff' },
       });
 
       // Room A owns its right wall (shared with B)
-      const resultARight = analyzeWallOwnership(roomA, createWall('right'), allRooms, styleResolver);
+      const resultARight = analyzeWallOwnership(
+        roomA,
+        createWall('right'),
+        allRooms,
+        styleResolver,
+      );
       expect(resultARight.shouldRender).toBe(true);
       expect(resultARight.adjacentRooms[0]?.room.name).toBe('RoomB');
 
@@ -437,7 +454,12 @@ describe('Wall Ownership', () => {
       expect(resultBLeft.shouldRender).toBe(false);
 
       // Room A owns its bottom wall (shared with C)
-      const resultABottom = analyzeWallOwnership(roomA, createWall('bottom'), allRooms, styleResolver);
+      const resultABottom = analyzeWallOwnership(
+        roomA,
+        createWall('bottom'),
+        allRooms,
+        styleResolver,
+      );
       expect(resultABottom.shouldRender).toBe(true);
       expect(resultABottom.adjacentRooms[0]?.room.name).toBe('RoomC');
 
@@ -462,22 +484,37 @@ describe('Wall Ownership', () => {
       const roomB = createRoom('RoomB', 0, 15, 20, 10);
       const allRooms = [roomA, corridor, roomB];
       const styleResolver = createStyleResolver({
-        'RoomA': { wall_color: '#ff0000' },
-        'Corridor': { wall_color: '#888888' },
-        'RoomB': { wall_color: '#0000ff' },
+        RoomA: { wall_color: '#ff0000' },
+        Corridor: { wall_color: '#888888' },
+        RoomB: { wall_color: '#0000ff' },
       });
 
       // Room A owns the wall between A and Corridor
-      const resultABottom = analyzeWallOwnership(roomA, createWall('bottom'), allRooms, styleResolver);
+      const resultABottom = analyzeWallOwnership(
+        roomA,
+        createWall('bottom'),
+        allRooms,
+        styleResolver,
+      );
       expect(resultABottom.shouldRender).toBe(true);
       expect(resultABottom.adjacentRooms[0]?.room.name).toBe('Corridor');
 
       // Corridor's top wall is NOT rendered (Room A owns it)
-      const resultCorridorTop = analyzeWallOwnership(corridor, createWall('top'), allRooms, styleResolver);
+      const resultCorridorTop = analyzeWallOwnership(
+        corridor,
+        createWall('top'),
+        allRooms,
+        styleResolver,
+      );
       expect(resultCorridorTop.shouldRender).toBe(false);
 
       // Corridor owns its bottom wall (Corridor.z < RoomB.z)
-      const resultCorridorBottom = analyzeWallOwnership(corridor, createWall('bottom'), allRooms, styleResolver);
+      const resultCorridorBottom = analyzeWallOwnership(
+        corridor,
+        createWall('bottom'),
+        allRooms,
+        styleResolver,
+      );
       expect(resultCorridorBottom.shouldRender).toBe(true);
       expect(resultCorridorBottom.adjacentRooms[0]?.room.name).toBe('RoomB');
 
@@ -500,9 +537,9 @@ describe('Wall Ownership', () => {
       const roomC = createRoom('RoomC', 20, 10, 10, 10);
       const allRooms = [roomA, roomB, roomC];
       const styleResolver = createStyleResolver({
-        'RoomA': { wall_color: '#ff0000' },
-        'RoomB': { wall_color: '#00ff00' },
-        'RoomC': { wall_color: '#0000ff' },
+        RoomA: { wall_color: '#ff0000' },
+        RoomB: { wall_color: '#00ff00' },
+        RoomC: { wall_color: '#0000ff' },
       });
 
       // Room A owns its right wall, which is segmented
@@ -524,4 +561,3 @@ describe('Wall Ownership', () => {
     });
   });
 });
-

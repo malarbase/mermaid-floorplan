@@ -1,8 +1,8 @@
-import { describe, expect, test } from 'vitest';
 import * as THREE from 'three';
+import { describe, expect, test } from 'vitest';
 import { generateConnection, generateFloorConnections } from '../src/connection-geometry.js';
-import type { JsonConnection, JsonRoom, JsonWall, JsonFloor } from '../src/types.js';
 import { DIMENSIONS, getThemeColors } from '../src/constants.js';
+import type { JsonConnection, JsonFloor, JsonRoom, JsonWall } from '../src/types.js';
 
 /**
  * Helper to create a connection
@@ -79,7 +79,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
         const geometry = mesh.geometry as THREE.BoxGeometry;
         const params = geometry.parameters;
 
@@ -91,7 +98,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
         const geometry = mesh.geometry as THREE.BoxGeometry;
         const params = geometry.parameters;
 
@@ -103,7 +117,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Group;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Group;
         // Double door returns a group with two panels
         expect(mesh.children.length).toBe(2);
       });
@@ -114,7 +135,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
         const geometry = mesh.geometry as THREE.BoxGeometry;
         const params = geometry.parameters;
 
@@ -127,7 +155,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
         const geometry = mesh.geometry as THREE.BoxGeometry;
         const params = geometry.parameters;
 
@@ -139,7 +174,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
         const geometry = mesh.geometry as THREE.BoxGeometry;
         const params = geometry.parameters;
 
@@ -149,15 +191,22 @@ describe('connection-geometry', () => {
 
     describe('hinge position', () => {
       test('should position hinge on right side for right-swinging door on right wall', () => {
-        const connection = createConnection({ 
+        const connection = createConnection({
           doorType: 'door',
           swing: 'right',
-          fromWall: 'right' 
+          fromWall: 'right',
         });
         const room = createRoom();
         const wall = createWall('right');
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
 
         // For a right wall with right swing, hinge should be at max Z
         // Position should be at room.x + room.width (5) and Z should be offset
@@ -165,30 +214,44 @@ describe('connection-geometry', () => {
       });
 
       test('should position hinge on left side for left-swinging door on right wall', () => {
-        const connection = createConnection({ 
+        const connection = createConnection({
           doorType: 'door',
           swing: 'left',
-          fromWall: 'right' 
+          fromWall: 'right',
         });
         const room = createRoom();
         const wall = createWall('right');
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
 
         // For a right wall with left swing, hinge should be at min Z
         expect(mesh.position.x).toBe(room.x + room.width);
       });
 
       test('should position hinge on horizontal walls correctly', () => {
-        const connection = createConnection({ 
+        const connection = createConnection({
           doorType: 'door',
           swing: 'right',
-          fromWall: 'top' 
+          fromWall: 'top',
         });
         const room = createRoom();
         const wall = createWall('top');
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
 
         // For a top wall, hinge position should be along X axis
         expect(mesh.position.z).toBe(room.z);
@@ -201,14 +264,21 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
 
         // Door should have rotation applied (not 0)
         expect(mesh.rotation.y).not.toBe(0);
       });
 
       test('should swing into source room by default', () => {
-        const connection = createConnection({ 
+        const connection = createConnection({
           doorType: 'door',
           fromRoom: 'RoomA',
           toRoom: 'RoomB',
@@ -217,7 +287,14 @@ describe('connection-geometry', () => {
         const roomB = createRoom('RoomB', { x: 5 });
         const wall = createWall('right');
 
-        const mesh = generateConnection(connection, roomA, roomB, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          roomA,
+          roomB,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
         const rotationWithDefaultOpensIn = mesh.rotation.y;
 
         // When opensInto is not specified, door opens into source room
@@ -225,13 +302,13 @@ describe('connection-geometry', () => {
       });
 
       test('should respect opensInto parameter', () => {
-        const connectionOpensIntoA = createConnection({ 
+        const connectionOpensIntoA = createConnection({
           doorType: 'door',
           fromRoom: 'RoomA',
           toRoom: 'RoomB',
           opensInto: 'RoomA',
         });
-        const connectionOpensIntoB = createConnection({ 
+        const connectionOpensIntoB = createConnection({
           doorType: 'door',
           fromRoom: 'RoomA',
           toRoom: 'RoomB',
@@ -241,25 +318,51 @@ describe('connection-geometry', () => {
         const roomB = createRoom('RoomB', { x: 5 });
         const wall = createWall('right');
 
-        const meshA = generateConnection(connectionOpensIntoA, roomA, roomB, wall, wallThickness, colors) as THREE.Mesh;
-        const meshB = generateConnection(connectionOpensIntoB, roomA, roomB, wall, wallThickness, colors) as THREE.Mesh;
+        const meshA = generateConnection(
+          connectionOpensIntoA,
+          roomA,
+          roomB,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
+        const meshB = generateConnection(
+          connectionOpensIntoB,
+          roomA,
+          roomB,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
 
         // Different opensInto should result in different rotation
         expect(meshA.rotation.y).not.toBe(meshB.rotation.y);
       });
 
       test('should handle swing direction with different wall directions', () => {
-        const walls: Array<'top' | 'bottom' | 'left' | 'right'> = ['top', 'bottom', 'left', 'right'];
-        
+        const walls: Array<'top' | 'bottom' | 'left' | 'right'> = [
+          'top',
+          'bottom',
+          'left',
+          'right',
+        ];
+
         for (const direction of walls) {
-          const connection = createConnection({ 
+          const connection = createConnection({
             doorType: 'door',
             fromWall: direction,
           });
           const room = createRoom();
           const wall = createWall(direction);
 
-          const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+          const mesh = generateConnection(
+            connection,
+            room,
+            undefined,
+            wall,
+            wallThickness,
+            colors,
+          ) as THREE.Mesh;
 
           // Each wall direction should produce a valid door mesh with rotation
           expect(mesh).toBeInstanceOf(THREE.Mesh);
@@ -274,14 +377,21 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Group;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Group;
 
         expect(mesh).toBeInstanceOf(THREE.Group);
         expect(mesh.children.length).toBe(2);
       });
 
       test('should name double door panels correctly', () => {
-        const connection = createConnection({ 
+        const connection = createConnection({
           doorType: 'double-door',
           fromRoom: 'RoomA',
           toRoom: 'RoomB',
@@ -289,7 +399,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Group;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Group;
 
         expect(mesh.children[0].name).toContain('double-door-left');
         expect(mesh.children[1].name).toContain('double-door-right');
@@ -297,14 +414,21 @@ describe('connection-geometry', () => {
 
       test('should use custom width for double door', () => {
         const customWidth = 2.4; // Total width
-        const connection = createConnection({ 
+        const connection = createConnection({
           doorType: 'double-door',
           width: customWidth,
         });
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Group;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Group;
         const leftPanel = mesh.children[0] as THREE.Mesh;
         const geometry = leftPanel.geometry as THREE.BoxGeometry;
 
@@ -319,7 +443,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
 
         expect(mesh).toBeInstanceOf(THREE.Mesh);
         const material = mesh.material as THREE.MeshStandardMaterial;
@@ -332,7 +463,14 @@ describe('connection-geometry', () => {
         const room = createRoom();
         const wall = createWall();
 
-        const mesh = generateConnection(connection, room, undefined, wall, wallThickness, colors) as THREE.Mesh;
+        const mesh = generateConnection(
+          connection,
+          room,
+          undefined,
+          wall,
+          wallThickness,
+          colors,
+        ) as THREE.Mesh;
         const windowHeight = DIMENSIONS.WINDOW.HEIGHT;
         const sillHeight = DIMENSIONS.WINDOW.SILL_HEIGHT;
 
@@ -362,7 +500,14 @@ describe('connection-geometry', () => {
       });
       const wall = createWall('right');
 
-      const mesh = generateConnection(connection, roomA, roomB, wall, wallThickness, colors) as THREE.Mesh;
+      const mesh = generateConnection(
+        connection,
+        roomA,
+        roomB,
+        wall,
+        wallThickness,
+        colors,
+      ) as THREE.Mesh;
 
       // Hole center at 50% of overlap (5-10) = 7.5
       // Right wall + right swing -> hingeSideSign = +1 -> hinge at max Z
@@ -386,7 +531,14 @@ describe('connection-geometry', () => {
       });
       const wall = createWall('right');
 
-      const mesh = generateConnection(connection, roomA, roomB, wall, wallThickness, colors) as THREE.Mesh;
+      const mesh = generateConnection(
+        connection,
+        roomA,
+        roomB,
+        wall,
+        wallThickness,
+        colors,
+      ) as THREE.Mesh;
 
       // 25% of overlap (5-10) = 5 + (5 * 0.25) = 6.25
       // Door mesh = hole center + hingeOffset = 6.25 + 0.5 = 6.75
@@ -409,7 +561,14 @@ describe('connection-geometry', () => {
       });
       const wall = createWall('bottom');
 
-      const mesh = generateConnection(connection, roomA, roomB, wall, wallThickness, colors) as THREE.Mesh;
+      const mesh = generateConnection(
+        connection,
+        roomA,
+        roomB,
+        wall,
+        wallThickness,
+        colors,
+      ) as THREE.Mesh;
 
       // 50% of overlap (5-10) = 7.5
       // Bottom wall + right swing -> hingeSideSign = -1 -> hinge at min X
@@ -433,7 +592,14 @@ describe('connection-geometry', () => {
       });
       const wall = createWall('right');
 
-      const group = generateConnection(connection, roomA, roomB, wall, wallThickness, colors) as THREE.Group;
+      const group = generateConnection(
+        connection,
+        roomA,
+        roomB,
+        wall,
+        wallThickness,
+        colors,
+      ) as THREE.Group;
       const leftPanel = group.children[0] as THREE.Mesh;
       const rightPanel = group.children[1] as THREE.Mesh;
 
@@ -457,7 +623,14 @@ describe('connection-geometry', () => {
       const wall = createWall('right');
 
       // Pass undefined for targetRoom
-      const mesh = generateConnection(connection, roomA, undefined, wall, wallThickness, colors) as THREE.Mesh;
+      const mesh = generateConnection(
+        connection,
+        roomA,
+        undefined,
+        wall,
+        wallThickness,
+        colors,
+      ) as THREE.Mesh;
 
       // Should fallback to 50% of room A's height = 5.0
       // Plus hinge offset = 5.0 + 0.5 = 5.5
@@ -481,7 +654,14 @@ describe('connection-geometry', () => {
       });
       const wall = createWall('right');
 
-      const mesh = generateConnection(connection, roomA, roomB, wall, wallThickness, colors) as THREE.Mesh;
+      const mesh = generateConnection(
+        connection,
+        roomA,
+        roomB,
+        wall,
+        wallThickness,
+        colors,
+      ) as THREE.Mesh;
 
       // The critical assertion: door should NOT be at 50% of full room (z=5)
       // It should be within the overlap region (z=5-10)
@@ -508,4 +688,3 @@ describe('connection-geometry', () => {
     });
   });
 });
-

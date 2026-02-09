@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, waitFor } from '@solidjs/testing-library';
 import type { JSX } from 'solid-js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockNavigate = vi.fn();
 
@@ -18,7 +18,9 @@ vi.mock('~/lib/auth-client', () => ({
 
 vi.mock('@solidjs/router', () => ({
   A: (props: { href: string; children: JSX.Element; class?: string }) => (
-    <a href={props.href} class={props.class}>{props.children}</a>
+    <a href={props.href} class={props.class}>
+      {props.children}
+    </a>
   ),
   useNavigate: () => mockNavigate,
 }));
@@ -67,16 +69,16 @@ describe('Protected Routes', () => {
     it('should show loading when session is pending', () => {
       mockState.isPending = true;
       const result = render(() => <Dashboard />);
-      
+
       expect(result.container.querySelector('.loading-spinner')).toBeDefined();
     });
 
     it('should redirect to login when not authenticated', async () => {
       mockState.isPending = false;
       mockState.sessionData = null;
-      
+
       render(() => <Dashboard />);
-      
+
       await waitFor(() => {
         expect(mockNavigate).toHaveBeenCalledWith('/login', { replace: true });
       });
@@ -84,29 +86,33 @@ describe('Protected Routes', () => {
 
     it('should show dashboard content when authenticated', () => {
       mockState.isPending = false;
-      mockState.sessionData = { user: { id: 'user-1', name: 'Test User', email: 'test@example.com' } };
-      
+      mockState.sessionData = {
+        user: { id: 'user-1', name: 'Test User', email: 'test@example.com' },
+      };
+
       const result = render(() => <Dashboard />);
-      
+
       expect(result.getByText('My Projects')).toBeDefined();
       expect(result.getByText('New Project')).toBeDefined();
     });
 
     it('should show project list when authenticated', () => {
       mockState.isPending = false;
-      mockState.sessionData = { user: { id: 'user-1', name: 'Test User', email: 'test@example.com' } };
-      
+      mockState.sessionData = {
+        user: { id: 'user-1', name: 'Test User', email: 'test@example.com' },
+      };
+
       const result = render(() => <Dashboard />);
-      
+
       expect(result.getByTestId('project-list')).toBeDefined();
     });
 
     it('should not redirect while loading', () => {
       mockState.isPending = true;
       mockState.sessionData = null;
-      
+
       render(() => <Dashboard />);
-      
+
       expect(mockNavigate).not.toHaveBeenCalled();
     });
   });

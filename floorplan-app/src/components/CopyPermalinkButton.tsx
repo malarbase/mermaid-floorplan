@@ -1,5 +1,5 @@
-import { createSignal, Show } from "solid-js";
-import { copyToClipboard, generatePermalink } from "~/lib/permalink";
+import { createSignal, Show } from 'solid-js';
+import { copyToClipboard, generatePermalink } from '~/lib/permalink';
 
 export interface CopyPermalinkButtonProps {
   /** Project owner's username */
@@ -9,9 +9,9 @@ export interface CopyPermalinkButtonProps {
   /** Content hash of the snapshot */
   hash: string;
   /** Button size */
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   /** Button variant */
-  variant?: "ghost" | "outline" | "primary" | "secondary";
+  variant?: 'ghost' | 'outline' | 'primary' | 'secondary';
   /** Show label text */
   showLabel?: boolean;
   /** Custom label text */
@@ -46,12 +46,7 @@ export function CopyPermalinkButton(props: CopyPermalinkButtonProps) {
     e.preventDefault();
     e.stopPropagation();
 
-    const absoluteUrl = generatePermalink(
-      props.username,
-      props.projectSlug,
-      props.hash,
-      true
-    );
+    const absoluteUrl = generatePermalink(props.username, props.projectSlug, props.hash, true);
 
     const success = await copyToClipboard(absoluteUrl);
 
@@ -69,56 +64,49 @@ export function CopyPermalinkButton(props: CopyPermalinkButtonProps) {
 
   const sizeClass = () => {
     switch (props.size) {
-      case "xs":
-        return "btn-xs";
-      case "sm":
-        return "btn-sm";
-      case "lg":
-        return "btn-lg";
+      case 'xs':
+        return 'btn-xs';
+      case 'sm':
+        return 'btn-sm';
+      case 'lg':
+        return 'btn-lg';
       default:
-        return "";
+        return '';
     }
   };
 
   const variantClass = () => {
     switch (props.variant) {
-      case "outline":
-        return "btn-outline";
-      case "primary":
-        return "btn-primary";
-      case "secondary":
-        return "btn-secondary";
-      case "ghost":
+      case 'outline':
+        return 'btn-outline';
+      case 'primary':
+        return 'btn-primary';
+      case 'secondary':
+        return 'btn-secondary';
       default:
-        return "btn-ghost";
+        return 'btn-ghost';
     }
   };
 
   const iconSize = () => {
     switch (props.size) {
-      case "xs":
-        return "w-3 h-3";
-      case "sm":
-        return "w-4 h-4";
-      case "lg":
-        return "w-5 h-5";
+      case 'xs':
+        return 'w-3 h-3';
+      case 'sm':
+        return 'w-4 h-4';
+      case 'lg':
+        return 'w-5 h-5';
       default:
-        return "w-4 h-4";
+        return 'w-4 h-4';
     }
   };
 
   return (
     <button
       type="button"
-      class={`btn ${sizeClass()} ${variantClass()} gap-1 ${props.class ?? ""}`}
+      class={`btn ${sizeClass()} ${variantClass()} gap-1 ${props.class ?? ''}`}
       onClick={handleCopy}
-      title={
-        copied()
-          ? "Copied!"
-          : error()
-            ? "Failed to copy"
-            : "Copy permalink to clipboard"
-      }
+      title={copied() ? 'Copied!' : error() ? 'Failed to copy' : 'Copy permalink to clipboard'}
     >
       <Show when={error()}>
         <svg
@@ -160,12 +148,7 @@ export function CopyPermalinkButton(props: CopyPermalinkButtonProps) {
 
       <Show when={!copied() && !error()}>
         {/* Link/Share icon */}
-        <svg
-          class={iconSize()}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
+        <svg class={iconSize()} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             stroke-linecap="round"
             stroke-linejoin="round"
@@ -174,7 +157,7 @@ export function CopyPermalinkButton(props: CopyPermalinkButtonProps) {
           />
         </svg>
         <Show when={props.showLabel}>
-          <span>{props.label ?? "Copy Link"}</span>
+          <span>{props.label ?? 'Copy Link'}</span>
         </Show>
       </Show>
     </button>

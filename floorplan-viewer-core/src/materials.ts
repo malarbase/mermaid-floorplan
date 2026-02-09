@@ -1,6 +1,6 @@
 /**
  * Material factory for 3D floorplan rendering (browser version)
- * 
+ *
  * Extends the base MaterialFactory from floorplan-3d-core with
  * browser-specific async texture loading capabilities.
  */
@@ -9,7 +9,13 @@ import * as THREE from 'three';
 
 // Re-export everything from the shared library
 export { MaterialFactory, type MaterialSet, type MaterialStyle } from 'floorplan-3d-core';
-import { MaterialFactory as BaseMaterialFactory, type MaterialStyle, type MaterialSet, type ViewerTheme } from 'floorplan-3d-core';
+
+import {
+  MaterialFactory as BaseMaterialFactory,
+  type MaterialSet,
+  type MaterialStyle,
+  type ViewerTheme,
+} from 'floorplan-3d-core';
 
 // Texture cache to avoid duplicate loads
 const textureCache = new Map<string, THREE.Texture>();
@@ -23,7 +29,7 @@ async function loadTexture(url: string): Promise<THREE.Texture | null> {
   if (textureCache.has(url)) {
     return textureCache.get(url)!;
   }
-  
+
   try {
     const texture = await textureLoader.loadAsync(url);
     texture.wrapS = THREE.RepeatWrapping;
@@ -44,8 +50,11 @@ export class BrowserMaterialFactory extends BaseMaterialFactory {
   /**
    * Create floor material with texture (async - browser only)
    */
-  static async createFloorMaterialAsync(style?: MaterialStyle, theme?: ViewerTheme): Promise<THREE.MeshStandardMaterial> {
-    const material = this.createFloorMaterial(style, theme);
+  static async createFloorMaterialAsync(
+    style?: MaterialStyle,
+    theme?: ViewerTheme,
+  ): Promise<THREE.MeshStandardMaterial> {
+    const material = BrowserMaterialFactory.createFloorMaterial(style, theme);
 
     // Load texture if specified
     if (style?.floor_texture) {
@@ -62,8 +71,11 @@ export class BrowserMaterialFactory extends BaseMaterialFactory {
   /**
    * Create wall material with texture (async - browser only)
    */
-  static async createWallMaterialAsync(style?: MaterialStyle, theme?: ViewerTheme): Promise<THREE.MeshStandardMaterial> {
-    const material = this.createWallMaterial(style, theme);
+  static async createWallMaterialAsync(
+    style?: MaterialStyle,
+    theme?: ViewerTheme,
+  ): Promise<THREE.MeshStandardMaterial> {
+    const material = BrowserMaterialFactory.createWallMaterial(style, theme);
 
     // Load texture if specified
     if (style?.wall_texture) {
@@ -80,19 +92,22 @@ export class BrowserMaterialFactory extends BaseMaterialFactory {
   /**
    * Create material set with textures and theme (async - browser only)
    */
-  static async createMaterialSetAsync(style?: MaterialStyle, theme?: ViewerTheme): Promise<MaterialSet> {
+  static async createMaterialSetAsync(
+    style?: MaterialStyle,
+    theme?: ViewerTheme,
+  ): Promise<MaterialSet> {
     const [floor, wall] = await Promise.all([
-      this.createFloorMaterialAsync(style, theme),
-      this.createWallMaterialAsync(style, theme),
+      BrowserMaterialFactory.createFloorMaterialAsync(style, theme),
+      BrowserMaterialFactory.createWallMaterialAsync(style, theme),
     ]);
 
     return {
       floor,
       wall,
-      window: this.createWindowMaterial(theme),
-      door: this.createDoorMaterial(theme),
-      stair: this.createStairMaterial(),
-      lift: this.createLiftMaterial(),
+      window: BrowserMaterialFactory.createWindowMaterial(theme),
+      door: BrowserMaterialFactory.createDoorMaterial(theme),
+      stair: BrowserMaterialFactory.createStairMaterial(),
+      lift: BrowserMaterialFactory.createLiftMaterial(),
     };
   }
 
@@ -106,4 +121,3 @@ export class BrowserMaterialFactory extends BaseMaterialFactory {
     textureCache.clear();
   }
 }
-

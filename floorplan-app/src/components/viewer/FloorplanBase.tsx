@@ -1,18 +1,18 @@
-import { createSignal, createEffect, onMount, onCleanup } from "solid-js";
-import { ViewerSkeleton } from "./skeletons";
-import { ViewerErrorState } from "./ViewerError";
+import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
+import { ViewerSkeleton } from './skeletons';
+import { ViewerErrorState } from './ViewerError';
 
 // Define generic types for the cores to avoid strict dependency on the package during build time if not installed
 type CoreInstance = {
   dispose: () => void;
   loadFromDsl?: (dsl: string) => void;
-  setTheme?: (theme: "light" | "dark") => void;
+  setTheme?: (theme: 'light' | 'dark') => void;
   [key: string]: any;
 };
 
 export interface FloorplanBaseProps {
   dsl: string;
-  theme?: "light" | "dark";
+  theme?: 'light' | 'dark';
   useEditorCore?: boolean;
   containerId?: string;
   onCoreReady?: (core: CoreInstance) => void;
@@ -22,7 +22,7 @@ export interface FloorplanBaseProps {
   /** Allow toggling selection on/off after init (creates SelectionManager even if selection starts disabled) */
   allowSelectionToggle?: boolean;
   /** Called when a DSL specifies a theme different from the current app theme */
-  onDslThemeDetected?: (dslTheme: "light" | "dark") => void;
+  onDslThemeDetected?: (dslTheme: 'light' | 'dark') => void;
 }
 
 export function FloorplanBase(props: FloorplanBaseProps) {
@@ -36,15 +36,20 @@ export function FloorplanBase(props: FloorplanBaseProps) {
   const isWebGLAvailable = () => {
     try {
       const canvas = document.createElement('canvas');
-      return !!(window.WebGLRenderingContext && (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')));
-    } catch (e) {
+      return !!(
+        window.WebGLRenderingContext &&
+        (canvas.getContext('webgl') || canvas.getContext('experimental-webgl'))
+      );
+    } catch (_e) {
       return false;
     }
   };
 
   onMount(async () => {
     if (!isWebGLAvailable()) {
-      const err = new Error("Your browser does not support WebGL, which is required for 3D viewing.");
+      const err = new Error(
+        'Your browser does not support WebGL, which is required for 3D viewing.',
+      );
       setError(err);
       props.onError?.(err);
       setIsLoading(false);
@@ -53,21 +58,23 @@ export function FloorplanBase(props: FloorplanBaseProps) {
 
     try {
       // Dynamically import the viewer core
-      const viewerCore = await import("floorplan-viewer-core");
-      
+      const viewerCore = await import('floorplan-viewer-core');
+
       if (!containerRef) return;
 
-      const CoreClass = props.useEditorCore 
-        ? viewerCore.InteractiveEditorCore 
+      const CoreClass = props.useEditorCore
+        ? viewerCore.InteractiveEditorCore
         : viewerCore.FloorplanAppCore;
 
       if (!CoreClass) {
-        throw new Error(`Requested core ${props.useEditorCore ? 'InteractiveEditorCore' : 'FloorplanAppCore'} not found in floorplan-viewer-core`);
+        throw new Error(
+          `Requested core ${props.useEditorCore ? 'InteractiveEditorCore' : 'FloorplanAppCore'} not found in floorplan-viewer-core`,
+        );
       }
 
       const core = new CoreClass({
         containerId,
-        initialTheme: props.theme ?? "dark",
+        initialTheme: props.theme ?? 'dark',
         initialDsl: props.dsl,
         enableSelection: props.enableSelection ?? !!props.useEditorCore,
         allowSelectionToggle: props.allowSelectionToggle ?? true,
@@ -81,7 +88,7 @@ export function FloorplanBase(props: FloorplanBaseProps) {
 
       setIsLoading(false);
     } catch (err) {
-      console.error("Failed to initialize floorplan viewer:", err);
+      console.error('Failed to initialize floorplan viewer:', err);
       const errorObj = err instanceof Error ? err : new Error(String(err));
       setError(errorObj);
       props.onError?.(errorObj);
@@ -91,7 +98,7 @@ export function FloorplanBase(props: FloorplanBaseProps) {
 
   onCleanup(() => {
     const app = appInstance();
-    if (app && typeof app.dispose === "function") {
+    if (app && typeof app.dispose === 'function') {
       app.dispose();
     }
     setAppInstance(null);
@@ -113,8 +120,8 @@ export function FloorplanBase(props: FloorplanBaseProps) {
 
       // If DSL tried to change the theme, notify the parent
       if (themeBefore !== themeAfter && props.theme && props.onDslThemeDetected) {
-        const dslWanted: "light" | "dark" =
-          themeAfter === "dark" || themeAfter === "blueprint" ? "dark" : "light";
+        const dslWanted: 'light' | 'dark' =
+          themeAfter === 'dark' || themeAfter === 'blueprint' ? 'dark' : 'light';
         if (dslWanted !== props.theme) {
           props.onDslThemeDetected(dslWanted);
         }
@@ -149,7 +156,7 @@ export function FloorplanBase(props: FloorplanBaseProps) {
         // Restore the global to the app's theme so it doesn't leak to the rest of the page.
         if (props.theme) {
           document.documentElement.dataset.theme = props.theme;
-          document.body.classList.toggle("dark-theme", props.theme === "dark");
+          document.body.classList.toggle('dark-theme', props.theme === 'dark');
         }
       });
       onCleanup(() => unsub?.());
@@ -157,15 +164,18 @@ export function FloorplanBase(props: FloorplanBaseProps) {
   });
 
   return (
-    <div class={`relative w-full h-full ${props.className ?? ''}`} data-theme={props.theme ?? 'dark'}>
+    <div
+      class={`relative w-full h-full ${props.className ?? ''}`}
+      data-theme={props.theme ?? 'dark'}
+    >
       {isLoading() && <ViewerSkeleton />}
       {error() && <ViewerErrorState error={error()} reset={() => window.location.reload()} />}
-      
+
       <div
         ref={containerRef}
         id={containerId}
         class="w-full h-full"
-        style={{ display: isLoading() || error() ? "none" : "block" }}
+        style={{ display: isLoading() || error() ? 'none' : 'block' }}
       />
     </div>
   );

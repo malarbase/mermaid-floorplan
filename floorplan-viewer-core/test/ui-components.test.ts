@@ -5,8 +5,9 @@
  * command-palette, properties-panel-ui) have been removed. Use Solid.js
  * components via FloorplanUI instead.
  */
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { JSDOM } from 'jsdom';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Setup jsdom before imports
 const dom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
@@ -18,12 +19,12 @@ global.Event = dom.window.Event;
 global.HTMLSpanElement = dom.window.HTMLSpanElement;
 
 import {
+  createConfirmDialogUI,
+  createDialogUI,
+  createEditorPanel,
   createFileCommands,
   createViewCommands,
   initializeDragDrop,
-  createEditorPanel,
-  createDialogUI,
-  createConfirmDialogUI,
 } from '../src/ui/index.js';
 
 describe('Command Utilities', () => {
@@ -272,9 +273,7 @@ describe('Dialog UI', () => {
     const onClick = vi.fn();
     const dialog = createDialogUI({
       title: 'Test Dialog',
-      fields: [
-        { name: 'name', label: 'Name', type: 'text', value: 'Test' },
-      ],
+      fields: [{ name: 'name', label: 'Name', type: 'text', value: 'Test' }],
       primaryAction: {
         label: 'Submit',
         onClick,

@@ -1,27 +1,28 @@
-import { Title } from "@solidjs/meta";
-import { useParams, A, useNavigate } from "@solidjs/router";
-import { Show, createMemo, createSignal, For, createEffect, onCleanup } from "solid-js";
-import { useQuery, useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
-import { useSession } from "~/lib/auth-client";
-import { VisibilityToggle } from "~/components/VisibilityToggle";
-import { DeleteProjectButton } from "~/components/DeleteProjectButton";
-import { InviteByUsernameModal } from "~/components/InviteByUsernameModal";
-import { CreateShareLinkModal } from "~/components/CreateShareLinkModal";
+import { Title } from '@solidjs/meta';
+import { A, useNavigate, useParams } from '@solidjs/router';
+import type { FunctionReference } from 'convex/server';
+import { useMutation, useQuery } from 'convex-solidjs';
+import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js';
+import { CreateShareLinkModal } from '~/components/CreateShareLinkModal';
+import { DeleteProjectButton } from '~/components/DeleteProjectButton';
+import { InviteByUsernameModal } from '~/components/InviteByUsernameModal';
+import { VisibilityToggle } from '~/components/VisibilityToggle';
+import { useSession } from '~/lib/auth-client';
 
 // Type-safe API reference builder for when generated files don't exist yet
 const api = {
   projects: {
-    getBySlug: "projects:getBySlug" as unknown as FunctionReference<"query">,
-    update: "projects:update" as unknown as FunctionReference<"mutation">,
-    updateSlug: "projects:updateSlug" as unknown as FunctionReference<"mutation">,
+    getBySlug: 'projects:getBySlug' as unknown as FunctionReference<'query'>,
+    update: 'projects:update' as unknown as FunctionReference<'mutation'>,
+    updateSlug: 'projects:updateSlug' as unknown as FunctionReference<'mutation'>,
   },
   sharing: {
-    getCollaborators: "sharing:getCollaborators" as unknown as FunctionReference<"query">,
-    getShareLinks: "sharing:getShareLinks" as unknown as FunctionReference<"query">,
-    removeCollaborator: "sharing:removeCollaborator" as unknown as FunctionReference<"mutation">,
-    updateCollaboratorRole: "sharing:updateCollaboratorRole" as unknown as FunctionReference<"mutation">,
-    revokeShareLink: "sharing:revokeShareLink" as unknown as FunctionReference<"mutation">,
+    getCollaborators: 'sharing:getCollaborators' as unknown as FunctionReference<'query'>,
+    getShareLinks: 'sharing:getShareLinks' as unknown as FunctionReference<'query'>,
+    removeCollaborator: 'sharing:removeCollaborator' as unknown as FunctionReference<'mutation'>,
+    updateCollaboratorRole:
+      'sharing:updateCollaboratorRole' as unknown as FunctionReference<'mutation'>,
+    revokeShareLink: 'sharing:revokeShareLink' as unknown as FunctionReference<'mutation'>,
   },
 };
 
@@ -52,7 +53,7 @@ interface Collaborator {
   username: string;
   displayName?: string;
   avatarUrl?: string;
-  role: "viewer" | "editor";
+  role: 'viewer' | 'editor';
   invitedBy: string;
   createdAt: number;
 }
@@ -60,7 +61,7 @@ interface Collaborator {
 interface ShareLink {
   _id: string;
   token: string;
-  role: "viewer" | "editor";
+  role: 'viewer' | 'editor';
   expiresAt?: number;
   createdAt: number;
   isExpired: boolean;
@@ -79,17 +80,17 @@ export default function ProjectSettings() {
 
   const [showInviteModal, setShowInviteModal] = createSignal(false);
   const [showShareLinkModal, setShowShareLinkModal] = createSignal(false);
-  const [displayName, setDisplayName] = createSignal("");
-  const [description, setDescription] = createSignal("");
+  const [displayName, setDisplayName] = createSignal('');
+  const [description, setDescription] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);
   const [saveSuccess, setSaveSuccess] = createSignal(false);
-  const [saveError, setSaveError] = createSignal("");
+  const [saveError, setSaveError] = createSignal('');
   const [copiedLinkId, setCopiedLinkId] = createSignal<string | null>(null);
 
   const [isEditingSlug, setIsEditingSlug] = createSignal(false);
-  const [newSlug, setNewSlug] = createSignal("");
-  const [debouncedSlug, setDebouncedSlug] = createSignal("");
-  const [slugSaveError, setSlugSaveError] = createSignal("");
+  const [newSlug, setNewSlug] = createSignal('');
+  const [debouncedSlug, setDebouncedSlug] = createSignal('');
+  const [slugSaveError, setSlugSaveError] = createSignal('');
 
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
@@ -105,7 +106,10 @@ export default function ProjectSettings() {
   }));
 
   const projectData = createMemo(() => {
-    const data = projectQuery.data() as { project: Project; owner: Owner; forkedFrom: ForkedFrom | null } | null | undefined;
+    const data = projectQuery.data() as
+      | { project: Project; owner: Owner; forkedFrom: ForkedFrom | null }
+      | null
+      | undefined;
     return data;
   });
 
@@ -118,31 +122,29 @@ export default function ProjectSettings() {
     const proj = project();
     if (proj) {
       setDisplayName(proj.displayName);
-      setDescription(proj.description ?? "");
+      setDescription(proj.description ?? '');
     }
   });
 
   // Query collaborators
   const collaboratorsQuery = useQuery(
     api.sharing.getCollaborators,
-    () => ({ projectId: project()?._id ?? "" }),
-    () => ({ enabled: !!project() })
+    () => ({ projectId: project()?._id ?? '' }),
+    () => ({ enabled: !!project() }),
   );
 
   const collaborators = createMemo(
-    () => (collaboratorsQuery.data() as Collaborator[] | undefined) ?? []
+    () => (collaboratorsQuery.data() as Collaborator[] | undefined) ?? [],
   );
 
   // Query share links
   const shareLinksQuery = useQuery(
     api.sharing.getShareLinks,
-    () => ({ projectId: project()?._id ?? "" }),
-    () => ({ enabled: !!project() })
+    () => ({ projectId: project()?._id ?? '' }),
+    () => ({ enabled: !!project() }),
   );
 
-  const shareLinks = createMemo(
-    () => (shareLinksQuery.data() as ShareLink[] | undefined) ?? []
-  );
+  const shareLinks = createMemo(() => (shareLinksQuery.data() as ShareLink[] | undefined) ?? []);
 
   // Check if current user is the owner
   const isOwner = createMemo(() => {
@@ -162,10 +164,7 @@ export default function ProjectSettings() {
 
   // Loading state
   const isLoading = createMemo(
-    () =>
-      projectQuery.isLoading() ||
-      collaboratorsQuery.isLoading() ||
-      shareLinksQuery.isLoading()
+    () => projectQuery.isLoading() || collaboratorsQuery.isLoading() || shareLinksQuery.isLoading(),
   );
 
   // Handle save general settings
@@ -175,7 +174,7 @@ export default function ProjectSettings() {
     if (!proj) return;
 
     setIsSaving(true);
-    setSaveError("");
+    setSaveError('');
     setSaveSuccess(false);
 
     try {
@@ -187,7 +186,7 @@ export default function ProjectSettings() {
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Failed to save");
+      setSaveError(err instanceof Error ? err.message : 'Failed to save');
     } finally {
       setIsSaving(false);
     }
@@ -201,18 +200,19 @@ export default function ProjectSettings() {
 
   const slugCheckQuery = useQuery(api.projects.getBySlug, () => {
     const s = debouncedSlug();
-    if (!isEditingSlug() || !s || s === projectSlug()) return "skip";
+    if (!isEditingSlug() || !s || s === projectSlug()) return 'skip';
     return { username: username(), projectSlug: s };
   });
 
   const isSlugTaken = createMemo(() => !!slugCheckQuery.data());
   const isSlugValidFormat = createMemo(() => /^[a-z0-9-]+$/.test(newSlug()));
-  const canSaveSlug = createMemo(() => 
-    newSlug() && 
-    newSlug() !== projectSlug() && 
-    isSlugValidFormat() && 
-    !isSlugTaken() && 
-    !slugCheckQuery.isLoading()
+  const canSaveSlug = createMemo(
+    () =>
+      newSlug() &&
+      newSlug() !== projectSlug() &&
+      isSlugValidFormat() &&
+      !isSlugTaken() &&
+      !slugCheckQuery.isLoading(),
   );
 
   const handleSaveSlug = async () => {
@@ -220,29 +220,29 @@ export default function ProjectSettings() {
     if (!proj || !canSaveSlug()) return;
 
     setIsSaving(true);
-    setSlugSaveError("");
-    
+    setSlugSaveError('');
+
     try {
       const result = await updateProjectSlug.mutate({
         projectId: proj._id,
-        newSlug: newSlug()
+        newSlug: newSlug(),
       });
       navigate(`/u/${username()}/${result.newSlug}/settings`, { replace: true });
     } catch (err) {
-      setSlugSaveError(err instanceof Error ? err.message : "Failed to update slug");
+      setSlugSaveError(err instanceof Error ? err.message : 'Failed to update slug');
       setIsSaving(false);
     }
   };
 
   const startEditingSlug = () => {
-    setNewSlug(projectSlug() || "");
+    setNewSlug(projectSlug() || '');
     setIsEditingSlug(true);
   };
 
   const cancelEditingSlug = () => {
     setIsEditingSlug(false);
-    setNewSlug("");
-    setSlugSaveError("");
+    setNewSlug('');
+    setSlugSaveError('');
   };
 
   // Handle remove collaborator
@@ -258,15 +258,12 @@ export default function ProjectSettings() {
         userId,
       });
     } catch (err) {
-      console.error("Failed to remove collaborator:", err);
+      console.error('Failed to remove collaborator:', err);
     }
   };
 
   // Handle update collaborator role
-  const handleUpdateRole = async (
-    userId: string,
-    newRole: "viewer" | "editor"
-  ) => {
+  const handleUpdateRole = async (userId: string, newRole: 'viewer' | 'editor') => {
     const proj = project();
     if (!proj) return;
 
@@ -277,19 +274,18 @@ export default function ProjectSettings() {
         role: newRole,
       });
     } catch (err) {
-      console.error("Failed to update role:", err);
+      console.error('Failed to update role:', err);
     }
   };
 
   // Handle revoke share link
   const handleRevokeShareLink = async (linkId: string) => {
-    if (!confirm("Revoke this share link? Anyone using it will lose access."))
-      return;
+    if (!confirm('Revoke this share link? Anyone using it will lose access.')) return;
 
     try {
       await revokeShareLink.mutate({ linkId });
     } catch (err) {
-      console.error("Failed to revoke share link:", err);
+      console.error('Failed to revoke share link:', err);
     }
   };
 
@@ -301,29 +297,27 @@ export default function ProjectSettings() {
       setCopiedLinkId(linkId);
       setTimeout(() => setCopiedLinkId(null), 2000);
     } catch (err) {
-      console.error("Failed to copy:", err);
+      console.error('Failed to copy:', err);
     }
   };
 
   // Handle project deletion
   const handleProjectDeleted = () => {
-    navigate("/dashboard");
+    navigate('/dashboard');
   };
 
   // Format date
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString(undefined, {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
     });
   };
 
   return (
     <main class="min-h-screen bg-base-200">
-      <Title>
-        Settings - {project()?.displayName ?? projectSlug()} - Floorplan
-      </Title>
+      <Title>Settings - {project()?.displayName ?? projectSlug()} - Floorplan</Title>
 
       <Show
         when={!isLoading()}
@@ -340,13 +334,8 @@ export default function ProjectSettings() {
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body text-center">
                   <h2 class="card-title">Access Denied</h2>
-                  <p>
-                    Only the project owner can access settings.
-                  </p>
-                  <A
-                    href={`/u/${username()}/${projectSlug()}`}
-                    class="btn btn-primary mt-4"
-                  >
+                  <p>Only the project owner can access settings.</p>
+                  <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary mt-4">
                     Back to Project
                   </A>
                 </div>
@@ -363,7 +352,10 @@ export default function ProjectSettings() {
                     <A href={`/u/${username()}`}>{username()}</A>
                   </li>
                   <li>
-                    <A href={`/u/${username()}/${projectSlug()}`} class="truncate max-w-[100px] sm:max-w-none">
+                    <A
+                      href={`/u/${username()}/${projectSlug()}`}
+                      class="truncate max-w-[100px] sm:max-w-none"
+                    >
                       {projectSlug()}
                     </A>
                   </li>
@@ -374,12 +366,7 @@ export default function ProjectSettings() {
               {/* Forked from attribution */}
               <Show when={forkedFrom()}>
                 <div class="text-sm text-base-content/60 flex items-center gap-1 mt-1">
-                  <svg
-                    class="w-3.5 h-3.5"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -426,9 +413,7 @@ export default function ProjectSettings() {
                   <div class="form-control w-full">
                     <label class="label">
                       <span class="label-text">Description</span>
-                      <span class="label-text-alt text-base-content/50">
-                        Optional
-                      </span>
+                      <span class="label-text-alt text-base-content/50">Optional</span>
                     </label>
                     <textarea
                       class="textarea textarea-bordered w-full"
@@ -453,19 +438,15 @@ export default function ProjectSettings() {
                       </Show>
                       <span class="text-sm text-base-content/60">
                         {project()?.isPublic
-                          ? "Anyone can view this project"
-                          : "Only you and collaborators can access"}
+                          ? 'Anyone can view this project'
+                          : 'Only you and collaborators can access'}
                       </span>
                     </div>
                   </div>
 
                   {/* Save Button */}
                   <div class="flex items-center gap-4">
-                    <button
-                      type="submit"
-                      class="btn btn-primary"
-                      disabled={isSaving()}
-                    >
+                    <button type="submit" class="btn btn-primary" disabled={isSaving()}>
                       <Show when={isSaving()}>
                         <span class="loading loading-spinner loading-sm"></span>
                       </Show>
@@ -474,12 +455,7 @@ export default function ProjectSettings() {
 
                     <Show when={saveSuccess()}>
                       <span class="text-success flex items-center gap-1">
-                        <svg
-                          class="w-4 h-4"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path
                             stroke-linecap="round"
                             stroke-linejoin="round"
@@ -502,90 +478,110 @@ export default function ProjectSettings() {
             <section class="card bg-base-100 shadow">
               <div class="card-body">
                 <h2 class="card-title">Change URL Slug</h2>
-                
-                <Show when={!isEditingSlug()} fallback={
-                  <div class="space-y-4">
-                    <div class="alert alert-warning text-sm">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                      <div>
-                        <h3 class="font-bold">Warning</h3>
-                        <div class="text-xs">
-                          Changing the slug will change the URL of your project.
-                          Old URLs will automatically redirect to the new one.
+
+                <Show
+                  when={!isEditingSlug()}
+                  fallback={
+                    <div class="space-y-4">
+                      <div class="alert alert-warning text-sm">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="stroke-current shrink-0 h-6 w-6"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
+                        </svg>
+                        <div>
+                          <h3 class="font-bold">Warning</h3>
+                          <div class="text-xs">
+                            Changing the slug will change the URL of your project. Old URLs will
+                            automatically redirect to the new one.
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div class="form-control w-full">
-                      <label class="label">
-                        <span class="label-text">New Slug</span>
-                      </label>
-                      <div class="flex flex-col gap-2">
-                        <input
-                          type="text"
-                          class={`input input-bordered w-full font-mono ${
-                            !isSlugValidFormat() || isSlugTaken() ? "input-error" : 
-                            newSlug() !== projectSlug() && debouncedSlug() === newSlug() ? "input-success" : ""
-                          }`}
-                          value={newSlug()}
-                          onInput={(e) => {
-                            const val = e.currentTarget.value.toLowerCase().replace(/[^a-z0-9-]/g, "");
-                            setNewSlug(val);
-                          }}
-                          placeholder="my-project-slug"
-                          disabled={isSaving()}
-                        />
-                        <div class="flex items-center justify-between text-xs min-h-[1.25rem]">
-                          <span class="text-base-content/60">
-                            {window.location.origin}/u/{username()}/{newSlug() || "..."}
-                          </span>
-                          
-                          <Show when={newSlug() && newSlug() !== projectSlug()}>
-                            <Show 
-                              when={!slugCheckQuery.isLoading()} 
-                              fallback={<span class="loading loading-spinner loading-xs"></span>}
-                            >
-                              <Show when={isSlugTaken()}>
-                                <span class="text-error font-medium flex items-center gap-1">
-                                  <span>✗</span> Slug already taken
-                                </span>
-                              </Show>
-                              <Show when={!isSlugTaken() && isSlugValidFormat()}>
-                                <span class="text-success font-medium flex items-center gap-1">
-                                  <span>✓</span> Available
-                                </span>
+                      <div class="form-control w-full">
+                        <label class="label">
+                          <span class="label-text">New Slug</span>
+                        </label>
+                        <div class="flex flex-col gap-2">
+                          <input
+                            type="text"
+                            class={`input input-bordered w-full font-mono ${
+                              !isSlugValidFormat() || isSlugTaken()
+                                ? 'input-error'
+                                : newSlug() !== projectSlug() && debouncedSlug() === newSlug()
+                                  ? 'input-success'
+                                  : ''
+                            }`}
+                            value={newSlug()}
+                            onInput={(e) => {
+                              const val = e.currentTarget.value
+                                .toLowerCase()
+                                .replace(/[^a-z0-9-]/g, '');
+                              setNewSlug(val);
+                            }}
+                            placeholder="my-project-slug"
+                            disabled={isSaving()}
+                          />
+                          <div class="flex items-center justify-between text-xs min-h-[1.25rem]">
+                            <span class="text-base-content/60">
+                              {window.location.origin}/u/{username()}/{newSlug() || '...'}
+                            </span>
+
+                            <Show when={newSlug() && newSlug() !== projectSlug()}>
+                              <Show
+                                when={!slugCheckQuery.isLoading()}
+                                fallback={<span class="loading loading-spinner loading-xs"></span>}
+                              >
+                                <Show when={isSlugTaken()}>
+                                  <span class="text-error font-medium flex items-center gap-1">
+                                    <span>✗</span> Slug already taken
+                                  </span>
+                                </Show>
+                                <Show when={!isSlugTaken() && isSlugValidFormat()}>
+                                  <span class="text-success font-medium flex items-center gap-1">
+                                    <span>✓</span> Available
+                                  </span>
+                                </Show>
                               </Show>
                             </Show>
-                          </Show>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div class="flex items-center gap-2">
-                      <button
-                        class="btn btn-primary"
-                        onClick={handleSaveSlug}
-                        disabled={isSaving() || !canSaveSlug()}
-                      >
-                        <Show when={isSaving()} fallback="Save Slug">
-                          <span class="loading loading-spinner loading-sm"></span>
-                          Saving...
+                      <div class="flex items-center gap-2">
+                        <button
+                          class="btn btn-primary"
+                          onClick={handleSaveSlug}
+                          disabled={isSaving() || !canSaveSlug()}
+                        >
+                          <Show when={isSaving()} fallback="Save Slug">
+                            <span class="loading loading-spinner loading-sm"></span>
+                            Saving...
+                          </Show>
+                        </button>
+                        <button
+                          class="btn btn-ghost"
+                          onClick={cancelEditingSlug}
+                          disabled={isSaving()}
+                        >
+                          Cancel
+                        </button>
+
+                        <Show when={slugSaveError()}>
+                          <span class="text-error text-sm">{slugSaveError()}</span>
                         </Show>
-                      </button>
-                      <button 
-                        class="btn btn-ghost" 
-                        onClick={cancelEditingSlug}
-                        disabled={isSaving()}
-                      >
-                        Cancel
-                      </button>
-                      
-                      <Show when={slugSaveError()}>
-                        <span class="text-error text-sm">{slugSaveError()}</span>
-                      </Show>
+                      </div>
                     </div>
-                  </div>
-                }>
+                  }
+                >
                   <div>
                     <p class="text-sm text-base-content/60 mb-4">
                       The URL slug determines the address of your project.
@@ -594,10 +590,7 @@ export default function ProjectSettings() {
                       <code class="flex-1 font-mono text-sm">
                         {window.location.origin}/u/{username()}/{projectSlug()}
                       </code>
-                      <button 
-                        class="btn btn-sm btn-outline"
-                        onClick={startEditingSlug}
-                      >
+                      <button class="btn btn-sm btn-outline" onClick={startEditingSlug}>
                         Change Slug
                       </button>
                     </div>
@@ -616,12 +609,7 @@ export default function ProjectSettings() {
                     class="btn btn-primary btn-sm"
                     onClick={() => setShowInviteModal(true)}
                   >
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
@@ -634,8 +622,8 @@ export default function ProjectSettings() {
                 </div>
 
                 <p class="text-sm text-base-content/60 mt-2">
-                  Invite users to collaborate on this project. Editors can make
-                  changes, viewers can only view.
+                  Invite users to collaborate on this project. Editors can make changes, viewers can
+                  only view.
                 </p>
 
                 {/* Collaborator List */}
@@ -689,23 +677,16 @@ export default function ProjectSettings() {
                                         when={collab.avatarUrl}
                                         fallback={
                                           <span class="text-sm">
-                                            {collab.username
-                                              .charAt(0)
-                                              .toUpperCase()}
+                                            {collab.username.charAt(0).toUpperCase()}
                                           </span>
                                         }
                                       >
-                                        <img
-                                          src={collab.avatarUrl}
-                                          alt={collab.username}
-                                        />
+                                        <img src={collab.avatarUrl} alt={collab.username} />
                                       </Show>
                                     </div>
                                   </div>
                                   <div>
-                                    <div class="font-medium">
-                                      @{collab.username}
-                                    </div>
+                                    <div class="font-medium">@{collab.username}</div>
                                     <Show when={collab.displayName}>
                                       <div class="text-sm text-base-content/60">
                                         {collab.displayName}
@@ -721,7 +702,7 @@ export default function ProjectSettings() {
                                   onChange={(e) =>
                                     handleUpdateRole(
                                       collab.userId,
-                                      e.currentTarget.value as "viewer" | "editor"
+                                      e.currentTarget.value as 'viewer' | 'editor',
                                     )
                                   }
                                 >
@@ -737,10 +718,7 @@ export default function ProjectSettings() {
                                   type="button"
                                   class="btn btn-ghost btn-sm text-error"
                                   onClick={() =>
-                                    handleRemoveCollaborator(
-                                      collab.userId,
-                                      collab.username
-                                    )
+                                    handleRemoveCollaborator(collab.userId, collab.username)
                                   }
                                   title="Remove collaborator"
                                 >
@@ -779,12 +757,7 @@ export default function ProjectSettings() {
                     class="btn btn-primary btn-sm"
                     onClick={() => setShowShareLinkModal(true)}
                   >
-                    <svg
-                      class="w-4 h-4"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         stroke-linecap="round"
                         stroke-linejoin="round"
@@ -797,8 +770,7 @@ export default function ProjectSettings() {
                 </div>
 
                 <p class="text-sm text-base-content/60 mt-2">
-                  Create share links to give anyone access without requiring a
-                  username.
+                  Create share links to give anyone access without requiring a username.
                 </p>
 
                 {/* Existing Share Links */}
@@ -844,7 +816,7 @@ export default function ProjectSettings() {
                       <tbody>
                         <For each={shareLinks()}>
                           {(link) => (
-                            <tr class={link.isExpired ? "opacity-50" : ""}>
+                            <tr class={link.isExpired ? 'opacity-50' : ''}>
                               <td>
                                 <code class="text-xs bg-base-200 px-2 py-1 rounded">
                                   ...{link.token.slice(-8)}
@@ -853,9 +825,7 @@ export default function ProjectSettings() {
                               <td>
                                 <span
                                   class={`badge badge-sm ${
-                                    link.role === "editor"
-                                      ? "badge-warning"
-                                      : "badge-info"
+                                    link.role === 'editor' ? 'badge-warning' : 'badge-info'
                                   }`}
                                 >
                                   {link.role}
@@ -867,15 +837,9 @@ export default function ProjectSettings() {
                               <td>
                                 <Show
                                   when={!link.isExpired}
-                                  fallback={
-                                    <span class="badge badge-ghost badge-sm">
-                                      Expired
-                                    </span>
-                                  }
+                                  fallback={<span class="badge badge-ghost badge-sm">Expired</span>}
                                 >
-                                  <span class="badge badge-success badge-sm">
-                                    Active
-                                  </span>
+                                  <span class="badge badge-success badge-sm">Active</span>
                                 </Show>
                               </td>
                               <td class="flex gap-1">
@@ -883,7 +847,7 @@ export default function ProjectSettings() {
                                   <button
                                     type="button"
                                     class={`btn btn-ghost btn-sm ${
-                                      copiedLinkId() === link._id ? "text-success" : ""
+                                      copiedLinkId() === link._id ? 'text-success' : ''
                                     }`}
                                     onClick={() => handleCopyShareLink(link.token, link._id)}
                                     title="Copy link"

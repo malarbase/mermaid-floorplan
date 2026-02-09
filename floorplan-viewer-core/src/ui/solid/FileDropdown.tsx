@@ -16,7 +16,7 @@
  * - Click outside to close
  */
 
-import { createSignal, createEffect, For, Show, onCleanup, type Accessor } from 'solid-js';
+import { type Accessor, createEffect, createSignal, For, onCleanup, Show } from 'solid-js';
 
 // ============================================================================
 // Types
@@ -114,13 +114,21 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
   return (
     <div class="flex flex-col gap-0.5 p-2 min-w-[220px] text-sm bg-base-200 text-base-content rounded-xl shadow-xl">
       {/* Open File */}
-      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('open-file')}>
+      <button
+        class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300"
+        onClick={() => handleAction('open-file')}
+      >
         <span>Open File...</span>
-        <span class="text-xs text-base-content/60 bg-base-300 px-1.5 py-0.5 rounded">{modKey}O</span>
+        <span class="text-xs text-base-content/60 bg-base-300 px-1.5 py-0.5 rounded">
+          {modKey}O
+        </span>
       </button>
 
       {/* Open from URL */}
-      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('open-url')}>
+      <button
+        class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300"
+        onClick={() => handleAction('open-url')}
+      >
         Open from URL...
       </button>
 
@@ -147,7 +155,10 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
             <div class="absolute left-full top-0 ml-1 flex flex-col gap-0.5 p-2 min-w-[180px] text-sm bg-base-200 text-base-content rounded-xl shadow-xl">
               <For each={getRecentFiles().slice(0, 5)}>
                 {(file) => (
-                  <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleRecentFile(file.path)}>
+                  <button
+                    class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300"
+                    onClick={() => handleRecentFile(file.path)}
+                  >
                     {file.name}
                   </button>
                 )}
@@ -161,13 +172,18 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
       <div class="h-px bg-base-300 mx-2 my-1" />
 
       {/* Save .floorplan */}
-      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('save-floorplan')}>
+      <button
+        class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300"
+        onClick={() => handleAction('save-floorplan')}
+      >
         <span>Save .floorplan</span>
         <span class="flex items-center gap-1">
           <Show when={!getIsAuthenticated()}>
             <span>🔒</span>
           </Show>
-          <span class="text-xs text-base-content/60 bg-base-300 px-1.5 py-0.5 rounded">{modKey}S</span>
+          <span class="text-xs text-base-content/60 bg-base-300 px-1.5 py-0.5 rounded">
+            {modKey}S
+          </span>
         </span>
       </button>
 
@@ -175,19 +191,28 @@ export function FileDropdownContent(props: FileDropdownContentProps) {
       <div class="h-px bg-base-300 mx-2 my-1" />
 
       {/* Export JSON */}
-      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('export-json')}>
+      <button
+        class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300"
+        onClick={() => handleAction('export-json')}
+      >
         <span>Export JSON</span>
         <span class="text-xs text-base-content/60">.json</span>
       </button>
 
       {/* Export GLB */}
-      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('export-glb')}>
+      <button
+        class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300"
+        onClick={() => handleAction('export-glb')}
+      >
         <span>Export GLB</span>
         <span class="text-xs text-base-content/60">.glb</span>
       </button>
 
       {/* Export GLTF */}
-      <button class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300" onClick={() => handleAction('export-gltf')}>
+      <button
+        class="flex justify-between items-center px-3 py-2 rounded-lg cursor-pointer bg-transparent border-none text-base-content text-sm w-full text-left hover:bg-base-300"
+        onClick={() => handleAction('export-gltf')}
+      >
         <span>Export GLTF</span>
         <span class="text-xs text-base-content/60">.gltf</span>
       </button>

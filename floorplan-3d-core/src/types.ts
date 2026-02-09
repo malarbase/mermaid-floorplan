@@ -74,10 +74,18 @@ export interface JsonFloor {
   rooms: JsonRoom[];
   stairs?: JsonStair[];
   lifts?: JsonLift[];
-  height?: number;  // Floor-level default height
+  height?: number; // Floor-level default height
 }
 
-export type JsonStairShapeType = 'straight' | 'L-shaped' | 'U-shaped' | 'double-L' | 'spiral' | 'curved' | 'winder' | 'custom';
+export type JsonStairShapeType =
+  | 'straight'
+  | 'L-shaped'
+  | 'U-shaped'
+  | 'double-L'
+  | 'spiral'
+  | 'curved'
+  | 'winder'
+  | 'custom';
 
 /** View-relative direction type (consistent with wall directions) */
 export type ViewDirection = 'top' | 'bottom' | 'left' | 'right';
@@ -188,8 +196,8 @@ export interface JsonRoom {
 }
 
 export interface JsonWall {
-  direction: "top" | "bottom" | "left" | "right";
-  type: string;  // 'solid', 'open', 'door', 'window'
+  direction: 'top' | 'bottom' | 'left' | 'right';
+  type: string; // 'solid', 'open', 'door', 'window'
   position?: number;
   isPercentage?: boolean;
   width?: number; // Window/Door width
@@ -272,4 +280,3 @@ export interface Render3DResult {
     floorsRendered: number[];
   };
 }
-

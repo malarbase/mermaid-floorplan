@@ -1,21 +1,21 @@
-import { createSignal } from "solid-js";
-import EditorPanel from "./EditorPanel";
-import SelectionControls from "./SelectionControls";
-import PropertiesPanel from "./PropertiesPanel";
-import AddRoomDialog from "./AddRoomDialog";
-import DeleteConfirmDialog from "./DeleteConfirmDialog";
-import { useSelection, type GetEntityDataFn } from "~/hooks/useSelection";
+import { createSignal } from 'solid-js';
+import { type GetEntityDataFn, useSelection } from '~/hooks/useSelection';
+import AddRoomDialog from './AddRoomDialog';
+import DeleteConfirmDialog from './DeleteConfirmDialog';
+import EditorPanel from './EditorPanel';
+import PropertiesPanel from './PropertiesPanel';
+import SelectionControls from './SelectionControls';
 
 interface EditorBundleProps {
   core: any;
   dsl: string;
-  theme: "light" | "dark";
+  theme: 'light' | 'dark';
   onDslChange: (dsl: string) => void;
 }
 
 /**
  * Editor panel bundle layout:
- * 
+ *
  * ┌──────────────────────────────┐
  * │ [+Add] [Copy] [Focus] [Del] │ ← Toolbar (compact, with type breakdown)
  * ├──────────────────────────────┤
@@ -27,14 +27,14 @@ interface EditorBundleProps {
  * │ X: 0   Y: 0   W: 20  H: 15 │
  * │ Room Height: 2.8  Style: ...│
  * └──────────────────────────────┘
- * 
+ *
  * Selection state is managed by useSelection hook (single subscription)
  * and passed down as props to presentational children.
  */
 export default function EditorBundle(props: EditorBundleProps) {
   const [showAddRoomDialog, setShowAddRoomDialog] = createSignal(false);
   const [showDeleteDialog, setShowDeleteDialog] = createSignal(false);
-  const [selectedEntityName, setSelectedEntityName] = createSignal("");
+  const [selectedEntityName, setSelectedEntityName] = createSignal('');
 
   /**
    * Callback to fetch entity data for the properties panel.
@@ -63,19 +63,14 @@ export default function EditorBundle(props: EditorBundleProps) {
   // Single reactive selection subscription with entity data callback
   const selection = useSelection(() => props.core, getEntityData);
 
-  const handleAddRoom = (data: {
-    name: string;
-    type: string;
-    width: number;
-    height: number;
-  }) => {
-    console.log("Add room:", data);
+  const handleAddRoom = (data: { name: string; type: string; width: number; height: number }) => {
+    console.log('Add room:', data);
   };
 
   const handleCopy = () => {
     const sel = selection();
     if (sel.entities.length === 0) return;
-    console.log("Copy entities:", sel.entities);
+    console.log('Copy entities:', sel.entities);
   };
 
   const handleFocus = () => {
@@ -87,12 +82,12 @@ export default function EditorBundle(props: EditorBundleProps) {
   const handleDelete = () => {
     const sel = selection();
     if (!sel.primary) return;
-    setSelectedEntityName(sel.primaryId || "this entity");
+    setSelectedEntityName(sel.primaryId || 'this entity');
     setShowDeleteDialog(true);
   };
 
   const handleDeleteConfirm = () => {
-    console.log("Delete confirmed");
+    console.log('Delete confirmed');
     setShowDeleteDialog(false);
   };
 
@@ -106,7 +101,7 @@ export default function EditorBundle(props: EditorBundleProps) {
     if (sync?.updateEntityProperty) {
       sync.updateEntityProperty(sel.primaryType, sel.primaryId, property, value);
     } else {
-      console.log("Property change (no sync):", sel.primaryType, sel.primaryId, property, value);
+      console.log('Property change (no sync):', sel.primaryType, sel.primaryId, property, value);
     }
   };
 

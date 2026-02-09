@@ -1,8 +1,8 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
 import solidPlugin from 'vite-plugin-solid';
-import tailwindcss from '@tailwindcss/vite';
-import { resolve, dirname } from 'path';
-import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -43,11 +43,16 @@ export default defineConfig({
     open: true,
     fs: {
       // Allow serving files from the parent project (for worktrees accessing shared node_modules)
-      allow: ['..', '../..']
+      allow: ['..', '../..'],
     },
     watch: {
       // Watch workspace package source directories for changes
-      ignored: ['!**/floorplan-viewer-core/src/**', '!**/floorplan-language/src/**', '!**/floorplan-3d-core/src/**', '!**/floorplan-common/src/**'],
+      ignored: [
+        '!**/floorplan-viewer-core/src/**',
+        '!**/floorplan-language/src/**',
+        '!**/floorplan-3d-core/src/**',
+        '!**/floorplan-common/src/**',
+      ],
     },
   },
 });

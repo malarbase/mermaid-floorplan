@@ -1,10 +1,6 @@
-import { createSignal, Show, createMemo } from "solid-js";
-import { A } from "@solidjs/router";
-import {
-  generatePermalink,
-  copyToClipboard,
-  shortenHash,
-} from "~/lib/permalink";
+import { A } from '@solidjs/router';
+import { createMemo, createSignal, Show } from 'solid-js';
+import { copyToClipboard, generatePermalink, shortenHash } from '~/lib/permalink';
 
 export interface PermalinkDisplayProps {
   /** Project owner's username */
@@ -14,7 +10,7 @@ export interface PermalinkDisplayProps {
   /** Content hash of the snapshot */
   hash: string;
   /** Display variant */
-  variant?: "badge" | "inline" | "full";
+  variant?: 'badge' | 'inline' | 'full';
   /** Whether this is the current/active snapshot */
   isCurrent?: boolean;
   /** Optional snapshot message to display */
@@ -47,11 +43,11 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
   const [copyError, setCopyError] = createSignal(false);
 
   const permalink = createMemo(() =>
-    generatePermalink(props.username, props.projectSlug, props.hash)
+    generatePermalink(props.username, props.projectSlug, props.hash),
   );
 
   const absolutePermalink = createMemo(() =>
-    generatePermalink(props.username, props.projectSlug, props.hash, true)
+    generatePermalink(props.username, props.projectSlug, props.hash, true),
   );
 
   const shortHash = createMemo(() => shortenHash(props.hash));
@@ -80,20 +76,20 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
 
-    if (minutes < 1) return "just now";
+    if (minutes < 1) return 'just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
-    if (days === 1) return "yesterday";
+    if (days === 1) return 'yesterday';
     if (days < 7) return `${days}d ago`;
     return date.toLocaleDateString();
   };
 
   // Badge variant - compact display
   const BadgeVariant = () => (
-    <div class={`flex items-center gap-1 ${props.class ?? ""}`}>
+    <div class={`flex items-center gap-1 ${props.class ?? ''}`}>
       <A
         href={permalink()}
-        class={`badge gap-1 ${props.isCurrent ? "badge-primary" : "badge-ghost"}`}
+        class={`badge gap-1 ${props.isCurrent ? 'badge-primary' : 'badge-ghost'}`}
         title="Permalink to this snapshot (immutable)"
       >
         <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -111,13 +107,23 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
           type="button"
           class="btn btn-ghost btn-xs btn-circle"
           onClick={handleCopy}
-          title={copied() ? "Copied!" : "Copy permalink"}
+          title={copied() ? 'Copied!' : 'Copy permalink'}
         >
           <Show
             when={!copied()}
             fallback={
-              <svg class="w-3 h-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              <svg
+                class="w-3 h-3 text-success"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             }
           >
@@ -137,7 +143,7 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
 
   // Inline variant - text with link
   const InlineVariant = () => (
-    <span class={`inline-flex items-center gap-1 ${props.class ?? ""}`}>
+    <span class={`inline-flex items-center gap-1 ${props.class ?? ''}`}>
       <A href={permalink()} class="link link-hover font-mono text-sm">
         #{shortHash()}
       </A>
@@ -146,13 +152,23 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
           type="button"
           class="btn btn-ghost btn-xs"
           onClick={handleCopy}
-          title={copied() ? "Copied!" : "Copy permalink"}
+          title={copied() ? 'Copied!' : 'Copy permalink'}
         >
           <Show
             when={!copied()}
             fallback={
-              <svg class="w-3 h-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              <svg
+                class="w-3 h-3 text-success"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M5 13l4 4L19 7"
+                />
               </svg>
             }
           >
@@ -175,13 +191,18 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
 
   // Full variant - card-like display
   const FullVariant = () => (
-    <div class={`card bg-base-100 shadow-sm ${props.class ?? ""}`}>
+    <div class={`card bg-base-100 shadow-sm ${props.class ?? ''}`}>
       <div class="card-body p-4">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             {/* Link icon */}
             <div class="bg-success/10 p-2 rounded-lg">
-              <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                class="w-5 h-5 text-success"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -192,19 +213,14 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
             </div>
 
             <div>
-              <A
-                href={permalink()}
-                class="font-mono text-lg hover:text-primary transition-colors"
-              >
+              <A href={permalink()} class="font-mono text-lg hover:text-primary transition-colors">
                 #{props.hash}
               </A>
               <Show when={props.message}>
                 <p class="text-sm text-base-content/70">{props.message}</p>
               </Show>
               <Show when={props.timestamp}>
-                <p class="text-xs text-base-content/50">
-                  {formatTimestamp(props.timestamp!)}
-                </p>
+                <p class="text-xs text-base-content/50">{formatTimestamp(props.timestamp!)}</p>
               </Show>
             </div>
           </div>
@@ -216,14 +232,24 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
               type="button"
               class="btn btn-ghost btn-sm gap-2"
               onClick={handleCopy}
-              title={copied() ? "Copied!" : "Copy permalink"}
+              title={copied() ? 'Copied!' : 'Copy permalink'}
             >
               <Show
                 when={!copied()}
                 fallback={
                   <>
-                    <svg class="w-4 h-4 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    <svg
+                      class="w-4 h-4 text-success"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                     Copied!
                   </>
@@ -233,24 +259,32 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
                   when={!copyError()}
                   fallback={
                     <>
-                      <svg class="w-4 h-4 text-error" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                      <svg
+                        class="w-4 h-4 text-error"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M6 18L18 6M6 6l12 12"
+                        />
                       </svg>
                       Failed
                     </>
                   }
                 >
-                  <>
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
-                      />
-                    </svg>
-                    Copy
-                  </>
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      stroke-width="2"
+                      d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                    />
+                  </svg>
+                  Copy
                 </Show>
               </Show>
             </button>
@@ -264,7 +298,7 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
         {/* URL display */}
         <div class="mt-2 bg-base-200 rounded-lg p-2">
           <code class="text-xs text-base-content/70 break-all select-all">
-            {typeof window !== "undefined" ? absolutePermalink() : permalink()}
+            {typeof window !== 'undefined' ? absolutePermalink() : permalink()}
           </code>
         </div>
       </div>
@@ -273,13 +307,13 @@ export function PermalinkDisplay(props: PermalinkDisplayProps) {
 
   return (
     <>
-      <Show when={props.variant === "badge"}>
+      <Show when={props.variant === 'badge'}>
         <BadgeVariant />
       </Show>
-      <Show when={props.variant === "inline" || !props.variant}>
+      <Show when={props.variant === 'inline' || !props.variant}>
         <InlineVariant />
       </Show>
-      <Show when={props.variant === "full"}>
+      <Show when={props.variant === 'full'}>
         <FullVariant />
       </Show>
     </>

@@ -1,24 +1,24 @@
-import { Title } from "@solidjs/meta";
-import { useParams, useNavigate, A } from "@solidjs/router";
-import { Show, createMemo, onMount } from "solid-js";
-import { useQuery } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import { Title } from '@solidjs/meta';
+import { A, useNavigate, useParams } from '@solidjs/router';
+import type { FunctionReference } from 'convex/server';
+import { useQuery } from 'convex-solidjs';
+import { createMemo, onMount, Show } from 'solid-js';
 
 // Type-safe API reference
 const api = {
   sharing: {
-    validateShareLink: "sharing:validateShareLink" as unknown as FunctionReference<"query">,
+    validateShareLink: 'sharing:validateShareLink' as unknown as FunctionReference<'query'>,
   },
 };
 
 interface ShareLinkValidation {
   valid: boolean;
-  reason?: "not_found" | "expired" | "project_not_found";
+  reason?: 'not_found' | 'expired' | 'project_not_found';
   projectId?: string;
   projectSlug?: string;
   projectName?: string;
   ownerUsername?: string;
-  role?: "viewer" | "editor";
+  role?: 'viewer' | 'editor';
 }
 
 /**
@@ -54,7 +54,7 @@ export default function ShareLinkPage() {
       const t = token();
       if (v?.valid && v.ownerUsername && v.projectSlug && t) {
         // Store the token in sessionStorage for the project page to use
-        sessionStorage.setItem("share_token", t);
+        sessionStorage.setItem('share_token', t);
         // Redirect to the project page
         navigate(`/u/${v.ownerUsername}/${v.projectSlug}?share=${t}`);
       }
@@ -105,18 +105,16 @@ export default function ShareLinkPage() {
                   </div>
                   <h2 class="card-title justify-center">Invalid Share Link</h2>
                   <p class="text-base-content/60">
-                    <Show when={validation()?.reason === "expired"}>
+                    <Show when={validation()?.reason === 'expired'}>
                       This share link has expired.
                     </Show>
-                    <Show when={validation()?.reason === "not_found"}>
+                    <Show when={validation()?.reason === 'not_found'}>
                       This share link doesn't exist or has been revoked.
                     </Show>
-                    <Show when={validation()?.reason === "project_not_found"}>
+                    <Show when={validation()?.reason === 'project_not_found'}>
                       The project associated with this link no longer exists.
                     </Show>
-                    <Show when={!validation()?.reason}>
-                      This share link is not valid.
-                    </Show>
+                    <Show when={!validation()?.reason}>This share link is not valid.</Show>
                   </p>
                   <div class="card-actions justify-center mt-4">
                     <A href="/" class="btn btn-primary">
@@ -144,14 +142,15 @@ export default function ShareLinkPage() {
               </div>
               <h2 class="card-title justify-center">Access Granted</h2>
               <p class="text-base-content/60">
-                Redirecting you to{" "}
-                <span class="font-medium">{validation()?.projectName}</span>...
+                Redirecting you to <span class="font-medium">{validation()?.projectName}</span>...
               </p>
               <div class="mt-4">
-                <span class={`badge ${
-                  validation()?.role === "editor" ? "badge-warning" : "badge-info"
-                }`}>
-                  {validation()?.role === "editor" ? "Can edit" : "View only"}
+                <span
+                  class={`badge ${
+                    validation()?.role === 'editor' ? 'badge-warning' : 'badge-info'
+                  }`}
+                >
+                  {validation()?.role === 'editor' ? 'Can edit' : 'View only'}
                 </span>
               </div>
               <span class="loading loading-dots loading-md mx-auto mt-4"></span>

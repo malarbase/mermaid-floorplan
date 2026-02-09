@@ -16,7 +16,7 @@
  * - Consistent styling with vanilla components
  */
 
-import { createSignal, createEffect, For, Show, JSX, children as resolveChildren } from 'solid-js';
+import { createSignal, For, type JSX, Show } from 'solid-js';
 
 // ============================================================================
 // Primitive Components
@@ -45,17 +45,11 @@ export function ControlPanelSection(props: ControlPanelSectionProps) {
   };
 
   return (
-    <div
-      class="fp-control-section"
-      classList={{ collapsed: isCollapsed() }}
-      id={props.id}
-    >
+    <div class="fp-control-section" classList={{ collapsed: isCollapsed() }} id={props.id}>
       <div class="fp-section-header" onClick={handleToggle}>
         {props.title}
       </div>
-      <div class="fp-section-content">
-        {props.children}
-      </div>
+      <div class="fp-section-content">{props.children}</div>
     </div>
   );
 }
@@ -171,15 +165,8 @@ export function Select(props: SelectProps) {
       <label class="fp-label" for={props.id}>
         {props.label}
       </label>
-      <select
-        class="fp-select"
-        id={props.id}
-        value={props.value}
-        onChange={handleChange}
-      >
-        <For each={props.options}>
-          {(opt) => <option value={opt.value}>{opt.label}</option>}
-        </For>
+      <select class="fp-select" id={props.id} value={props.value} onChange={handleChange}>
+        <For each={props.options}>{(opt) => <option value={opt.value}>{opt.label}</option>}</For>
       </select>
     </div>
   );

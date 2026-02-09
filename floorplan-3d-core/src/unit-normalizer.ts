@@ -1,26 +1,26 @@
 /**
  * Unit normalization for 3D rendering
- * 
+ *
  * Converts all dimensional values from the DSL's unit to meters
  * for consistent 3D rendering in Three.js.
- * 
+ *
  * This module is shared between viewer and MCP server to ensure
  * consistent rendering behavior across all consumers.
  */
 
+import { DEFAULT_UNIT, isLengthUnit, type LengthUnit, toMeters } from './constants.js';
 import type {
-  JsonExport,
-  JsonFloor,
-  JsonRoom,
   JsonConfig,
   JsonConnection,
-  JsonWall,
-  JsonStair,
-  JsonStairShape,
-  JsonStairSegment,
+  JsonExport,
+  JsonFloor,
   JsonLift,
+  JsonRoom,
+  JsonStair,
+  JsonStairSegment,
+  JsonStairShape,
+  JsonWall,
 } from './types.js';
-import { toMeters, isLengthUnit, DEFAULT_UNIT, type LengthUnit } from './constants.js';
 
 /**
  * Get the source unit from config, defaulting to meters if not specified
@@ -46,7 +46,7 @@ function convertValue(value: number | undefined, unit: LengthUnit): number | und
  */
 function convertSizeTuple(
   size: [number, number] | undefined,
-  unit: LengthUnit
+  unit: LengthUnit,
 ): [number, number] | undefined {
   if (!size) return undefined;
   return [toMeters(size[0], unit), toMeters(size[1], unit)];
@@ -88,10 +88,7 @@ function normalizeRoom(room: JsonRoom, unit: LengthUnit): JsonRoom {
 /**
  * Normalize a stair segment's dimensional values to meters
  */
-function normalizeStairSegment(
-  segment: JsonStairSegment,
-  unit: LengthUnit
-): JsonStairSegment {
+function normalizeStairSegment(segment: JsonStairSegment, unit: LengthUnit): JsonStairSegment {
   return {
     ...segment,
     width: convertValue(segment.width, unit),
@@ -102,10 +99,7 @@ function normalizeStairSegment(
 /**
  * Normalize a stair shape's dimensional values to meters
  */
-function normalizeStairShape(
-  shape: JsonStairShape,
-  unit: LengthUnit
-): JsonStairShape {
+function normalizeStairShape(shape: JsonStairShape, unit: LengthUnit): JsonStairShape {
   return {
     ...shape,
     landing: convertSizeTuple(shape.landing, unit),
@@ -197,10 +191,7 @@ function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
  * not length values, so we don't convert them.
  * But width/height are dimensional values that need conversion.
  */
-function normalizeConnection(
-  conn: JsonConnection,
-  unit: LengthUnit
-): JsonConnection {
+function normalizeConnection(conn: JsonConnection, unit: LengthUnit): JsonConnection {
   return {
     ...conn,
     // Convert dimensional values (width, height) but not position (percentage)
@@ -213,7 +204,7 @@ function normalizeConnection(
 /**
  * Normalize all dimensional values in a JsonExport from DSL units to meters.
  * This ensures consistent 3D rendering regardless of the source unit.
- * 
+ *
  * @param data - The JSON export from DSL parsing
  * @returns A new JsonExport with all dimensions converted to meters
  */

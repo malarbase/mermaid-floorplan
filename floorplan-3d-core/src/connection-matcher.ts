@@ -1,6 +1,6 @@
 /**
  * Connection matching utilities for determining connection placement and rendering responsibility
- * 
+ *
  * Implements deduplication logic to ensure each connection is rendered exactly once,
  * even though connections reference two walls (fromRoom/fromWall and toRoom/toWall).
  */
@@ -16,7 +16,7 @@ export interface ConnectionMatch {
 
 /**
  * Find all connections that match a given room and wall
- * 
+ *
  * @param room - The room to check
  * @param wall - The wall to check
  * @param allConnections - All connections in the floorplan
@@ -25,7 +25,7 @@ export interface ConnectionMatch {
 export function findMatchingConnections(
   room: JsonRoom,
   wall: JsonWall,
-  allConnections: JsonConnection[]
+  allConnections: JsonConnection[],
 ): ConnectionMatch[] {
   const matches: ConnectionMatch[] = [];
 
@@ -62,13 +62,13 @@ export function findMatchingConnections(
 
 /**
  * Determine if the current room should render the connection mesh
- * 
+ *
  * Deduplication Logic:
  * - If both walls are solid: render on fromRoom
  * - If one wall is open, other is solid: render on solid wall
  * - If both walls are open: render on fromRoom
  * - If target room not found (different floor): render on source room if isFromRoom
- * 
+ *
  * @param match - Connection match metadata
  * @param currentWall - Current wall being processed
  * @param allRooms - All rooms in the current floor
@@ -77,7 +77,7 @@ export function findMatchingConnections(
 export function shouldRenderConnection(
   match: ConnectionMatch,
   currentWall: JsonWall,
-  allRooms: JsonRoom[]
+  allRooms: JsonRoom[],
 ): boolean {
   const { isFromRoom, otherRoomName, otherWallDirection } = match;
 
@@ -121,4 +121,3 @@ export function shouldRenderConnection(
 
   return result;
 }
-

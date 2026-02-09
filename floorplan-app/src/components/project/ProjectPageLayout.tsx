@@ -3,10 +3,10 @@
  * Provides consistent structure: header, optional info banner, content area.
  */
 
-import { Show, type JSX } from "solid-js";
-import { Title } from "@solidjs/meta";
-import { A } from "@solidjs/router";
-import type { Project, ForkedFrom } from "~/lib/project-types";
+import { Title } from '@solidjs/meta';
+import { A } from '@solidjs/router';
+import { type JSX, Show } from 'solid-js';
+import type { ForkedFrom, Project } from '~/lib/project-types';
 
 // Icons as components for reuse
 export const ForkIcon = () => (
@@ -43,12 +43,7 @@ export const SettingsIcon = () => (
 );
 
 export const LinkIcon = () => (
-  <svg
-    class="w-5 h-5 text-success"
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
+  <svg class="w-5 h-5 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
     <path
       stroke-linecap="round"
       stroke-linejoin="round"
@@ -59,7 +54,7 @@ export const LinkIcon = () => (
 );
 
 interface InfoBannerProps {
-  variant: "info" | "success";
+  variant: 'info' | 'success';
   children: JSX.Element;
 }
 
@@ -69,9 +64,9 @@ interface InfoBannerProps {
  */
 export function InfoBanner(props: InfoBannerProps) {
   const variantClasses = () =>
-    props.variant === "success"
-      ? "bg-success/10 border-b border-success/30 text-base-content"
-      : "bg-info/10 border-b border-info/30 text-base-content";
+    props.variant === 'success'
+      ? 'bg-success/10 border-b border-success/30 text-base-content'
+      : 'bg-info/10 border-b border-info/30 text-base-content';
 
   return (
     <div class={`px-4 py-1.5 text-sm ${variantClasses()}`}>
@@ -92,9 +87,7 @@ export function ForkedFromBadge(props: ForkedFromBadgeProps) {
   return (
     <div class="text-xs sm:text-sm text-base-content/60 flex items-center gap-1">
       <ForkIcon />
-      <span class={props.compact ? "sm:hidden" : "hidden sm:inline"}>
-        forked from
-      </span>
+      <span class={props.compact ? 'sm:hidden' : 'hidden sm:inline'}>forked from</span>
       <Show when={props.compact}>
         <span class="sm:hidden">from</span>
       </Show>
@@ -123,7 +116,7 @@ interface ProjectBreadcrumbsProps {
 
 /**
  * Project breadcrumbs and title for use as Header's centerContent.
- * 
+ *
  * Single-line layout: breadcrumb trail + display name on the same row.
  * On small screens the display name is hidden (the slug in breadcrumbs is sufficient).
  * Overflow is truncated with ellipsis to prevent clipping into action buttons.
@@ -139,9 +132,7 @@ export function ProjectBreadcrumbs(props: ProjectBreadcrumbsProps) {
               <A href={`/u/${props.username}`}>{props.username}</A>
             </li>
             <li>
-              <A href={`/u/${props.username}/${props.projectSlug}`}>
-                {props.projectSlug}
-              </A>
+              <A href={`/u/${props.username}/${props.projectSlug}`}>{props.projectSlug}</A>
             </li>
             <Show when={props.breadcrumbSuffix}>
               <li>{props.breadcrumbSuffix}</li>
@@ -154,10 +145,7 @@ export function ProjectBreadcrumbs(props: ProjectBreadcrumbsProps) {
           <span class="hidden sm:inline text-base-content/40 flex-shrink-0">/</span>
           <h1 class="hidden sm:block text-sm md:text-base font-semibold truncate min-w-0">
             {props.project?.displayName}
-            <Show when={props.titleSuffix}>
-              {" "}
-              {props.titleSuffix}
-            </Show>
+            <Show when={props.titleSuffix}> {props.titleSuffix}</Show>
           </h1>
         </Show>
       </div>
@@ -180,7 +168,7 @@ interface LoadingSpinnerProps {
 export function LoadingSpinner(props: LoadingSpinnerProps) {
   return (
     <div
-      class={`flex justify-center items-center ${props.fullScreen !== false ? "h-screen" : "h-full"}`}
+      class={`flex justify-center items-center ${props.fullScreen !== false ? 'h-screen' : 'h-full'}`}
     >
       <span class="loading loading-spinner loading-lg"></span>
     </div>
@@ -228,8 +216,7 @@ export function ContentMissingCard(props: ContentMissingCardProps) {
         <div class="card-body text-center">
           <h2 class="card-title text-error">Content Not Available</h2>
           <p class="text-base-content/70">
-            {props.message ??
-              "This content has no data. It may be corrupted or missing."}
+            {props.message ?? 'This content has no data. It may be corrupted or missing.'}
           </p>
           <A
             href={`/u/${props.username}/${props.projectSlug}/history`}
@@ -264,13 +251,14 @@ export function ProjectPageLayout(props: ProjectPageLayoutProps) {
   return (
     <main class="h-screen flex flex-col bg-base-200">
       <Title>{props.title}</Title>
-      <Show
-        when={!props.isLoading}
-        fallback={<LoadingSpinner />}
-      >
+      <Show when={!props.isLoading} fallback={<LoadingSpinner />}>
         <Show
           when={!props.showNotFound}
-          fallback={props.notFoundFallback ?? <NotFoundCard title="Not Found" message="The requested content was not found." />}
+          fallback={
+            props.notFoundFallback ?? (
+              <NotFoundCard title="Not Found" message="The requested content was not found." />
+            )
+          }
         >
           {props.children}
         </Show>

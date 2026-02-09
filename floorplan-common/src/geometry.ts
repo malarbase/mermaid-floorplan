@@ -9,7 +9,7 @@
  */
 export interface RoomBounds {
   x: number;
-  y: number;  // z in 3D coordinates
+  y: number; // z in 3D coordinates
   width: number;
   height: number;
 }
@@ -33,24 +33,18 @@ export interface OverlapResult {
 export function calculateWallOverlap(
   sourceRoom: RoomBounds,
   targetRoom: RoomBounds,
-  isVertical: boolean
+  isVertical: boolean,
 ): OverlapResult | null {
   let overlapStart: number, overlapEnd: number;
 
   if (isVertical) {
     // Vertical walls (left/right): overlap along Y axis
     overlapStart = Math.max(sourceRoom.y, targetRoom.y);
-    overlapEnd = Math.min(
-      sourceRoom.y + sourceRoom.height,
-      targetRoom.y + targetRoom.height
-    );
+    overlapEnd = Math.min(sourceRoom.y + sourceRoom.height, targetRoom.y + targetRoom.height);
   } else {
     // Horizontal walls (top/bottom): overlap along X axis
     overlapStart = Math.max(sourceRoom.x, targetRoom.x);
-    overlapEnd = Math.min(
-      sourceRoom.x + sourceRoom.width,
-      targetRoom.x + targetRoom.width
-    );
+    overlapEnd = Math.min(sourceRoom.x + sourceRoom.width, targetRoom.x + targetRoom.width);
   }
 
   if (overlapEnd <= overlapStart) {
@@ -67,7 +61,7 @@ export function calculateWallOverlap(
 /**
  * Calculate absolute position along shared wall segment
  * Position is interpreted as a percentage of the SHARED segment, not the full wall
- * 
+ *
  * @param sourceRoom - The room initiating the connection
  * @param targetRoom - The room being connected to
  * @param isVertical - Whether the walls are vertical (left/right) or horizontal (top/bottom)
@@ -78,18 +72,18 @@ export function calculatePositionOnOverlap(
   sourceRoom: RoomBounds,
   targetRoom: RoomBounds,
   isVertical: boolean,
-  positionPercent: number
+  positionPercent: number,
 ): number | null {
   const overlap = calculateWallOverlap(sourceRoom, targetRoom, isVertical);
   if (!overlap) return null;
 
-  return overlap.start + (overlap.length * positionPercent / 100);
+  return overlap.start + (overlap.length * positionPercent) / 100;
 }
 
 /**
  * Calculate absolute position with fallback for when target room is unavailable
  * Falls back to percentage of full wall if no target room provided
- * 
+ *
  * @param sourceRoom - The room initiating the connection
  * @param targetRoom - The room being connected to (optional)
  * @param isVertical - Whether the walls are vertical (left/right) or horizontal (top/bottom)
@@ -100,11 +94,16 @@ export function calculatePositionWithFallback(
   sourceRoom: RoomBounds,
   targetRoom: RoomBounds | null | undefined,
   isVertical: boolean,
-  positionPercent: number
+  positionPercent: number,
 ): number {
   // Try shared segment calculation first
   if (targetRoom) {
-    const position = calculatePositionOnOverlap(sourceRoom, targetRoom, isVertical, positionPercent);
+    const position = calculatePositionOnOverlap(
+      sourceRoom,
+      targetRoom,
+      isVertical,
+      positionPercent,
+    );
     if (position !== null) {
       return position;
     }
@@ -117,4 +116,3 @@ export function calculatePositionWithFallback(
     return sourceRoom.x + sourceRoom.width * (positionPercent / 100);
   }
 }
-

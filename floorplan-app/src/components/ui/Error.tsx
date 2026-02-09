@@ -1,7 +1,7 @@
-import { Show, type JSX } from "solid-js";
-import { A } from "@solidjs/router";
+import { A } from '@solidjs/router';
+import { Show } from 'solid-js';
 
-export type ErrorSeverity = "error" | "warning" | "info";
+export type ErrorSeverity = 'error' | 'warning' | 'info';
 
 export interface ErrorDisplayProps {
   /** Error title */
@@ -28,11 +28,11 @@ export interface ErrorDisplayProps {
 
 /**
  * ErrorDisplay component - displays error messages with consistent styling.
- * 
+ *
  * @example
  * // Simple inline error
  * <ErrorDisplay message="Failed to load data" />
- * 
+ *
  * @example
  * // Full-page error with retry
  * <ErrorDisplay
@@ -44,46 +44,43 @@ export interface ErrorDisplayProps {
  * />
  */
 export function ErrorDisplay(props: ErrorDisplayProps) {
-  const severity = () => props.severity ?? "error";
+  const severity = () => props.severity ?? 'error';
 
   const iconPath = () => {
     switch (severity()) {
-      case "warning":
-        return "M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z";
-      case "info":
-        return "M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z";
-      case "error":
+      case 'warning':
+        return 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
+      case 'info':
+        return 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
       default:
-        return "M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z";
+        return 'M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z';
     }
   };
 
   const alertClass = () => {
     switch (severity()) {
-      case "warning":
-        return "alert-warning";
-      case "info":
-        return "alert-info";
-      case "error":
+      case 'warning':
+        return 'alert-warning';
+      case 'info':
+        return 'alert-info';
       default:
-        return "alert-error";
+        return 'alert-error';
     }
   };
 
   const iconColor = () => {
     switch (severity()) {
-      case "warning":
-        return "text-warning";
-      case "info":
-        return "text-info";
-      case "error":
+      case 'warning':
+        return 'text-warning';
+      case 'info':
+        return 'text-info';
       default:
-        return "text-error";
+        return 'text-error';
     }
   };
 
   const ErrorContent = () => (
-    <div class={`flex flex-col items-center text-center gap-4 ${props.class ?? ""}`}>
+    <div class={`flex flex-col items-center text-center gap-4 ${props.class ?? ''}`}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class={`h-16 w-16 ${iconColor()}`}
@@ -91,12 +88,7 @@ export function ErrorDisplay(props: ErrorDisplayProps) {
         viewBox="0 0 24 24"
         stroke="currentColor"
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d={iconPath()}
-        />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPath()} />
       </svg>
 
       <Show when={props.title}>
@@ -107,9 +99,7 @@ export function ErrorDisplay(props: ErrorDisplayProps) {
 
       <Show when={props.details}>
         <details class="text-sm text-base-content/50 max-w-md">
-          <summary class="cursor-pointer hover:text-base-content/70">
-            Show details
-          </summary>
+          <summary class="cursor-pointer hover:text-base-content/70">Show details</summary>
           <pre class="mt-2 p-2 bg-base-200 rounded text-left overflow-x-auto text-xs">
             {props.details}
           </pre>
@@ -119,12 +109,7 @@ export function ErrorDisplay(props: ErrorDisplayProps) {
       <div class="flex gap-3 flex-wrap justify-center">
         <Show when={props.showRetry && props.onRetry}>
           <button type="button" class="btn btn-primary" onClick={props.onRetry}>
-            <svg
-              class="w-4 h-4 mr-2"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
+            <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 stroke-linecap="round"
                 stroke-linejoin="round"
@@ -171,19 +156,14 @@ export function ErrorDisplay(props: ErrorDisplayProps) {
 
   // Alert variant (inline)
   return (
-    <div class={`alert ${alertClass()} ${props.class ?? ""}`}>
+    <div class={`alert ${alertClass()} ${props.class ?? ''}`}>
       <svg
         xmlns="http://www.w3.org/2000/svg"
         class="stroke-current shrink-0 h-6 w-6"
         fill="none"
         viewBox="0 0 24 24"
       >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="2"
-          d={iconPath()}
-        />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d={iconPath()} />
       </svg>
       <div class="flex-1">
         <Show when={props.title}>
@@ -228,15 +208,14 @@ export function NotFoundError(props: {
             />
           </svg>
 
-          <h2 class="text-xl font-bold mt-4">
-            {props.title ?? "Not Found"}
-          </h2>
+          <h2 class="text-xl font-bold mt-4">{props.title ?? 'Not Found'}</h2>
           <p class="text-base-content/70">
-            {props.message ?? "The resource you're looking for doesn't exist or you don't have access."}
+            {props.message ??
+              "The resource you're looking for doesn't exist or you don't have access."}
           </p>
 
-          <A href={props.backHref ?? "/"} class="btn btn-primary mt-4">
-            {props.backLabel ?? "Go Home"}
+          <A href={props.backHref ?? '/'} class="btn btn-primary mt-4">
+            {props.backLabel ?? 'Go Home'}
           </A>
         </div>
       </div>
@@ -247,10 +226,7 @@ export function NotFoundError(props: {
 /**
  * AccessDeniedError - standard "access denied" error display.
  */
-export function AccessDeniedError(props: {
-  message?: string;
-  showLoginLink?: boolean;
-}) {
+export function AccessDeniedError(props: { message?: string; showLoginLink?: boolean }) {
   return (
     <div class="flex justify-center items-center min-h-[60vh] p-8">
       <div class="card bg-base-100 shadow-xl max-w-md w-full">

@@ -1,4 +1,4 @@
-import { internalMutation } from "./_generated/server";
+import { internalMutation } from './_generated/server';
 
 export interface TrendingScoreParams {
   views_7d: number;
@@ -27,7 +27,7 @@ export const calculateTrendingScores = internalMutation({
   handler: async (ctx) => {
     const now = Date.now();
 
-    const projects = await ctx.db.query("projects").collect();
+    const projects = await ctx.db.query('projects').collect();
 
     for (const project of projects) {
       const views_30d = project.viewCount ?? 0;

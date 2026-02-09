@@ -1,4 +1,4 @@
-import { FloorplanContainer } from "./viewer/FloorplanContainer";
+import { FloorplanContainer } from './viewer/FloorplanContainer';
 
 export interface FloorplanEmbedProps {
   /** DSL content to render */
@@ -17,7 +17,7 @@ export interface FloorplanEmbedProps {
 
 /**
  * FloorplanEmbed component - Wraps the new FloorplanContainer for backward compatibility.
- * 
+ *
  * This component delegates all logic to FloorplanContainer, which handles:
  * - Dynamic import of viewer/editor cores
  * - Mode detection (Basic/Advanced/Editor)

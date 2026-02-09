@@ -1,5 +1,5 @@
-import { ErrorBoundary as SolidErrorBoundary, type ParentProps } from "solid-js";
-import { A } from "@solidjs/router";
+import { A } from '@solidjs/router';
+import { type ParentProps, ErrorBoundary as SolidErrorBoundary } from 'solid-js';
 
 interface ErrorBoundaryProps extends ParentProps {
   /** Fallback component or render function */
@@ -10,14 +10,14 @@ interface ErrorBoundaryProps extends ParentProps {
 
 /**
  * ErrorBoundary - catches JavaScript errors anywhere in the child component tree.
- * 
+ *
  * Uses Solid's built-in ErrorBoundary with a consistent fallback UI.
- * 
+ *
  * @example
  * <ErrorBoundary>
  *   <ComponentThatMightFail />
  * </ErrorBoundary>
- * 
+ *
  * @example
  * <ErrorBoundary
  *   onError={(err) => logToService(err)}
@@ -31,8 +31,8 @@ interface ErrorBoundaryProps extends ParentProps {
 export function ErrorBoundary(props: ErrorBoundaryProps) {
   const handleError = (err: Error) => {
     // Log error to console
-    console.error("ErrorBoundary caught an error:", err);
-    
+    console.error('ErrorBoundary caught an error:', err);
+
     // Call optional error handler
     props.onError?.(err);
   };
@@ -60,7 +60,7 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
           </div>
 
           <h2 class="text-xl font-bold">Something went wrong</h2>
-          
+
           <p class="text-base-content/70 mt-2">
             An unexpected error occurred. Please try again or go back to the home page.
           </p>
@@ -76,7 +76,7 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
               </p>
               {err.stack && (
                 <pre class="font-mono text-xs text-base-content/50 whitespace-pre-wrap break-words">
-                  {err.stack.split("\n").slice(1, 5).join("\n")}
+                  {err.stack.split('\n').slice(1, 5).join('\n')}
                 </pre>
               )}
             </div>
@@ -84,17 +84,8 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
 
           {/* Actions */}
           <div class="flex gap-3 justify-center mt-6">
-            <button
-              type="button"
-              class="btn btn-primary"
-              onClick={reset}
-            >
-              <svg
-                class="w-4 h-4 mr-2"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
+            <button type="button" class="btn btn-primary" onClick={reset}>
+              <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -153,7 +144,7 @@ export function PageErrorBoundary(props: ParentProps) {
               </div>
 
               <h1 class="text-2xl font-bold">Oops! Something went wrong</h1>
-              
+
               <p class="text-base-content/70 mt-2">
                 We're sorry, but an unexpected error occurred. Our team has been notified.
               </p>
@@ -163,18 +154,12 @@ export function PageErrorBoundary(props: ParentProps) {
                   Technical details
                 </summary>
                 <div class="mt-2 p-3 bg-base-200 rounded-lg">
-                  <p class="font-mono text-xs text-error">
-                    {err.message}
-                  </p>
+                  <p class="font-mono text-xs text-error">{err.message}</p>
                 </div>
               </details>
 
               <div class="flex gap-3 justify-center mt-6">
-                <button
-                  type="button"
-                  class="btn btn-primary"
-                  onClick={reset}
-                >
+                <button type="button" class="btn btn-primary" onClick={reset}>
                   Try Again
                 </button>
                 <button

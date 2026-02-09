@@ -69,9 +69,7 @@ const DEFAULT_SECTIONS: KeyboardHelpSection[] = [
   },
   {
     title: 'Help',
-    shortcuts: [
-      { keys: ['H', '?'], description: 'Toggle this help' },
-    ],
+    shortcuts: [{ keys: ['H', '?'], description: 'Toggle this help' }],
   },
 ];
 
@@ -80,26 +78,26 @@ const DEFAULT_SECTIONS: KeyboardHelpSection[] = [
  */
 export function createKeyboardHelpUI(options: KeyboardHelpUIOptions = {}): KeyboardHelpUI {
   injectStyles();
-  
+
   const {
     sections = DEFAULT_SECTIONS,
     footerText = 'Press H or ? to toggle this help',
     onClose,
   } = options;
-  
+
   const overlay = document.createElement('div');
   overlay.className = 'fp-keyboard-help-overlay';
   overlay.id = 'keyboard-help-overlay';
-  
+
   const panel = document.createElement('div');
   panel.className = 'fp-keyboard-help-panel';
-  
+
   // Header with title and close button
   const header = document.createElement('h2');
-  
+
   const titleSpan = document.createElement('span');
   titleSpan.textContent = '⌨️ Keyboard Shortcuts';
-  
+
   const closeButton = document.createElement('button');
   closeButton.className = 'fp-keyboard-help-close';
   closeButton.id = 'keyboard-help-close';
@@ -109,58 +107,58 @@ export function createKeyboardHelpUI(options: KeyboardHelpUIOptions = {}): Keybo
     overlay.classList.remove('visible');
     onClose?.();
   });
-  
+
   header.appendChild(titleSpan);
   header.appendChild(closeButton);
   panel.appendChild(header);
-  
+
   // Sections
   sections.forEach((section) => {
     const sectionEl = document.createElement('div');
     sectionEl.className = 'fp-shortcut-section';
-    
+
     const sectionTitle = document.createElement('h3');
     sectionTitle.textContent = section.title;
     sectionEl.appendChild(sectionTitle);
-    
+
     const list = document.createElement('div');
     list.className = 'fp-shortcut-list';
-    
+
     section.shortcuts.forEach((shortcut) => {
       const item = document.createElement('div');
       item.className = 'fp-shortcut-item';
-      
+
       const keysContainer = document.createElement('span');
       keysContainer.className = 'fp-shortcut-keys';
-      
+
       shortcut.keys.forEach((key) => {
         const kbd = document.createElement('span');
         kbd.className = 'fp-kbd';
         kbd.textContent = key;
         keysContainer.appendChild(kbd);
       });
-      
+
       const desc = document.createElement('span');
       desc.className = 'fp-shortcut-desc';
       desc.textContent = shortcut.description;
-      
+
       item.appendChild(keysContainer);
       item.appendChild(desc);
       list.appendChild(item);
     });
-    
+
     sectionEl.appendChild(list);
     panel.appendChild(sectionEl);
   });
-  
+
   // Footer
   const footer = document.createElement('div');
   footer.className = 'fp-help-footer';
   footer.textContent = footerText;
   panel.appendChild(footer);
-  
+
   overlay.appendChild(panel);
-  
+
   // Close on overlay click (outside panel)
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
@@ -168,7 +166,7 @@ export function createKeyboardHelpUI(options: KeyboardHelpUIOptions = {}): Keybo
       onClose?.();
     }
   });
-  
+
   return {
     element: overlay,
     panel,
@@ -179,4 +177,3 @@ export function createKeyboardHelpUI(options: KeyboardHelpUIOptions = {}): Keybo
     isVisible: () => overlay.classList.contains('visible'),
   };
 }
-

@@ -1,6 +1,6 @@
 /**
  * Permalink utilities for floorplan snapshots.
- * 
+ *
  * Permalinks are immutable URLs that point to a specific snapshot (content-addressable).
  * Format: /u/{username}/{project}/s/{hash}
  */
@@ -16,14 +16,14 @@ export function generatePermalink(
   username: string,
   projectSlug: string,
   hash: string,
-  absolute = false
+  absolute = false,
 ): string {
   const path = `/u/${username}/${projectSlug}/s/${hash}`;
-  
-  if (absolute && typeof window !== "undefined") {
+
+  if (absolute && typeof window !== 'undefined') {
     return `${window.location.origin}${path}`;
   }
-  
+
   return path;
 }
 
@@ -38,14 +38,14 @@ export function generateVersionUrl(
   username: string,
   projectSlug: string,
   versionName: string,
-  absolute = false
+  absolute = false,
 ): string {
   const path = `/u/${username}/${projectSlug}/v/${versionName}`;
-  
-  if (absolute && typeof window !== "undefined") {
+
+  if (absolute && typeof window !== 'undefined') {
     return `${window.location.origin}${path}`;
   }
-  
+
   return path;
 }
 
@@ -61,14 +61,14 @@ export async function copyToClipboard(text: string): Promise<boolean> {
       return true;
     } else {
       // Fallback for older browsers or non-secure contexts
-      const textArea = document.createElement("textarea");
+      const textArea = document.createElement('textarea');
       textArea.value = text;
-      textArea.style.position = "fixed";
-      textArea.style.left = "-9999px";
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-9999px';
       document.body.appendChild(textArea);
       textArea.focus();
       textArea.select();
-      const success = document.execCommand("copy");
+      const success = document.execCommand('copy');
       document.body.removeChild(textArea);
       return success;
     }
@@ -96,13 +96,13 @@ export function parsePermalink(url: string): {
   hash: string;
 } | null {
   // Handle both full URLs and paths
-  const path = url.startsWith("http") ? new URL(url).pathname : url;
-  
+  const path = url.startsWith('http') ? new URL(url).pathname : url;
+
   // Match /u/{username}/{project}/s/{hash}
   const match = path.match(/^\/u\/([^/]+)\/([^/]+)\/s\/([a-f0-9]+)$/i);
-  
+
   if (!match) return null;
-  
+
   return {
     username: match[1],
     projectSlug: match[2],

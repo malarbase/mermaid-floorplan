@@ -5,10 +5,10 @@
  */
 
 import * as THREE from 'three';
-import type { JsonFloor, JsonRoom, JsonWall } from './types.js';
+import type { ViewerTheme } from './constants.js';
 import { DIMENSIONS } from './constants.js';
 import { MaterialFactory, type MaterialStyle } from './materials.js';
-import type { ViewerTheme } from './constants.js';
+import type { JsonFloor, JsonRoom, JsonWall } from './types.js';
 
 export interface WallGeneratorOptions {
   /** Wall thickness (default: DIMENSIONS.WALL.THICKNESS) */
@@ -26,7 +26,7 @@ export interface WallGeneratorOptions {
  */
 export function generateFloorWalls(
   floor: JsonFloor,
-  options: WallGeneratorOptions = {}
+  options: WallGeneratorOptions = {},
 ): THREE.Group {
   const group = new THREE.Group();
   group.name = `floor_walls_${floor.id}`;
@@ -59,10 +59,7 @@ interface RoomWallOptions {
 /**
  * Generate walls for a single room
  */
-export function generateRoomWalls(
-  room: JsonRoom,
-  options: RoomWallOptions
-): THREE.Group {
+export function generateRoomWalls(room: JsonRoom, options: RoomWallOptions): THREE.Group {
   const group = new THREE.Group();
   group.name = `room_walls_${room.name}`;
 
@@ -104,7 +101,7 @@ interface WallSegmentOptions {
 function createWallSegment(
   room: JsonRoom,
   wall: JsonWall,
-  options: WallSegmentOptions
+  options: WallSegmentOptions,
 ): THREE.Mesh | null {
   const { wallThickness, wallHeight, elevation, theme, style } = options;
 
@@ -164,12 +161,12 @@ function createWallSegment(
 export function roomsShareWall(
   room1: JsonRoom,
   room2: JsonRoom,
-  wallThickness: number = DIMENSIONS.WALL.THICKNESS
+  wallThickness: number = DIMENSIONS.WALL.THICKNESS,
 ): { shared: boolean; direction1?: string; direction2?: string } {
   const tolerance = wallThickness * 0.5;
 
   // Check if room1's right wall touches room2's left wall
-  if (Math.abs((room1.x + room1.width) - room2.x) < tolerance) {
+  if (Math.abs(room1.x + room1.width - room2.x) < tolerance) {
     // Check vertical overlap
     const overlapStart = Math.max(room1.z, room2.z);
     const overlapEnd = Math.min(room1.z + room1.height, room2.z + room2.height);
@@ -179,7 +176,7 @@ export function roomsShareWall(
   }
 
   // Check if room1's bottom wall touches room2's top wall
-  if (Math.abs((room1.z + room1.height) - room2.z) < tolerance) {
+  if (Math.abs(room1.z + room1.height - room2.z) < tolerance) {
     // Check horizontal overlap
     const overlapStart = Math.max(room1.x, room2.x);
     const overlapEnd = Math.min(room1.x + room1.width, room2.x + room2.width);
@@ -190,4 +187,3 @@ export function roomsShareWall(
 
   return { shared: false };
 }
-

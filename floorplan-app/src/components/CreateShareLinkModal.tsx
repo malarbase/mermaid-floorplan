@@ -1,11 +1,11 @@
-import { createSignal, Show } from "solid-js";
-import { useMutation } from "convex-solidjs";
-import type { FunctionReference } from "convex/server";
+import type { FunctionReference } from 'convex/server';
+import { useMutation } from 'convex-solidjs';
+import { createSignal, Show } from 'solid-js';
 
 // Type-safe API reference
 const api = {
   sharing: {
-    createShareLink: "sharing:createShareLink" as unknown as FunctionReference<"mutation">,
+    createShareLink: 'sharing:createShareLink' as unknown as FunctionReference<'mutation'>,
   },
 };
 
@@ -13,7 +13,7 @@ interface CreateShareLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
-  onSuccess?: (token: string, role: "viewer" | "editor") => void;
+  onSuccess?: (token: string, role: 'viewer' | 'editor') => void;
 }
 
 /**
@@ -21,10 +21,10 @@ interface CreateShareLinkModalProps {
  * Allows setting optional expiration.
  */
 export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
-  const [role, setRole] = createSignal<"viewer" | "editor">("viewer");
+  const [role, setRole] = createSignal<'viewer' | 'editor'>('viewer');
   const [expiresInDays, setExpiresInDays] = createSignal<number | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
-  const [error, setError] = createSignal("");
+  const [error, setError] = createSignal('');
   const [createdLink, setCreatedLink] = createSignal<string | null>(null);
   const [copied, setCopied] = createSignal(false);
 
@@ -33,7 +33,7 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
   const handleSubmit = async (e: Event) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError("");
+    setError('');
     setCreatedLink(null);
 
     try {
@@ -51,7 +51,7 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
         props.onSuccess?.(result.token, role());
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create share link");
+      setError(err instanceof Error ? err.message : 'Failed to create share link');
     } finally {
       setIsSubmitting(false);
     }
@@ -66,30 +66,30 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error("Failed to copy:", err);
+      console.error('Failed to copy:', err);
     }
   };
 
   const handleClose = () => {
     // Reset state when closing
-    setRole("viewer");
+    setRole('viewer');
     setExpiresInDays(undefined);
-    setError("");
+    setError('');
     setCreatedLink(null);
     setCopied(false);
     props.onClose();
   };
 
   const handleCreateAnother = () => {
-    setRole("viewer");
+    setRole('viewer');
     setExpiresInDays(undefined);
-    setError("");
+    setError('');
     setCreatedLink(null);
     setCopied(false);
   };
 
   return (
-    <dialog class={`modal ${props.isOpen ? "modal-open" : ""}`}>
+    <dialog class={`modal ${props.isOpen ? 'modal-open' : ''}`}>
       <div class="modal-box">
         <h3 class="font-bold text-lg">Create Share Link</h3>
 
@@ -99,12 +99,7 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
             /* Success state - show created link */
             <div class="py-4">
               <div class="alert alert-success mb-4">
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -118,9 +113,11 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
               <div class="form-control">
                 <label class="label">
                   <span class="label-text">Share URL</span>
-                  <span class={`label-text-alt badge badge-sm ${
-                    role() === "editor" ? "badge-warning" : "badge-info"
-                  }`}>
+                  <span
+                    class={`label-text-alt badge badge-sm ${
+                      role() === 'editor' ? 'badge-warning' : 'badge-info'
+                    }`}
+                  >
                     {role()}
                   </span>
                 </label>
@@ -128,12 +125,12 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
                   <input
                     type="text"
                     class="input input-bordered join-item flex-1 font-mono text-sm"
-                    value={createdLink() ?? ""}
+                    value={createdLink() ?? ''}
                     readonly
                   />
                   <button
                     type="button"
-                    class={`btn join-item ${copied() ? "btn-success" : "btn-primary"}`}
+                    class={`btn join-item ${copied() ? 'btn-success' : 'btn-primary'}`}
                     onClick={handleCopyLink}
                   >
                     <Show
@@ -157,12 +154,7 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
                         </>
                       }
                     >
-                      <svg
-                        class="w-4 h-4"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
+                      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
                           stroke-linecap="round"
                           stroke-linejoin="round"
@@ -176,18 +168,14 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
                 </div>
                 <label class="label">
                   <span class="label-text-alt text-base-content/50">
-                    Anyone with this link can{" "}
-                    {role() === "editor" ? "view and edit" : "view"} this project
+                    Anyone with this link can {role() === 'editor' ? 'view and edit' : 'view'} this
+                    project
                   </span>
                 </label>
               </div>
 
               <div class="modal-action">
-                <button
-                  type="button"
-                  class="btn btn-ghost"
-                  onClick={handleCreateAnother}
-                >
+                <button type="button" class="btn btn-ghost" onClick={handleCreateAnother}>
                   Create Another
                 </button>
                 <button type="button" class="btn btn-primary" onClick={handleClose}>
@@ -200,8 +188,7 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
           {/* Form state - create new link */}
           <form onSubmit={handleSubmit} class="py-4 space-y-4">
             <p class="text-sm text-base-content/60">
-              Create a link that gives anyone access to this project without
-              requiring a username.
+              Create a link that gives anyone access to this project without requiring a username.
             </p>
 
             {/* Role Selection */}
@@ -215,8 +202,8 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
                     type="radio"
                     name="role"
                     class="radio radio-primary"
-                    checked={role() === "viewer"}
-                    onChange={() => setRole("viewer")}
+                    checked={role() === 'viewer'}
+                    onChange={() => setRole('viewer')}
                   />
                   <div>
                     <span class="label-text font-medium">Viewer</span>
@@ -228,8 +215,8 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
                     type="radio"
                     name="role"
                     class="radio radio-warning"
-                    checked={role() === "editor"}
-                    onChange={() => setRole("editor")}
+                    checked={role() === 'editor'}
+                    onChange={() => setRole('editor')}
                   />
                   <div>
                     <span class="label-text font-medium">Editor</span>
@@ -247,10 +234,10 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
               </label>
               <select
                 class="select select-bordered w-full"
-                value={expiresInDays() ?? "never"}
+                value={expiresInDays() ?? 'never'}
                 onChange={(e) => {
                   const val = e.currentTarget.value;
-                  setExpiresInDays(val === "never" ? undefined : parseInt(val, 10));
+                  setExpiresInDays(val === 'never' ? undefined : parseInt(val, 10));
                 }}
               >
                 <option value="never">Never expires</option>
@@ -262,21 +249,16 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
               <label class="label">
                 <span class="label-text-alt text-base-content/50">
                   {expiresInDays()
-                    ? `Link will expire in ${expiresInDays()} day${expiresInDays()! > 1 ? "s" : ""}`
-                    : "Link will remain active until you revoke it"}
+                    ? `Link will expire in ${expiresInDays()} day${expiresInDays()! > 1 ? 's' : ''}`
+                    : 'Link will remain active until you revoke it'}
                 </span>
               </label>
             </div>
 
             {/* Warning for editor links */}
-            <Show when={role() === "editor"}>
+            <Show when={role() === 'editor'}>
               <div class="alert alert-warning">
-                <svg
-                  class="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -285,8 +267,8 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
                   />
                 </svg>
                 <span class="text-sm">
-                  Anyone with this link will be able to edit your project.
-                  Only share with people you trust.
+                  Anyone with this link will be able to edit your project. Only share with people
+                  you trust.
                 </span>
               </div>
             </Show>
@@ -303,11 +285,7 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
               <button type="button" class="btn btn-ghost" onClick={handleClose}>
                 Cancel
               </button>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                disabled={isSubmitting()}
-              >
+              <button type="submit" class="btn btn-primary" disabled={isSubmitting()}>
                 <Show when={isSubmitting()}>
                   <span class="loading loading-spinner loading-sm"></span>
                 </Show>

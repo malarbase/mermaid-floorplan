@@ -11,14 +11,29 @@
     "build:all": "echo | npm run langium:generate && npm run build --workspaces",
     "langium:generate": "npm run --workspace floorplan-language langium:generate",
     "langium:watch": "npm run --workspace floorplan-language langium:watch",
-    "test": "npm run --workspace floorplan-language test && npm run --workspace floorplan-mcp-server test"
+    "test": "npm run --workspace floorplan-language test && npm run --workspace floorplan-mcp-server test",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "prepare": "husky"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "biome check --write --no-errors-on-unmatched"
+    ],
+    "*.{json,css}": [
+      "biome format --write --no-errors-on-unmatched"
+    ]
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.3.14",
     "@tailwindcss/postcss": "^4.1.18",
     "autoprefixer": "^10.4.23",
     "daisyui": "^5.5.14",
+    "husky": "^9.1.7",
     "langium": "^4.0.0",
     "langium-cli": "^4.1.0",
+    "lint-staged": "^16.2.7",
     "postcss": "^8.5.6",
     "shx": "~0.4.0",
     "tailwindcss": "^4.1.18",

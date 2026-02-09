@@ -1,17 +1,17 @@
-import { MetaProvider, Title } from "@solidjs/meta";
-import { Router } from "@solidjs/router";
-import { FileRoutes } from "@solidjs/start/router";
-import { Suspense } from "solid-js";
-import { ConvexClientProvider } from "~/components/ConvexProvider";
-import { PageErrorBoundary } from "~/components/ui/ErrorBoundary";
-import { ToastProvider } from "~/components/ui/Toast";
-import { Loading } from "~/components/ui/Loading";
-import { ThemeProvider } from "~/lib/theme";
-import "./app.css";
+import { MetaProvider, Title } from '@solidjs/meta';
+import { Router } from '@solidjs/router';
+import { FileRoutes } from '@solidjs/start/router';
+import { Suspense } from 'solid-js';
+import { ConvexClientProvider } from '~/components/ConvexProvider';
+import { PageErrorBoundary } from '~/components/ui/ErrorBoundary';
+import { Loading } from '~/components/ui/Loading';
+import { ToastProvider } from '~/components/ui/Toast';
+import { ThemeProvider } from '~/lib/theme';
+import './app.css';
 
 /**
  * Root application component.
- * 
+ *
  * Provides:
  * - MetaProvider for page titles and meta tags
  * - ConvexProvider for database access

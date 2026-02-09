@@ -1,28 +1,26 @@
-import { useParams, A, useNavigate, useSearchParams } from "@solidjs/router";
-import { Show, createMemo, createSignal, createEffect, onCleanup } from "solid-js";
-import { clientOnly } from "@solidjs/start";
-import { useMutation } from "convex-solidjs";
-import { VisibilityToggle } from "~/components/VisibilityToggle";
-import { VersionSwitcher } from "~/components/VersionSwitcher";
-import { CreateVersionModal } from "~/components/CreateVersionModal";
-import { CopyPermalinkButton } from "~/components/CopyPermalinkButton";
-import { Header } from "~/components/Header";
-import { ForkButton } from "~/components/ForkButton";
+import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
+import { clientOnly } from '@solidjs/start';
+import { useMutation } from 'convex-solidjs';
+import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js';
+import { CopyPermalinkButton } from '~/components/CopyPermalinkButton';
+import { CreateVersionModal } from '~/components/CreateVersionModal';
+import { ForkButton } from '~/components/ForkButton';
+import { Header } from '~/components/Header';
 import {
-  ProjectPageLayout,
-  ProjectBreadcrumbs,
-  NotFoundCard,
   ContentMissingCard,
+  NotFoundCard,
+  ProjectBreadcrumbs,
+  ProjectPageLayout,
   SettingsIcon,
-} from "~/components/project/ProjectPageLayout";
-import { useProjectData, useVersionData } from "~/hooks/useProjectData";
-import { projectApi } from "~/lib/project-types";
-import type { ViewerMode } from "~/components/viewer/FloorplanContainer";
+} from '~/components/project/ProjectPageLayout';
+import { VersionSwitcher } from '~/components/VersionSwitcher';
+import { VisibilityToggle } from '~/components/VisibilityToggle';
+import type { ViewerMode } from '~/components/viewer/FloorplanContainer';
+import { useProjectData, useVersionData } from '~/hooks/useProjectData';
+import { projectApi } from '~/lib/project-types';
 
 // Use clientOnly to prevent SSR issues with Three.js
-const FloorplanContainer = clientOnly(
-  () => import("~/components/viewer/FloorplanContainer")
-);
+const FloorplanContainer = clientOnly(() => import('~/components/viewer/FloorplanContainer'));
 
 /**
  * Version view page - shows project at a specific named version.
@@ -44,19 +42,13 @@ export default function VersionView() {
   const versionName = createMemo(() => params.version);
 
   // Project data
-  const {
-    project,
-    forkedFrom,
-    projectData,
-    isOwner,
-    isProjectLoading,
-    projectNotFound,
-  } = useProjectData(username, projectSlug);
+  const { project, forkedFrom, projectData, isOwner, isProjectLoading, projectNotFound } =
+    useProjectData(username, projectSlug);
 
   // Version data
   const { content, currentHash, versionExists, isVersionLoading } = useVersionData(
     () => project()?._id as string | undefined,
-    versionName
+    versionName,
   );
 
   // Loading state
@@ -75,20 +67,20 @@ export default function VersionView() {
 
   // Viewer mode (consistent with index.tsx)
   const mode = createMemo((): ViewerMode => {
-    const modeParam = typeof searchParams.mode === "string" ? searchParams.mode : undefined;
-    if (modeParam && ["basic", "advanced", "editor"].includes(modeParam)) {
+    const modeParam = typeof searchParams.mode === 'string' ? searchParams.mode : undefined;
+    if (modeParam && ['basic', 'advanced', 'editor'].includes(modeParam)) {
       return modeParam as ViewerMode;
     }
-    return isOwner() ? "editor" : "advanced";
+    return isOwner() ? 'editor' : 'advanced';
   });
 
   // --- Save functionality ---
   const saveMutation = useMutation(projectApi.projects.save);
-  const [currentDsl, setCurrentDsl] = createSignal<string>("");
+  const [currentDsl, setCurrentDsl] = createSignal<string>('');
   const [isSaving, setIsSaving] = createSignal(false);
   const [showSaveSuccess, setShowSaveSuccess] = createSignal(false);
   const [saveError, setSaveError] = createSignal<string | null>(null);
-  const [lastSavedContent, setLastSavedContent] = createSignal<string>("");
+  const [lastSavedContent, setLastSavedContent] = createSignal<string>('');
 
   // Sync initial content
   createEffect(() => {
@@ -107,7 +99,8 @@ export default function VersionView() {
   };
 
   const handleSave = async () => {
-    if (!isOwner() || !project()?._id || !versionName() || !hasUnsavedChanges() || isSaving()) return;
+    if (!isOwner() || !project()?._id || !versionName() || !hasUnsavedChanges() || isSaving())
+      return;
 
     setIsSaving(true);
     setSaveError(null);
@@ -133,13 +126,13 @@ export default function VersionView() {
   createEffect(() => {
     if (!isOwner()) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();
         handleSave();
       }
     };
-    document.addEventListener("keydown", onKeyDown);
-    onCleanup(() => document.removeEventListener("keydown", onKeyDown));
+    document.addEventListener('keydown', onKeyDown);
+    onCleanup(() => document.removeEventListener('keydown', onKeyDown));
   });
 
   // Warn before leaving with unsaved changes
@@ -147,15 +140,15 @@ export default function VersionView() {
     if (hasUnsavedChanges()) {
       const onBeforeUnload = (e: BeforeUnloadEvent) => {
         e.preventDefault();
-        e.returnValue = "";
+        e.returnValue = '';
       };
-      window.addEventListener("beforeunload", onBeforeUnload);
-      onCleanup(() => window.removeEventListener("beforeunload", onBeforeUnload));
+      window.addEventListener('beforeunload', onBeforeUnload);
+      onCleanup(() => window.removeEventListener('beforeunload', onBeforeUnload));
     }
   });
 
   // Handle version created
-  const handleVersionCreated = (versionId: string, newVersionName: string) => {
+  const handleVersionCreated = (_versionId: string, newVersionName: string) => {
     navigate(`/u/${username()}/${projectSlug()}/v/${newVersionName}`);
   };
 
@@ -196,10 +189,7 @@ export default function VersionView() {
         </div>
       </Show>
 
-      <A
-        href={`/u/${username()}/${projectSlug()}/history`}
-        class="btn btn-ghost btn-sm"
-      >
+      <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-ghost btn-sm">
         History
       </A>
 
@@ -219,10 +209,7 @@ export default function VersionView() {
       </Show>
 
       <Show when={isOwner()}>
-        <A
-          href={`/u/${username()}/${projectSlug()}/settings`}
-          class="btn btn-ghost btn-sm"
-        >
+        <A href={`/u/${username()}/${projectSlug()}/settings`} class="btn btn-ghost btn-sm">
           <SettingsIcon />
         </A>
       </Show>
@@ -242,7 +229,12 @@ export default function VersionView() {
               fallback={<span class="loading loading-spinner loading-xs"></span>}
             >
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
+                />
               </svg>
             </Show>
             Save
@@ -251,7 +243,12 @@ export default function VersionView() {
         <Show when={showSaveSuccess()}>
           <span class="badge badge-success badge-sm gap-1">
             <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             Saved
           </span>
@@ -266,18 +263,14 @@ export default function VersionView() {
       <button
         class="badge badge-outline cursor-pointer hover:badge-primary transition-colors min-w-[6.5rem] justify-center"
         onClick={() => {
-          const modes: ViewerMode[] = ["basic", "advanced", "editor"];
+          const modes: ViewerMode[] = ['basic', 'advanced', 'editor'];
           const currentIndex = modes.indexOf(mode());
           const nextMode = modes[(currentIndex + 1) % modes.length];
           setSearchParams({ mode: nextMode });
         }}
         title="Click to cycle viewer modes"
       >
-        {mode() === "editor"
-          ? "✏️ Editor"
-          : mode() === "advanced"
-            ? "⚙️ Advanced"
-            : "👁️ Basic"}
+        {mode() === 'editor' ? '✏️ Editor' : mode() === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
       </button>
 
       {/* Fork button for non-owners */}
@@ -301,7 +294,7 @@ export default function VersionView() {
       showNotFound={projectNotFound() || (!isLoading() && !versionExists())}
       notFoundFallback={
         <NotFoundCard
-          title={!projectData() ? "Project not found" : "Version not found"}
+          title={!projectData() ? 'Project not found' : 'Version not found'}
           message={
             !projectData()
               ? "This project doesn't exist or you don't have access."
@@ -313,10 +306,7 @@ export default function VersionView() {
                 Go Home
               </A>
               <Show when={projectData()}>
-                <A
-                  href={`/u/${username()}/${projectSlug()}`}
-                  class="btn btn-primary"
-                >
+                <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary">
                   View Project
                 </A>
               </Show>
@@ -335,9 +325,7 @@ export default function VersionView() {
             forkedFrom={forkedFrom()}
             compact
             breadcrumbSuffix={`v/${versionName()}`}
-            titleSuffix={
-              <span class="text-base-content/50 font-normal">/ {versionName()}</span>
-            }
+            titleSuffix={<span class="text-base-content/50 font-normal">/ {versionName()}</span>}
           />
         }
         actions={headerActions()}
@@ -356,11 +344,7 @@ export default function VersionView() {
             />
           }
         >
-          <FloorplanContainer
-            dsl={content()!}
-            mode={mode()}
-            onDslChange={handleDslChange}
-          />
+          <FloorplanContainer dsl={content()!} mode={mode()} onDslChange={handleDslChange} />
         </Show>
       </div>
 

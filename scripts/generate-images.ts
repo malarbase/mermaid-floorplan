@@ -1,7 +1,7 @@
 /**
  * Script to generate SVG and PNG files from a floorplan DSL file
  * Usage: npx tsx scripts/generate-images.ts <input.floorplan> [output-dir] [options]
- * 
+ *
  * Options:
  *   --all           Render all floors in a single combined image
  *   --png           Generate PNG files (in addition to SVG)
@@ -13,23 +13,35 @@
  *   --show-summary  Show floor summary panel
  *   --area-unit U   Area unit: 'sqft' or 'sqm' (default: sqft)
  *   --length-unit U Length unit for dimensions: 'm', 'ft', 'cm', 'in', 'mm' (default: ft)
- * 
+ *
  * Uses the floorplan diagram renderer from the language package.
  * Reuses PNG conversion from the MCP server package.
  */
 
-import { EmptyFileSystem } from "langium";
-import { parseHelper } from "langium/test";
-import type { Floorplan, AreaUnit, LengthUnit } from "floorplan-language";
-import { createFloorplansServices, renderFloor, render, resolveVariables, buildStyleContext, convertFloorplanToJson, formatSummaryTable } from "floorplan-language";
-import { svgToPng } from "floorplans-mcp-server/utils/renderer";
-import * as fs from "fs";
-import * as path from "path";
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { AreaUnit, Floorplan, LengthUnit } from 'floorplan-language';
+import {
+  buildStyleContext,
+  convertFloorplanToJson,
+  createFloorplansServices,
+  formatSummaryTable,
+  render,
+  renderFloor,
+  resolveVariables,
+} from 'floorplan-language';
+import { svgToPng } from 'floorplans-mcp-server/utils/renderer';
+import { EmptyFileSystem } from 'langium';
+import { parseHelper } from 'langium/test';
 
 const services = createFloorplansServices(EmptyFileSystem);
 const parse = parseHelper<Floorplan>(services.Floorplans);
 
-async function convertToPng(svgContent: string, outputPath: string, width: number): Promise<boolean> {
+async function convertToPng(
+  svgContent: string,
+  outputPath: string,
+  width: number,
+): Promise<boolean> {
   const pngBuffer = await svgToPng(svgContent, width);
   fs.writeFileSync(outputPath, pngBuffer);
   return true;
@@ -51,8 +63,8 @@ interface Options {
 
 function parseArgs(args: string[]): Options {
   const options: Options = {
-    inputFile: "TriplexVilla.floorplan",
-    outputDir: ".",
+    inputFile: 'TriplexVilla.floorplan',
+    outputDir: '.',
     renderAll: false,
     generateSvg: true,
     generatePng: true,
@@ -68,35 +80,35 @@ function parseArgs(args: string[]): Options {
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
-    if (arg === "--all") {
+    if (arg === '--all') {
       options.renderAll = true;
-    } else if (arg === "--png") {
+    } else if (arg === '--png') {
       options.generatePng = true;
-    } else if (arg === "--svg-only") {
+    } else if (arg === '--svg-only') {
       options.generateSvg = true;
       options.generatePng = false;
-    } else if (arg === "--png-only") {
+    } else if (arg === '--png-only') {
       options.generateSvg = false;
       options.generatePng = true;
-    } else if (arg === "--scale" && i + 1 < args.length) {
+    } else if (arg === '--scale' && i + 1 < args.length) {
       options.scale = parseInt(args[++i], 10);
-    } else if (arg === "--show-area") {
+    } else if (arg === '--show-area') {
       options.showArea = true;
-    } else if (arg === "--show-dims") {
+    } else if (arg === '--show-dims') {
       options.showDimensions = true;
-    } else if (arg === "--show-summary") {
+    } else if (arg === '--show-summary') {
       options.showFloorSummary = true;
-    } else if (arg === "--area-unit" && i + 1 < args.length) {
+    } else if (arg === '--area-unit' && i + 1 < args.length) {
       const unit = args[++i];
       if (unit === 'sqft' || unit === 'sqm') {
         options.areaUnit = unit;
       }
-    } else if (arg === "--length-unit" && i + 1 < args.length) {
+    } else if (arg === '--length-unit' && i + 1 < args.length) {
       const unit = args[++i] as LengthUnit;
       if (['m', 'ft', 'cm', 'in', 'mm'].includes(unit)) {
         options.lengthUnit = unit;
       }
-    } else if (!arg.startsWith("--")) {
+    } else if (!arg.startsWith('--')) {
       positionalArgs.push(arg);
     }
   }
@@ -118,11 +130,11 @@ async function main() {
     process.exit(1);
   }
 
-  const dslContent = fs.readFileSync(inputPath, "utf-8");
+  const dslContent = fs.readFileSync(inputPath, 'utf-8');
   const doc = await parse(dslContent);
 
   if (doc.parseResult.parserErrors.length > 0) {
-    console.error("Parse errors:");
+    console.error('Parse errors:');
     for (const error of doc.parseResult.parserErrors) {
       console.error(`  - ${error.message}`);
     }
@@ -130,23 +142,24 @@ async function main() {
   }
 
   // Run validation checks
-  const validationErrors = await services.Floorplans.validation.DocumentValidator.validateDocument(doc);
-  const errors = validationErrors.filter(e => e.severity === 1); // 1 = Error
-  const warnings = validationErrors.filter(e => e.severity === 2); // 2 = Warning
-  
+  const validationErrors =
+    await services.Floorplans.validation.DocumentValidator.validateDocument(doc);
+  const errors = validationErrors.filter((e) => e.severity === 1); // 1 = Error
+  const warnings = validationErrors.filter((e) => e.severity === 2); // 2 = Warning
+
   if (errors.length > 0) {
-    console.error("\nValidation errors:");
+    console.error('\nValidation errors:');
     for (const error of errors) {
-      const line = error.range ? ` (line ${error.range.start.line + 1})` : "";
+      const line = error.range ? ` (line ${error.range.start.line + 1})` : '';
       console.error(`  ✗ ${error.message}${line}`);
     }
     process.exit(1);
   }
-  
+
   if (warnings.length > 0) {
-    console.warn("\n⚠ Validation warnings:");
+    console.warn('\n⚠ Validation warnings:');
     for (const warning of warnings) {
-      const line = warning.range ? ` (line ${warning.range.start.line + 1})` : "";
+      const line = warning.range ? ` (line ${warning.range.start.line + 1})` : '';
       console.warn(`  ⚠ ${warning.message}${line}`);
     }
     console.log(); // blank line after warnings
@@ -159,22 +172,21 @@ async function main() {
     fs.mkdirSync(outputDirPath, { recursive: true });
   }
 
-  const formats = [
-    options.generateSvg ? "SVG" : null,
-    options.generatePng ? "PNG" : null,
-  ].filter(Boolean).join(" + ");
+  const formats = [options.generateSvg ? 'SVG' : null, options.generatePng ? 'PNG' : null]
+    .filter(Boolean)
+    .join(' + ');
 
   const annotations = [
     options.showArea ? `areas (${options.areaUnit})` : null,
     options.showDimensions ? `dimensions (${options.lengthUnit})` : null,
-    options.showFloorSummary ? "floor summary" : null,
+    options.showFloorSummary ? 'floor summary' : null,
   ].filter(Boolean);
 
   console.log(`Generating ${formats} for ${floorplan.floors.length} floor(s)...`);
   console.log(`Found ${floorplan.connections.length} connection(s)`);
   console.log(`Scale: ${options.scale}x`);
   if (annotations.length > 0) {
-    console.log(`Annotations: ${annotations.join(", ")}`);
+    console.log(`Annotations: ${annotations.join(', ')}`);
   }
   console.log();
 
@@ -186,17 +198,23 @@ async function main() {
   // Render individual floors
   for (let i = 0; i < floorplan.floors.length; i++) {
     const floor = floorplan.floors[i];
-    const svg = renderFloor(floor, {
-      includeXmlDeclaration: true,
-      includeStyles: true,
-      padding: 2,
-      scale: options.scale,
-      showArea: options.showArea,
-      showDimensions: options.showDimensions,
-      showFloorSummary: options.showFloorSummary,
-      areaUnit: options.areaUnit,
-      lengthUnit: options.lengthUnit,
-    }, floorplan.connections, variables, styleContext);
+    const svg = renderFloor(
+      floor,
+      {
+        includeXmlDeclaration: true,
+        includeStyles: true,
+        padding: 2,
+        scale: options.scale,
+        showArea: options.showArea,
+        showDimensions: options.showDimensions,
+        showFloorSummary: options.showFloorSummary,
+        areaUnit: options.areaUnit,
+        lengthUnit: options.lengthUnit,
+      },
+      floorplan.connections,
+      variables,
+      styleContext,
+    );
 
     if (options.generateSvg) {
       const svgPath = path.join(outputDirPath, `${baseName}-${floor.id}.svg`);
@@ -250,13 +268,12 @@ async function main() {
   const result = convertFloorplanToJson(floorplan);
   if (result.data?.summary && result.data.floors.length > 0) {
     const floorMetrics = result.data.floors
-      .map(f => f.metrics)
+      .map((f) => f.metrics)
       .filter((m): m is NonNullable<typeof m> => m !== undefined);
-    console.log("\n" + formatSummaryTable(result.data.summary, floorMetrics));
+    console.log(`\n${formatSummaryTable(result.data.summary, floorMetrics)}`);
   }
 
-  console.log("\nDone!");
+  console.log('\nDone!');
 }
 
 main().catch(console.error);
-

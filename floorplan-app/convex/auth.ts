@@ -4,7 +4,7 @@
 
 /**
  * Better Auth client for Convex - TEMPORARILY DISABLED
- * 
+ *
  * Re-enable after self-hosted auth configuration is working.
  */
 
