@@ -32,11 +32,11 @@ export default function ExplorePage() {
   const collectionsQuery = useQuery(api.explore.listCollections, {});
 
   // Topic Query (only if topic selected)
-  // We use a dummy slug when inactive to avoid "skip" error, relying on backend to return empty for non-existent topic
-  const topicQuery = useQuery(api.explore.listByTopic, () => ({
-    topicSlug: activeTopic() || '_______SKIP_______',
-    limit: limit(),
-  }));
+  const topicQuery = useQuery(
+    api.explore.listByTopic,
+    () => ({ topicSlug: activeTopic() || '', limit: limit() }),
+    () => ({ enabled: !!activeTopic() }),
+  );
 
   const projects = createMemo(() => {
     if (activeTopic()) {

@@ -230,6 +230,17 @@ docker-dev: ## Start development with Docker (interactive logs)
 docker-restart: ## Restart Docker services
 	docker compose restart
 
+docker-convex-deploy: ## Deploy Convex functions to self-hosted backend (Docker)
+	@echo "Generating admin key and deploying Convex functions..."
+	@ADMIN_KEY="$$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n')" && \
+		docker compose exec -T app sh -c "cd /app/floorplan-app && npx convex dev --once --url http://convex:3210 --admin-key '$$ADMIN_KEY'" && \
+		echo "Convex functions deployed successfully" || \
+		echo "Error: Make sure 'docker compose up -d convex app' is running"
+
+docker-convex-admin-key: ## Print the Convex admin key (for local CLI use)
+	@docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n' || \
+		echo "Error: Convex backend is not running. Run 'make docker-up' first."
+
 # ===============================
 # SolidStart App
 # ===============================

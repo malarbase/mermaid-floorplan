@@ -198,11 +198,13 @@ export default function ProjectSettings() {
     onCleanup(() => clearTimeout(timer));
   });
 
-  const slugCheckQuery = useQuery(api.projects.getBySlug, () => {
-    const s = debouncedSlug();
-    if (!isEditingSlug() || !s || s === projectSlug()) return 'skip';
-    return { username: username(), projectSlug: s };
-  });
+  const slugCheckQuery = useQuery(
+    api.projects.getBySlug,
+    () => ({ username: username(), projectSlug: debouncedSlug() || '' }),
+    () => ({
+      enabled: isEditingSlug() && !!debouncedSlug() && debouncedSlug() !== projectSlug(),
+    }),
+  );
 
   const isSlugTaken = createMemo(() => !!slugCheckQuery.data());
   const isSlugValidFormat = createMemo(() => /^[a-z0-9-]+$/.test(newSlug()));

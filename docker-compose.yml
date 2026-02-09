@@ -1,5 +1,21 @@
-
 services:
+  # Generates an admin key from INSTANCE_SECRET for Convex CLI operations.
+  # Runs once before the app starts, writes key to shared volume.
+  convex-keygen:
+    image: ghcr.io/get-convex/convex-backend:latest
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Generating Convex admin key..." >&2
+        ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n' > /shared/admin_key.txt
+        echo "Admin key written to /shared/admin_key.txt" >&2
+    environment:
+      - INSTANCE_NAME=local-dev
+      - INSTANCE_SECRET=${CONVEX_INSTANCE_SECRET:-f09103996388e6f03d94e555c01ad0cd2deae9bab89023ff9b9f4ce11c988e0a}
+    volumes:
+      - convex-shared:/shared
+
   # SolidStart Application (floorplan-app)
   app:
     build:
@@ -23,12 +39,16 @@ services:
       # Preserve node_modules
       - app-node-modules:/app/node_modules
       - app-floorplan-app-node-modules:/app/floorplan-app/node_modules
+      # Shared volume for auto-generated admin key
+      - convex-shared:/shared:ro
     command: npm run --workspace floorplan-app dev
     networks:
       - floorplan-network
     depends_on:
       convex:
         condition: service_healthy
+      convex-keygen:
+        condition: service_completed_successfully
     stdin_open: true
     tty: true
 
@@ -51,8 +71,6 @@ services:
       - INSTANCE_SECRET=${CONVEX_INSTANCE_SECRET:-f09103996388e6f03d94e555c01ad0cd2deae9bab89023ff9b9f4ce11c988e0a}
     volumes:
       - convex-data:/convex/data
-      # Mount convex functions for automatic deployment
-      - ./floorplan-app/convex:/convex/functions:ro
     networks:
       - floorplan-network
     healthcheck:
@@ -102,6 +120,7 @@ volumes:
   app-node-modules:
   app-floorplan-app-node-modules:
   convex-data:
+  convex-shared:
   postgres-data:
 
 networks:

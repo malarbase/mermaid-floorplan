@@ -217,7 +217,7 @@ export const mockConvexQueries = {
 
   'explore:listByTopic': (args: { topicSlug: string; limit?: number }) => {
     console.log('[MOCK] explore.listByTopic() called', args);
-    if (args.topicSlug === '_______SKIP_______') {
+    if (!args.topicSlug) {
       return { projects: [] };
     }
     const limit = args?.limit ?? 24;
