@@ -3,6 +3,10 @@ import { Show } from "solid-js";
 interface SelectionControlsProps {
   hasSelection: boolean;
   selectedCount: number;
+  /** Human-readable summary like "1 room, 2 walls" */
+  summary: string;
+  /** Entity names for small selections */
+  entityNames: string[];
   onAddRoom: () => void;
   onCopy: () => void;
   onFocus: () => void;
@@ -12,6 +16,7 @@ interface SelectionControlsProps {
 /**
  * Compact horizontal toolbar for selection actions.
  * Pure presentational component -- receives selection state as props.
+ * Shows detailed type/count breakdown instead of just "N selected".
  */
 export default function SelectionControls(props: SelectionControlsProps) {
   return (
@@ -68,11 +73,21 @@ export default function SelectionControls(props: SelectionControlsProps) {
         <span class="hidden sm:inline">Delete</span>
       </button>
 
-      {/* Selection count badge */}
+      {/* Selection badge with detailed breakdown */}
       <Show when={props.hasSelection}>
-        <span class="badge badge-sm badge-ghost ml-auto text-xs">
-          {props.selectedCount} selected
-        </span>
+        <div class="ml-auto flex items-center gap-1.5">
+          {/* Show entity names when 1-3 selected */}
+          <Show when={props.entityNames.length > 0 && props.entityNames.length <= 3}>
+            <span class="text-xs text-base-content/60 hidden sm:inline truncate max-w-[140px]" title={props.entityNames.join(", ")}>
+              {props.entityNames.join(", ")}
+            </span>
+            <div class="w-px h-3 bg-base-content/15 hidden sm:block" />
+          </Show>
+          {/* Type/count breakdown badge */}
+          <span class="badge badge-sm badge-ghost text-xs whitespace-nowrap">
+            {props.summary || `${props.selectedCount} selected`}
+          </span>
+        </div>
       </Show>
     </div>
   );

@@ -1,6 +1,7 @@
 import { createSignal, createMemo, Show, For, createEffect } from "solid-js";
 import { useQuery, useMutation } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
+import { getMockSession, setMockSession } from "~/lib/mock-auth";
 
 // Type-safe API reference builder for when generated files don't exist yet
 // This will be replaced with proper imports once `npx convex dev` generates the API
@@ -31,6 +32,7 @@ interface UsernameChangeModalProps {
 export function UsernameChangeModal(props: UsernameChangeModalProps) {
   const [step, setStep] = createSignal<Step>("select");
   const [username, setUsername] = createSignal("");
+  const [debouncedUsername, setDebouncedUsername] = createSignal(""); // For query
   const [error, setError] = createSignal("");
   const [isChecking, setIsChecking] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
@@ -41,11 +43,11 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
     () => ({})
   );
   
-  // Check if username is available
+  // Check if username is available (uses debounced username to avoid excessive queries)
   const availabilityQuery = useQuery(
     api.users.isUsernameAvailable,
-    () => ({ username: username() }),
-    () => ({ enabled: username().length >= 3 })
+    () => ({ username: debouncedUsername() }),
+    () => ({ enabled: debouncedUsername().length >= 3 })
   );
   
   // Mutation to set username
@@ -63,6 +65,7 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
     if (props.isOpen) {
       setStep("select");
       setUsername("");
+      setDebouncedUsername("");
       setError("");
       setIsChecking(false);
       setIsSubmitting(false);
@@ -78,16 +81,19 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
     setError("");
     setIsChecking(true);
     
+    // Debounce the query - only update debouncedUsername after user stops typing
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(() => {
+      setDebouncedUsername(normalized);
       setIsChecking(false);
-    }, 300);
+    }, 500); // 500ms debounce before checking availability
   };
 
-  // Compute availability status
+  // Compute availability status (only valid when username matches what was queried)
   const availability = createMemo(() => {
     const result = availabilityQuery.data() as { available: boolean; reason: string } | undefined;
-    if (!result || username().length < 3) return null;
+    // Only return result if username matches the debounced value that was queried
+    if (!result || username().length < 3 || username() !== debouncedUsername()) return null;
     return result;
   });
 
@@ -149,6 +155,15 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
 
     try {
       await setUsernameMutation.mutate({ username: username() });
+      
+      // Update mock session in dev mode so the UI reflects the new username immediately
+      if (import.meta.env.DEV) {
+        const currentMockSession = getMockSession();
+        if (currentMockSession) {
+          setMockSession({ ...currentMockSession, username: username() });
+        }
+      }
+      
       props.onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to change username");

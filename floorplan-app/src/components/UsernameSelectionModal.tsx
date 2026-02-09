@@ -1,6 +1,7 @@
 import { createSignal, createMemo, Show, For, createEffect, type Accessor } from "solid-js";
 import { useQuery, useMutation } from "convex-solidjs";
 import { api } from "../../convex/_generated/api";
+import { getMockSession, setMockSession } from "~/lib/mock-auth";
 
 interface UsernameSelectionModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ interface UsernameSelectionModalProps {
  */
 export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
   const [username, setUsername] = createSignal("");
+  const [debouncedUsername, setDebouncedUsername] = createSignal(""); // For query
   const [error, setError] = createSignal("");
   const [isChecking, setIsChecking] = createSignal(false);
   const [isSubmitting, setIsSubmitting] = createSignal(false);
@@ -24,12 +26,12 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
   // Get suggested usernames using standard Convex hook
   const suggestionsQuery = useQuery(api.users.suggestUsername, {});
   
-   // Check if username is available - skip if username too short
-   const availabilityQuery = useQuery(
-     api.users.isUsernameAvailable,
-     () => ({ username: username() }),
-     () => ({ enabled: username().length >= 3 })
-   );
+  // Check if username is available (uses debounced username to avoid excessive queries)
+  const availabilityQuery = useQuery(
+    api.users.isUsernameAvailable,
+    () => ({ username: debouncedUsername() }),
+    () => ({ enabled: debouncedUsername().length >= 3 })
+  );
   
   // Mutation to set username using standard Convex hook
   const setUsernameMutation = useMutation(api.users.setUsername);
@@ -43,16 +45,19 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
     setError("");
     setIsChecking(true);
     
+    // Debounce the query - only update debouncedUsername after user stops typing
     clearTimeout(debounceTimeout);
     debounceTimeout = setTimeout(() => {
+      setDebouncedUsername(normalized);
       setIsChecking(false);
-    }, 300);
+    }, 500); // 500ms debounce before checking availability
   };
 
-  // Compute availability status
+  // Compute availability status (only valid when username matches what was queried)
   const availability = createMemo(() => {
     const result = availabilityQuery.data() as { available: boolean; reason: string } | undefined;
-    if (!result || username().length < 3) return null;
+    // Only return result if username matches the debounced value that was queried
+    if (!result || username().length < 3 || username() !== debouncedUsername()) return null;
     return result;
   });
 
@@ -97,6 +102,15 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
 
     try {
       await setUsernameMutation.mutate({ username: username() });
+      
+      // Update mock session in dev mode so the UI reflects the new username immediately
+      if (import.meta.env.DEV) {
+        const currentMockSession = getMockSession();
+        if (currentMockSession) {
+          setMockSession({ ...currentMockSession, username: username() });
+        }
+      }
+      
       props.onClose?.();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to set username");
@@ -107,6 +121,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
 
   const selectSuggestion = (suggestion: string) => {
     setUsername(suggestion);
+    setDebouncedUsername(suggestion); // Immediate check for clicked suggestions
     setError("");
   };
 
@@ -121,6 +136,7 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
     const suggs = suggestions();
     if (suggs.length > 0 && !username()) {
       setUsername(suggs[0]);
+      setDebouncedUsername(suggs[0]); // Trigger availability check for default
     }
   });
 

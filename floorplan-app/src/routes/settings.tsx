@@ -1,8 +1,8 @@
 import { Title } from "@solidjs/meta";
 import { A, useNavigate } from "@solidjs/router";
-import { Show, createMemo, createEffect } from "solid-js";
+import { Show, createMemo, createEffect, createSignal } from "solid-js";
 import { useSession } from "~/lib/auth-client";
-import { useQuery } from "convex-solidjs";
+import { useQuery, useMutation } from "convex-solidjs";
 import type { FunctionReference } from "convex/server";
 import { Header } from "~/components/Header";
 import { LogoutButton } from "~/components/LogoutButton";
@@ -12,6 +12,7 @@ import { UsernameChangeModal, useUsernameChangeModal } from "~/components/Userna
 const api = {
   users: {
     getCurrentUser: "users:getCurrentUser" as unknown as FunctionReference<"query">,
+    updateProfile: "users:updateProfile" as unknown as FunctionReference<"mutation">,
   },
 };
 
@@ -55,6 +56,49 @@ export default function Settings() {
     if (!profile) return false;
     return profile.username.startsWith("u_") && !profile.usernameSetAt;
   });
+
+  // Display name editing state
+  const [isEditingName, setIsEditingName] = createSignal(false);
+  const [editedName, setEditedName] = createSignal("");
+  const [isSavingName, setIsSavingName] = createSignal(false);
+  const updateProfileMutation = useMutation(api.users.updateProfile);
+
+  const startEditingName = () => {
+    setEditedName(userProfile()?.displayName ?? "");
+    setIsEditingName(true);
+  };
+
+  const cancelEditingName = () => {
+    setIsEditingName(false);
+    setEditedName("");
+  };
+
+  const saveDisplayName = async () => {
+    const newName = editedName().trim();
+    if (!newName || newName === userProfile()?.displayName) {
+      cancelEditingName();
+      return;
+    }
+
+    setIsSavingName(true);
+    try {
+      await updateProfileMutation.mutate({ displayName: newName });
+      setIsEditingName(false);
+    } catch (err) {
+      console.error("Failed to update display name:", err);
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  const handleNameKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveDisplayName();
+    } else if (e.key === "Escape") {
+      cancelEditingName();
+    }
+  };
 
   return (
     <main class="min-h-screen bg-base-200">
@@ -103,11 +147,56 @@ export default function Settings() {
                       </Show>
                     </div>
                   </div>
-                  <div>
-                    <div class="font-semibold text-lg">
-                      {userProfile()?.displayName ?? "Unknown"}
-                    </div>
-                    <div class="text-base-content/70">
+                  <div class="flex-1 min-w-0">
+                    {/* Click-to-edit display name */}
+                    <Show
+                      when={isEditingName()}
+                      fallback={
+                        <button
+                          type="button"
+                          class="group flex items-center gap-2 font-semibold text-lg hover:text-primary transition-colors text-left"
+                          onClick={startEditingName}
+                          title="Click to edit display name"
+                        >
+                          <span class="truncate">{userProfile()?.displayName ?? "Unknown"}</span>
+                          <svg 
+                            class="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity text-base-content/50" 
+                            fill="none" 
+                            stroke="currentColor" 
+                            viewBox="0 0 24 24"
+                          >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                      }
+                    >
+                      <div class="flex items-center gap-2">
+                        <input
+                          type="text"
+                          class="input input-bordered input-sm w-full max-w-xs"
+                          value={editedName()}
+                          onInput={(e) => setEditedName(e.currentTarget.value)}
+                          onKeyDown={handleNameKeyDown}
+                          onBlur={() => {
+                            // Small delay to allow button clicks to register
+                            setTimeout(() => {
+                              if (isEditingName()) saveDisplayName();
+                            }, 150);
+                          }}
+                          disabled={isSavingName()}
+                          autofocus
+                          placeholder="Display name"
+                          maxLength={50}
+                        />
+                        <Show when={isSavingName()}>
+                          <span class="loading loading-spinner loading-xs"></span>
+                        </Show>
+                      </div>
+                      <p class="text-xs text-base-content/50 mt-1">
+                        Press Enter to save, Escape to cancel
+                      </p>
+                    </Show>
+                    <div class="text-base-content/70 text-sm mt-0.5">
                       {user()?.email}
                     </div>
                   </div>

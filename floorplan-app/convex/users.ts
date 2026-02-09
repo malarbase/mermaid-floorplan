@@ -146,16 +146,24 @@ export const isUsernameAvailable = query({
 
     if (releasedUsername && releasedUsername.expiresAt > now) {
       // Username is in grace period - only original owner can reclaim
-      const identity = await ctx.auth.getUserIdentity();
-      if (identity) {
-        const currentUser = await ctx.db
-          .query("users")
-          .withIndex("by_auth_id", (q) => q.eq("authId", identity.subject))
-          .first();
-
-        if (currentUser && currentUser._id === releasedUsername.originalUserId) {
-          return { available: true, reason: "reclaim" };
-        }
+      // Use requireUserForQuery to handle both real auth and dev mode
+      const currentUser = await requireUserForQuery(ctx);
+      
+      // Try to get the original user to compare authId (for backwards compatibility)
+      const originalUser = await ctx.db.get(releasedUsername.originalUserId);
+      
+      // Compare by authId if available (stable across user recreation), fallback to _id
+      const isOriginalOwner = currentUser && (
+        // Prefer authId comparison via stored field
+        (releasedUsername.originalUserAuthId && currentUser.authId === releasedUsername.originalUserAuthId) ||
+        // Or compare via looking up the original user's authId (for old records)
+        (originalUser && currentUser.authId === originalUser.authId) ||
+        // Fallback to _id for direct match
+        currentUser._id === releasedUsername.originalUserId
+      );
+      
+      if (isOriginalOwner) {
+        return { available: true, reason: "reclaim" };
       }
       return { available: false, reason: "grace_period" };
     }
@@ -216,6 +224,7 @@ export const setUsername = mutation({
       await ctx.db.insert("releasedUsernames", {
         username: user.username,
         originalUserId: user._id,
+        originalUserAuthId: user.authId, // Stable identifier for reclaim check
         releasedAt: now,
         expiresAt: now + GRACE_PERIOD_MS,
       });
@@ -375,5 +384,39 @@ export const cleanupExpiredUsernames = internalMutation({
     }
 
     return { deleted: expired.length };
+  },
+});
+
+/**
+ * Fix existing releasedUsernames records by adding originalUserAuthId.
+ * This is a one-time maintenance mutation for backwards compatibility.
+ * If the original user no longer exists, assigns the current user's authId.
+ */
+export const fixReleasedUsernameAuthIds = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const user = await requireUserForMutation(ctx);
+    
+    // Get all released usernames without originalUserAuthId
+    const releasedUsernames = await ctx.db
+      .query("releasedUsernames")
+      .collect();
+    
+    let fixed = 0;
+    for (const released of releasedUsernames) {
+      if (!released.originalUserAuthId) {
+        // Try to get the original user
+        const originalUser = await ctx.db.get(released.originalUserId);
+        
+        // Use original user's authId if found, otherwise use current user's authId
+        // (assumes current user is the original owner in dev mode)
+        const authId = originalUser?.authId ?? user.authId;
+        
+        await ctx.db.patch(released._id, { originalUserAuthId: authId });
+        fixed++;
+      }
+    }
+    
+    return { fixed, total: releasedUsernames.length };
   },
 });

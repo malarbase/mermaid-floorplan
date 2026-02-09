@@ -23,6 +23,10 @@ export default function Dashboard() {
   const isLoading = createMemo(() => session()?.isPending ?? true);
   const user = createMemo(() => session()?.data?.user);
 
+  // Query current user from Convex for authoritative username
+  // This ensures we always have the latest username after changes
+  const currentUserQuery = useQuery(api.users.getCurrentUser, {});
+
   // Queries for stats using standard Convex hooks
   const projectsQuery = useQuery(api.projects.list, {});
   const sharedQuery = useQuery(api.sharing.getSharedWithMe, {});
@@ -50,7 +54,12 @@ export default function Dashboard() {
     }
   });
 
-  const username = createMemo(() => user()?.username ?? user()?.name ?? "me");
+  // Use Convex user data as primary source of truth for username
+  // Falls back to session data while Convex query is loading
+  const username = createMemo(() => {
+    const convexUser = currentUserQuery.data() as { username?: string } | undefined;
+    return convexUser?.username ?? user()?.username ?? user()?.name ?? "me";
+  });
 
   return (
     <main class="dashboard-bg">

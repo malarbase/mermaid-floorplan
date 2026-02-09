@@ -30,6 +30,7 @@ export default defineSchema({
   releasedUsernames: defineTable({
     username: v.string(),
     originalUserId: v.id("users"),
+    originalUserAuthId: v.optional(v.string()), // For stable comparison (authId doesn't change if user is recreated)
     releasedAt: v.number(),
     expiresAt: v.number(), // 90 days after release
   }).index("by_username", ["username"]),

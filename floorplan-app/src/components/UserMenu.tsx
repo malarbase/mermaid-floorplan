@@ -1,5 +1,7 @@
 import { A } from "@solidjs/router";
 import { Show, createMemo, Component } from "solid-js";
+import { useQuery } from "convex-solidjs";
+import { api } from "../../convex/_generated/api";
 import { useSession } from "~/lib/auth-client";
 import { LogoutButton } from "./LogoutButton";
 
@@ -13,7 +15,15 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
   const session = createMemo(() => sessionSignal());
   const user = createMemo(() => session()?.data?.user);
   const isLoading = createMemo(() => session()?.isPending ?? true);
-  const username = createMemo(() => user()?.username ?? user()?.name ?? "");
+  
+  // Query current user from Convex for authoritative username
+  const currentUserQuery = useQuery(api.users.getCurrentUser, {});
+  
+  // Use Convex data as source of truth, fallback to session
+  const username = createMemo(() => {
+    const convexUser = currentUserQuery.data() as { username?: string } | undefined;
+    return convexUser?.username ?? user()?.username ?? user()?.name ?? "";
+  });
 
   const avatarSize = () => (props.size === "sm" ? "w-8" : "w-10");
   const avatarSizeClass = () => (props.size === "sm" ? "w-8 h-8" : "w-10 h-10");

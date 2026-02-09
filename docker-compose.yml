@@ -41,6 +41,7 @@ services:
     environment:
       - CONVEX_CLOUD_ORIGIN=http://localhost:3210
       - CONVEX_SITE_ORIGIN=http://localhost:3211
+      - CONVEX_DEPLOYMENT=dev:local  # Used by devAuth.ts to detect dev mode
       - RUST_LOG=info
       - DISABLE_BEACON=true
       - DO_NOT_REQUIRE_SSL=true

@@ -1,5 +1,7 @@
 import { A, useLocation } from "@solidjs/router";
 import { Show, createMemo, Component, JSX } from "solid-js";
+import { useQuery } from "convex-solidjs";
+import { api } from "../../convex/_generated/api";
 import { useSession } from "~/lib/auth-client";
 import { useAppTheme } from "~/lib/theme";
 import { UserMenu } from "./UserMenu";
@@ -48,6 +50,9 @@ export const Header: Component<HeaderProps> = (props) => {
   const session = createMemo(() => sessionSignal());
   const user = createMemo(() => session()?.data?.user);
   
+  // Query current user from Convex for authoritative username
+  const currentUserQuery = useQuery(api.users.getCurrentUser, {});
+  
   // Determine if a nav link is active
   const isActive = (path: string) => {
     return location.pathname === path || location.pathname.startsWith(path + "/");
@@ -64,8 +69,11 @@ export const Header: Component<HeaderProps> = (props) => {
     }
   };
   
-  // Get username for profile link (use username field, not display name)
-  const username = createMemo(() => user()?.username ?? user()?.name ?? "");
+  // Get username for profile link - use Convex data as source of truth, fallback to session
+  const username = createMemo(() => {
+    const convexUser = currentUserQuery.data() as { username?: string } | undefined;
+    return convexUser?.username ?? user()?.username ?? user()?.name ?? "";
+  });
 
   // Theme toggle button (reused in both standalone and viewer controls)
   const ThemeToggleButton = () => (
