@@ -2,7 +2,7 @@ import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
 // Monaco environment must be configured before Monaco loads
 import '~/lib/monaco-env';
 
-import type { JsonExport, JsonRoom, JsonSourceRange } from 'floorplan-3d-core';
+import type { JsonExport, JsonRoom } from 'floorplan-3d-core';
 // Import types only (compile-time, no runtime cost)
 import type {
   DslEditorInstance,
@@ -14,10 +14,21 @@ import type {
 // Define interfaces for dynamically imported modules
 type ParseFloorplanDSL = (content: string) => Promise<ParseResult>;
 
+/** Opaque handle for a 3D scene object (THREE.Object3D at runtime). */
+type SceneObject = object;
+
+interface SelectionChangeEvent {
+  source: string;
+  selection: ReadonlySet<SelectableEntity>;
+  added: SelectableEntity[];
+  removed: SelectableEntity[];
+}
+
 interface SelectableEntity {
   floorId: string;
   entityType: string;
   entityId: string;
+  mesh?: SceneObject;
 }
 
 interface MeshRegistry {
@@ -35,16 +46,18 @@ interface SelectionManager {
       silent?: boolean;
     },
   ): void;
+  deselect(entity?: SelectableEntity): void;
   highlight(entity: SelectableEntity): void;
   clearHighlight(): void;
   getSelection(): SelectableEntity[];
-  onSelectionChange(listener: (event: any) => void): () => void;
+  onSelectionChange(listener: (event: SelectionChangeEvent) => void): () => void;
 }
 
-interface EditorCore {
+export interface EditorCore {
   loadFloorplan?(data: JsonExport): void;
   getSelectionManager?(): SelectionManager | null;
   meshRegistry?: MeshRegistry;
+  focusOnObjects?(objects: SceneObject[]): void;
 }
 
 interface EditorViewerSyncInstance {
@@ -327,11 +340,8 @@ export default function EditorPanel(props: EditorPanelProps) {
    * Initialize EditorViewerSync for bidirectional cursor <-> selection sync
    */
   function initEditorViewerSync(
-    EditorViewerSyncClass: new (
-      editor: any,
-      selectionManager: any,
-      config?: { debug?: boolean },
-    ) => EditorViewerSyncInstance,
+    // biome-ignore lint/suspicious/noExplicitAny: Constructor params come from dynamic import; local stubs can't match the full runtime types
+    EditorViewerSyncClass: new (...args: any[]) => EditorViewerSyncInstance,
     editor: DslEditorInstance,
     core: EditorCore,
   ): void {
@@ -361,6 +371,10 @@ export default function EditorPanel(props: EditorPanelProps) {
           entity.entityId === entityId
         ) {
           selectionManager.select(entity, isAdditive);
+          // Auto-focus camera on the selected entity
+          if (!isAdditive && entity.mesh) {
+            core.focusOnObjects?.([entity.mesh]);
+          }
           break;
         }
       }
@@ -405,6 +419,11 @@ export default function EditorPanel(props: EditorPanelProps) {
           primaryEntities,
           isHierarchical: true,
         });
+        // Auto-focus camera on primary entities (rooms, not child walls)
+        if (!isAdditive && primaryEntities.length > 0) {
+          const meshes = primaryEntities.map((e) => e.mesh).filter((m): m is SceneObject => !!m);
+          if (meshes.length > 0) core.focusOnObjects?.(meshes);
+        }
       }
     });
 

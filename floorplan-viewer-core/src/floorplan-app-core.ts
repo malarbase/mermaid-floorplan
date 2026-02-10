@@ -13,6 +13,7 @@
  */
 
 import type { JsonExport, ViewerTheme } from 'floorplan-3d-core';
+import type * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { BaseViewer } from './base-viewer.js';
 import type { DslEditorInstance } from './dsl-editor.js';
@@ -626,6 +627,32 @@ export class FloorplanAppCore extends BaseViewer {
    */
   protected animateExtension(): void {
     this._selectionManager?.update();
+  }
+
+  /**
+   * Smoothly animate the camera to focus on the currently selected entities.
+   * If nothing is selected, does nothing.
+   */
+  public focusOnSelection(): void {
+    const sm = this._selectionManager;
+    if (!sm) return;
+
+    const selection = sm.getSelection();
+    if (selection.size === 0) return;
+
+    const meshes: THREE.Object3D[] = [];
+    for (const entity of selection) {
+      if (entity.mesh) meshes.push(entity.mesh);
+    }
+
+    this._cameraManager.focusOnObjects(meshes);
+  }
+
+  /**
+   * Smoothly animate the camera to focus on the given 3D objects.
+   */
+  public focusOnObjects(objects: THREE.Object3D[]): void {
+    this._cameraManager.focusOnObjects(objects);
   }
 
   /**

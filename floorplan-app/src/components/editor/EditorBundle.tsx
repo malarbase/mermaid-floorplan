@@ -1,4 +1,4 @@
-import type { JsonExport, JsonRoom } from 'floorplan-3d-core';
+import type { JsonRoom } from 'floorplan-3d-core';
 import { serializeRoom } from 'floorplan-language';
 import { createEffect, createSignal, on } from 'solid-js';
 import { type GetEntityDataFn, useSelection } from '~/hooks/useSelection';
@@ -11,14 +11,23 @@ import {
   type CascadeConversion,
   type DslEditPlan,
 } from './dsl-edit-plan';
-import type { EditorPanelAPI } from './EditorPanel';
+import type { EditorCore, EditorPanelAPI } from './EditorPanel';
 import EditorPanel from './EditorPanel';
 import PropertiesPanel from './PropertiesPanel';
 import SelectionControls from './SelectionControls';
 import ValidationWarnings, { ParseErrorBanner, type ValidationWarning } from './ValidationWarnings';
 
+/**
+ * Extends EditorCore with additional methods used directly by EditorBundle
+ * (e.g. camera focus, deselect). At runtime this is the dynamically-loaded
+ * FloorplanAppCore / InteractiveEditorCore.
+ */
+interface EditorBundleCoreApi extends EditorCore {
+  focusOnSelection?(): void;
+}
+
 interface EditorBundleProps {
-  core: any;
+  core: EditorBundleCoreApi;
   dsl: string;
   theme: 'light' | 'dark';
   onDslChange: (dsl: string) => void;
@@ -277,7 +286,7 @@ export default function EditorBundle(props: EditorBundleProps) {
   const handleFocus = () => {
     const sel = selection();
     if (!sel.primary) return;
-    props.core?.cameraManager?.focusOnEntity?.(sel.primary);
+    props.core?.focusOnSelection?.();
   };
 
   /**
@@ -290,15 +299,17 @@ export default function EditorBundle(props: EditorBundleProps) {
     if (!sel.hasSelection) return;
 
     // Build delete entity list from ALL selected entities
-    const entities: DeleteEntity[] = sel.entities.map((e: any) => {
-      const type = e.entityType ?? 'unknown';
-      const id = e.entityId ?? 'unknown';
-      let label = id;
-      if (type === 'wall') {
-        label = `wall "${id}" (will be changed to open)`;
-      }
-      return { type, id, label };
-    });
+    const entities: DeleteEntity[] = sel.entities.map(
+      (e: { entityType?: string; entityId?: string }) => {
+        const type = e.entityType ?? 'unknown';
+        const id = e.entityId ?? 'unknown';
+        let label = id;
+        if (type === 'wall') {
+          label = `wall "${id}" (will be changed to open)`;
+        }
+        return { type, id, label };
+      },
+    );
 
     // Compute the edit plan (what will change) before showing the dialog
     const dslContent = editorAPI?.getValue() ?? '';

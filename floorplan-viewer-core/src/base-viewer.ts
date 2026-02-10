@@ -470,7 +470,7 @@ export abstract class BaseViewer implements SceneContext {
     this.currentFloorplanData = normalizedData;
 
     // Clear existing
-    this._floors.forEach((f) => this._scene.remove(f));
+    for (const f of this._floors) this._scene.remove(f);
     this._floors = [];
     this.floorHeights = [];
     this.connections = normalizedData.connections;
@@ -1127,6 +1127,9 @@ export abstract class BaseViewer implements SceneContext {
     this.pivotIndicator?.update(deltaTime);
     this.pivotIndicator?.updateSize(this._cameraManager.activeCamera);
 
+    // Update camera tween animation
+    this._cameraManager.updateTween(deltaTime);
+
     // Call subclass animation extension
     this.animateExtension?.(deltaTime);
 
@@ -1173,7 +1176,7 @@ export abstract class BaseViewer implements SceneContext {
     this.pivotIndicator?.dispose();
 
     // Clear scene
-    this._floors.forEach((f) => this._scene.remove(f));
+    for (const f of this._floors) this._scene.remove(f);
     this._floors = [];
     this._meshRegistry.clear();
 

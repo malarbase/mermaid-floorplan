@@ -16,6 +16,15 @@ export class CameraManager {
   private cameraMode: CameraMode = 'perspective';
   private fov: number = 75;
 
+  // Smooth tween state
+  private tweenActive = false;
+  private tweenStartPosition = new THREE.Vector3();
+  private tweenEndPosition = new THREE.Vector3();
+  private tweenStartTarget = new THREE.Vector3();
+  private tweenEndTarget = new THREE.Vector3();
+  private tweenProgress = 0;
+  private tweenDuration = 500; // ms
+
   constructor(
     private perspectiveCamera: THREE.PerspectiveCamera,
     private orthographicCamera: THREE.OrthographicCamera,
@@ -212,6 +221,95 @@ export class CameraManager {
     });
 
     return boundingBox.isEmpty() ? null : boundingBox;
+  }
+
+  /**
+   * Smoothly animate the camera to frame the given 3D objects.
+   * Computes their combined bounding box, then tweens camera position and
+   * orbit target so the objects are centered and fit within the viewport.
+   *
+   * @param objects - Array of Three.js Object3D instances to focus on
+   * @param padding - Extra padding factor (1.0 = tight fit, 2.0 = double margin). Default 1.6
+   */
+  public focusOnObjects(objects: THREE.Object3D[], padding = 1.6): void {
+    if (objects.length === 0) return;
+
+    // Compute combined bounding box
+    const boundingBox = new THREE.Box3();
+    for (const obj of objects) {
+      boundingBox.expandByObject(obj);
+    }
+    if (boundingBox.isEmpty()) return;
+
+    const center = boundingBox.getCenter(new THREE.Vector3());
+    const size = boundingBox.getSize(new THREE.Vector3());
+    const maxDim = Math.max(size.x, size.y, size.z);
+
+    // Determine desired camera distance to frame the bounding box
+    const camera = this.activeCamera;
+    let desiredDistance: number;
+
+    if (camera instanceof THREE.PerspectiveCamera) {
+      const fovRad = THREE.MathUtils.degToRad(camera.fov);
+      const aspect = this.containerWidth / this.containerHeight;
+      // Use the narrower FOV dimension to ensure objects fit
+      const effectiveFov = aspect >= 1 ? fovRad : 2 * Math.atan(Math.tan(fovRad / 2) * aspect);
+      desiredDistance = (maxDim * padding) / (2 * Math.tan(effectiveFov / 2));
+    } else {
+      // Orthographic: distance doesn't change visual size, but we still
+      // want the camera reasonably placed. Use maxDim * padding as basis.
+      desiredDistance = maxDim * padding;
+    }
+
+    // Keep the current viewing direction but move to frame the target
+    const direction = new THREE.Vector3()
+      .subVectors(camera.position, this.controls.target)
+      .normalize();
+
+    // If direction is zero (camera at target), use a default
+    if (direction.lengthSq() < 0.001) {
+      direction.set(0.5, 0.7, 0.5).normalize();
+    }
+
+    const newPosition = center.clone().add(direction.multiplyScalar(desiredDistance));
+
+    // Start smooth tween
+    this.tweenStartPosition.copy(camera.position);
+    this.tweenEndPosition.copy(newPosition);
+    this.tweenStartTarget.copy(this.controls.target);
+    this.tweenEndTarget.copy(center);
+    this.tweenProgress = 0;
+    this.tweenActive = true;
+  }
+
+  /**
+   * Advance the camera tween animation. Call from the render loop with deltaTime in ms.
+   * Returns true if a tween is active (camera moved this frame).
+   */
+  public updateTween(deltaTime: number): boolean {
+    if (!this.tweenActive) return false;
+
+    this.tweenProgress += deltaTime / this.tweenDuration;
+    if (this.tweenProgress >= 1) {
+      this.tweenProgress = 1;
+      this.tweenActive = false;
+    }
+
+    // Ease-out cubic: 1 - (1-t)^3
+    const t = this.tweenProgress;
+    const eased = 1 - (1 - t) ** 3;
+
+    const camera = this.activeCamera;
+    camera.position.lerpVectors(this.tweenStartPosition, this.tweenEndPosition, eased);
+    this.controls.target.lerpVectors(this.tweenStartTarget, this.tweenEndTarget, eased);
+
+    // Update orthographic frustum if needed
+    if (this.cameraMode === 'orthographic') {
+      this.updateOrthographicSize();
+    }
+
+    this.controls.update();
+    return true;
   }
 
   /**
