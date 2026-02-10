@@ -15,6 +15,11 @@ const editorSrc = resolve(__dirname, '../floorplan-editor/src');
 export default defineConfig({
   server: {
     preset: 'vercel',
+    // Mark browser-only packages as external for Nitro SSR builds
+    // (suppresses "could not be resolved" warnings from Rollup)
+    rollupConfig: {
+      external: ['monaco-editor'],
+    },
   },
   ssr: true,
   vite: {
@@ -37,7 +42,7 @@ export default defineConfig({
     },
     ssr: {
       // External packages that shouldn't be bundled for SSR
-      external: ['three'],
+      external: ['three', 'monaco-editor'],
       // Don't externalize better-auth - let it be bundled
       noExternal: ['better-auth'],
     },

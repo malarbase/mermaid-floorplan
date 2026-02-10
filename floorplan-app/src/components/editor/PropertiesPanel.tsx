@@ -1,5 +1,11 @@
-import { For, Show } from 'solid-js';
+import { createMemo, For, Show } from 'solid-js';
 import type { PropertyDefinition } from '~/hooks/useSelection';
+import type { PositioningMode, RelativeDirection, WallConfig } from './dsl-constants';
+import PositioningFieldset, {
+  DEFAULT_POSITIONING,
+  type PositioningData,
+} from './PositioningFieldset';
+import WallsFieldset from './WallsFieldset';
 
 interface PropertiesPanelProps {
   /** Whether something is selected */
@@ -16,16 +22,68 @@ interface PropertiesPanelProps {
   propertyDefs: PropertyDefinition[];
   /** Called when a property value changes */
   onPropertyChange?: (property: string, value: any) => void;
+  /** Raw entity data from getEntityData (needed for fieldsets) */
+  entityData?: Record<string, unknown>;
+  /** Available room names for relative positioning reference dropdown */
+  existingRooms?: string[];
 }
 
 /**
  * Properties panel -- pure presentational component.
  * Receives selection data as props. Collapses to a header when nothing is selected,
- * expands with a 2-column property grid when an entity is selected.
+ * expands with property controls when an entity is selected.
  *
- * Supports: text, number, select, readonly field types.
+ * For room entities, shows PositioningFieldset and WallsFieldset (shared with AddRoomDialog).
+ * For other entity types, shows the standard 2-column property grid.
  */
 export default function PropertiesPanel(props: PropertiesPanelProps) {
+  const isSingleRoom = createMemo(
+    () =>
+      props.hasSelection &&
+      (props.selectionCount ?? 1) === 1 &&
+      props.entityType === 'room' &&
+      !!props.entityData,
+  );
+
+  // Build positioning data from raw entity data
+  const positioningData = createMemo((): PositioningData => {
+    const d = props.entityData;
+    if (!d) return DEFAULT_POSITIONING;
+    return {
+      mode: (d.posMode as PositioningMode) ?? 'absolute',
+      x: Number(d.x ?? 0),
+      y: Number(d.y ?? 0),
+      direction: (d.direction as RelativeDirection) ?? 'right-of',
+      reference: String(d.reference ?? ''),
+      gap: Number(d.gap ?? 0),
+      align: (d.alignment as PositioningData['align']) ?? '',
+    };
+  });
+
+  // Build wall config from raw entity data
+  const wallConfig = createMemo((): WallConfig => {
+    const d = props.entityData;
+    if (!d?.walls) return { top: 'solid', right: 'solid', bottom: 'solid', left: 'solid' };
+    const w = d.walls as Record<string, string>;
+    return {
+      top: (w.top ?? 'solid') as WallConfig['top'],
+      right: (w.right ?? 'solid') as WallConfig['right'],
+      bottom: (w.bottom ?? 'solid') as WallConfig['bottom'],
+      left: (w.left ?? 'solid') as WallConfig['left'],
+    };
+  });
+
+  // Filter out properties that are handled by fieldsets (for rooms)
+  const basicPropertyDefs = createMemo(() => {
+    if (!isSingleRoom()) return props.propertyDefs;
+    // Room fieldsets handle: x, y (positioning), walls are separate.
+    // Keep: name, width, height, roomHeight, style, label
+    const fieldsetProps = new Set(['x', 'y']);
+    return props.propertyDefs.filter((def) => !fieldsetProps.has(def.name));
+  });
+
+  const existingRooms = createMemo(() => props.existingRooms ?? []);
+
   return (
     <div class="border-t border-base-300 bg-base-100">
       {/* Header - always visible */}
@@ -48,10 +106,27 @@ export default function PropertiesPanel(props: PropertiesPanelProps) {
         </Show>
       </div>
 
-      {/* Property fields - shown only when something is selected */}
-      <Show when={props.hasSelection && props.propertyDefs.length > 0}>
+      {/* Room-specific: positioning + walls fieldsets */}
+      <Show when={isSingleRoom()}>
+        <div class="px-2 pb-2 space-y-2">
+          <PositioningFieldset
+            data={positioningData()}
+            existingRooms={existingRooms()}
+            onChange={(pos) => props.onPropertyChange?.('positioning', pos)}
+            compact
+          />
+          <WallsFieldset
+            walls={wallConfig()}
+            onChange={(walls) => props.onPropertyChange?.('walls', walls)}
+            compact
+          />
+        </div>
+      </Show>
+
+      {/* Standard property fields */}
+      <Show when={props.hasSelection && basicPropertyDefs().length > 0}>
         <div class="px-3 pb-3 grid grid-cols-2 gap-x-3 gap-y-1.5">
-          <For each={props.propertyDefs}>
+          <For each={basicPropertyDefs()}>
             {(def) => (
               <div class={`form-control ${def.name === 'name' ? 'col-span-2' : ''}`}>
                 <label class="label py-0.5">

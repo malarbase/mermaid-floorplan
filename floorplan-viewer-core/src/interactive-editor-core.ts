@@ -340,13 +340,45 @@ export class InteractiveEditorCore extends FloorplanAppCore {
 
   /**
    * Override loadFloorplan to handle parse error state and entity tracking.
+   * Preserves the current selection by snapshotting entity IDs before the
+   * scene rebuild and restoring them from the new mesh registry afterwards.
    */
   public loadFloorplan(data: JsonExport): void {
-    // Deselect before clearing the scene
-    this.getSelectionManager()?.deselect();
+    const sm = this.getSelectionManager();
 
-    // Call parent implementation
+    // Snapshot selected entity identifiers before the scene is rebuilt
+    const previousSelection = sm
+      ? Array.from(sm.getSelection()).map((e) => ({
+          floorId: e.floorId,
+          entityType: e.entityType,
+          entityId: e.entityId,
+        }))
+      : [];
+
+    // Silently deselect (old meshes are about to be destroyed)
+    sm?.deselect();
+
+    // Call parent implementation (clears mesh registry, rebuilds scene)
     super.loadFloorplan(data);
+
+    // Restore selection from new mesh registry by matching entity IDs
+    if (sm && previousSelection.length > 0) {
+      const allEntities = this._meshRegistry.getAllEntities();
+      const toReselect = previousSelection
+        .map((prev) =>
+          allEntities.find(
+            (e) =>
+              e.floorId === prev.floorId &&
+              e.entityType === prev.entityType &&
+              e.entityId === prev.entityId,
+          ),
+        )
+        .filter((e): e is SelectableObject => e !== undefined);
+
+      if (toReselect.length > 0) {
+        sm.selectMultiple(toReselect, false, { silent: false });
+      }
+    }
   }
 
   /**

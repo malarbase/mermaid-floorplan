@@ -63,6 +63,8 @@ export interface SelectionState {
   entityNames: string[];
   /** Property definitions for the primary entity (built via getEntityData callback) */
   propertyDefs: PropertyDefinition[];
+  /** Raw entity data from getEntityData for the primary selection (used by fieldsets) */
+  primaryEntityData: Record<string, unknown> | null;
   /** True when all selected entities are the same type (enables merged property view) */
   isUniformType: boolean;
 }
@@ -79,6 +81,7 @@ const EMPTY_STATE: SelectionState = {
   summary: '',
   entityNames: [],
   propertyDefs: [],
+  primaryEntityData: null,
   isUniformType: false,
 };
 
@@ -139,13 +142,15 @@ export function useSelection(
       const uniqueTypes = new Set(arr.map((e) => e.entityType ?? 'unknown'));
       const isUniformType = uniqueTypes.size === 1 && arr.length > 0;
 
-      // Build property definitions
+      // Build property definitions and capture raw entity data
       let propertyDefs: PropertyDefinition[] = [];
+      let primaryEntityData: Record<string, unknown> | null = null;
       if (arr.length === 1 && primary) {
         // Single selection -- show properties for the primary entity
         if (getEntityData) {
           try {
             const data = getEntityData(primary.entityType, primary.entityId);
+            primaryEntityData = data;
             propertyDefs = buildPropertyDefinitions(primary.entityType, data);
           } catch {
             propertyDefs = buildFallbackPropertyDefs(primary);
@@ -171,6 +176,7 @@ export function useSelection(
         summary,
         entityNames,
         propertyDefs,
+        primaryEntityData,
         isUniformType,
       });
     });
@@ -228,8 +234,22 @@ function buildPropertyDefinitions(
         step: 0.1,
       });
     }
-    if (data.style) {
-      props.push({ name: 'style', label: 'Style', type: 'text', value: String(data.style) });
+    // Style: show as select dropdown if styles are defined in the DSL, otherwise text
+    const availableStyles = (data._availableStyles as string[]) ?? [];
+    if (availableStyles.length > 0 || data.style) {
+      props.push({
+        name: 'style',
+        label: 'Style',
+        type: availableStyles.length > 0 ? 'select' : 'text',
+        value: String(data.style ?? ''),
+        options:
+          availableStyles.length > 0
+            ? [
+                { value: '', label: '(none)' },
+                ...availableStyles.map((s) => ({ value: s, label: s })),
+              ]
+            : undefined,
+      });
     }
   } else if (entityType === 'wall') {
     props.push({ name: 'room', label: 'Room', type: 'readonly', value: String(data.room ?? '') });
@@ -247,7 +267,8 @@ function buildPropertyDefinitions(
       options: [
         { value: 'solid', label: 'Solid' },
         { value: 'open', label: 'Open' },
-        { value: 'glass', label: 'Glass' },
+        { value: 'door', label: 'Door' },
+        { value: 'window', label: 'Window' },
       ],
     });
   } else if (entityType === 'connection') {

@@ -569,6 +569,11 @@ export class EditorViewerSync {
       }
 
       this.cursorDebounceTimeout = setTimeout(() => {
+        // Re-check sync direction — may have changed since debounce was scheduled
+        // (e.g. a loadFloorplan restore set '3d-to-editor' after setValue triggered this)
+        if (this.syncDirection === '3d-to-editor') {
+          return;
+        }
         // Get all selections for multi-cursor support
         const selections = this.editor.getSelections();
         if (selections && selections.length > 1) {
@@ -938,6 +943,19 @@ export class EditorViewerSync {
     // The actual mesh lookup happens in the InteractiveEditor
     if (this.onEditorSelectCallback) {
       this.onEditorSelectCallback(entityKey, isAdditive);
+    }
+  }
+
+  /**
+   * Cancel any pending cursor debounce.
+   * Called before programmatic DSL updates (setValue → loadFloorplan) to prevent
+   * stale cursor-change debounces from triggering hierarchical expansion after
+   * the scene rebuild + selection restore cycle.
+   */
+  cancelPendingCursorSync(): void {
+    if (this.cursorDebounceTimeout) {
+      clearTimeout(this.cursorDebounceTimeout);
+      this.cursorDebounceTimeout = null;
     }
   }
 

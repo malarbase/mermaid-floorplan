@@ -56,6 +56,7 @@ interface EditorViewerSyncInstance {
   onEditorHighlight(callback: (entityKeys: string[]) => void): void;
   onEditorHighlightClear(callback: () => void): void;
   scrollToEntity?(entityKey: string): void;
+  cancelPendingCursorSync?(): void;
   dispose?(): void;
 }
 
@@ -157,6 +158,9 @@ export default function EditorPanel(props: EditorPanelProps) {
       props.onEditorReady?.({
         getValue: () => localEditor.getValue(),
         setValue: (content: string) => {
+          // Cancel any pending cursor debounce to prevent stale hierarchical
+          // expansion from firing after the async parse + scene rebuild cycle
+          editorSync?.cancelPendingCursorSync?.();
           localEditor.setValue(content);
           triggerParseAndNotify(content);
         },

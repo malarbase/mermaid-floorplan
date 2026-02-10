@@ -43,6 +43,8 @@ export interface SerializeRoomParams {
   };
   /** Display label (will be quoted in output). */
   label?: string;
+  /** Style reference (name of a defined style block). */
+  style?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -97,6 +99,11 @@ export function serializeRoom(params: SerializeRoomParams, indent = ''): string 
   // Label
   if (params.label) {
     parts.push(`label "${params.label}"`);
+  }
+
+  // Style reference
+  if (params.style) {
+    parts.push(`style ${params.style}`);
   }
 
   return parts.join(' ');
