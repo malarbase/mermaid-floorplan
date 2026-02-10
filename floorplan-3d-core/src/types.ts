@@ -180,6 +180,14 @@ export interface JsonVerticalConnection {
   links: Array<{ floor: string; element: string }>;
 }
 
+/** Relative positioning data preserved from the DSL for editor operations */
+export interface JsonRelativePosition {
+  direction: string;
+  reference: string;
+  gap?: number;
+  alignment?: string;
+}
+
 export interface JsonRoom {
   name: string;
   label?: string;
@@ -191,6 +199,8 @@ export interface JsonRoom {
   roomHeight?: number;
   elevation?: number;
   style?: string;
+  /** Relative positioning from DSL (preserved for editor cascade operations) */
+  _relativePosition?: JsonRelativePosition;
   /** Source location in DSL file (for editor sync) */
   _sourceRange?: JsonSourceRange;
 }

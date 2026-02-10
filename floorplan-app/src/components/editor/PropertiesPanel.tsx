@@ -8,6 +8,10 @@ interface PropertiesPanelProps {
   entityType: string;
   /** Entity ID (e.g., "LivingRoom") */
   entityId: string;
+  /** Number of selected entities */
+  selectionCount?: number;
+  /** Selection summary (e.g., "2 rooms, 1 wall") */
+  selectionSummary?: string;
   /** Rich property definitions (from useSelection) */
   propertyDefs: PropertyDefinition[];
   /** Called when a property value changes */
@@ -29,7 +33,12 @@ export default function PropertiesPanel(props: PropertiesPanelProps) {
         <span class="text-xs font-semibold text-base-content/50 uppercase tracking-wider">
           Properties
         </span>
-        <Show when={props.hasSelection}>
+        <Show when={props.hasSelection && (props.selectionCount ?? 1) > 1}>
+          <span class="text-xs text-base-content/70">
+            — {props.selectionSummary || `${props.selectionCount} items`}
+          </span>
+        </Show>
+        <Show when={props.hasSelection && (props.selectionCount ?? 1) === 1}>
           <span class="text-xs text-base-content/70">
             — {props.entityType}: {props.entityId}
           </span>
@@ -62,6 +71,11 @@ function renderField(
   def: PropertyDefinition,
   onPropertyChange?: (property: string, value: any) => void,
 ) {
+  // Mixed values across multi-selection -- show placeholder
+  if (def.mixed) {
+    return <span class="text-sm text-base-content/40 italic px-2 py-1">Mixed</span>;
+  }
+
   switch (def.type) {
     case 'readonly':
       return <span class="text-sm text-base-content/80 px-2 py-1">{def.value ?? '—'}</span>;

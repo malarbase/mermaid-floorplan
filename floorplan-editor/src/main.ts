@@ -429,15 +429,17 @@ function initEditorViewerSync() {
     const registry = editorCore.meshRegistry;
     const allEntities = registry.getAllEntities();
 
-    // Find the primary entity
-    const primaryParts = result.primaryKey.split(':');
-    let primaryEntity = null;
-    if (primaryParts.length === 3) {
-      const [floorId, entityType, entityId] = primaryParts;
-      primaryEntity = allEntities.find(
-        (e) => e.floorId === floorId && e.entityType === entityType && e.entityId === entityId,
-      );
-    }
+    // Resolve all primary entities from primaryKeys
+    const primaryEntities = result.primaryKeys
+      .map((pKey) => {
+        const parts = pKey.split(':');
+        if (parts.length !== 3) return null;
+        const [floorId, entityType, entityId] = parts;
+        return allEntities.find(
+          (e) => e.floorId === floorId && e.entityType === entityType && e.entityId === entityId,
+        );
+      })
+      .filter((e): e is NonNullable<typeof e> => e != null);
 
     // Collect all entities to select
     const entitiesToSelect = [];
@@ -456,7 +458,7 @@ function initEditorViewerSync() {
 
     if (entitiesToSelect.length > 0) {
       selectionManager.selectMultiple(entitiesToSelect, isAdditive, {
-        primaryEntity: primaryEntity ?? undefined,
+        primaryEntities,
         isHierarchical: true,
       });
     }

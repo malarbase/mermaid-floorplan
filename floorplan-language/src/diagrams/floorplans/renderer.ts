@@ -412,7 +412,6 @@ export function renderFloor(
   // Try to resolve config from parent floorplan to get default unit
   let defaultUnit: LengthUnit | undefined;
   try {
-    // @ts-expect-error - Accessing parent container safely
     const floorplan = floor.$container;
     if (floorplan) {
       const config = resolveConfig(floorplan as Floorplan);

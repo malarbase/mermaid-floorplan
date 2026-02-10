@@ -144,6 +144,14 @@ export interface JsonWall {
   _sourceRange?: JsonSourceRange;
 }
 
+/** Relative positioning data preserved from the DSL for editor operations */
+export interface JsonRelativePosition {
+  direction: string;
+  reference: string;
+  gap?: number;
+  alignment?: string;
+}
+
 export interface JsonRoom {
   name: string;
   label: string | undefined;
@@ -159,6 +167,8 @@ export interface JsonRoom {
   area?: number;
   /** Room volume (area × roomHeight), computed when roomHeight is specified */
   volume?: number;
+  /** Relative positioning from DSL (preserved for editor cascade operations) */
+  _relativePosition?: JsonRelativePosition;
   /** Source location in DSL file (for editor sync) */
   _sourceRange?: JsonSourceRange;
 }
@@ -486,6 +496,15 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
             : room.elevation.value
           : undefined,
         style: room.styleRef,
+        // Preserve relative positioning for editor cascade operations
+        _relativePosition: room.relativePosition
+          ? {
+              direction: room.relativePosition.direction,
+              reference: room.relativePosition.reference,
+              gap: room.relativePosition.gap?.value,
+              alignment: room.relativePosition.alignment,
+            }
+          : undefined,
         // Extract source range from AST for editor sync
         _sourceRange: extractSourceRange(room.$cstNode),
       };

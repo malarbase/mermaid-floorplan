@@ -59,12 +59,52 @@ export interface EntityHierarchyContext {
  * Result of hierarchical expansion
  */
 export interface HierarchyExpansionResult {
-  /** Primary entity key (the one cursor is on) */
-  primaryKey: string;
-  /** All entity keys to select (primary + children based on hierarchy level) */
+  /** Primary entity keys (the entities each cursor is directly on) */
+  primaryKeys: string[];
+  /** All entity keys to select (primaries + children based on hierarchy level) */
   allKeys: string[];
   /** Context for displaying breadcrumb (e.g., "Kitchen > top wall") */
   breadcrumb?: string;
+}
+
+// ============================================================================
+// Module-level CSS for Monaco decorations (injected once, ref-counted)
+// ============================================================================
+const DECORATION_STYLE_ID = 'editor-viewer-sync-decorations';
+let decorationStyleRefCount = 0;
+
+function acquireDecorationCSS(): void {
+  if (decorationStyleRefCount++ > 0) return; // Already injected
+  if (document.getElementById(DECORATION_STYLE_ID)) return; // Defensive
+
+  const style = document.createElement('style');
+  style.id = DECORATION_STYLE_ID;
+  style.textContent = `
+    /* Multi-selection highlight background */
+    .selected-entity-decoration {
+      background: rgba(0, 120, 215, 0.15);
+      border-left: 2px solid rgba(0, 120, 215, 0.6);
+    }
+    /* Wall selection inline hint */
+    .wall-selection-hint {
+      color: rgba(128, 128, 128, 0.7);
+      font-style: italic;
+      font-size: 0.9em;
+    }
+    /* Hierarchy breadcrumb inline hint */
+    .hierarchy-breadcrumb-hint {
+      color: rgba(128, 128, 128, 0.55);
+      font-style: italic;
+      font-size: 0.85em;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function releaseDecorationCSS(): void {
+  if (--decorationStyleRefCount > 0) return; // Other instances still alive
+  const el = document.getElementById(DECORATION_STYLE_ID);
+  el?.remove();
 }
 
 /**
@@ -127,6 +167,7 @@ export class EditorViewerSync {
       debug: config.debug ?? false,
     };
 
+    acquireDecorationCSS();
     this.setupSelectionSync();
     this.setupCursorSync();
     this.setupTextHighlightSync();
@@ -269,7 +310,7 @@ export class EditorViewerSync {
     const entity = this.entityLocations.get(entityKey);
 
     if (!context || !entity) {
-      return { primaryKey: entityKey, allKeys: [entityKey] };
+      return { primaryKeys: [entityKey], allKeys: [entityKey] };
     }
 
     const allKeys: string[] = [entityKey];
@@ -306,7 +347,7 @@ export class EditorViewerSync {
     }
 
     return {
-      primaryKey: entityKey,
+      primaryKeys: [entityKey],
       allKeys,
       breadcrumb,
     };
@@ -608,9 +649,9 @@ export class EditorViewerSync {
 
     // If hierarchical selection is enabled and we have the callback
     if (this.hierarchicalSelectionEnabled && this.onEditorHierarchicalSelectCallback) {
-      // Emit as a combined hierarchical selection
+      // Emit as a combined hierarchical selection with all primary keys
       const combinedResult: HierarchyExpansionResult = {
-        primaryKey: Array.from(primaryEntityKeys)[0] || '',
+        primaryKeys: Array.from(primaryEntityKeys),
         allKeys: Array.from(allEntityKeys),
       };
       this.onEditorHierarchicalSelectCallback(combinedResult, false);
@@ -930,5 +971,8 @@ export class EditorViewerSync {
     // Clear entity locations and hierarchy
     this.entityLocations.clear();
     this.entityHierarchy.clear();
+
+    // Release shared CSS (removed from DOM when last instance disposes)
+    releaseDecorationCSS();
   }
 }

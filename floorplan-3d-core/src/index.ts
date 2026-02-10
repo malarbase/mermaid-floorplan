@@ -109,6 +109,7 @@ export type {
   JsonExport,
   JsonFloor,
   JsonLift,
+  JsonRelativePosition,
   JsonRoom,
   JsonSourceRange,
   JsonStair,

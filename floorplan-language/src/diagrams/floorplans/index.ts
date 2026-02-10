@@ -94,6 +94,7 @@ export {
   type JsonExport,
   type JsonFloor,
   type JsonLift,
+  type JsonRelativePosition,
   type JsonRoom,
   type JsonSourceRange,
   type JsonStair,

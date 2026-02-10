@@ -25,11 +25,15 @@ interface MeshRegistry {
 }
 
 interface SelectionManager {
-  select(entity: SelectableEntity, isAdditive: boolean): void;
+  select(entity: SelectableEntity, isAdditive: boolean, silent?: boolean): void;
   selectMultiple(
     entities: SelectableEntity[],
     isAdditive: boolean,
-    options?: { primaryEntity?: SelectableEntity; isHierarchical?: boolean },
+    options?: {
+      primaryEntities?: SelectableEntity[];
+      isHierarchical?: boolean;
+      silent?: boolean;
+    },
   ): void;
   highlight(entity: SelectableEntity): void;
   clearHighlight(): void;
@@ -47,7 +51,7 @@ interface EditorViewerSyncInstance {
   updateEntityLocations(entities: EntityLocation[]): void;
   onEditorSelect(callback: (entityKey: string, isAdditive: boolean) => void): void;
   onEditorHierarchicalSelect(
-    callback: (result: { primaryKey: string; allKeys: string[] }, isAdditive: boolean) => void,
+    callback: (result: { primaryKeys: string[]; allKeys: string[] }, isAdditive: boolean) => void,
   ): void;
   onEditorHighlight(callback: (entityKeys: string[]) => void): void;
   onEditorHighlightClear(callback: () => void): void;
@@ -365,15 +369,16 @@ export default function EditorPanel(props: EditorPanelProps) {
 
       const allEntities = registry.getAllEntities();
 
-      // Find the primary entity
-      const primaryParts = result.primaryKey.split(':');
-      let primaryEntity: SelectableEntity | null = null;
-      if (primaryParts.length === 3) {
-        const [floorId, entityType, entityId] = primaryParts;
-        primaryEntity =
-          allEntities.find(
-            (e) => e.floorId === floorId && e.entityType === entityType && e.entityId === entityId,
-          ) ?? null;
+      // Resolve all primary entities (multi-cursor support)
+      const primaryEntities: SelectableEntity[] = [];
+      for (const pKey of result.primaryKeys) {
+        const parts = pKey.split(':');
+        if (parts.length !== 3) continue;
+        const [floorId, entityType, entityId] = parts;
+        const entity = allEntities.find(
+          (e) => e.floorId === floorId && e.entityType === entityType && e.entityId === entityId,
+        );
+        if (entity) primaryEntities.push(entity);
       }
 
       // Collect all entities to select
@@ -393,7 +398,7 @@ export default function EditorPanel(props: EditorPanelProps) {
 
       if (entitiesToSelect.length > 0) {
         selectionManager.selectMultiple(entitiesToSelect, isAdditive, {
-          primaryEntity: primaryEntity ?? undefined,
+          primaryEntities,
           isHierarchical: true,
         });
       }

@@ -60,10 +60,13 @@ export interface HighlightStyle {
  * Options for selectMultiple with hierarchical selection support.
  */
 export interface SelectMultipleOptions {
-  /** The primary entity (receives full highlight) when doing hierarchical selection */
-  primaryEntity?: SelectableObject;
+  /** Primary entities that receive full highlight (rooms the cursor is on).
+   *  Non-primary entities in a hierarchical selection get secondary (dimmed) highlight. */
+  primaryEntities?: SelectableObject[];
   /** Whether this is a hierarchical selection (children get secondary highlight) */
   isHierarchical?: boolean;
+  /** If true, suppress the emitChange call (caller will emit with correct source) */
+  silent?: boolean;
 }
 
 /**
@@ -169,7 +172,7 @@ export class BaseSelectionManager implements SelectionAPI {
     return false;
   }
 
-  select(obj: SelectableObject, additive = false): void {
+  select(obj: SelectableObject, additive = false, silent = false): void {
     const added: SelectableObject[] = [];
     const removed: SelectableObject[] = [];
 
@@ -189,7 +192,9 @@ export class BaseSelectionManager implements SelectionAPI {
       this.applyHighlight(obj, true, 'primary');
     }
 
-    this.emitChange(added, removed, 'api');
+    if (!silent) {
+      this.emitChange(added, removed, 'api');
+    }
   }
 
   selectMultiple(
@@ -216,13 +221,15 @@ export class BaseSelectionManager implements SelectionAPI {
         // Determine if this is primary or secondary (hierarchical child)
         const isPrimary =
           !options?.isHierarchical ||
-          (options.primaryEntity && this.isSameEntity(obj, options.primaryEntity));
+          (options.primaryEntities?.some((pe) => this.isSameEntity(obj, pe)) ?? false);
 
         this.applyHighlight(obj, true, isPrimary ? 'primary' : 'secondary');
       }
     }
 
-    this.emitChange(added, removed, 'api');
+    if (!options?.silent) {
+      this.emitChange(added, removed, 'api');
+    }
   }
 
   deselect(obj?: SelectableObject): void {

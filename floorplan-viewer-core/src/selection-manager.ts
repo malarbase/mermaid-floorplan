@@ -616,16 +616,13 @@ export class SelectionManager extends BaseSelectionManager {
         if (entity) {
           if (event.shiftKey) {
             // Toggle selection with Shift
+            const wasSelected = this.isSelected(entity);
             this.toggleSelection(entity);
-            this.emitChange(
-              this.isSelected(entity) ? [entity] : [],
-              this.isSelected(entity) ? [] : [entity],
-              'click',
-            );
+            this.emitChange(wasSelected ? [] : [entity], wasSelected ? [entity] : [], 'click');
           } else {
-            // Replace selection
+            // Replace selection (silent to avoid double-emit from select())
             const previousSelection = Array.from(this.getSelection());
-            this.select(entity, false);
+            this.select(entity, false, true);
             this.emitChange(
               [entity],
               previousSelection.filter((p) => !this.isSameEntity(p, entity)),
@@ -664,7 +661,7 @@ export class SelectionManager extends BaseSelectionManager {
 
     if (entities.length > 0) {
       const previousSelection = Array.from(this.getSelection());
-      this.selectMultiple(entities, additive);
+      this.selectMultiple(entities, additive, { silent: true });
 
       const added = entities.filter((e) => !previousSelection.some((p) => this.isSameEntity(p, e)));
       const removed = additive

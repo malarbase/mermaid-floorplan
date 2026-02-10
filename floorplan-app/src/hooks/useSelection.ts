@@ -31,6 +31,8 @@ export interface PropertyDefinition {
   step?: number;
   options?: PropertyOption[];
   tooltip?: string;
+  /** True when multiple entities have differing values for this property */
+  mixed?: boolean;
 }
 
 // ============================================================================
@@ -61,6 +63,8 @@ export interface SelectionState {
   entityNames: string[];
   /** Property definitions for the primary entity (built via getEntityData callback) */
   propertyDefs: PropertyDefinition[];
+  /** True when all selected entities are the same type (enables merged property view) */
+  isUniformType: boolean;
 }
 
 const EMPTY_STATE: SelectionState = {
@@ -75,6 +79,7 @@ const EMPTY_STATE: SelectionState = {
   summary: '',
   entityNames: [],
   propertyDefs: [],
+  isUniformType: false,
 };
 
 /**
@@ -130,20 +135,29 @@ export function useSelection(
       // Entity names (show when 3 or fewer)
       const entityNames = arr.length <= 3 ? arr.map((e) => e.entityId ?? '') : [];
 
-      // Build property definitions for primary entity
+      // Determine if all selected entities are the same type
+      const uniqueTypes = new Set(arr.map((e) => e.entityType ?? 'unknown'));
+      const isUniformType = uniqueTypes.size === 1 && arr.length > 0;
+
+      // Build property definitions
       let propertyDefs: PropertyDefinition[] = [];
-      if (primary && getEntityData) {
-        try {
-          const data = getEntityData(primary.entityType, primary.entityId);
-          propertyDefs = buildPropertyDefinitions(primary.entityType, data);
-        } catch {
-          // Fallback: basic properties from mesh
+      if (arr.length === 1 && primary) {
+        // Single selection -- show properties for the primary entity
+        if (getEntityData) {
+          try {
+            const data = getEntityData(primary.entityType, primary.entityId);
+            propertyDefs = buildPropertyDefinitions(primary.entityType, data);
+          } catch {
+            propertyDefs = buildFallbackPropertyDefs(primary);
+          }
+        } else {
           propertyDefs = buildFallbackPropertyDefs(primary);
         }
-      } else if (primary) {
-        // No getEntityData callback -- use fallback mesh extraction
-        propertyDefs = buildFallbackPropertyDefs(primary);
+      } else if (arr.length > 1 && isUniformType && getEntityData) {
+        // Multi-selection of same type -- merge properties with "Mixed" for differing values
+        propertyDefs = buildMergedPropertyDefs(arr, getEntityData);
       }
+      // Mixed types multi-selection: no property defs (show summary only)
 
       setState({
         entities: arr,
@@ -157,6 +171,7 @@ export function useSelection(
         summary,
         entityNames,
         propertyDefs,
+        isUniformType,
       });
     });
 
@@ -297,4 +312,63 @@ function buildFallbackPropertyDefs(entity: any): PropertyDefinition[] {
 function roundTo(value: number, decimals: number): number {
   const factor = 10 ** decimals;
   return Math.round(value * factor) / factor;
+}
+
+/**
+ * Build merged property definitions for multiple same-type entities.
+ * Properties present in all entities are shown; differing values are marked as "mixed".
+ */
+function buildMergedPropertyDefs(
+  entities: any[],
+  getEntityData: GetEntityDataFn,
+): PropertyDefinition[] {
+  if (entities.length === 0) return [];
+
+  const entityType = entities[0].entityType;
+
+  // Collect property definitions for each entity
+  const allDefs: PropertyDefinition[][] = [];
+  for (const entity of entities) {
+    try {
+      const data = getEntityData(entity.entityType, entity.entityId);
+      allDefs.push(buildPropertyDefinitions(entity.entityType, data));
+    } catch {
+      allDefs.push(buildFallbackPropertyDefs(entity));
+    }
+  }
+
+  if (allDefs.length === 0) return [];
+
+  // Use the first entity's property set as the template
+  const template = allDefs[0];
+  const merged: PropertyDefinition[] = [];
+
+  // Add a readonly count field at the top
+  merged.push({
+    name: '_count',
+    label: 'Selected',
+    type: 'readonly',
+    value: `${entities.length} ${entityType}s`,
+  });
+
+  for (const baseDef of template) {
+    // Skip 'name' field for multi-selection (it's always different)
+    if (baseDef.name === 'name') continue;
+
+    // Check if all entities share the same value
+    const values = allDefs.map((defs) => {
+      const match = defs.find((d) => d.name === baseDef.name);
+      return match?.value;
+    });
+
+    const allSame = values.every((v) => v === values[0]);
+
+    merged.push({
+      ...baseDef,
+      value: allSame ? values[0] : undefined,
+      mixed: !allSame,
+    });
+  }
+
+  return merged;
 }
