@@ -7,6 +7,8 @@ export interface Overlay2DUIOptions {
   initialVisible?: boolean;
   onClose?: () => void;
   onVisibilityChange?: (visible: boolean) => void;
+  /** AbortSignal for cleaning up document-level listeners on dispose */
+  signal?: AbortSignal;
 }
 
 export interface Overlay2DUI {
@@ -28,7 +30,7 @@ export interface Overlay2DUI {
 export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI {
   injectStyles();
 
-  const { initialVisible = false, onClose, onVisibilityChange } = options;
+  const { initialVisible = false, onClose, onVisibilityChange, signal } = options;
 
   const container = document.createElement('div');
   container.className = 'fp-overlay-2d';
@@ -96,20 +98,29 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     e.preventDefault();
   });
 
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    const dx = e.clientX - dragStartX;
-    const dy = e.clientY - dragStartY;
-    container.style.left = `${initialLeft + dx}px`;
-    container.style.bottom = `${initialBottom - dy}px`;
-  });
+  // Document-level listeners use AbortSignal for automatic cleanup
+  document.addEventListener(
+    'mousemove',
+    (e) => {
+      if (!isDragging) return;
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      container.style.left = `${initialLeft + dx}px`;
+      container.style.bottom = `${initialBottom - dy}px`;
+    },
+    { signal },
+  );
 
-  document.addEventListener('mouseup', () => {
-    if (isDragging) {
-      isDragging = false;
-      container.classList.remove('dragging');
-    }
-  });
+  document.addEventListener(
+    'mouseup',
+    () => {
+      if (isDragging) {
+        isDragging = false;
+        container.classList.remove('dragging');
+      }
+    },
+    { signal },
+  );
 
   // Resize functionality
   let isResizing = false;
@@ -128,17 +139,25 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     e.stopPropagation();
   });
 
-  document.addEventListener('mousemove', (e) => {
-    if (!isResizing) return;
-    const dx = e.clientX - resizeStartX;
-    const dy = e.clientY - resizeStartY;
-    container.style.width = `${Math.max(200, initialWidth + dx)}px`;
-    container.style.height = `${Math.max(150, initialHeight + dy)}px`;
-  });
+  document.addEventListener(
+    'mousemove',
+    (e) => {
+      if (!isResizing) return;
+      const dx = e.clientX - resizeStartX;
+      const dy = e.clientY - resizeStartY;
+      container.style.width = `${Math.max(200, initialWidth + dx)}px`;
+      container.style.height = `${Math.max(150, initialHeight + dy)}px`;
+    },
+    { signal },
+  );
 
-  document.addEventListener('mouseup', () => {
-    isResizing = false;
-  });
+  document.addEventListener(
+    'mouseup',
+    () => {
+      isResizing = false;
+    },
+    { signal },
+  );
 
   return {
     element: container,

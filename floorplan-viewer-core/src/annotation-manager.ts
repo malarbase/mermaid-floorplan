@@ -24,12 +24,16 @@ export interface AnnotationCallbacks {
   getFloorplanData: () => JsonExport | null;
   getConfig: () => JsonConfig;
   getFloorVisibility: (id: string) => boolean;
+  /** Container for overlay UI elements. If provided, floor summary panel is appended here instead of document.body. */
+  overlayContainer?: HTMLElement;
 }
 
 export class AnnotationManager {
   private areaLabels: CSS2DObject[] = [];
   private dimensionLabels: CSS2DObject[] = [];
   private floorSummaryPanel: HTMLElement | null = null;
+  /** Whether the floor summary panel was dynamically created (vs. pre-existing in HTML) */
+  private dynamicallyCreated: boolean = false;
 
   public state: AnnotationState = {
     showArea: false,
@@ -111,7 +115,8 @@ export class AnnotationManager {
   }
 
   /**
-   * Create the floor summary panel element
+   * Create the floor summary panel element.
+   * Appends to the overlay container if provided, otherwise falls back to document.body.
    */
   private createFloorSummaryPanel(): void {
     // Check if element already exists (e.g., in interactive-editor HTML)
@@ -119,6 +124,7 @@ export class AnnotationManager {
       document.getElementById('floor-summary') || document.getElementById('floor-summary-panel');
     if (existing) {
       this.floorSummaryPanel = existing as HTMLElement;
+      this.dynamicallyCreated = false;
       // Ensure it has the fp- class for shared styles
       existing.classList.add('fp-floor-summary-panel');
       return;
@@ -127,7 +133,12 @@ export class AnnotationManager {
     this.floorSummaryPanel = document.createElement('div');
     this.floorSummaryPanel.id = 'floor-summary-panel';
     this.floorSummaryPanel.className = 'fp-floor-summary-panel';
-    document.body.appendChild(this.floorSummaryPanel);
+    // The floor summary panel needs pointer-events so users can interact with it
+    this.floorSummaryPanel.style.pointerEvents = 'auto';
+    this.dynamicallyCreated = true;
+
+    const container = this.callbacks.overlayContainer ?? document.body;
+    container.appendChild(this.floorSummaryPanel);
   }
 
   /**
@@ -261,6 +272,30 @@ export class AnnotationManager {
         this.areaLabels.push(label);
       });
     });
+  }
+
+  /**
+   * Clean up resources: remove dynamically created DOM elements and CSS2D labels.
+   */
+  public dispose(): void {
+    // Remove dynamically-created floor summary panel from DOM
+    if (this.floorSummaryPanel && this.dynamicallyCreated) {
+      this.floorSummaryPanel.remove();
+    }
+    this.floorSummaryPanel = null;
+
+    // Remove CSS2D labels from scene
+    for (const label of this.areaLabels) {
+      label.parent?.remove(label);
+      label.element.remove();
+    }
+    this.areaLabels = [];
+
+    for (const label of this.dimensionLabels) {
+      label.parent?.remove(label);
+      label.element.remove();
+    }
+    this.dimensionLabels = [];
   }
 
   /**

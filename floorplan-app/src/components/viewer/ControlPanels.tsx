@@ -132,13 +132,53 @@ export default function ControlPanels(props: ControlPanelsProps) {
         if (overlayCheckbox) overlayCheckbox.checked = false;
       },
       onVisibilityChange: (v) => layoutManager.setOverlay2DVisible(v),
+      signal: viewer.abortSignal,
     });
-    document.body.appendChild(overlay2D.element);
+    // Append to the viewer's scoped overlay container (not document.body)
+    // so the element is automatically removed when the viewer unmounts.
+    viewer.overlayContainer.appendChild(overlay2D.element);
 
-    // @ts-expect-error - Trigger initial 2D overlay render with current floorplan data
-    if (viewer.overlay2DManager?.render) {
-      viewer.overlay2DManager.render();
-    }
+    // Local render function: produces 2D SVG from the Langium document
+    // and feeds it into the overlay UI via setContent().
+    const renderOverlay2D = async () => {
+      const doc = viewer.currentLangiumDocument;
+      if (!doc) {
+        overlay2D.setContent(null);
+        return;
+      }
+      try {
+        const { render: render2D } = await import('floorplan-language');
+        const currentTheme = viewer.theme;
+        const visibleFloorIds = viewer.floorManager.getVisibleFloorIds();
+        const svg = render2D(doc, {
+          visibleFloors: visibleFloorIds,
+          includeStyles: true,
+          theme:
+            currentTheme === 'dark'
+              ? {
+                  floorBackground: '#2d2d2d',
+                  floorBorder: '#888',
+                  wallColor: '#ccc',
+                  textColor: '#eee',
+                }
+              : undefined,
+        });
+        const parser = new DOMParser();
+        const svgEl = parser.parseFromString(svg, 'image/svg+xml').querySelector('svg');
+        if (svgEl) {
+          svgEl.setAttribute('width', '100%');
+          svgEl.setAttribute('height', '100%');
+          svgEl.style.display = 'block';
+        }
+        overlay2D.setContent(svgEl);
+      } catch (err) {
+        console.error('Failed to render 2D overlay:', err);
+        overlay2D.setContent(null);
+      }
+    };
+
+    // Render initial content
+    renderOverlay2D();
 
     let overlayCheckbox: HTMLInputElement | null = null;
 
@@ -204,12 +244,10 @@ export default function ControlPanels(props: ControlPanelsProps) {
     });
     controlPanel.appendChild(annotationControls.element);
 
-    // @ts-expect-error - Subscribe to floorplanLoaded for future DSL reloads
+    // Subscribe to floorplanLoaded for future DSL reloads
     const unsubscribeFloorplan = viewer.on?.('floorplanLoaded', () => {
       viewer.floorManager.initFloorVisibility();
-      if (viewer.overlay2DManager?.render) {
-        viewer.overlay2DManager.render();
-      }
+      renderOverlay2D();
     });
 
     onCleanup(() => {

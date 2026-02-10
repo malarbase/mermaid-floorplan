@@ -13,13 +13,15 @@
  */
 
 import type { JsonExport, ViewerTheme } from 'floorplan-3d-core';
+import type { Floorplan } from 'floorplan-language';
+import type { LangiumDocument } from 'langium';
 import type * as THREE from 'three';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { BaseViewer } from './base-viewer.js';
 import type { DslEditorInstance } from './dsl-editor.js';
 import { isFloorplanFile, isJsonFile, parseFloorplanDSLWithDocument } from './dsl-parser.js';
 import { getLayoutManager, type LayoutManager } from './layout-manager.js';
-import { Overlay2DManager } from './overlay-2d-manager.js';
+import type { Overlay2DManager } from './overlay-2d-manager.js';
 import type { SelectableObject } from './scene-context.js';
 import { type MarqueeMode, SelectionManager } from './selection-manager.js';
 import type { FileOperation } from './ui/index.js';
@@ -112,6 +114,7 @@ export class FloorplanAppCore extends BaseViewer {
   private editorPanelOpen: boolean = false;
   private editorPanelWidth: number = 450;
   private _currentFilename: string = 'Untitled.floorplan';
+  private _currentLangiumDocument: LangiumDocument<Floorplan> | null = null;
   private editorInstance: DslEditorInstance | null = null;
 
   // Event handlers
@@ -132,6 +135,10 @@ export class FloorplanAppCore extends BaseViewer {
   }
   get isEditorPanelOpen(): boolean {
     return this.editorPanelOpen;
+  }
+  /** The Langium document from the last successful DSL parse, used for 2D rendering. */
+  get currentLangiumDocument(): LangiumDocument<Floorplan> | null {
+    return this._currentLangiumDocument;
   }
 
   constructor(options: FloorplanAppCoreOptions = {}) {
@@ -170,19 +177,15 @@ export class FloorplanAppCore extends BaseViewer {
       );
     }
 
-    // Initialize 2D overlay manager
-    this._overlay2DManager = new Overlay2DManager({
-      getCurrentTheme: () => this.currentTheme,
-      getFloorplanData: () => this.currentFloorplanData,
-      getVisibleFloorIds: () => this._floorManager.getVisibleFloorIds(),
-      onVisibilityChange: (visible) => this.layoutManager.setOverlay2DVisible(visible),
-    });
+    // Note: Overlay2DManager is NOT created here. In the SolidStart app,
+    // ControlPanels.tsx creates the overlay UI via createOverlay2DUI().
+    // In standalone apps, main.ts creates its own Overlay2DManager instance.
+    // This avoids duplicate overlay elements and orphaned DOM nodes.
 
     // Setup manager controls (keyboard shortcuts)
     this._cameraManager.setupControls();
     this._annotationManager.setupControls();
     this._floorManager.setupControls();
-    this._overlay2DManager?.setupControls();
 
     // Load initial content
     if (options.initialDsl) {
@@ -250,7 +253,8 @@ export class FloorplanAppCore extends BaseViewer {
 
       if (result.data) {
         this.loadFloorplan(result.data);
-        this._overlay2DManager?.setLangiumDocument(result.document ?? null);
+        this._currentLangiumDocument = result.document ?? null;
+        this._overlay2DManager?.setLangiumDocument(this._currentLangiumDocument);
 
         // Emit warnings
         this.emit('parseWarnings', { warnings: result.warnings });
@@ -660,6 +664,8 @@ export class FloorplanAppCore extends BaseViewer {
    */
   public dispose(): void {
     this._selectionManager?.dispose();
+    this._overlay2DManager?.dispose();
+    this.layoutManager.resetState();
     this.eventHandlers.clear();
     super.dispose();
   }

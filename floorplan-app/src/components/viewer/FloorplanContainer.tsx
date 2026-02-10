@@ -131,6 +131,30 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     }
   });
 
+  // When mode drops to 'basic', hide panels that only belong in advanced/editor modes.
+  // ControlPanels unmounts via <Show> (cleaning up its overlay element), but the
+  // AnnotationManager and LayoutManager persist on the core — reset their state here.
+  createEffect(() => {
+    const currentMode = mode();
+    if (currentMode === 'basic') {
+      const core = coreInstance();
+      if (core) {
+        // Reset all annotation toggles so panels are hidden
+        const am = core.annotationManager;
+        if (am) {
+          am.state.showFloorSummary = false;
+          am.state.showArea = false;
+          am.state.showDimensions = false;
+          am.updateFloorSummary();
+          am.updateAll();
+        }
+        // Reset layout manager's overlay/panel visibility flags
+        core.layoutManager?.setOverlay2DVisible(false);
+        core.layoutManager?.setFloorSummaryVisible(false);
+      }
+    }
+  });
+
   createEffect(() => {
     const width = editorWidth();
     const layoutManager = getLayoutManager({ editorWidth: width });

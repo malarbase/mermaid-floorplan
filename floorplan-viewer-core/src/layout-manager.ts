@@ -294,6 +294,20 @@ export class LayoutManager {
   }
 
   /**
+   * Reset all layout state to defaults (panels hidden, editor closed).
+   * Unlike dispose(), this keeps the singleton instance alive so it can be
+   * reused when the next viewer mounts. Call this from core.dispose().
+   */
+  resetState(): void {
+    this.batchUpdate({
+      headerVisible: true,
+      editorOpen: false,
+      overlay2DVisible: false,
+      floorSummaryVisible: false,
+    });
+  }
+
+  /**
    * Clean up resources.
    */
   dispose(): void {

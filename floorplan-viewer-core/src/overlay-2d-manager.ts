@@ -13,6 +13,8 @@ export interface Overlay2DCallbacks {
   getVisibleFloorIds: () => string[];
   /** Called when the 2D overlay visibility changes */
   onVisibilityChange?: (visible: boolean) => void;
+  /** AbortSignal for cleaning up document-level listeners on dispose */
+  signal?: AbortSignal;
 }
 
 export class Overlay2DManager {
@@ -20,8 +22,10 @@ export class Overlay2DManager {
   private overlayOpacity: number = 0.6;
   private currentLangiumDoc: LangiumDocument<Floorplan> | null = null;
   private hasBeenDragged: boolean = false;
+  private readonly signal?: AbortSignal;
 
   constructor(private callbacks: Overlay2DCallbacks) {
+    this.signal = callbacks.signal;
     this.setupDrag();
   }
 
@@ -221,7 +225,18 @@ export class Overlay2DManager {
   }
 
   /**
-   * Setup drag and resize functionality for the 2D overlay
+   * Clean up resources.
+   * Note: Document-level listeners are cleaned up via AbortController signal.
+   * This method handles any remaining state cleanup.
+   */
+  public dispose(): void {
+    this.currentLangiumDoc = null;
+    this.overlayVisible = false;
+  }
+
+  /**
+   * Setup drag and resize functionality for the 2D overlay.
+   * Uses AbortSignal so all document-level listeners are removed on dispose.
    */
   private setupDrag(): void {
     const overlay = document.getElementById('overlay-2d');
@@ -229,6 +244,8 @@ export class Overlay2DManager {
     const resizeHandle = document.getElementById('overlay-2d-resize');
 
     if (!overlay || !header) return;
+
+    const signal = this.signal;
 
     // ===== DRAG FUNCTIONALITY =====
     let isDragging = false;
@@ -343,15 +360,24 @@ export class Overlay2DManager {
     resizeHandle?.addEventListener('mousedown', onResizeStart);
 
     // ===== SHARED MOUSE/TOUCH HANDLERS =====
-    document.addEventListener('mousemove', (e) => {
-      onDragMove(e);
-      onResizeMove(e);
-    });
+    // All document-level listeners use the AbortSignal so they're auto-removed on dispose.
+    document.addEventListener(
+      'mousemove',
+      (e) => {
+        onDragMove(e);
+        onResizeMove(e);
+      },
+      { signal },
+    );
 
-    document.addEventListener('mouseup', () => {
-      onDragEnd();
-      onResizeEnd();
-    });
+    document.addEventListener(
+      'mouseup',
+      () => {
+        onDragEnd();
+        onResizeEnd();
+      },
+      { signal },
+    );
 
     // Touch events for drag
     header.addEventListener(
@@ -399,12 +425,16 @@ export class Overlay2DManager {
           }
         }
       },
-      { passive: true },
+      { passive: true, signal },
     );
 
-    document.addEventListener('touchend', () => {
-      onDragEnd();
-      onResizeEnd();
-    });
+    document.addEventListener(
+      'touchend',
+      () => {
+        onDragEnd();
+        onResizeEnd();
+      },
+      { signal },
+    );
   }
 }

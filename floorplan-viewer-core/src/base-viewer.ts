@@ -112,6 +112,12 @@ export abstract class BaseViewer implements SceneContext {
   protected resizeObserver: ResizeObserver | null = null;
   protected resizeDebounceTimeout: NodeJS.Timeout | null = null;
 
+  // Overlay layer for floating UI elements (scoped to container, not document.body)
+  protected _overlayLayer: HTMLDivElement;
+
+  // AbortController for cleaning up document-level event listeners on dispose
+  protected readonly _abortController: AbortController = new AbortController();
+
   // SceneContext interface getters
   get scene(): THREE.Scene {
     return this._scene;
@@ -150,6 +156,16 @@ export abstract class BaseViewer implements SceneContext {
   }
   get floorManager(): FloorManager {
     return this._floorManager;
+  }
+
+  /** Overlay layer for floating UI panels (scoped to viewer container). */
+  get overlayContainer(): HTMLDivElement {
+    return this._overlayLayer;
+  }
+
+  /** AbortSignal for document-level event listeners. Aborted on dispose(). */
+  get abortSignal(): AbortSignal {
+    return this._abortController.signal;
   }
 
   // Light and theme getters
@@ -216,6 +232,19 @@ export abstract class BaseViewer implements SceneContext {
     this.labelRenderer.domElement.style.pointerEvents = 'none';
     container.appendChild(this.labelRenderer.domElement);
 
+    // Create overlay layer for floating UI elements (2D overlay, floor summary, etc.)
+    // Scoped to the viewer container so elements are removed automatically on unmount.
+    this._overlayLayer = document.createElement('div');
+    this._overlayLayer.className = 'fp-overlay-layer';
+    this._overlayLayer.style.position = 'absolute';
+    this._overlayLayer.style.top = '0';
+    this._overlayLayer.style.left = '0';
+    this._overlayLayer.style.width = '100%';
+    this._overlayLayer.style.height = '100%';
+    this._overlayLayer.style.pointerEvents = 'none';
+    this._overlayLayer.style.overflow = 'visible';
+    container.appendChild(this._overlayLayer);
+
     // Init controls (using perspective camera initially)
     this._controls = new OrbitControls(this._perspectiveCamera, this._renderer.domElement);
     this._controls.enableDamping = true;
@@ -267,6 +296,7 @@ export abstract class BaseViewer implements SceneContext {
       getFloorplanData: () => this.currentFloorplanData,
       getConfig: () => this.config,
       getFloorVisibility: (id) => this._floorManager.getFloorVisibility(id),
+      overlayContainer: this._overlayLayer,
     });
 
     this._floorManager = new FloorManager({
@@ -1168,12 +1198,16 @@ export abstract class BaseViewer implements SceneContext {
    * Clean up resources.
    */
   public dispose(): void {
+    // Abort all document-level event listeners registered with our signal
+    this._abortController.abort();
+
     // Stop animation
     this.stopAnimation();
 
     // Dispose managers/controls
     this.keyboardControls?.dispose();
     this.pivotIndicator?.dispose();
+    this._annotationManager?.dispose();
 
     // Clear scene
     for (const f of this._floors) this._scene.remove(f);
@@ -1189,5 +1223,8 @@ export abstract class BaseViewer implements SceneContext {
     }
     this.resizeObserver?.disconnect();
     this.resizeObserver = null;
+
+    // Remove overlay layer (and all children) from DOM
+    this._overlayLayer?.remove();
   }
 }
