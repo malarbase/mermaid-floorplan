@@ -58,7 +58,7 @@ interface ScreenRect {
 export class SelectionManager extends BaseSelectionManager {
   // Scene references
   private scene: THREE.Scene;
-  private camera: THREE.Camera;
+  private getCamera: () => THREE.Camera;
   private renderer: THREE.WebGLRenderer;
   private controls: OrbitControls;
   private meshRegistry: MeshRegistry;
@@ -106,7 +106,7 @@ export class SelectionManager extends BaseSelectionManager {
 
   constructor(
     scene: THREE.Scene,
-    camera: THREE.Camera,
+    getCamera: () => THREE.Camera,
     renderer: THREE.WebGLRenderer,
     controls: OrbitControls,
     meshRegistry: MeshRegistry,
@@ -115,7 +115,7 @@ export class SelectionManager extends BaseSelectionManager {
     super();
 
     this.scene = scene;
-    this.camera = camera;
+    this.getCamera = getCamera;
     this.renderer = renderer;
     this.controls = controls;
     this.meshRegistry = meshRegistry;
@@ -234,13 +234,6 @@ export class SelectionManager extends BaseSelectionManager {
     } catch {
       // Ignore storage errors
     }
-  }
-
-  /**
-   * Update camera reference (e.g., when switching between perspective/ortho).
-   */
-  setCamera(camera: THREE.Camera): void {
-    this.camera = camera;
   }
 
   /**
@@ -580,7 +573,7 @@ export class SelectionManager extends BaseSelectionManager {
     this.mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
 
     // Perform raycast
-    this.raycaster.setFromCamera(this.mouse, this.camera);
+    this.raycaster.setFromCamera(this.mouse, this.getCamera());
     const intersects = this.raycaster.intersectObjects(this.scene.children, true);
 
     this.log('Raycast found', intersects.length, 'intersections');
@@ -802,7 +795,7 @@ export class SelectionManager extends BaseSelectionManager {
 
     for (const corner of corners) {
       // Project to NDC
-      corner.project(this.camera);
+      corner.project(this.getCamera());
 
       // Check if in front of camera (z < 1 in NDC)
       if (corner.z < 1) {

@@ -165,7 +165,7 @@ export class FloorplanAppCore extends BaseViewer {
     if (this.enableSelection || this.allowSelectionToggle) {
       this._selectionManager = new SelectionManager(
         this._scene,
-        this._cameraManager.activeCamera,
+        () => this._cameraManager.activeCamera,
         this._renderer,
         this._controls,
         this._meshRegistry,
