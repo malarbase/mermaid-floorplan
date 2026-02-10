@@ -57,6 +57,13 @@ export {
   parseFloorplanDSL,
   parseFloorplanDSLWithDocument,
 } from './dsl-parser.js';
+export type {
+  EditorViewerSyncConfig,
+  EntityHierarchyContext,
+  HierarchyExpansionResult,
+} from './editor-viewer-sync.js';
+// Editor-Viewer Bidirectional Sync (shared between floorplan-editor and floorplan-app)
+export { EditorViewerSync } from './editor-viewer-sync.js';
 export type { FloorManagerCallbacks } from './floor-manager.js';
 // Floor manager
 export { FloorManager } from './floor-manager.js';

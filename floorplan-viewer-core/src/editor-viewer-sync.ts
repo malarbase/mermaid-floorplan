@@ -6,10 +6,15 @@
  * - Editor cursor → 3D highlight sync
  * - Debouncing to prevent feedback loops
  * - Error state management
+ *
+ * Moved from floorplan-editor to floorplan-viewer-core so both
+ * floorplan-editor and floorplan-app can share the same implementation.
  */
 
-import type { SelectableObject, SelectionManager, SourceRange } from 'floorplan-viewer-core';
 import * as monaco from 'monaco-editor';
+import type { EntityLocation as CoreEntityLocation } from './interactive-editor-core.js';
+import type { SelectableObject, SourceRange } from './scene-context.js';
+import type { SelectionManager } from './selection-manager.js';
 
 /**
  * Configuration for EditorViewerSync
@@ -22,9 +27,10 @@ export interface EditorViewerSyncConfig {
 }
 
 /**
- * Entity location in the DSL source
+ * Internal entity location used by the sync class.
+ * Derived from the core's EntityLocation but with guaranteed sourceRange.
  */
-export interface EntityLocation {
+interface SyncEntityLocation {
   entityType: string;
   entityId: string;
   floorId: string;
@@ -77,7 +83,7 @@ export class EditorViewerSync {
   private cursorDebounceTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // Entity location index (populated from JSON with source ranges)
-  private entityLocations: Map<string, EntityLocation> = new Map();
+  private entityLocations: Map<string, SyncEntityLocation> = new Map();
 
   // Entity hierarchy index (key -> hierarchy context)
   private entityHierarchy: Map<string, EntityHierarchyContext> = new Map();
@@ -127,21 +133,32 @@ export class EditorViewerSync {
   }
 
   /**
-   * Update entity locations from parsed JSON data.
+   * Update entity locations from the core's EntityLocation array.
+   * Accepts the core's EntityLocation type (with name/type fields) and
+   * converts to the internal format. Entities without sourceRange are skipped.
    * Call this after each successful parse.
    */
-  updateEntityLocations(entities: EntityLocation[]): void {
+  updateEntityLocations(coreEntities: CoreEntityLocation[]): void {
     this.entityLocations.clear();
-    for (const entity of entities) {
-      const key = `${entity.floorId}:${entity.entityType}:${entity.entityId}`;
-      this.entityLocations.set(key, entity);
+    for (const entity of coreEntities) {
+      if (!entity.sourceRange) continue; // Skip entities without source ranges
+      const syncEntity: SyncEntityLocation = {
+        entityType: entity.type,
+        entityId: entity.name,
+        floorId: entity.floorId,
+        sourceRange: entity.sourceRange,
+      };
+      const key = `${entity.floorId}:${entity.type}:${entity.name}`;
+      this.entityLocations.set(key, syncEntity);
     }
 
     // Build hierarchy index
     this.buildEntityHierarchy();
 
     if (this.config.debug) {
-      console.log(`[EditorViewerSync] Updated ${entities.length} entity locations`);
+      console.log(
+        `[EditorViewerSync] Updated ${coreEntities.length} entity locations (${this.entityLocations.size} with source ranges)`,
+      );
       console.log(`[EditorViewerSync] Built hierarchy with ${this.entityHierarchy.size} entries`);
     }
   }

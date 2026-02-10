@@ -2,9 +2,14 @@ import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
 // Monaco environment must be configured before Monaco loads
 import '~/lib/monaco-env';
 
-import type { JsonExport, JsonSourceRange } from 'floorplan-3d-core';
+import type { JsonExport, JsonRoom, JsonSourceRange } from 'floorplan-3d-core';
 // Import types only (compile-time, no runtime cost)
-import type { DslEditorInstance, ParseError, ParseResult } from 'floorplan-viewer-core';
+import type {
+  DslEditorInstance,
+  EntityLocation,
+  ParseError,
+  ParseResult,
+} from 'floorplan-viewer-core';
 
 // Define interfaces for dynamically imported modules
 type ParseFloorplanDSL = (content: string) => Promise<ParseResult>;
@@ -39,6 +44,7 @@ interface EditorCore {
 }
 
 interface EditorViewerSyncInstance {
+  updateEntityLocations(entities: EntityLocation[]): void;
   onEditorSelect(callback: (entityKey: string, isAdditive: boolean) => void): void;
   onEditorHierarchicalSelect(
     callback: (result: { primaryKey: string; allKeys: string[] }, isAdditive: boolean) => void,
@@ -105,14 +111,10 @@ export default function EditorPanel(props: EditorPanelProps) {
     if (!editorContainerRef) return;
 
     try {
-      const [viewerCore, editorModule] = await Promise.all([
-        import('floorplan-viewer-core'),
-        import('floorplan-editor'),
-      ]);
+      const viewerCore = await import('floorplan-viewer-core');
 
-      const { createDslEditor, parseFloorplanDSL, monaco } = viewerCore;
+      const { createDslEditor, parseFloorplanDSL, monaco, EditorViewerSync } = viewerCore;
       monacoRef = monaco;
-      const { EditorViewerSync } = editorModule;
 
       const editorId = `editor-container-${Math.random().toString(36).slice(2)}`;
       editorContainerRef.id = editorId;
@@ -299,6 +301,12 @@ export default function EditorPanel(props: EditorPanelProps) {
       // Store parsed data for entity data lookups
       lastParsedData = result.data;
 
+      // Update entity locations for editor ↔ 3D sync
+      if (editorSync && result.data) {
+        const entityLocations = extractEntityLocations(result.data);
+        editorSync.updateEntityLocations(entityLocations);
+      }
+
       // Update the 3D view with the parsed floorplan data
       core.loadFloorplan?.(result.data);
     } catch (error) {
@@ -312,9 +320,9 @@ export default function EditorPanel(props: EditorPanelProps) {
    */
   function initEditorViewerSync(
     EditorViewerSyncClass: new (
-      editor: unknown,
-      selectionManager: SelectionManager,
-      config: { debug: boolean },
+      editor: any,
+      selectionManager: any,
+      config?: { debug?: boolean },
     ) => EditorViewerSyncInstance,
     editor: DslEditorInstance,
     core: EditorCore,
@@ -450,4 +458,72 @@ export default function EditorPanel(props: EditorPanelProps) {
       }}
     />
   );
+}
+
+// ============================================================================
+// Entity Location Extraction
+// ============================================================================
+
+/**
+ * Extract entity locations (with source ranges) from parsed JSON data.
+ * Uses the core's EntityLocation format (name/type) for EditorViewerSync.
+ */
+function extractEntityLocations(jsonData: JsonExport): EntityLocation[] {
+  const locations: EntityLocation[] = [];
+
+  type WithSourceRange<T> = T & {
+    _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number };
+  };
+
+  for (const floor of jsonData.floors) {
+    const floorWithSource = floor as WithSourceRange<typeof floor>;
+
+    if (floorWithSource._sourceRange) {
+      locations.push({
+        type: 'floor',
+        name: floor.id,
+        floorId: floor.id,
+        sourceRange: floorWithSource._sourceRange,
+      });
+    }
+
+    for (const room of floor.rooms) {
+      const roomWithSource = room as WithSourceRange<JsonRoom>;
+
+      if (roomWithSource._sourceRange) {
+        locations.push({
+          type: 'room',
+          name: room.name,
+          floorId: floor.id,
+          sourceRange: roomWithSource._sourceRange,
+        });
+      }
+
+      for (const wall of room.walls || []) {
+        const wallWithSource = wall as WithSourceRange<typeof wall>;
+        if (wallWithSource._sourceRange) {
+          locations.push({
+            type: 'wall',
+            name: `${room.name}_${wall.direction}`,
+            floorId: floor.id,
+            sourceRange: wallWithSource._sourceRange,
+          });
+        }
+      }
+    }
+  }
+
+  for (const conn of jsonData.connections) {
+    const connWithSource = conn as WithSourceRange<typeof conn>;
+    if (connWithSource._sourceRange) {
+      locations.push({
+        type: 'connection',
+        name: `${conn.fromRoom}-${conn.toRoom}`,
+        floorId: jsonData.floors[0]?.id ?? 'default',
+        sourceRange: connWithSource._sourceRange,
+      });
+    }
+  }
+
+  return locations;
 }

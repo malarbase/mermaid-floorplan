@@ -11,11 +11,17 @@
  */
 
 // Re-export floorplan-viewer-core types for convenience
+// Re-export EditorViewerSync and related types from viewer-core (canonical location)
+// EntityLocation is now the core's type from viewer-core
 export type {
   DslEditorConfig,
   DslEditorInstance,
   EditorUIAPI,
   EditorUIConfig,
+  EditorViewerSyncConfig,
+  EntityHierarchyContext,
+  EntityLocation,
+  HierarchyExpansionResult,
   InteractiveEditorCoreEvents,
   InteractiveEditorCoreOptions,
   MarqueeMode,
@@ -34,6 +40,7 @@ export type {
 export {
   createDslEditor,
   createEditorUI,
+  EditorViewerSync,
   InteractiveEditorCore,
   monaco,
   SelectionManager,
@@ -43,15 +50,7 @@ export type {
   FloorGeneratorOptions,
   RoomGeneratorOptions,
 } from './dsl-generator.js';
-
 export { DslGenerator, dslGenerator } from './dsl-generator.js';
-export type {
-  EditorViewerSyncConfig,
-  EntityHierarchyContext,
-  EntityLocation,
-  HierarchyExpansionResult,
-} from './editor-viewer-sync.js';
-export { EditorViewerSync } from './editor-viewer-sync.js';
 export type {
   PropertiesPanelConfig,
   PropertyChangeEvent,

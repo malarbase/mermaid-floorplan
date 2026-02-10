@@ -35,6 +35,8 @@ import {
   createShortcutInfoUI,
   createValidationWarningsUI,
   createViewCommands,
+  EditorViewerSync,
+  type EntityLocation,
   getLayoutManager,
   InteractiveEditorCore,
   injectStyles,
@@ -43,7 +45,6 @@ import {
 import { createFloorplanUI, type FloorplanUIAPI } from 'floorplan-viewer-core/ui/solid';
 import { EmptyFileSystem, type LangiumDocument, URI } from 'langium';
 import { dslPropertyEditor } from './dsl-generator.js';
-import { EditorViewerSync } from './editor-viewer-sync.js';
 
 const log = createDebugLogger('[Editor]');
 
@@ -592,32 +593,24 @@ async function parseAndUpdate(content: string) {
 // Helpers
 // ============================================================================
 
-function extractEntityLocations(jsonData: JsonExport) {
-  const locations: Array<{
-    entityType: string;
-    entityId: string;
-    floorId: string;
-    sourceRange: { startLine: number; startColumn: number; endLine: number; endColumn: number };
-    parentKey?: string;
-  }> = [];
+function extractEntityLocations(jsonData: JsonExport): EntityLocation[] {
+  const locations: EntityLocation[] = [];
 
   for (const floor of jsonData.floors) {
-    const floorKey = `${floor.id}:floor:${floor.id}`;
     const floorWithSource = floor as typeof floor & {
       _sourceRange?: { startLine: number; startColumn: number; endLine: number; endColumn: number };
     };
 
     if (floorWithSource._sourceRange) {
       locations.push({
-        entityType: 'floor',
-        entityId: floor.id,
+        type: 'floor',
+        name: floor.id,
         floorId: floor.id,
         sourceRange: floorWithSource._sourceRange,
       });
     }
 
     for (const room of floor.rooms) {
-      const roomKey = `${floor.id}:room:${room.name}`;
       const roomWithSource = room as JsonRoom & {
         _sourceRange?: {
           startLine: number;
@@ -629,11 +622,10 @@ function extractEntityLocations(jsonData: JsonExport) {
 
       if (roomWithSource._sourceRange) {
         locations.push({
-          entityType: 'room',
-          entityId: room.name,
+          type: 'room',
+          name: room.name,
           floorId: floor.id,
           sourceRange: roomWithSource._sourceRange,
-          parentKey: floorKey,
         });
       }
 
@@ -648,11 +640,10 @@ function extractEntityLocations(jsonData: JsonExport) {
         };
         if (wallWithSource._sourceRange) {
           locations.push({
-            entityType: 'wall',
-            entityId: `${room.name}_${wall.direction}`,
+            type: 'wall',
+            name: `${room.name}_${wall.direction}`,
             floorId: floor.id,
             sourceRange: wallWithSource._sourceRange,
-            parentKey: roomKey,
           });
         }
       }
@@ -665,8 +656,8 @@ function extractEntityLocations(jsonData: JsonExport) {
     };
     if (connWithSource._sourceRange) {
       locations.push({
-        entityType: 'connection',
-        entityId: `${conn.fromRoom}-${conn.toRoom}`,
+        type: 'connection',
+        name: `${conn.fromRoom}-${conn.toRoom}`,
         floorId: jsonData.floors[0]?.id ?? 'default',
         sourceRange: connWithSource._sourceRange,
       });
