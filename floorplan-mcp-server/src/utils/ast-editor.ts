@@ -4,6 +4,7 @@
  */
 
 import type { Floor, Floorplan, Room } from 'floorplan-language';
+import { serializeRoom } from 'floorplan-language';
 import type { CstNode, LangiumDocument, LeafCstNode } from 'langium';
 import { isCompositeCstNode, isLeafCstNode } from 'langium';
 
@@ -171,35 +172,17 @@ export class FloorplanAstEditor {
   }
 
   private buildRoomLine(params: RoomParams, indent: string): string {
-    const { name, position, size, walls, label, relativePosition } = params;
-
-    let line = `${indent}room ${name}`;
-
-    // Add explicit position if provided
-    if (position) {
-      line += ` at (${position.x},${position.y})`;
-    }
-
-    // Add size and walls
-    line += ` size (${size.width} x ${size.height}) walls [top: ${walls.top}, right: ${walls.right}, bottom: ${walls.bottom}, left: ${walls.left}]`;
-
-    // Add relative positioning if provided
-    if (relativePosition) {
-      line += ` ${relativePosition.direction} ${relativePosition.reference}`;
-      if (relativePosition.gap !== undefined) {
-        line += ` gap ${relativePosition.gap}`;
-      }
-      if (relativePosition.alignment) {
-        line += ` align ${relativePosition.alignment}`;
-      }
-    }
-
-    // Add label if provided
-    if (label) {
-      line += ` label "${label}"`;
-    }
-
-    return line;
+    return serializeRoom(
+      {
+        name: params.name,
+        position: params.position,
+        size: params.size,
+        walls: params.walls,
+        relativePosition: params.relativePosition,
+        label: params.label,
+      },
+      indent,
+    );
   }
 
   // ==================== REMOVE ROOM ====================

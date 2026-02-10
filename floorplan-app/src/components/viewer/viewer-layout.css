@@ -43,28 +43,42 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 400px;
+  /* width is set via inline style from Solid signal */
   height: 100%;
   background: oklch(var(--color-base-100));
   border-right: 1px solid oklch(var(--color-base-content) / 0.1);
-  overflow: hidden;
+  /* No overflow:hidden here — EditorBundle handles its own overflow,
+     and this would clip Monaco's hover/zone widgets due to transform */
   transition: transform 0.3s ease;
   transform: translateX(0);
   z-index: 20;
 }
 
-/* Override fp-editor-panel fixed positioning when inside our layout */
-.editor-panel.fp-editor-panel {
+/* Drag-to-resize handle on the right edge of the editor panel */
+.editor-resize-handle {
   position: absolute;
   top: 0;
-  left: 0;
+  right: -3px;
+  width: 6px;
   height: 100%;
+  cursor: col-resize;
+  z-index: 1001;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.editor-resize-handle:hover,
+.editor-resize-handle.active {
+  background: oklch(var(--color-primary) / 0.4);
 }
 
 .editor-panel.collapsed {
   transform: translateX(-100%);
 }
 
+/* Collapse button: layout-only in CSS, colors via Tailwind classes on element.
+   This avoids Tailwind v4's base reset overriding button backgrounds
+   (see .cursor/skills/solidjs-daisyui/SKILL.md "CSS Specificity" section). */
 .editor-collapse-btn {
   position: absolute;
   top: 50%;
@@ -72,26 +86,18 @@
   transform: translateY(-50%);
   width: 24px;
   height: 48px;
-  background: oklch(var(--color-base-200));
-  border: 1px solid oklch(var(--color-base-content) / 0.2);
-  border-left: none;
   border-radius: 0 6px 6px 0;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
-  color: oklch(var(--color-base-content) / 0.6);
   z-index: 1000;
-  transition: background 0.2s ease;
+  transition: background-color 0.2s ease;
 }
 
 .editor-panel.collapsed .editor-collapse-btn {
   right: -24px;
-}
-
-.editor-collapse-btn:hover {
-  background: oklch(var(--color-base-300));
 }
 
 /* FAB (phone only) */
@@ -160,9 +166,7 @@
     display: none;
   }
 
-  .editor-panel {
-    width: 360px;
-  }
+  /* Editor width is controlled via inline style + resize handle */
 
   .control-panel {
     width: 280px;
@@ -176,9 +180,7 @@
     display: none;
   }
 
-  .editor-panel {
-    width: 450px;
-  }
+  /* Editor width is controlled via inline style + resize handle */
 
   .control-panel {
     width: 320px;

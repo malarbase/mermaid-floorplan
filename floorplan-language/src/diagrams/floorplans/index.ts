@@ -145,6 +145,8 @@ export {
   renderToFile,
 } from './renderer.js';
 export { generateRoomSvg, generateRoomText, type RoomRenderOptions } from './room.js';
+// DSL text serialization
+export { type SerializeRoomParams, serializeRoom } from './serializer.js';
 export {
   generateFloorCirculation,
   generateLiftSvg,

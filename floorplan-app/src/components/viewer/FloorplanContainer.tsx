@@ -11,6 +11,10 @@ import './viewer-layout.css';
 import { getLayoutManager } from 'floorplan-viewer-core';
 import { useAppTheme } from '~/lib/theme';
 
+/** Min/max editor panel width in pixels */
+const EDITOR_MIN_WIDTH = 250;
+const EDITOR_MAX_WIDTH = 800;
+
 // Define the mode types
 export type ViewerMode = 'basic' | 'advanced' | 'editor';
 
@@ -113,6 +117,8 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     typeof window !== 'undefined' ? window.innerWidth < 640 : false,
   );
   const [isEditorCollapsed, setIsEditorCollapsed] = createSignal(false);
+  const [editorWidth, setEditorWidth] = createSignal(400);
+  const [isResizing, setIsResizing] = createSignal(false);
 
   // DSL theme suggestion state
   const [dslThemeSuggestion, setDslThemeSuggestion] = createSignal<'light' | 'dark' | null>(null);
@@ -126,7 +132,8 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   });
 
   createEffect(() => {
-    const layoutManager = getLayoutManager({ editorWidth: 400 });
+    const width = editorWidth();
+    const layoutManager = getLayoutManager({ editorWidth: width });
     layoutManager.setEditorOpen(!isEditorCollapsed());
   });
 
@@ -172,6 +179,33 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     }
   };
 
+  // Resize handle logic
+  const handleResizeStart = (e: MouseEvent) => {
+    e.preventDefault();
+    setIsResizing(true);
+    const startX = e.clientX;
+    const startWidth = editorWidth();
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const delta = e.clientX - startX;
+      const newWidth = Math.min(EDITOR_MAX_WIDTH, Math.max(EDITOR_MIN_WIDTH, startWidth + delta));
+      setEditorWidth(newWidth);
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   // Prepare props for sub-components
   const baseProps = () => ({
     dsl: props.dsl,
@@ -202,17 +236,25 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
         <div class="floorplan-container" data-theme={theme()}>
           {/* Editor panel (desktop + tablet in editor mode) */}
           <Show when={mode() === 'editor' && !isMobile()}>
-            <div class={`editor-panel fp-editor-panel ${isEditorCollapsed() ? 'collapsed' : ''}`}>
+            <div
+              class={`editor-panel ${isEditorCollapsed() ? 'collapsed' : ''}`}
+              style={{ width: `${editorWidth()}px` }}
+            >
               <Show when={coreInstance()} fallback={<EditorSkeleton />}>
                 <EditorBundle {...editorProps()} />
               </Show>
               <button
-                class="editor-collapse-btn"
+                class="editor-collapse-btn bg-base-200 hover:bg-base-300 text-base-content/60 border border-base-content/20 border-l-0"
                 onClick={() => setIsEditorCollapsed((prev) => !prev)}
                 title={isEditorCollapsed() ? 'Expand editor' : 'Collapse editor'}
               >
                 {isEditorCollapsed() ? '▶' : '◀'}
               </button>
+              {/* Resize handle */}
+              <div
+                class={`editor-resize-handle ${isResizing() ? 'active' : ''}`}
+                onMouseDown={handleResizeStart}
+              />
             </div>
           </Show>
 

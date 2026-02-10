@@ -2,7 +2,7 @@ import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
 // Monaco environment must be configured before Monaco loads
 import '~/lib/monaco-env';
 
-import type { JsonExport } from 'floorplan-3d-core';
+import type { JsonExport, JsonSourceRange } from 'floorplan-3d-core';
 // Import types only (compile-time, no runtime cost)
 import type { DslEditorInstance, ParseError, ParseResult } from 'floorplan-viewer-core';
 
@@ -49,12 +49,43 @@ interface EditorViewerSyncInstance {
   dispose?(): void;
 }
 
+/**
+ * Imperative API exposed from EditorPanel to parent components.
+ * Gives access to the Monaco editor and parsed data for DSL manipulation.
+ */
+export interface EditorPanelAPI {
+  /** Get current DSL content from Monaco */
+  getValue(): string;
+  /** Replace all content in Monaco (triggers parse + 3D update) */
+  setValue(content: string): void;
+  /** Push a targeted edit with undo/redo support */
+  pushEdit(
+    range: {
+      startLineNumber: number;
+      startColumn: number;
+      endLineNumber: number;
+      endColumn: number;
+    },
+    text: string,
+  ): void;
+  /** Get the most recently successfully parsed JSON data */
+  getLastParsedData(): JsonExport | null;
+  /** Navigate to a specific line in the editor */
+  goToLine(line: number, column?: number): void;
+}
+
 interface EditorPanelProps {
   dsl: string;
   theme: 'light' | 'dark';
   onDslChange: (dsl: string) => void;
   onSave?: () => void;
   core: EditorCore;
+  /** Called when the editor is ready with an imperative API */
+  onEditorReady?: (api: EditorPanelAPI) => void;
+  /** Called when parse warnings are available (validation hints, etc.) */
+  onWarnings?: (warnings: ParseError[]) => void;
+  /** Called when parse error state changes */
+  onParseError?: (hasError: boolean, errorMessage?: string) => void;
 }
 
 export default function EditorPanel(props: EditorPanelProps) {
@@ -63,7 +94,10 @@ export default function EditorPanel(props: EditorPanelProps) {
   let editorSync: EditorViewerSyncInstance | null = null;
   let parseDebounceTimeout: NodeJS.Timeout | null = null;
   let errorMarkerTimeout: NodeJS.Timeout | null = null;
+  let parseGeneration = 0; // Monotonic counter to invalidate stale error timeouts
   let unsubSelection: (() => void) | null = null;
+  let lastParsedData: JsonExport | null = null;
+  let monacoRef: typeof import('floorplan-viewer-core').monaco | null = null;
 
   const [isInitialized, setIsInitialized] = createSignal(false);
 
@@ -76,7 +110,8 @@ export default function EditorPanel(props: EditorPanelProps) {
         import('floorplan-editor'),
       ]);
 
-      const { createDslEditor, parseFloorplanDSL } = viewerCore;
+      const { createDslEditor, parseFloorplanDSL, monaco } = viewerCore;
+      monacoRef = monaco;
       const { EditorViewerSync } = editorModule;
 
       const editorId = `editor-container-${Math.random().toString(36).slice(2)}`;
@@ -99,6 +134,42 @@ export default function EditorPanel(props: EditorPanelProps) {
       });
 
       initEditorViewerSync(EditorViewerSync, dslEditor, props.core);
+
+      // Expose imperative API to parent
+      const localEditor = dslEditor;
+      const localParse = parseFloorplanDSL;
+      const localCore = props.core;
+
+      // Helper: trigger parse + propagation after programmatic content changes.
+      // Monaco's setValue() does NOT fire onChange, so we must do it manually.
+      const triggerParseAndNotify = (content: string) => {
+        if (parseDebounceTimeout) clearTimeout(parseDebounceTimeout);
+        parseAndUpdate(content, localParse, localCore);
+        props.onDslChange(content);
+      };
+
+      props.onEditorReady?.({
+        getValue: () => localEditor.getValue(),
+        setValue: (content: string) => {
+          localEditor.setValue(content);
+          triggerParseAndNotify(content);
+        },
+        pushEdit: (range, text) => {
+          const model = localEditor.editor.getModel?.();
+          if (!model) return;
+          model.pushEditOperations([], [{ range, text }], () => null);
+          // pushEditOperations triggers onChange via Monaco, so no manual trigger needed
+        },
+        getLastParsedData: () => lastParsedData,
+        goToLine: (line: number, column?: number) => {
+          localEditor.goToLine(line, column);
+        },
+      });
+
+      // Parse the initial DSL content on mount.
+      // createDslEditor sets initialContent but does NOT fire onChange,
+      // so lastParsedData would remain null until the first user edit.
+      parseAndUpdate(props.dsl, localParse, localCore);
 
       setIsInitialized(true);
     } catch (error) {
@@ -140,8 +211,14 @@ export default function EditorPanel(props: EditorPanelProps) {
     parseFloorplanDSL: ParseFloorplanDSL,
     core: EditorCore,
   ): Promise<void> {
+    // Bump generation so any pending error timeout from a previous parse is invalidated
+    const thisGeneration = ++parseGeneration;
+
     try {
       const result = await parseFloorplanDSL(content);
+
+      // If a newer parse has started while we awaited, discard this result
+      if (thisGeneration !== parseGeneration) return;
 
       // Check for parse errors (ParseResult has errors array, not success boolean)
       if (result.errors.length > 0 || !result.data) {
@@ -154,9 +231,22 @@ export default function EditorPanel(props: EditorPanelProps) {
             e.line !== undefined && e.column !== undefined,
         );
         errorMarkerTimeout = setTimeout(() => {
+          // Only apply if no newer parse has superseded us
+          if (thisGeneration !== parseGeneration) return;
           if (dslEditor && errors.length > 0) {
             dslEditor.setErrorMarkers(errors);
           }
+          // Clear any stale warning markers when in error state
+          if (dslEditor && monacoRef) {
+            const model = dslEditor.editor.getModel?.();
+            if (model) {
+              monacoRef.editor.setModelMarkers(model, 'floorplans-warnings', []);
+            }
+          }
+          props.onWarnings?.([]);
+          // Notify parent of error state
+          const firstError = result.errors[0];
+          props.onParseError?.(true, firstError?.message);
         }, 1500); // Show errors after 1.5s of invalid state
         return;
       }
@@ -167,6 +257,47 @@ export default function EditorPanel(props: EditorPanelProps) {
         errorMarkerTimeout = null;
       }
       dslEditor?.clearErrorMarkers();
+      // Dismiss any open "peek problems" zone widget (the "1 of N problems" bar)
+      dslEditor?.editor.trigger('', 'closeMarkersNavigation', {});
+
+      // Clear error state
+      props.onParseError?.(false);
+
+      // Forward warnings (validation hints like unused rooms, etc.)
+      // Also set warning markers in Monaco for inline yellow squiggles
+      if (result.warnings && result.warnings.length > 0) {
+        const warningsWithLocation = result.warnings.filter(
+          (w): w is ParseError & { line: number; column: number } =>
+            w.line !== undefined && w.column !== undefined,
+        );
+        if (dslEditor && monacoRef && warningsWithLocation.length > 0) {
+          const model = dslEditor.editor.getModel?.();
+          if (model) {
+            const markers = warningsWithLocation.map((w) => ({
+              severity: monacoRef!.MarkerSeverity.Warning,
+              message: w.message,
+              startLineNumber: w.line,
+              startColumn: w.column,
+              endLineNumber: w.line,
+              endColumn: w.column + 1,
+            }));
+            monacoRef.editor.setModelMarkers(model, 'floorplans-warnings', markers);
+          }
+        }
+        props.onWarnings?.(result.warnings);
+      } else {
+        // Clear warning markers
+        if (dslEditor && monacoRef) {
+          const model = dslEditor.editor.getModel?.();
+          if (model) {
+            monacoRef.editor.setModelMarkers(model, 'floorplans-warnings', []);
+          }
+        }
+        props.onWarnings?.([]);
+      }
+
+      // Store parsed data for entity data lookups
+      lastParsedData = result.data;
 
       // Update the 3D view with the parsed floorplan data
       core.loadFloorplan?.(result.data);

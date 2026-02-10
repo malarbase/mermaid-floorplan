@@ -68,18 +68,43 @@ export class CameraManager {
   }
 
   /**
-   * Toggle between perspective and orthographic camera modes
+   * Toggle between perspective and orthographic camera modes.
+   *
+   * When switching, the frustum / distance is adjusted so the visible extent
+   * of the scene stays roughly the same. This prevents the dramatic scale
+   * jump that would otherwise occur because the perspective camera's FOV and
+   * the orthographic camera's frustum size are independent parameters.
    */
   public toggleCameraMode(): void {
     if (this.cameraMode === 'perspective') {
       this.cameraMode = 'orthographic';
       // Copy position and target from perspective camera
       this.orthographicCamera.position.copy(this.perspectiveCamera.position);
-      this.updateOrthographicSize();
+
+      // Match the orthographic frustum to the perspective camera's visible extent.
+      // Visible height at distance d with FOV θ: h = 2 * d * tan(θ/2)
+      const distance = this.perspectiveCamera.position.distanceTo(this.controls.target);
+      const fovRad = THREE.MathUtils.degToRad(this.perspectiveCamera.fov);
+      const frustumSize = 2 * distance * Math.tan(fovRad / 2);
+      this.setOrthographicFrustum(frustumSize);
     } else {
       this.cameraMode = 'perspective';
       // Copy position from orthographic camera
       this.perspectiveCamera.position.copy(this.orthographicCamera.position);
+
+      // Adjust perspective camera distance so visible extent matches the
+      // orthographic frustum. frustumSize = top - bottom.
+      const frustumSize = this.orthographicCamera.top - this.orthographicCamera.bottom;
+      const fovRad = THREE.MathUtils.degToRad(this.perspectiveCamera.fov);
+      const desiredDistance = frustumSize / (2 * Math.tan(fovRad / 2));
+
+      // Move along the camera→target direction to the desired distance
+      const direction = new THREE.Vector3()
+        .subVectors(this.perspectiveCamera.position, this.controls.target)
+        .normalize();
+      this.perspectiveCamera.position
+        .copy(this.controls.target)
+        .add(direction.multiplyScalar(desiredDistance));
     }
 
     // Update controls
@@ -109,13 +134,24 @@ export class CameraManager {
   private containerHeight: number = window.innerHeight;
 
   /**
-   * Update orthographic camera frustum based on distance
+   * Update orthographic camera frustum based on distance.
+   * Called when zooming or resizing while in orthographic mode.
    */
   public updateOrthographicSize(): void {
-    const aspect = this.containerWidth / this.containerHeight;
     const distance = this.orthographicCamera.position.distanceTo(this.controls.target);
-    const frustumSize = distance * 0.5;
+    // Use a factor that approximates a 75° FOV perspective view:
+    // 2 * tan(37.5°) ≈ 1.534, but we use a slightly smaller factor to
+    // avoid the orthographic view feeling too zoomed-out.
+    const frustumSize = distance * 1.0;
+    this.setOrthographicFrustum(frustumSize);
+  }
 
+  /**
+   * Set orthographic frustum to an explicit size (vertical extent).
+   * Used by toggleCameraMode to match perspective visible extent.
+   */
+  private setOrthographicFrustum(frustumSize: number): void {
+    const aspect = this.containerWidth / this.containerHeight;
     this.orthographicCamera.left = (frustumSize * aspect) / -2;
     this.orthographicCamera.right = (frustumSize * aspect) / 2;
     this.orthographicCamera.top = frustumSize / 2;

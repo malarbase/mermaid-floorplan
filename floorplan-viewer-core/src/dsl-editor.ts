@@ -138,6 +138,7 @@ export function createDslEditor(config: DslEditorConfig): DslEditorInstance {
     foldingStrategy: 'indentation',
     glyphMargin: true, // For error markers
     lineDecorationsWidth: 4,
+    fixedOverflowWidgets: true, // Render hover/zone widgets outside overflow:hidden containers
   });
 
   // Setup change callback
