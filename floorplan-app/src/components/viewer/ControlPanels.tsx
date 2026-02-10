@@ -132,8 +132,12 @@ export default function ControlPanels(props: ControlPanelsProps) {
         if (overlayCheckbox) overlayCheckbox.checked = false;
       },
       onVisibilityChange: (v) => layoutManager.setOverlay2DVisible(v),
+      onResize: (_w, h) => layoutManager.setOverlay2DHeight(h),
       signal: viewer.abortSignal,
     });
+    // Remove any orphaned overlay from a previous mount (e.g., HMR or reactive re-eval)
+    const existingOverlay = viewer.overlayContainer.querySelector('#overlay-2d');
+    if (existingOverlay) existingOverlay.remove();
     // Append to the viewer's scoped overlay container (not document.body)
     // so the element is automatically removed when the viewer unmounts.
     viewer.overlayContainer.appendChild(overlay2D.element);
@@ -167,7 +171,7 @@ export default function ControlPanels(props: ControlPanelsProps) {
         const svgEl = parser.parseFromString(svg, 'image/svg+xml').querySelector('svg');
         if (svgEl) {
           svgEl.setAttribute('width', '100%');
-          svgEl.setAttribute('height', '100%');
+          svgEl.removeAttribute('height'); // Let height derive from viewBox aspect ratio
           svgEl.style.display = 'block';
         }
         overlay2D.setContent(svgEl);

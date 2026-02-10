@@ -243,6 +243,7 @@ export abstract class BaseViewer implements SceneContext {
     this._overlayLayer.style.height = '100%';
     this._overlayLayer.style.pointerEvents = 'none';
     this._overlayLayer.style.overflow = 'visible';
+    this._overlayLayer.style.zIndex = '10'; // Above canvas & CSS2DRenderer
     container.appendChild(this._overlayLayer);
 
     // Init controls (using perspective camera initially)

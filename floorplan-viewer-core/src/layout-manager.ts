@@ -35,7 +35,7 @@ export interface LayoutState {
 export class LayoutManager {
   private readonly headerHeight: number;
   private editorWidth: number;
-  private readonly overlay2DHeight: number;
+  private overlay2DHeight: number;
   private readonly bottomStackGap: number;
 
   private state: LayoutState = {
@@ -205,6 +205,22 @@ export class LayoutManager {
       this.state.overlay2DVisible = visible;
       this.updateCSSVariables();
       this.notifyListeners();
+    }
+  }
+
+  /**
+   * Update the 2D overlay height (e.g., after auto-sizing to SVG or manual resize).
+   * This adjusts the floor summary panel's bottom offset to stay above the overlay.
+   */
+  setOverlay2DHeight(height: number): void {
+    if (this.overlay2DHeight !== height) {
+      this.overlay2DHeight = height;
+      document.documentElement.style.setProperty('--layout-overlay-2d-height', `${height}px`);
+      // Re-compute positions if the overlay is currently visible
+      if (this.state.overlay2DVisible) {
+        this.updateCSSVariables();
+        this.notifyListeners();
+      }
     }
   }
 

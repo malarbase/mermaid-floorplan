@@ -7,6 +7,8 @@ export interface Overlay2DUIOptions {
   initialVisible?: boolean;
   onClose?: () => void;
   onVisibilityChange?: (visible: boolean) => void;
+  /** Called when the overlay is resized (manually or after content change) */
+  onResize?: (width: number, height: number) => void;
   /** AbortSignal for cleaning up document-level listeners on dispose */
   signal?: AbortSignal;
 }
@@ -30,7 +32,7 @@ export interface Overlay2DUI {
 export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI {
   injectStyles();
 
-  const { initialVisible = false, onClose, onVisibilityChange, signal } = options;
+  const { initialVisible = false, onClose, onVisibilityChange, onResize, signal } = options;
 
   const container = document.createElement('div');
   container.className = 'fp-overlay-2d';
@@ -122,7 +124,31 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     { signal },
   );
 
-  // Resize functionality
+  // Track whether the user has manually resized — if so, skip auto-sizing
+  let userResized = false;
+
+  // Auto-size the container height based on the SVG viewBox aspect ratio.
+  // Only works when the overlay is visible (offsetWidth > 0).
+  const autoSizeFromViewBox = () => {
+    if (userResized) return;
+    const svg = content.querySelector('svg');
+    if (!svg) return;
+    const w = container.offsetWidth;
+    if (w === 0) return; // Still hidden, can't measure
+    const viewBox = svg.getAttribute('viewBox');
+    if (!viewBox) return;
+    const parts = viewBox.split(/[\s,]+/).map(Number);
+    if (parts.length !== 4 || parts[2] <= 0 || parts[3] <= 0) return;
+    const aspect = parts[3] / parts[2]; // height / width
+    const headerH = header.offsetHeight;
+    const autoHeight = Math.round(w * aspect) + headerH;
+    const clampedHeight = Math.max(150, Math.min(autoHeight, window.innerHeight * 0.6));
+    container.style.height = `${clampedHeight}px`;
+    onResize?.(container.offsetWidth, container.offsetHeight);
+  };
+
+  // Resize functionality — temporarily switches from bottom-anchor to top-anchor
+  // so the panel grows naturally downward/rightward following the resize handle.
   let isResizing = false;
   let resizeStartX = 0;
   let resizeStartY = 0;
@@ -131,10 +157,16 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
 
   resizeHandle.addEventListener('mousedown', (e) => {
     isResizing = true;
+    userResized = true; // Mark as manually resized — skip future auto-sizing
     resizeStartX = e.clientX;
     resizeStartY = e.clientY;
     initialWidth = container.offsetWidth;
     initialHeight = container.offsetHeight;
+    // Switch to top-anchor so height increase grows downward naturally
+    const rect = container.getBoundingClientRect();
+    const parentTop = container.offsetParent?.getBoundingClientRect().top ?? 0;
+    container.style.top = `${rect.top - parentTop}px`;
+    container.style.bottom = 'auto';
     e.preventDefault();
     e.stopPropagation();
   });
@@ -154,7 +186,18 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
   document.addEventListener(
     'mouseup',
     () => {
-      isResizing = false;
+      if (isResizing) {
+        isResizing = false;
+        // Convert back to bottom-based positioning for layout consistency
+        const rect = container.getBoundingClientRect();
+        const parentRect = container.offsetParent?.getBoundingClientRect();
+        const parentHeight = parentRect?.height ?? window.innerHeight;
+        const parentTop = parentRect?.top ?? 0;
+        container.style.bottom = `${Math.max(10, parentHeight - (rect.bottom - parentTop))}px`;
+        container.style.top = 'auto';
+        // Notify of the new size
+        onResize?.(container.offsetWidth, container.offsetHeight);
+      }
     },
     { signal },
   );
@@ -168,6 +211,8 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     show: () => {
       container.classList.add('visible');
       onVisibilityChange?.(true);
+      // Defer auto-size to next frame so the browser has computed layout
+      requestAnimationFrame(() => autoSizeFromViewBox());
     },
     hide: () => {
       container.classList.remove('visible');
@@ -176,12 +221,19 @@ export function createOverlay2DUI(options: Overlay2DUIOptions = {}): Overlay2DUI
     toggle: () => {
       const isVisible = container.classList.toggle('visible');
       onVisibilityChange?.(isVisible);
+      if (isVisible) {
+        requestAnimationFrame(() => autoSizeFromViewBox());
+      }
     },
     isVisible: () => container.classList.contains('visible'),
     setContent: (svg: SVGElement | null) => {
       content.innerHTML = '';
       if (svg) {
         content.appendChild(svg);
+        // Auto-size if visible now; if hidden, show() will trigger it later
+        if (container.classList.contains('visible')) {
+          autoSizeFromViewBox();
+        }
       } else {
         const emptyMsg = document.createElement('div');
         emptyMsg.className = 'fp-overlay-2d-empty';

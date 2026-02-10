@@ -151,6 +151,11 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
         // Reset layout manager's overlay/panel visibility flags
         core.layoutManager?.setOverlay2DVisible(false);
         core.layoutManager?.setFloorSummaryVisible(false);
+
+        // Hide 2D overlay DOM element directly (onCleanup in ControlPanels
+        // may not fire because it's registered after await in async onMount)
+        const overlayEl = core.overlayContainer?.querySelector('#overlay-2d');
+        overlayEl?.classList.remove('visible');
       }
     }
   });

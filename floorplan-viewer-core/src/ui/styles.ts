@@ -356,6 +356,7 @@ body.dark-theme {
   font-size: 12px;
   max-width: 300px;
   display: none;
+  pointer-events: auto;
   transition: left 0.3s ease;
 }
 
@@ -397,18 +398,20 @@ body.dark-theme {
   bottom: 10px;
   left: 10px;
   width: 280px;
-  height: 220px;
+  max-height: 60vh;
   background: var(--fp-bg-primary);
   border-radius: 8px;
   box-shadow: var(--fp-shadow-md);
   overflow: hidden;
   z-index: 50;
+  pointer-events: auto;
   display: none;
   transition: left 0.3s ease, bottom 0.3s ease;
 }
 
 .fp-overlay-2d.visible {
-  display: block;
+  display: flex;
+  flex-direction: column;
 }
 
 .fp-overlay-2d-header {
@@ -468,11 +471,13 @@ body.dark-theme {
 
 .fp-overlay-2d-content {
   width: 100%;
-  height: calc(100% - 32px);
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
+  overflow: hidden;
 }
 
 .fp-overlay-2d-content svg {
