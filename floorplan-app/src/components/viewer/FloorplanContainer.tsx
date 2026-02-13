@@ -28,6 +28,8 @@ interface FloorplanContainerProps {
   initialMode?: ViewerMode;
   onDslChange?: (dsl: string) => void;
   onSave?: (dsl: string) => void;
+  /** Called when the viewer core instance is ready (for thumbnail capture, etc.) */
+  onCoreReady?: (core: any) => void;
   className?: string;
   // Legacy support
   withUI?: boolean;
@@ -178,6 +180,7 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
 
   const handleCoreReady = (core: any) => {
     setCoreInstance(core);
+    props.onCoreReady?.(core);
   };
 
   // Handle DSL theme detection from FloorplanBase

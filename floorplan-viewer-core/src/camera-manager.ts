@@ -224,22 +224,30 @@ export class CameraManager {
   }
 
   /**
-   * Smoothly animate the camera to frame the given 3D objects.
-   * Computes their combined bounding box, then tweens camera position and
-   * orbit target so the objects are centered and fit within the viewport.
+   * Compute the camera position and target needed to frame a set of objects.
+   * Preserves the current viewing direction but adjusts distance to fit.
    *
-   * @param objects - Array of Three.js Object3D instances to focus on
+   * This is the shared framing logic used by both `focusOnObjects()` (tweened)
+   * and `BaseViewer.captureScreenshot()` (instant).
+   *
+   * @param objects - Array of Three.js Object3D instances to frame
    * @param padding - Extra padding factor (1.0 = tight fit, 2.0 = double margin). Default 1.6
+   * @param aspectOverride - Override aspect ratio (e.g. thumbnail dimensions). Uses current viewport if omitted.
+   * @returns Computed position and target, or null if objects are empty/invalid.
    */
-  public focusOnObjects(objects: THREE.Object3D[], padding = 1.6): void {
-    if (objects.length === 0) return;
+  public computeFramingForObjects(
+    objects: THREE.Object3D[],
+    padding = 1.6,
+    aspectOverride?: number,
+  ): { position: THREE.Vector3; target: THREE.Vector3 } | null {
+    if (objects.length === 0) return null;
 
     // Compute combined bounding box
     const boundingBox = new THREE.Box3();
     for (const obj of objects) {
       boundingBox.expandByObject(obj);
     }
-    if (boundingBox.isEmpty()) return;
+    if (boundingBox.isEmpty()) return null;
 
     const center = boundingBox.getCenter(new THREE.Vector3());
     const size = boundingBox.getSize(new THREE.Vector3());
@@ -247,11 +255,11 @@ export class CameraManager {
 
     // Determine desired camera distance to frame the bounding box
     const camera = this.activeCamera;
+    const aspect = aspectOverride ?? this.containerWidth / this.containerHeight;
     let desiredDistance: number;
 
     if (camera instanceof THREE.PerspectiveCamera) {
       const fovRad = THREE.MathUtils.degToRad(camera.fov);
-      const aspect = this.containerWidth / this.containerHeight;
       // Use the narrower FOV dimension to ensure objects fit
       const effectiveFov = aspect >= 1 ? fovRad : 2 * Math.atan(Math.tan(fovRad / 2) * aspect);
       desiredDistance = (maxDim * padding) / (2 * Math.tan(effectiveFov / 2));
@@ -272,12 +280,27 @@ export class CameraManager {
     }
 
     const newPosition = center.clone().add(direction.multiplyScalar(desiredDistance));
+    return { position: newPosition, target: center };
+  }
+
+  /**
+   * Smoothly animate the camera to frame the given 3D objects.
+   * Computes their combined bounding box, then tweens camera position and
+   * orbit target so the objects are centered and fit within the viewport.
+   *
+   * @param objects - Array of Three.js Object3D instances to focus on
+   * @param padding - Extra padding factor (1.0 = tight fit, 2.0 = double margin). Default 1.6
+   */
+  public focusOnObjects(objects: THREE.Object3D[], padding = 1.6): void {
+    const framing = this.computeFramingForObjects(objects, padding);
+    if (!framing) return;
 
     // Start smooth tween
+    const camera = this.activeCamera;
     this.tweenStartPosition.copy(camera.position);
-    this.tweenEndPosition.copy(newPosition);
+    this.tweenEndPosition.copy(framing.position);
     this.tweenStartTarget.copy(this.controls.target);
-    this.tweenEndTarget.copy(center);
+    this.tweenEndTarget.copy(framing.target);
     this.tweenProgress = 0;
     this.tweenActive = true;
   }

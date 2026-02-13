@@ -1196,6 +1196,122 @@ export abstract class BaseViewer implements SceneContext {
   }
 
   /**
+   * Options for capturing a screenshot / thumbnail.
+   */
+  public static readonly THUMBNAIL_DEFAULTS = {
+    /** Pixel width of the captured image */
+    width: 640,
+    /** Pixel height — matches the ~2.3:1 aspect of project card thumbnails */
+    height: 280,
+    /** Image format */
+    format: 'image/webp' as const,
+    /** Compression quality 0-1 */
+    quality: 0.8,
+    /** Padding factor for auto-framing (1.0 = tight, 2.0 = double margin) */
+    padding: 1.6,
+  };
+
+  /**
+   * Capture a screenshot of the 3D scene as a Blob.
+   *
+   * When `width`/`height` are provided the renderer is temporarily resized,
+   * the camera is repositioned along its **current viewing direction** to
+   * frame all loaded floors, then the canvas is captured. The viewer is
+   * fully restored afterwards — the user never sees a flash.
+   *
+   * Works without `preserveDrawingBuffer` because the render and toBlob()
+   * calls execute synchronously before the compositor clears the buffer.
+   *
+   * @param options - Capture options (defaults to THUMBNAIL_DEFAULTS)
+   * @returns Promise resolving to an image Blob
+   */
+  public captureScreenshot(options?: Partial<typeof BaseViewer.THUMBNAIL_DEFAULTS>): Promise<Blob> {
+    const { width, height, format, quality, padding } = {
+      ...BaseViewer.THUMBNAIL_DEFAULTS,
+      ...options,
+    };
+
+    const camera = this._cameraManager.activeCamera;
+    const needsResize = width !== undefined && height !== undefined;
+
+    // --- Save current state ---
+    const origCamPos = camera.position.clone();
+    const origTarget = this._controls.target.clone();
+    const origWidth = this._renderer.domElement.width;
+    const origHeight = this._renderer.domElement.height;
+    let origAspect: number | undefined;
+    if (camera instanceof THREE.PerspectiveCamera) {
+      origAspect = camera.aspect;
+    }
+
+    try {
+      // --- Resize renderer to target thumbnail dimensions ---
+      if (needsResize) {
+        this._renderer.setSize(width, height);
+        this._cameraManager.onWindowResize(width, height);
+      }
+
+      // --- Frame all floors at the target aspect ratio ---
+      if (this._floors.length > 0) {
+        const aspect = needsResize ? width / height : undefined;
+        const framing = this._cameraManager.computeFramingForObjects(this._floors, padding, aspect);
+        if (framing) {
+          camera.position.copy(framing.position);
+          this._controls.target.copy(framing.target);
+          this._controls.update();
+          if (camera instanceof THREE.PerspectiveCamera) {
+            camera.updateProjectionMatrix();
+          }
+        }
+      }
+
+      // --- Render + capture (synchronous before compositor clears the buffer) ---
+      this._renderer.render(this._scene, camera);
+
+      return new Promise<Blob>((resolve, reject) => {
+        this._renderer.domElement.toBlob(
+          (blob) => {
+            // --- Restore state regardless of outcome ---
+            camera.position.copy(origCamPos);
+            this._controls.target.copy(origTarget);
+            if (needsResize) {
+              this._renderer.setSize(origWidth, origHeight);
+              this._cameraManager.onWindowResize(origWidth, origHeight);
+            }
+            if (camera instanceof THREE.PerspectiveCamera && origAspect !== undefined) {
+              camera.aspect = origAspect;
+              camera.updateProjectionMatrix();
+            }
+            this._controls.update();
+
+            if (blob) {
+              resolve(blob);
+            } else {
+              reject(new Error('Failed to capture screenshot from canvas'));
+            }
+          },
+          format,
+          quality,
+        );
+      });
+    } catch (err) {
+      // Restore on synchronous error
+      camera.position.copy(origCamPos);
+      this._controls.target.copy(origTarget);
+      if (needsResize) {
+        this._renderer.setSize(origWidth, origHeight);
+        this._cameraManager.onWindowResize(origWidth, origHeight);
+      }
+      if (camera instanceof THREE.PerspectiveCamera && origAspect !== undefined) {
+        camera.aspect = origAspect;
+        camera.updateProjectionMatrix();
+      }
+      this._controls.update();
+      throw err;
+    }
+  }
+
+  /**
    * Clean up resources.
    */
   public dispose(): void {

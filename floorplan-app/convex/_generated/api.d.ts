@@ -17,6 +17,7 @@ import type * as lib_auditLog from "../lib/auditLog.js";
 import type * as lib_auth from "../lib/auth.js";
 import type * as projects from "../projects.js";
 import type * as sharing from "../sharing.js";
+import type * as storage from "../storage.js";
 import type * as topics from "../topics.js";
 import type * as trending from "../trending.js";
 import type * as users from "../users.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   "lib/auth": typeof lib_auth;
   projects: typeof projects;
   sharing: typeof sharing;
+  storage: typeof storage;
   topics: typeof topics;
   trending: typeof trending;
   users: typeof users;

@@ -17,6 +17,7 @@ import { VersionSwitcher } from '~/components/VersionSwitcher';
 import { VisibilityToggle } from '~/components/VisibilityToggle';
 import type { ViewerMode } from '~/components/viewer/FloorplanContainer';
 import { useProjectData, useVersionData } from '~/hooks/useProjectData';
+import { useThumbnailCapture } from '~/hooks/useThumbnailCapture';
 import { projectApi } from '~/lib/project-types';
 
 // Use clientOnly to prevent SSR issues with Three.js
@@ -73,6 +74,12 @@ export default function VersionView() {
     }
     return isOwner() ? 'editor' : 'advanced';
   });
+
+  // --- Core instance (for thumbnail capture) ---
+  const [coreInstance, setCoreInstance] = createSignal<any>(null);
+
+  // --- Thumbnail capture hook ---
+  const thumbnail = useThumbnailCapture(coreInstance, () => project()?._id as string | undefined);
 
   // --- Save functionality ---
   const saveMutation = useMutation(projectApi.projects.save);
@@ -209,6 +216,43 @@ export default function VersionView() {
       </Show>
 
       <Show when={isOwner()}>
+        <button
+          type="button"
+          class="btn btn-ghost btn-sm gap-1"
+          onClick={() => thumbnail.capture()}
+          disabled={thumbnail.isCapturing() || !coreInstance()}
+          title="Capture preview thumbnail for project card"
+        >
+          <Show
+            when={!thumbnail.isCapturing()}
+            fallback={<span class="loading loading-spinner loading-xs"></span>}
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
+              />
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
+              />
+            </svg>
+          </Show>
+          <Show when={thumbnail.showSuccess()} fallback={<></>}>
+            <svg class="w-3 h-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </Show>
+        </button>
         <A href={`/u/${username()}/${projectSlug()}/settings`} class="btn btn-ghost btn-sm">
           <SettingsIcon />
         </A>
@@ -344,7 +388,12 @@ export default function VersionView() {
             />
           }
         >
-          <FloorplanContainer dsl={content()!} mode={mode()} onDslChange={handleDslChange} />
+          <FloorplanContainer
+            dsl={content()!}
+            mode={mode()}
+            onDslChange={handleDslChange}
+            onCoreReady={setCoreInstance}
+          />
         </Show>
       </div>
 

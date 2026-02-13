@@ -76,4 +76,8 @@ export const projectApi = {
     resolveSlug: 'projects:resolveSlug' as unknown as FunctionReference<'query'>,
     save: 'projects:save' as unknown as FunctionReference<'mutation'>,
   },
+  storage: {
+    generateUploadUrl: 'storage:generateUploadUrl' as unknown as FunctionReference<'mutation'>,
+    saveThumbnail: 'storage:saveThumbnail' as unknown as FunctionReference<'mutation'>,
+  },
 };
