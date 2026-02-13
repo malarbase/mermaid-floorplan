@@ -6,6 +6,14 @@
 import type { FunctionReference } from 'convex/server';
 import type { Id } from '../../convex/_generated/dataModel';
 
+/** Serialized camera state — matches CameraState from floorplan-viewer-core */
+export interface CameraStateData {
+  position: { x: number; y: number; z: number };
+  target: { x: number; y: number; z: number };
+  mode: 'perspective' | 'orthographic';
+  fov: number;
+}
+
 /**
  * Project entity from Convex
  */
@@ -17,6 +25,8 @@ export interface Project {
   defaultVersion: string;
   userId: string;
   slug: string;
+  thumbnail?: string;
+  cameraState?: CameraStateData;
 }
 
 /**

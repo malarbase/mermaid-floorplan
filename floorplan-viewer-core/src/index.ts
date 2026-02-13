@@ -33,6 +33,7 @@ export { BaseViewer } from './base-viewer.js';
 export type {
   CameraManagerCallbacks,
   CameraMode,
+  CameraState,
 } from './camera-manager.js';
 // Camera manager
 export { CameraManager } from './camera-manager.js';

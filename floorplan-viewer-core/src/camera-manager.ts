@@ -7,6 +7,17 @@ import type { KeyboardControls } from './keyboard-controls.js';
 
 export type CameraMode = 'perspective' | 'orthographic';
 
+/**
+ * Serializable camera state for persistence / restore.
+ * All fields are plain numbers so the object can be stored as JSON.
+ */
+export interface CameraState {
+  position: { x: number; y: number; z: number };
+  target: { x: number; y: number; z: number };
+  mode: CameraMode;
+  fov: number;
+}
+
 export interface CameraManagerCallbacks {
   getFloors: () => THREE.Group[];
   getKeyboardControls: () => KeyboardControls | null;
@@ -51,6 +62,48 @@ export class CameraManager {
    */
   public getFov(): number {
     return this.fov;
+  }
+
+  /**
+   * Serialize the current camera state to a plain object for persistence.
+   * Captures everything needed to exactly reproduce the current view.
+   */
+  public getCameraState(): CameraState {
+    const camera = this.activeCamera;
+    return {
+      position: { x: camera.position.x, y: camera.position.y, z: camera.position.z },
+      target: { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z },
+      mode: this.cameraMode,
+      fov: this.fov,
+    };
+  }
+
+  /**
+   * Restore camera state from a previously serialized object.
+   * Switches camera mode if necessary, then sets position, target, and FOV.
+   */
+  public setCameraState(state: CameraState): void {
+    // Switch camera mode if different from current
+    if (state.mode !== this.cameraMode) {
+      this.toggleCameraMode();
+    }
+
+    // Set FOV (applies to perspective camera)
+    this.fov = state.fov;
+    this.perspectiveCamera.fov = state.fov;
+    this.perspectiveCamera.updateProjectionMatrix();
+
+    // Apply position and target to the active camera
+    const camera = this.activeCamera;
+    camera.position.set(state.position.x, state.position.y, state.position.z);
+    this.controls.target.set(state.target.x, state.target.y, state.target.z);
+
+    // Update orthographic frustum if in orthographic mode
+    if (this.cameraMode === 'orthographic') {
+      this.updateOrthographicSize();
+    }
+
+    this.controls.update();
   }
 
   /**

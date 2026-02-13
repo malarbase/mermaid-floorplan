@@ -1,14 +1,29 @@
 /**
  * Shared hook for capturing and uploading project thumbnails.
  * Used by project route pages to provide a "Set Preview" button.
+ *
+ * Also persists the user's current camera state alongside the thumbnail
+ * so that the viewer can restore the exact same view on page load.
  */
 
 import { useMutation } from 'convex-solidjs';
 import { type Accessor, createSignal } from 'solid-js';
 import { projectApi } from '~/lib/project-types';
 
+/** Serialized camera state — matches CameraState from floorplan-viewer-core */
+interface CameraStateData {
+  position: { x: number; y: number; z: number };
+  target: { x: number; y: number; z: number };
+  mode: 'perspective' | 'orthographic';
+  fov: number;
+}
+
 type CoreInstance = {
   captureScreenshot?: (options?: Record<string, unknown>) => Promise<Blob>;
+  cameraManager?: {
+    getCameraState?: () => CameraStateData;
+    [key: string]: unknown;
+  };
   [key: string]: unknown;
 };
 
@@ -31,6 +46,7 @@ export function useThumbnailCapture(
 
   /**
    * Capture the current 3D view and upload it as the project thumbnail.
+   * Also persists the user's camera state for consistent restore on load.
    * Returns true on success, false on failure.
    */
   const capture = async (): Promise<boolean> => {
@@ -42,13 +58,16 @@ export function useThumbnailCapture(
     setShowSuccess(false);
 
     try {
-      // 1. Capture the canvas (auto-frames all floors at thumbnail aspect ratio)
+      // 1. Read camera state BEFORE screenshot (screenshot temporarily reframes)
+      const cameraState = core.cameraManager?.getCameraState?.() ?? undefined;
+
+      // 2. Capture the canvas (auto-frames all floors at thumbnail aspect ratio)
       const blob = await core.captureScreenshot();
 
-      // 2. Get a signed upload URL from Convex
+      // 3. Get a signed upload URL from Convex
       const uploadUrl = await generateUploadUrl.mutate({});
 
-      // 3. Upload the blob to Convex file storage
+      // 4. Upload the blob to Convex file storage
       const uploadResult = await fetch(uploadUrl as string, {
         method: 'POST',
         headers: { 'Content-Type': blob.type },
@@ -59,8 +78,8 @@ export function useThumbnailCapture(
 
       const { storageId } = await uploadResult.json();
 
-      // 4. Save the thumbnail URL to the project
-      await saveThumbnailMutation.mutate({ projectId: pid, storageId });
+      // 5. Save thumbnail URL + camera state to the project
+      await saveThumbnailMutation.mutate({ projectId: pid, storageId, cameraState });
 
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);

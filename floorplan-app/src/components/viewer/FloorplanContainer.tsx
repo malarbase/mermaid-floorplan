@@ -21,6 +21,14 @@ export type ViewerMode = 'basic' | 'advanced' | 'editor';
 /** localStorage key for "don't ask about DSL theme" preference */
 const DSL_THEME_PROMPT_KEY = 'floorplan-app-dsl-theme-prompt-disabled';
 
+/** Serialized camera state for initial view restore */
+interface CameraStateData {
+  position: { x: number; y: number; z: number };
+  target: { x: number; y: number; z: number };
+  mode: 'perspective' | 'orthographic';
+  fov: number;
+}
+
 interface FloorplanContainerProps {
   dsl: string;
   containerId?: string;
@@ -30,6 +38,8 @@ interface FloorplanContainerProps {
   onSave?: (dsl: string) => void;
   /** Called when the viewer core instance is ready (for thumbnail capture, etc.) */
   onCoreReady?: (core: any) => void;
+  /** Initial camera state to restore on load (from project data) */
+  initialCameraState?: CameraStateData;
   className?: string;
   // Legacy support
   withUI?: boolean;
@@ -249,6 +259,7 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     allowSelectionToggle: true,
     onCoreReady: handleCoreReady,
     onDslThemeDetected: handleDslThemeDetected,
+    initialCameraState: props.initialCameraState,
   });
 
   const editorProps = () => ({

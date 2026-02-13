@@ -57,6 +57,14 @@ export default defineSchema({
     isPublic: v.boolean(),
     defaultVersion: v.string(), // "main" - like default branch
     thumbnail: v.optional(v.string()),
+    cameraState: v.optional(
+      v.object({
+        position: v.object({ x: v.number(), y: v.number(), z: v.number() }),
+        target: v.object({ x: v.number(), y: v.number(), z: v.number() }),
+        mode: v.union(v.literal('perspective'), v.literal('orthographic')),
+        fov: v.number(),
+      }),
+    ),
     forkedFrom: v.optional(v.id('projects')), // Source project if forked
     viewCount: v.optional(v.number()), // Discovery feature
     forkCount: v.optional(v.number()), // Discovery feature

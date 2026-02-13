@@ -6,6 +6,7 @@ import { CopyPermalinkButton } from '~/components/CopyPermalinkButton';
 import { CreateVersionModal } from '~/components/CreateVersionModal';
 import { ForkButton } from '~/components/ForkButton';
 import { Header } from '~/components/Header';
+import { CapturePreviewButton } from '~/components/project/CapturePreviewButton';
 import {
   ContentMissingCard,
   NotFoundCard,
@@ -13,10 +14,12 @@ import {
   ProjectPageLayout,
   SettingsIcon,
 } from '~/components/project/ProjectPageLayout';
+import { SaveIndicator } from '~/components/project/SaveIndicator';
 import { VersionSwitcher } from '~/components/VersionSwitcher';
 import { VisibilityToggle } from '~/components/VisibilityToggle';
 import type { ViewerMode } from '~/components/viewer/FloorplanContainer';
 import { useProjectData, useVersionData } from '~/hooks/useProjectData';
+import { useProjectSave } from '~/hooks/useProjectSave';
 import { useThumbnailCapture } from '~/hooks/useThumbnailCapture';
 import { projectApi } from '~/lib/project-types';
 
@@ -96,6 +99,14 @@ export default function ProjectView() {
   // --- Thumbnail capture hook ---
   const thumbnail = useThumbnailCapture(coreInstance, () => project()?._id as string | undefined);
 
+  // --- Save functionality (shared hook) ---
+  const save = useProjectSave(
+    content,
+    () => project()?._id as string | undefined,
+    defaultVersion,
+    isOwner,
+  );
+
   // Header actions
   const headerActions = () => (
     <>
@@ -153,46 +164,28 @@ export default function ProjectView() {
       </Show>
 
       <Show when={isOwner()}>
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm gap-1"
-          onClick={() => thumbnail.capture()}
-          disabled={thumbnail.isCapturing() || !coreInstance()}
-          title="Capture preview thumbnail for project card"
-        >
-          <Show
-            when={!thumbnail.isCapturing()}
-            fallback={<span class="loading loading-spinner loading-xs"></span>}
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-              />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </Show>
-          <Show when={thumbnail.showSuccess()} fallback={<></>}>
-            <svg class="w-3 h-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </Show>
-        </button>
+        <CapturePreviewButton
+          onCapture={() => thumbnail.capture()}
+          isCapturing={thumbnail.isCapturing}
+          showSuccess={thumbnail.showSuccess}
+          disabled={!coreInstance() || save.hasUnsavedChanges()}
+          disabledReason={
+            save.hasUnsavedChanges() ? 'Save changes before capturing preview' : undefined
+          }
+        />
         <A href={`/u/${username()}/${projectSlug()}/settings`} class="btn btn-ghost btn-sm">
           <SettingsIcon />
         </A>
+      </Show>
+
+      <Show when={isOwner()}>
+        <SaveIndicator
+          hasUnsavedChanges={save.hasUnsavedChanges}
+          isSaving={save.isSaving}
+          showSaveSuccess={save.showSaveSuccess}
+          saveError={save.saveError}
+          onSave={save.handleSave}
+        />
       </Show>
 
       <button
@@ -267,12 +260,11 @@ export default function ProjectView() {
           }
         >
           <FloorplanContainer
-            dsl={content()!}
+            dsl={save.currentDsl() || content()!}
             mode={mode()}
-            onDslChange={(newDsl: string) => {
-              console.log('DSL changed:', newDsl.slice(0, 100));
-            }}
+            onDslChange={save.handleDslChange}
             onCoreReady={setCoreInstance}
+            initialCameraState={project()?.cameraState}
           />
         </Show>
       </div>

@@ -10,6 +10,14 @@ type CoreInstance = {
   [key: string]: any;
 };
 
+/** Serialized camera state for initial view restore */
+interface CameraStateData {
+  position: { x: number; y: number; z: number };
+  target: { x: number; y: number; z: number };
+  mode: 'perspective' | 'orthographic';
+  fov: number;
+}
+
 export interface FloorplanBaseProps {
   dsl: string;
   theme?: 'light' | 'dark';
@@ -23,6 +31,8 @@ export interface FloorplanBaseProps {
   allowSelectionToggle?: boolean;
   /** Called when a DSL specifies a theme different from the current app theme */
   onDslThemeDetected?: (dslTheme: 'light' | 'dark') => void;
+  /** Initial camera state to restore on load (from project data) */
+  initialCameraState?: CameraStateData;
 }
 
 export function FloorplanBase(props: FloorplanBaseProps) {
@@ -81,6 +91,12 @@ export function FloorplanBase(props: FloorplanBaseProps) {
       });
 
       setAppInstance(core);
+
+      // Restore saved camera state if available (must be after DSL load
+      // which happens in the core constructor via initialDsl)
+      if (props.initialCameraState && core.cameraManager?.setCameraState) {
+        core.cameraManager.setCameraState(props.initialCameraState);
+      }
 
       if (props.onCoreReady && core) {
         props.onCoreReady(core);

@@ -16,13 +16,22 @@ export const generateUploadUrl = mutation({
 });
 
 /**
- * Update a project's thumbnail from an uploaded storage file.
+ * Update a project's thumbnail and camera state from an uploaded storage file.
  * Resolves the storage ID to a serving URL and patches the project.
+ * Camera state is saved alongside so the viewer can restore the exact view.
  */
 export const saveThumbnail = mutation({
   args: {
     projectId: v.id('projects'),
     storageId: v.id('_storage'),
+    cameraState: v.optional(
+      v.object({
+        position: v.object({ x: v.number(), y: v.number(), z: v.number() }),
+        target: v.object({ x: v.number(), y: v.number(), z: v.number() }),
+        mode: v.union(v.literal('perspective'), v.literal('orthographic')),
+        fov: v.number(),
+      }),
+    ),
   },
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
@@ -39,8 +48,12 @@ export const saveThumbnail = mutation({
     const url = await ctx.storage.getUrl(args.storageId);
     if (!url) throw new Error('Failed to resolve storage URL');
 
-    // Update the project thumbnail field with the serving URL
-    await ctx.db.patch(args.projectId, { thumbnail: url });
+    // Update thumbnail and optionally camera state
+    const patch: Record<string, unknown> = { thumbnail: url };
+    if (args.cameraState) {
+      patch.cameraState = args.cameraState;
+    }
+    await ctx.db.patch(args.projectId, patch);
 
     return { success: true, url };
   },

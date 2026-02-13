@@ -1,11 +1,11 @@
 import { A, useNavigate, useParams, useSearchParams } from '@solidjs/router';
 import { clientOnly } from '@solidjs/start';
-import { useMutation } from 'convex-solidjs';
-import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js';
+import { createMemo, createSignal, Show } from 'solid-js';
 import { CopyPermalinkButton } from '~/components/CopyPermalinkButton';
 import { CreateVersionModal } from '~/components/CreateVersionModal';
 import { ForkButton } from '~/components/ForkButton';
 import { Header } from '~/components/Header';
+import { CapturePreviewButton } from '~/components/project/CapturePreviewButton';
 import {
   ContentMissingCard,
   NotFoundCard,
@@ -13,12 +13,13 @@ import {
   ProjectPageLayout,
   SettingsIcon,
 } from '~/components/project/ProjectPageLayout';
+import { SaveIndicator } from '~/components/project/SaveIndicator';
 import { VersionSwitcher } from '~/components/VersionSwitcher';
 import { VisibilityToggle } from '~/components/VisibilityToggle';
 import type { ViewerMode } from '~/components/viewer/FloorplanContainer';
 import { useProjectData, useVersionData } from '~/hooks/useProjectData';
+import { useProjectSave } from '~/hooks/useProjectSave';
 import { useThumbnailCapture } from '~/hooks/useThumbnailCapture';
-import { projectApi } from '~/lib/project-types';
 
 // Use clientOnly to prevent SSR issues with Three.js
 const FloorplanContainer = clientOnly(() => import('~/components/viewer/FloorplanContainer'));
@@ -81,78 +82,13 @@ export default function VersionView() {
   // --- Thumbnail capture hook ---
   const thumbnail = useThumbnailCapture(coreInstance, () => project()?._id as string | undefined);
 
-  // --- Save functionality ---
-  const saveMutation = useMutation(projectApi.projects.save);
-  const [currentDsl, setCurrentDsl] = createSignal<string>('');
-  const [isSaving, setIsSaving] = createSignal(false);
-  const [showSaveSuccess, setShowSaveSuccess] = createSignal(false);
-  const [saveError, setSaveError] = createSignal<string | null>(null);
-  const [lastSavedContent, setLastSavedContent] = createSignal<string>('');
-
-  // Sync initial content
-  createEffect(() => {
-    const c = content();
-    if (c) {
-      setCurrentDsl(c);
-      setLastSavedContent(c);
-    }
-  });
-
-  const hasUnsavedChanges = createMemo(() => currentDsl() !== lastSavedContent());
-
-  const handleDslChange = (newDsl: string) => {
-    setCurrentDsl(newDsl);
-    setSaveError(null);
-  };
-
-  const handleSave = async () => {
-    if (!isOwner() || !project()?._id || !versionName() || !hasUnsavedChanges() || isSaving())
-      return;
-
-    setIsSaving(true);
-    setSaveError(null);
-
-    try {
-      await saveMutation.mutate({
-        projectId: project()!._id as string,
-        versionName: versionName()!,
-        content: currentDsl(),
-      });
-      setLastSavedContent(currentDsl());
-      setShowSaveSuccess(true);
-      setTimeout(() => setShowSaveSuccess(false), 2000);
-    } catch (err) {
-      const error = err instanceof Error ? err : new Error(String(err));
-      setSaveError(error.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Keyboard shortcut (Ctrl+S / Cmd+S)
-  createEffect(() => {
-    if (!isOwner()) return;
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault();
-        handleSave();
-      }
-    };
-    document.addEventListener('keydown', onKeyDown);
-    onCleanup(() => document.removeEventListener('keydown', onKeyDown));
-  });
-
-  // Warn before leaving with unsaved changes
-  createEffect(() => {
-    if (hasUnsavedChanges()) {
-      const onBeforeUnload = (e: BeforeUnloadEvent) => {
-        e.preventDefault();
-        e.returnValue = '';
-      };
-      window.addEventListener('beforeunload', onBeforeUnload);
-      onCleanup(() => window.removeEventListener('beforeunload', onBeforeUnload));
-    }
-  });
+  // --- Save functionality (shared hook) ---
+  const save = useProjectSave(
+    content,
+    () => project()?._id as string | undefined,
+    versionName,
+    isOwner,
+  );
 
   // Handle version created
   const handleVersionCreated = (_versionId: string, newVersionName: string) => {
@@ -216,92 +152,28 @@ export default function VersionView() {
       </Show>
 
       <Show when={isOwner()}>
-        <button
-          type="button"
-          class="btn btn-ghost btn-sm gap-1"
-          onClick={() => thumbnail.capture()}
-          disabled={thumbnail.isCapturing() || !coreInstance()}
-          title="Capture preview thumbnail for project card"
-        >
-          <Show
-            when={!thumbnail.isCapturing()}
-            fallback={<span class="loading loading-spinner loading-xs"></span>}
-          >
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"
-              />
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-          </Show>
-          <Show when={thumbnail.showSuccess()} fallback={<></>}>
-            <svg class="w-3 h-3 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-          </Show>
-        </button>
+        <CapturePreviewButton
+          onCapture={() => thumbnail.capture()}
+          isCapturing={thumbnail.isCapturing}
+          showSuccess={thumbnail.showSuccess}
+          disabled={!coreInstance() || save.hasUnsavedChanges()}
+          disabledReason={
+            save.hasUnsavedChanges() ? 'Save changes before capturing preview' : undefined
+          }
+        />
         <A href={`/u/${username()}/${projectSlug()}/settings`} class="btn btn-ghost btn-sm">
           <SettingsIcon />
         </A>
       </Show>
 
-      {/* Save indicator + button (owner only, editor mode) */}
       <Show when={isOwner()}>
-        <Show when={hasUnsavedChanges()}>
-          <button
-            type="button"
-            class="btn btn-primary btn-sm gap-1"
-            onClick={handleSave}
-            disabled={isSaving()}
-            title="Save (Ctrl+S)"
-          >
-            <Show
-              when={!isSaving()}
-              fallback={<span class="loading loading-spinner loading-xs"></span>}
-            >
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
-                />
-              </svg>
-            </Show>
-            Save
-          </button>
-        </Show>
-        <Show when={showSaveSuccess()}>
-          <span class="badge badge-success badge-sm gap-1">
-            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M5 13l4 4L19 7"
-              />
-            </svg>
-            Saved
-          </span>
-        </Show>
-        <Show when={saveError()}>
-          <div class="tooltip tooltip-error" data-tip={saveError()}>
-            <span class="badge badge-error badge-sm">Save failed</span>
-          </div>
-        </Show>
+        <SaveIndicator
+          hasUnsavedChanges={save.hasUnsavedChanges}
+          isSaving={save.isSaving}
+          showSaveSuccess={save.showSaveSuccess}
+          saveError={save.saveError}
+          onSave={save.handleSave}
+        />
       </Show>
 
       <button
@@ -389,10 +261,11 @@ export default function VersionView() {
           }
         >
           <FloorplanContainer
-            dsl={content()!}
+            dsl={save.currentDsl() || content()!}
             mode={mode()}
-            onDslChange={handleDslChange}
+            onDslChange={save.handleDslChange}
             onCoreReady={setCoreInstance}
+            initialCameraState={project()?.cameraState}
           />
         </Show>
       </div>
