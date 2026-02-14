@@ -46,9 +46,7 @@ export default function ShareLinkPage() {
       const v = validation();
       const t = token();
       if (v?.valid && v.ownerUsername && v.projectSlug && t) {
-        // Store the token in sessionStorage for the project page to use
-        sessionStorage.setItem('share_token', t);
-        // Redirect to the project page
+        // Redirect to the project page with share token in URL
         navigate(`/u/${v.ownerUsername}/${v.projectSlug}?share=${t}`);
       }
     };

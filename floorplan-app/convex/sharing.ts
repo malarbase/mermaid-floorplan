@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { query } from './_generated/server';
+import { resolveAccess } from './lib/access';
 import { authenticatedMutation, optionalAuthQuery } from './lib/auth';
 
 async function generateShareToken(): Promise<string> {
@@ -28,6 +29,12 @@ async function snapshotHash(
   return hashHex.slice(0, 12);
 }
 
+/**
+ * Check the caller's effective access to a project.
+ * Delegates to the unified resolveAccess() in lib/access.ts.
+ *
+ * Returns { role, canEdit, canManage } on success, null on denial.
+ */
 export const checkAccess = optionalAuthQuery({
   args: {
     projectId: v.id('projects'),
@@ -37,71 +44,14 @@ export const checkAccess = optionalAuthQuery({
     const project = await ctx.db.get(args.projectId);
     if (!project) return null;
 
-    if (project.isPublic) {
-      if (ctx.user) {
-        if (project.userId === ctx.user._id) {
-          return { role: 'owner' as const, canEdit: true, canManage: true };
-        }
+    const result = await resolveAccess(ctx, project, args.token);
+    if (!result.granted) return null;
 
-        const access = await ctx.db
-          .query('projectAccess')
-          .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-          .filter((q) => q.eq(q.field('userId'), ctx.user!._id))
-          .first();
-
-        if (access) {
-          return {
-            role: access.role,
-            canEdit: access.role === 'editor',
-            canManage: false,
-          };
-        }
-      }
-
-      return { role: 'viewer' as const, canEdit: false, canManage: false };
-    }
-
-    if (args.token) {
-      const token = args.token;
-      const shareLink = await ctx.db
-        .query('shareLinks')
-        .withIndex('by_token', (q) => q.eq('token', token))
-        .first();
-
-      if (
-        shareLink &&
-        shareLink.projectId === args.projectId &&
-        (!shareLink.expiresAt || shareLink.expiresAt > Date.now())
-      ) {
-        return {
-          role: shareLink.role,
-          canEdit: shareLink.role === 'editor',
-          canManage: false,
-        };
-      }
-    }
-
-    if (!ctx.user) return null;
-
-    if (project.userId === ctx.user._id) {
-      return { role: 'owner' as const, canEdit: true, canManage: true };
-    }
-
-    const access = await ctx.db
-      .query('projectAccess')
-      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
-      .filter((q) => q.eq(q.field('userId'), ctx.user!._id))
-      .first();
-
-    if (access) {
-      return {
-        role: access.role,
-        canEdit: access.role === 'editor',
-        canManage: false,
-      };
-    }
-
-    return null;
+    return {
+      role: result.role,
+      canEdit: result.canEdit,
+      canManage: result.canManage,
+    };
   },
 });
 

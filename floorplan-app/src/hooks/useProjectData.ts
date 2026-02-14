@@ -3,6 +3,7 @@
  * Reduces duplication across project route components.
  */
 
+import { useSearchParams } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
 import { type Accessor, createEffect, createMemo, createSignal } from 'solid-js';
 import { useSession } from '~/lib/auth-client';
@@ -11,12 +12,31 @@ import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 
 /**
+ * Hook to extract share token from URL search params (?share=...).
+ *
+ * The share redirect page (/share/:token) always appends ?share={token}
+ * to the destination URL, so the URL param is the single source of truth.
+ */
+export function useShareToken(): Accessor<string | undefined> {
+  const [searchParams] = useSearchParams();
+
+  return createMemo(() => {
+    const token = typeof searchParams.share === 'string' ? searchParams.share : undefined;
+    return token || undefined;
+  });
+}
+
+/**
  * Hook for fetching and managing project data.
  * Returns project, owner, forkedFrom, and ownership status.
+ *
+ * Accepts an optional shareToken accessor to grant access to private projects
+ * via share links.
  */
 export function useProjectData(
   username: Accessor<string | undefined>,
   projectSlug: Accessor<string | undefined>,
+  shareToken?: Accessor<string | undefined>,
 ) {
   const sessionSignal = useSession();
 
@@ -24,6 +44,7 @@ export function useProjectData(
   const projectQuery = useQuery(api.projects.getBySlug, () => ({
     username: username() ?? '',
     projectSlug: projectSlug() ?? '',
+    shareToken: shareToken?.(),
   }));
 
   // Get current user session
@@ -60,9 +81,12 @@ export function useProjectData(
     // dev mode the Convex auth provider is disabled, so ctx.auth.getUserIdentity()
     // is always null and the dev user fallback grants access to all requests.
     // The client knows the real session state via mock session / Better Auth.
+    // Exception: share token access bypasses this guard — the server already
+    // validated the token and returned the project data.
     const proj = projectData()?.project;
     const user = currentUser();
-    if (proj && !proj.isPublic && !user) return true;
+    const hasShareToken = !!shareToken?.();
+    if (proj && !proj.isPublic && !user && !hasShareToken) return true;
 
     return false;
   });
@@ -85,12 +109,14 @@ export function useProjectData(
 export function useVersionData(
   projectId: Accessor<Id<'projects'> | undefined>,
   versionName: Accessor<string | undefined>,
+  shareToken?: Accessor<string | undefined>,
 ) {
   const versionQuery = useQuery(
     api.projects.getVersion,
     () => ({
       projectId: (projectId() ?? '') as Id<'projects'>,
       versionName: versionName() ?? 'main',
+      shareToken: shareToken?.(),
     }),
     () => ({ enabled: !!projectId() }),
   );
@@ -123,12 +149,14 @@ export function useVersionData(
 export function useSnapshotData(
   projectId: Accessor<Id<'projects'> | undefined>,
   hash: Accessor<string | undefined>,
+  shareToken?: Accessor<string | undefined>,
 ) {
   const snapshotQuery = useQuery(
     api.projects.getByHash,
     () => ({
       projectId: (projectId() ?? '') as Id<'projects'>,
       hash: hash() ?? '',
+      shareToken: shareToken?.(),
     }),
     () => ({ enabled: !!projectId() && !!hash() }),
   );

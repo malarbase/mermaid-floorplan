@@ -5,7 +5,7 @@ import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
 import { CreateVersionModal } from '~/components/CreateVersionModal';
 import { DeleteVersionModal } from '~/components/DeleteVersionModal';
 import { Modal } from '~/components/ui/Modal';
-import { useProjectData } from '~/hooks/useProjectData';
+import { useProjectData, useShareToken } from '~/hooks/useProjectData';
 import { copyToClipboard, generatePermalink } from '~/lib/permalink';
 import { api } from '../../../../../convex/_generated/api';
 import type { Id } from '../../../../../convex/_generated/dataModel';
@@ -504,10 +504,14 @@ export default function ProjectHistory() {
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
 
+  // Share token (from ?share= param or sessionStorage)
+  const shareToken = useShareToken();
+
   // Project data from shared hook
   const { project, owner, forkedFrom, projectData, isOwner, isProjectLoading } = useProjectData(
     username,
     projectSlug,
+    shareToken,
   );
 
   // Query versions

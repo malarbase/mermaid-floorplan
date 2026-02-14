@@ -12,7 +12,7 @@ import {
   ProjectBreadcrumbs,
   ProjectPageLayout,
 } from '~/components/project/ProjectPageLayout';
-import { useProjectData, useSnapshotData } from '~/hooks/useProjectData';
+import { useProjectData, useShareToken, useSnapshotData } from '~/hooks/useProjectData';
 import type { ViewerMode } from '~/lib/project-types';
 
 // Use clientOnly to prevent SSR issues with Three.js
@@ -34,14 +34,18 @@ export default function SnapshotView() {
   const projectSlug = createMemo(() => params.project);
   const hash = createMemo(() => params.hash);
 
+  // Share token (from ?share= param or sessionStorage)
+  const shareToken = useShareToken();
+
   // Project data
   const { project, forkedFrom, projectData, isOwner, isProjectLoading, projectNotFound } =
-    useProjectData(username, projectSlug);
+    useProjectData(username, projectSlug, shareToken);
 
   // Snapshot data
   const { snapshot, content, isSnapshotLoading, snapshotNotFound } = useSnapshotData(
     () => project()?._id,
     hash,
+    shareToken,
   );
 
   // Loading state

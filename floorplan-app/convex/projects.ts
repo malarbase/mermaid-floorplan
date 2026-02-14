@@ -2,38 +2,28 @@ import { v } from 'convex/values';
 import type { Doc } from './_generated/dataModel';
 import type { QueryCtx } from './_generated/server';
 import { internalMutation, mutation, query } from './_generated/server';
+import { resolveAccess } from './lib/access';
 import { getCurrentUser, requireUser } from './lib/auth';
 
 /**
  * Check if the current user can access a project.
- * Public projects are accessible to everyone.
- * Private projects require the user to be the owner or have projectAccess.
  *
- * In production: getCurrentUser returns null for unauthenticated requests,
- * so private projects are properly protected on the server side.
+ * Delegates to the unified resolveAccess() in lib/access.ts which handles:
+ * - Public projects (everyone can view)
+ * - Share-token access (viewer or editor, with expiry)
+ * - Authenticated owner / collaborator access
  *
- * In dev mode: The Convex auth provider is disabled, so getCurrentUser
- * falls back to the dev user for ALL requests (can't distinguish logged-in
- * from logged-out). The client-side privacy guard in useProjectData
- * provides the real enforcement by checking the session state.
+ * In dev mode: The Convex auth provider is disabled, so ctx.auth.getUserIdentity()
+ * is always null and the dev user fallback grants access to all requests.
+ * The client-side privacy guard in useProjectData provides real enforcement.
  */
-async function canAccessProject(ctx: QueryCtx, project: Doc<'projects'>): Promise<boolean> {
-  if (project.isPublic) return true;
-
-  const currentUser = await getCurrentUser(ctx);
-  if (!currentUser) return false;
-
-  // Owner always has access
-  if (currentUser._id === project.userId) return true;
-
-  // Check for explicit project access (collaborator)
-  const access = await ctx.db
-    .query('projectAccess')
-    .withIndex('by_project', (q) => q.eq('projectId', project._id))
-    .filter((q) => q.eq(q.field('userId'), currentUser._id))
-    .first();
-
-  return !!access;
+async function canAccessProject(
+  ctx: QueryCtx,
+  project: Doc<'projects'>,
+  shareToken?: string,
+): Promise<boolean> {
+  const result = await resolveAccess(ctx, project, shareToken);
+  return result.granted;
 }
 
 /**
@@ -105,7 +95,7 @@ export const listPublicByUsername = query({
  * Get project by username and project slug
  */
 export const getBySlug = query({
-  args: { username: v.string(), projectSlug: v.string() },
+  args: { username: v.string(), projectSlug: v.string(), shareToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query('users')
@@ -121,7 +111,7 @@ export const getBySlug = query({
 
     if (!project) return null;
 
-    if (!(await canAccessProject(ctx, project))) return null;
+    if (!(await canAccessProject(ctx, project, args.shareToken))) return null;
 
     // Get fork source info if this is a forked project
     let forkedFrom: { project: typeof project; owner: typeof user } | null = null;
@@ -412,10 +402,10 @@ export const getPublic = query({
  * Falls back to content hash for backwards compatibility with old URLs.
  */
 export const getByHash = query({
-  args: { projectId: v.id('projects'), hash: v.string() },
+  args: { projectId: v.id('projects'), hash: v.string(), shareToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
-    if (!project || !(await canAccessProject(ctx, project))) return null;
+    if (!project || !(await canAccessProject(ctx, project, args.shareToken))) return null;
 
     // Try snapshot hash first (new unique permalinks)
     const bySnapshotHash = await ctx.db
@@ -441,10 +431,14 @@ export const getByHash = query({
  * Get version by name (includes snapshot content)
  */
 export const getVersion = query({
-  args: { projectId: v.id('projects'), versionName: v.string() },
+  args: {
+    projectId: v.id('projects'),
+    versionName: v.string(),
+    shareToken: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
-    if (!project || !(await canAccessProject(ctx, project))) return null;
+    if (!project || !(await canAccessProject(ctx, project, args.shareToken))) return null;
 
     const version = await ctx.db
       .query('versions')
@@ -464,10 +458,10 @@ export const getVersion = query({
  * Get all versions for a project
  */
 export const listVersions = query({
-  args: { projectId: v.id('projects') },
+  args: { projectId: v.id('projects'), shareToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
-    if (!project || !(await canAccessProject(ctx, project))) return [];
+    if (!project || !(await canAccessProject(ctx, project, args.shareToken))) return [];
 
     return ctx.db
       .query('versions')
@@ -525,10 +519,14 @@ export const trackView = mutation({
  * Get snapshot history for a project
  */
 export const getHistory = query({
-  args: { projectId: v.id('projects'), limit: v.optional(v.number()) },
+  args: {
+    projectId: v.id('projects'),
+    limit: v.optional(v.number()),
+    shareToken: v.optional(v.string()),
+  },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
-    if (!project || !(await canAccessProject(ctx, project))) return [];
+    if (!project || !(await canAccessProject(ctx, project, args.shareToken))) return [];
 
     return ctx.db
       .query('snapshots')
@@ -548,10 +546,11 @@ export const getVersionHistory = query({
     projectId: v.id('projects'),
     versionName: v.optional(v.string()), // Keep arg for compatibility but not used for filtering snapshots
     limit: v.optional(v.number()),
+    shareToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
-    if (!project || !(await canAccessProject(ctx, project))) return [];
+    if (!project || !(await canAccessProject(ctx, project, args.shareToken))) return [];
 
     // Get all versions to know which snapshots are HEAD of which versions
     const versions = await ctx.db
@@ -596,10 +595,11 @@ export const getProjectActivity = query({
   args: {
     projectId: v.id('projects'),
     limit: v.optional(v.number()),
+    shareToken: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
-    if (!project || !(await canAccessProject(ctx, project))) return [];
+    if (!project || !(await canAccessProject(ctx, project, args.shareToken))) return [];
 
     const maxEvents = args.limit ?? 50;
     const events = await ctx.db
@@ -943,7 +943,7 @@ export const updateSlug = mutation({
  * Enforces privacy: returns null for private projects the user can't access.
  */
 export const resolveSlug = query({
-  args: { username: v.string(), slug: v.string() },
+  args: { username: v.string(), slug: v.string(), shareToken: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const user = await ctx.db
       .query('users')
@@ -958,7 +958,7 @@ export const resolveSlug = query({
       .first();
 
     if (project) {
-      if (!(await canAccessProject(ctx, project))) return null;
+      if (!(await canAccessProject(ctx, project, args.shareToken))) return null;
       return { projectId: project._id, currentSlug: args.slug, wasRedirected: false };
     }
 
@@ -976,7 +976,7 @@ export const resolveSlug = query({
       .first();
 
     if (!targetProject) return null;
-    if (!(await canAccessProject(ctx, targetProject))) return null;
+    if (!(await canAccessProject(ctx, targetProject, args.shareToken))) return null;
 
     return { projectId: targetProject._id, currentSlug: redirect.toSlug, wasRedirected: true };
   },

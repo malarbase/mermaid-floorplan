@@ -2,7 +2,7 @@ import { A, useNavigate, useParams } from '@solidjs/router';
 import { createMemo, Show } from 'solid-js';
 import { NotFoundCard } from '~/components/project/ProjectPageLayout';
 import { ProjectViewerPage } from '~/components/project/ProjectViewerPage';
-import { useProjectData, useVersionData } from '~/hooks/useProjectData';
+import { useProjectData, useShareToken, useVersionData } from '~/hooks/useProjectData';
 
 /**
  * Version view page - shows project at a specific named version.
@@ -21,14 +21,18 @@ export default function VersionView() {
   const projectSlug = createMemo(() => params.project);
   const versionName = createMemo(() => params.version);
 
+  // Share token (from ?share= param or sessionStorage)
+  const shareToken = useShareToken();
+
   // Project data
   const { project, forkedFrom, projectData, isOwner, isProjectLoading, projectNotFound } =
-    useProjectData(username, projectSlug);
+    useProjectData(username, projectSlug, shareToken);
 
   // Version data
   const { content, currentHash, versionExists, isVersionLoading } = useVersionData(
     () => project()?._id,
     versionName,
+    shareToken,
   );
 
   // Handle version created

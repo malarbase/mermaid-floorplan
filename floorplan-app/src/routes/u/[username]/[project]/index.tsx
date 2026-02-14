@@ -2,7 +2,7 @@ import { A, useLocation, useNavigate, useParams } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
 import { createMemo } from 'solid-js';
 import { ProjectViewerPage } from '~/components/project/ProjectViewerPage';
-import { useProjectData, useVersionData } from '~/hooks/useProjectData';
+import { useProjectData, useShareToken, useVersionData } from '~/hooks/useProjectData';
 import { api } from '../../../../../convex/_generated/api';
 
 /**
@@ -21,10 +21,14 @@ export default function ProjectView() {
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
 
+  // Share token (from ?share= param or sessionStorage)
+  const shareToken = useShareToken();
+
   // Check for slug redirects before loading project
   const slugResolveQuery = useQuery(api.projects.resolveSlug, () => ({
     username: username() ?? '',
     slug: projectSlug() ?? '',
+    shareToken: shareToken(),
   }));
 
   // Handle redirect if slug has changed
@@ -38,13 +42,14 @@ export default function ProjectView() {
 
   // Project data
   const { project, owner, forkedFrom, projectData, isOwner, isProjectLoading, projectNotFound } =
-    useProjectData(username, projectSlug);
+    useProjectData(username, projectSlug, shareToken);
 
   // Version data (default version)
   const defaultVersion = createMemo(() => project()?.defaultVersion ?? 'main');
   const { content, currentHash, isVersionLoading } = useVersionData(
     () => project()?._id,
     defaultVersion,
+    shareToken,
   );
 
   return (
