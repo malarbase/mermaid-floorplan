@@ -5,7 +5,7 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 import { CreateVersionModal } from '~/components/CreateVersionModal';
 import { useProjectData } from '~/hooks/useProjectData';
 import { copyToClipboard, generatePermalink } from '~/lib/permalink';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../../../../convex/_generated/api';
 
 interface Version {
   _id: string;
@@ -43,7 +43,7 @@ export default function ProjectHistory() {
 
   // Query versions
   const versionsQuery = useQuery(
-    convexApi.projects.listVersions,
+    api.projects.listVersions,
     () => ({ projectId: project()?._id ?? '' }),
     () => ({ enabled: !!project() }),
   );
@@ -62,7 +62,7 @@ export default function ProjectHistory() {
 
   // Query snapshots
   const historyQuery = useQuery(
-    convexApi.projects.getHistory,
+    api.projects.getHistory,
     () => ({ projectId: project()?._id ?? '', limit: 50 }),
     () => ({ enabled: !!project() }),
   );

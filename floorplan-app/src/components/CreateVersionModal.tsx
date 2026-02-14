@@ -1,7 +1,7 @@
 import { useMutation } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 interface CreateVersionModalProps {
   /** Whether the modal is open */
@@ -32,7 +32,7 @@ export function CreateVersionModal(props: CreateVersionModalProps) {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   // Mutation to create version
-  const createVersionMutation = useMutation(convexApi.projects.createVersion);
+  const createVersionMutation = useMutation(api.projects.createVersion);
 
   // Reset form when modal opens
   createEffect(() => {

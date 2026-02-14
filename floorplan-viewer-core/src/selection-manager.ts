@@ -244,7 +244,7 @@ export class SelectionManager extends BaseSelectionManager {
   update(): void {
     // Quick check: any invisible selections?
     let hasInvisible = false;
-    for (const entity of this.getSelection()) {
+    for (const entity of this.getSelectionSet()) {
       if (!this.isObjectVisible(entity.mesh)) {
         hasInvisible = true;
         break;
@@ -614,7 +614,7 @@ export class SelectionManager extends BaseSelectionManager {
             this.emitChange(wasSelected ? [] : [entity], wasSelected ? [entity] : [], 'click');
           } else {
             // Replace selection (silent to avoid double-emit from select())
-            const previousSelection = Array.from(this.getSelection());
+            const previousSelection = Array.from(this.getSelectionSet());
             this.select(entity, false, true);
             this.emitChange(
               [entity],
@@ -632,7 +632,7 @@ export class SelectionManager extends BaseSelectionManager {
 
     // Click on empty space - deselect all (unless Shift held)
     if (!event.shiftKey) {
-      const previousSelection = Array.from(this.getSelection());
+      const previousSelection = Array.from(this.getSelectionSet());
       this.deselect();
       if (previousSelection.length > 0) {
         this.emitChange([], previousSelection, 'click');
@@ -653,7 +653,7 @@ export class SelectionManager extends BaseSelectionManager {
       .filter((e): e is SelectableObject => e !== undefined);
 
     if (entities.length > 0) {
-      const previousSelection = Array.from(this.getSelection());
+      const previousSelection = Array.from(this.getSelectionSet());
       this.selectMultiple(entities, additive, { silent: true });
 
       const added = entities.filter((e) => !previousSelection.some((p) => this.isSameEntity(p, e)));
@@ -664,7 +664,7 @@ export class SelectionManager extends BaseSelectionManager {
       this.emitChange(added, removed, 'marquee');
     } else if (!additive) {
       // Empty marquee on non-additive clears selection
-      const previousSelection = Array.from(this.getSelection());
+      const previousSelection = Array.from(this.getSelectionSet());
       this.deselect();
       if (previousSelection.length > 0) {
         this.emitChange([], previousSelection, 'marquee');

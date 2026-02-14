@@ -10,6 +10,7 @@
  * The interactive editor extends this with click selection, marquee, etc.
  */
 import type { SelectableObject } from './scene-context.js';
+import type { SelectionEntity } from './types.js';
 
 /**
  * Event emitted when selection changes.
@@ -75,9 +76,15 @@ export interface SelectMultipleOptions {
  */
 export interface SelectionAPI {
   /**
-   * Get the current selection set.
+   * Get the current selection as a serializable array of entities.
    */
-  getSelection(): ReadonlySet<SelectableObject>;
+  getSelection(): SelectionEntity[];
+
+  /**
+   * Get the current selection as a read-only Set (internal use).
+   * Provides O(1) membership checks and direct access to SelectableObject meshes.
+   */
+  getSelectionSet(): ReadonlySet<SelectableObject>;
 
   /**
    * Check if an object is currently selected.
@@ -158,7 +165,15 @@ export class BaseSelectionManager implements SelectionAPI {
     useOutline: true,
   };
 
-  getSelection(): ReadonlySet<SelectableObject> {
+  getSelection(): SelectionEntity[] {
+    return Array.from(this.selection).map((obj) => ({
+      entityType: obj.entityType,
+      entityId: obj.entityId,
+      floorId: obj.floorId,
+    }));
+  }
+
+  getSelectionSet(): ReadonlySet<SelectableObject> {
     return this.selection;
   }
 

@@ -379,6 +379,14 @@ export abstract class BaseViewer implements SceneContext {
   }
 
   /**
+   * Get the current theme name.
+   * Public accessor for external consumers (replaces protected `currentTheme`).
+   */
+  public getTheme(): string {
+    return this.currentTheme;
+  }
+
+  /**
    * Toggle between light and dark theme.
    */
   public toggleTheme(): void {

@@ -2,7 +2,7 @@ import { Title } from '@solidjs/meta';
 import { A, useNavigate, useParams } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, onMount, Show } from 'solid-js';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../../convex/_generated/api';
 
 interface ShareLinkValidation {
   valid: boolean;
@@ -28,7 +28,7 @@ export default function ShareLinkPage() {
   const token = createMemo(() => params.token);
 
   // Validate the share link
-  const validationQuery = useQuery(convexApi.sharing.validateShareLink, () => ({
+  const validationQuery = useQuery(api.sharing.validateShareLink, () => ({
     token: token(),
   }));
 

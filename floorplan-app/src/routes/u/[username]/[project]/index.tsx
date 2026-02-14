@@ -3,7 +3,7 @@ import { useQuery } from 'convex-solidjs';
 import { createMemo } from 'solid-js';
 import { ProjectViewerPage } from '~/components/project/ProjectViewerPage';
 import { useProjectData, useVersionData } from '~/hooks/useProjectData';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../../../../convex/_generated/api';
 
 /**
  * Project view page - shows project at default version.
@@ -22,7 +22,7 @@ export default function ProjectView() {
   const projectSlug = createMemo(() => params.project);
 
   // Check for slug redirects before loading project
-  const slugResolveQuery = useQuery(convexApi.projects.resolveSlug, () => ({
+  const slugResolveQuery = useQuery(api.projects.resolveSlug, () => ({
     username: username(),
     slug: projectSlug(),
   }));

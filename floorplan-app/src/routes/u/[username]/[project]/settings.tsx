@@ -7,7 +7,7 @@ import { DeleteProjectButton } from '~/components/DeleteProjectButton';
 import { InviteByUsernameModal } from '~/components/InviteByUsernameModal';
 import { VisibilityToggle } from '~/components/VisibilityToggle';
 import { useProjectData } from '~/hooks/useProjectData';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../../../../convex/_generated/api';
 
 interface Collaborator {
   _id: string;
@@ -71,7 +71,7 @@ export default function ProjectSettings() {
 
   // Query collaborators
   const collaboratorsQuery = useQuery(
-    convexApi.sharing.getCollaborators,
+    api.sharing.getCollaborators,
     () => ({ projectId: project()?._id ?? '' }),
     () => ({ enabled: !!project() }),
   );
@@ -82,7 +82,7 @@ export default function ProjectSettings() {
 
   // Query share links
   const shareLinksQuery = useQuery(
-    convexApi.sharing.getShareLinks,
+    api.sharing.getShareLinks,
     () => ({ projectId: project()?._id ?? '' }),
     () => ({ enabled: !!project() }),
   );
@@ -90,11 +90,11 @@ export default function ProjectSettings() {
   const shareLinks = createMemo(() => (shareLinksQuery.data() as ShareLink[] | undefined) ?? []);
 
   // Mutations
-  const updateProject = useMutation(convexApi.projects.update);
-  const updateProjectSlug = useMutation(convexApi.projects.updateSlug);
-  const removeCollaborator = useMutation(convexApi.sharing.removeCollaborator);
-  const updateCollaboratorRole = useMutation(convexApi.sharing.updateCollaboratorRole);
-  const revokeShareLink = useMutation(convexApi.sharing.revokeShareLink);
+  const updateProject = useMutation(api.projects.update);
+  const updateProjectSlug = useMutation(api.projects.updateSlug);
+  const removeCollaborator = useMutation(api.sharing.removeCollaborator);
+  const updateCollaboratorRole = useMutation(api.sharing.updateCollaboratorRole);
+  const revokeShareLink = useMutation(api.sharing.revokeShareLink);
 
   // Loading state
   const isLoading = createMemo(
@@ -133,7 +133,7 @@ export default function ProjectSettings() {
   });
 
   const slugCheckQuery = useQuery(
-    convexApi.projects.getBySlug,
+    api.projects.getBySlug,
     () => ({ username: username(), projectSlug: debouncedSlug() || '' }),
     () => ({
       enabled: isEditingSlug() && !!debouncedSlug() && debouncedSlug() !== projectSlug(),

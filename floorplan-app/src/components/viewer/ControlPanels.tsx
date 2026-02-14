@@ -1,8 +1,9 @@
 import type { FloorplanAppCore } from 'floorplan-viewer-core';
 import { onCleanup, onMount } from 'solid-js';
+import type { CoreInstance } from '~/lib/project-types';
 
 interface ControlPanelsProps {
-  viewer: FloorplanAppCore | null;
+  viewer: CoreInstance | null;
 }
 
 export default function ControlPanels(props: ControlPanelsProps) {
@@ -27,7 +28,9 @@ export default function ControlPanels(props: ControlPanelsProps) {
     injectStyles();
 
     if (!props.viewer || !containerRef) return;
-    const viewer = props.viewer;
+    // ControlPanels needs concrete class access for camera, lights, floors, annotations.
+    // The runtime value is always FloorplanAppCore; ViewerPublicApi is the public contract.
+    const viewer = props.viewer as FloorplanAppCore;
 
     const controlPanel = createControlPanel();
 

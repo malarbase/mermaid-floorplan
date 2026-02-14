@@ -6,7 +6,7 @@
 
 import { useMutation } from 'convex-solidjs';
 import { type Accessor, createEffect, createMemo, createSignal, onCleanup } from 'solid-js';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 /**
  * @param content - Accessor to the server-side (last-saved) DSL content
@@ -20,7 +20,7 @@ export function useProjectSave(
   versionName: Accessor<string | undefined>,
   isOwner: Accessor<boolean>,
 ) {
-  const saveMutation = useMutation(convexApi.projects.save);
+  const saveMutation = useMutation(api.projects.save);
 
   const [currentDsl, setCurrentDsl] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);

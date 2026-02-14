@@ -1,7 +1,7 @@
 import { useMutation } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 interface InviteByUsernameModalProps {
   /** Whether the modal is open */
@@ -26,7 +26,7 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
   const [isSubmitting, setIsSubmitting] = createSignal(false);
 
   // Mutation to invite by username
-  const inviteByUsernameMutation = useMutation(convexApi.sharing.inviteByUsername);
+  const inviteByUsernameMutation = useMutation(api.sharing.inviteByUsername);
 
   // Reset form when modal opens
   createEffect(() => {

@@ -5,7 +5,7 @@ import { Header } from '~/components/Header';
 import { LogoutButton } from '~/components/LogoutButton';
 import { UsernameChangeModal, useUsernameChangeModal } from '~/components/UsernameChangeModal';
 import { useAuthRedirect } from '~/hooks/useAuthRedirect';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 /**
  * User settings page - allows users to manage their account.
@@ -16,7 +16,7 @@ export default function Settings() {
   const usernameChangeModal = useUsernameChangeModal();
 
   // Get user profile from Convex
-  const userProfileQuery = useQuery(convexApi.users.getCurrentUser, () => ({}));
+  const userProfileQuery = useQuery(api.users.getCurrentUser, () => ({}));
 
   const userProfile = createMemo(() => {
     return userProfileQuery.data() as
@@ -40,7 +40,7 @@ export default function Settings() {
   const [isEditingName, setIsEditingName] = createSignal(false);
   const [editedName, setEditedName] = createSignal('');
   const [isSavingName, setIsSavingName] = createSignal(false);
-  const updateProfileMutation = useMutation(convexApi.users.updateProfile);
+  const updateProfileMutation = useMutation(api.users.updateProfile);
 
   const startEditingName = () => {
     setEditedName(userProfile()?.displayName ?? '');

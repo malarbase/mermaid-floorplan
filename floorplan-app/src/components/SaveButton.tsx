@@ -1,7 +1,7 @@
 import { useMutation } from 'convex-solidjs';
 import { createMemo, createSignal, Show } from 'solid-js';
 import type { ProjectId } from '~/lib/project-types';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 export interface SaveButtonProps {
   /**
@@ -71,7 +71,7 @@ export interface SaveButtonProps {
  * />
  */
 export function SaveButton(props: SaveButtonProps) {
-  const saveMutation = useMutation(convexApi.projects.save);
+  const saveMutation = useMutation(api.projects.save);
 
   const [isSaving, setIsSaving] = createSignal(false);
   const [lastSaveError, setLastSaveError] = createSignal<string | null>(null);

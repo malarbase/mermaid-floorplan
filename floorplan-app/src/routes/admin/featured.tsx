@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { useToast } from '~/components/ui/Toast';
-import { convexApi } from '~/lib/project-types';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 
@@ -24,15 +23,15 @@ export default function FeaturedProjects() {
   const [limit, setLimit] = createSignal(50);
   const toast = useToast();
 
-  const projects = useQuery(convexApi.admin.listAllProjects, () => ({
+  const projects = useQuery(api.admin.listAllProjects, () => ({
     search: search(),
     limit: limit(),
   }));
 
   const setFeatured = useMutation(api.admin.setFeatured);
-  const deleteProject = useMutation(convexApi.admin.deleteProject);
+  const deleteProject = useMutation(api.admin.deleteProject);
 
-  const adminStatus = useQuery(convexApi.admin.getCurrentUserAdminStatus, {});
+  const adminStatus = useQuery(api.admin.getCurrentUserAdminStatus, {});
   const isSuperAdmin = () => adminStatus.data()?.isSuperAdmin ?? false;
 
   const filteredProjects = createMemo(() => {

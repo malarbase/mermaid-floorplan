@@ -9,7 +9,7 @@ import { FloorplanBase } from './FloorplanBase';
 import { ControlPanelsSkeleton, EditorSkeleton, ViewerSkeleton } from './skeletons';
 import { ViewerErrorBoundary } from './ViewerError';
 import './viewer-layout.css';
-import { type FloorplanAppCore, getLayoutManager } from 'floorplan-viewer-core';
+import { getLayoutManager, type ViewerPublicApi } from 'floorplan-viewer-core';
 import { useAppTheme } from '~/lib/theme';
 
 /** Min/max editor panel width in pixels */
@@ -113,9 +113,7 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   };
 
   const [mode, setMode] = createSignal<ViewerMode>(getMode());
-  // Internal signal uses the concrete type for compatibility with EditorBundle/ControlPanels.
-  // The public `onCoreReady` callback receives the narrower `CoreInstance` interface.
-  const [coreInstance, setCoreInstance] = createSignal<FloorplanAppCore | null>(null);
+  const [coreInstance, setCoreInstance] = createSignal<ViewerPublicApi | null>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = createSignal(false);
   const [isMobile, setIsMobile] = createSignal(
     typeof window !== 'undefined' ? window.innerWidth < 640 : false,
@@ -144,21 +142,15 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
       const core = coreInstance();
       if (core) {
         // Reset all annotation toggles so panels are hidden
-        const am = core.annotationManager;
-        if (am) {
-          am.state.showFloorSummary = false;
-          am.state.showArea = false;
-          am.state.showDimensions = false;
-          am.updateFloorSummary();
-          am.updateAll();
-        }
+        core.resetAnnotations();
         // Reset layout manager's overlay/panel visibility flags
-        core.layoutManager?.setOverlay2DVisible(false);
-        core.layoutManager?.setFloorSummaryVisible(false);
+        const lm = core.getLayoutManagerApi();
+        lm.setOverlay2DVisible(false);
+        lm.setFloorSummaryVisible(false);
 
         // Hide 2D overlay DOM element directly (onCleanup in ControlPanels
         // may not fire because it's registered after await in async onMount)
-        const overlayEl = core.overlayContainer?.querySelector('#overlay-2d');
+        const overlayEl = core.getOverlayContainer()?.querySelector('#overlay-2d');
         overlayEl?.classList.remove('visible');
       }
     }
@@ -181,8 +173,7 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   });
 
   const handleCoreReady = (core: CoreInstance) => {
-    // FloorplanBase delivers CoreInstance; we know the underlying object is FloorplanAppCore.
-    setCoreInstance(core as unknown as FloorplanAppCore);
+    setCoreInstance(core);
     props.onCoreReady?.(core);
   };
 
@@ -255,11 +246,8 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     initialCameraState: props.initialCameraState,
   });
 
-  // EditorBundle defines its own `EditorBundleCoreApi` interface whose
-  // SelectionManager shape diverges slightly from the concrete class.
-  // The runtime object is correct, so we use a structural cast here.
   const editorProps = () => ({
-    core: coreInstance()! as unknown as Record<string, unknown>,
+    core: coreInstance()!,
     dsl: props.dsl,
     theme: theme(),
     onDslChange: props.onDslChange || (() => {}),

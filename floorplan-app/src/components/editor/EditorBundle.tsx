@@ -21,8 +21,12 @@ import ValidationWarnings, { ParseErrorBanner, type ValidationWarning } from './
  * Extends EditorCore with additional methods used directly by EditorBundle
  * (e.g. camera focus, deselect). At runtime this is the dynamically-loaded
  * FloorplanAppCore / InteractiveEditorCore.
+ *
+ * `dispose()` is required to ensure structural overlap with `ViewerPublicApi`
+ * (prevents TypeScript's weak type "no properties in common" error).
  */
 interface EditorBundleCoreApi extends EditorCore {
+  dispose(): void;
   focusOnSelection?(): void;
 }
 

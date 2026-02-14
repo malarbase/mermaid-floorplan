@@ -1,7 +1,7 @@
 import { A, useNavigate } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 // Version type from Convex schema
 interface Version {
@@ -54,7 +54,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
   const [searchQuery, setSearchQuery] = createSignal('');
 
   // Query project's versions from Convex
-  const versionsQuery = useQuery(convexApi.projects.listVersions, () => ({
+  const versionsQuery = useQuery(api.projects.listVersions, () => ({
     projectId: props.projectId,
   }));
 

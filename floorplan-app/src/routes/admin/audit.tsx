@@ -1,6 +1,6 @@
 import { useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../../convex/_generated/api';
 
 interface AuditLogEntry {
   _id: string;
@@ -21,7 +21,7 @@ export default function AuditLog() {
   const [dateTo, setDateTo] = createSignal('');
   const [actionFilter, setActionFilter] = createSignal('all');
 
-  const auditLog = useQuery(convexApi.admin.getAuditLog, { limit: 100 });
+  const auditLog = useQuery(api.admin.getAuditLog, { limit: 100 });
 
   const filteredLog = createMemo(() => {
     const log = auditLog.data();

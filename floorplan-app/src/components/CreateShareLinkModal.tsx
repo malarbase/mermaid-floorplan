@@ -1,7 +1,7 @@
 import { useMutation } from 'convex-solidjs';
 import { createSignal, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 interface CreateShareLinkModalProps {
   isOpen: boolean;
@@ -22,7 +22,7 @@ export function CreateShareLinkModal(props: CreateShareLinkModalProps) {
   const [createdLink, setCreatedLink] = createSignal<string | null>(null);
   const [copied, setCopied] = createSignal(false);
 
-  const createShareLink = useMutation(convexApi.sharing.createShareLink);
+  const createShareLink = useMutation(api.sharing.createShareLink);
 
   const handleSubmit = async (e: Event) => {
     e.preventDefault();

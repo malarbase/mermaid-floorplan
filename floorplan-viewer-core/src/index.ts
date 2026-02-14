@@ -139,6 +139,12 @@ export type {
 } from './selection-manager.js';
 // Selection Manager (full implementation)
 export { SelectionManager } from './selection-manager.js';
+// Public API types
+export type {
+  LayoutManagerApi,
+  SelectionEntity,
+  ViewerPublicApi,
+} from './types.js';
 // UI Components (vanilla)
 export * from './ui/index.js';
 // UI Components (Solid.js)

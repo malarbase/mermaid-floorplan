@@ -22,8 +22,8 @@ import type { DslEditorInstance } from './dsl-editor.js';
 import { isFloorplanFile, isJsonFile, parseFloorplanDSLWithDocument } from './dsl-parser.js';
 import { getLayoutManager, type LayoutManager } from './layout-manager.js';
 import type { Overlay2DManager } from './overlay-2d-manager.js';
-import type { SelectableObject } from './scene-context.js';
 import { type MarqueeMode, SelectionManager } from './selection-manager.js';
+import type { LayoutManagerApi, SelectionEntity, ViewerPublicApi } from './types.js';
 import type { FileOperation } from './ui/index.js';
 
 // ============================================================================
@@ -96,7 +96,7 @@ export interface FloorplanAppCoreOptions {
  * Use this class for all 3D rendering and scene management.
  * For UI, use FloorplanUI (Solid root component).
  */
-export class FloorplanAppCore extends BaseViewer {
+export class FloorplanAppCore extends BaseViewer implements ViewerPublicApi {
   // Feature flags
   public readonly enableSelection: boolean;
   public readonly allowSelectionToggle: boolean;
@@ -458,10 +458,57 @@ export class FloorplanAppCore extends BaseViewer {
   }
 
   /**
-   * Get the current selection.
+   * Get the current selection as a serializable array.
    */
-  public getSelection(): ReadonlySet<SelectableObject> {
-    return this._selectionManager?.getSelection() ?? new Set<SelectableObject>();
+  public getSelection(): SelectionEntity[] {
+    return this._selectionManager?.getSelection() ?? [];
+  }
+
+  /**
+   * Get the current selection as a serializable array (ViewerPublicApi).
+   */
+  public getSelectionState(): SelectionEntity[] {
+    return this.getSelection();
+  }
+
+  /**
+   * Enable or disable 3D selection (click/marquee).
+   */
+  public setSelectionEnabled(enabled: boolean): void {
+    this._selectionManager?.setEnabled(enabled);
+  }
+
+  /**
+   * Get read-only view of annotation toggle flags.
+   */
+  public getAnnotationState(): Readonly<import('./annotation-manager.js').AnnotationState> {
+    return this._annotationManager.state;
+  }
+
+  /**
+   * Reset all annotations to hidden (for mode transitions like editor → basic).
+   */
+  public resetAnnotations(): void {
+    const am = this._annotationManager;
+    am.state.showFloorSummary = false;
+    am.state.showArea = false;
+    am.state.showDimensions = false;
+    am.updateFloorSummary();
+    am.updateAll();
+  }
+
+  /**
+   * Get a typed API for controlling overlay/panel layout.
+   */
+  public getLayoutManagerApi(): LayoutManagerApi {
+    return this.layoutManager;
+  }
+
+  /**
+   * Get the overlay container element (for direct DOM queries).
+   */
+  public getOverlayContainer(): HTMLElement | undefined {
+    return this.overlayContainer;
   }
 
   /**
@@ -641,7 +688,7 @@ export class FloorplanAppCore extends BaseViewer {
     const sm = this._selectionManager;
     if (!sm) return;
 
-    const selection = sm.getSelection();
+    const selection = sm.getSelectionSet();
     if (selection.size === 0) return;
 
     const meshes: THREE.Object3D[] = [];

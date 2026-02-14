@@ -1,7 +1,7 @@
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 type Step = 'select' | 'confirm';
 
@@ -38,27 +38,27 @@ export function UsernameChangeModal(props: UsernameChangeModalProps) {
 
   // Get current user to show current username (only when modal is open)
   const currentUserQuery = useQuery(
-    convexApi.users.getCurrentUser,
+    api.users.getCurrentUser,
     () => ({}),
     () => ({ enabled: props.isOpen }),
   );
 
   // Get cooldown status (only when modal is open)
   const cooldownQuery = useQuery(
-    convexApi.users.getUsernameCooldown,
+    api.users.getUsernameCooldown,
     () => ({}),
     () => ({ enabled: props.isOpen }),
   );
 
   // Check if username is available (uses debounced username to avoid excessive queries)
   const availabilityQuery = useQuery(
-    convexApi.users.isUsernameAvailable,
+    api.users.isUsernameAvailable,
     () => ({ username: debouncedUsername() }),
     () => ({ enabled: props.isOpen && debouncedUsername().length >= 3 }),
   );
 
   // Mutation to set username
-  const setUsernameMutation = useMutation(convexApi.users.setUsername);
+  const setUsernameMutation = useMutation(api.users.setUsername);
 
   // Get current user data
   const currentUser = createMemo(() => {

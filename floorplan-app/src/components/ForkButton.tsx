@@ -4,7 +4,7 @@ import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
 import { useToast } from '~/components/ui/Toast';
 import { useSession } from '~/lib/auth-client';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 interface ForkButtonProps {
   projectId: string;
@@ -39,8 +39,8 @@ export function ForkButton(props: ForkButtonProps) {
   const [isForking, setIsForking] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
-  const forkProject = useMutation(convexApi.sharing.forkProject);
-  const userProjects = useQuery(convexApi.projects.list, {});
+  const forkProject = useMutation(api.sharing.forkProject);
+  const userProjects = useQuery(api.projects.list, {});
 
   const session = createMemo(() => sessionSignal());
   const currentUser = createMemo(() => session()?.data?.user);

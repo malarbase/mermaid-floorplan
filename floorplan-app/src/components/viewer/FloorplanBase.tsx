@@ -3,30 +3,6 @@ import type { CameraStateData, CoreInstance } from '~/lib/project-types';
 import { ViewerSkeleton } from './skeletons';
 import { ViewerErrorState } from './ViewerError';
 
-/**
- * Extended internal type for the dynamically-imported viewer core instance.
- * Adds members that exist on the concrete FloorplanAppCore / InteractiveEditorCore
- * classes but are intentionally omitted from the public `CoreInstance` interface
- * (protected members, concrete-class-only APIs, etc.).
- *
- * Only used inside this bridge layer; consumers receive `CoreInstance`.
- */
-interface InternalCoreInstance extends CoreInstance {
-  /** Protected on the concrete class — accessed here via dynamic import */
-  currentTheme?: string;
-  selectionManager?: { setEnabled: (enabled: boolean) => void };
-  annotationManager?: {
-    state: Record<string, boolean>;
-    updateFloorSummary: () => void;
-    updateAll: () => void;
-  };
-  layoutManager?: {
-    setOverlay2DVisible: (visible: boolean) => void;
-    setFloorSummaryVisible: (visible: boolean) => void;
-  };
-  overlayContainer?: HTMLElement;
-}
-
 export interface FloorplanBaseProps {
   dsl: string;
   theme?: 'light' | 'dark';
@@ -46,7 +22,7 @@ export interface FloorplanBaseProps {
 
 export function FloorplanBase(props: FloorplanBaseProps) {
   let containerRef: HTMLDivElement | undefined;
-  const [appInstance, setAppInstance] = createSignal<InternalCoreInstance | null>(null);
+  const [appInstance, setAppInstance] = createSignal<CoreInstance | null>(null);
   const [isLoading, setIsLoading] = createSignal(true);
   const [error, setError] = createSignal<Error | null>(null);
 
@@ -99,9 +75,8 @@ export function FloorplanBase(props: FloorplanBaseProps) {
         allowSelectionToggle: props.allowSelectionToggle ?? true,
       });
 
-      // The concrete class (FloorplanAppCore/InteractiveEditorCore) satisfies
-      // InternalCoreInstance structurally, but has protected members so we cast.
-      setAppInstance(core as unknown as InternalCoreInstance);
+      // FloorplanAppCore/InteractiveEditorCore implement ViewerPublicApi.
+      setAppInstance(core);
 
       // Restore saved camera state if available (must be after DSL load
       // which happens in the core constructor via initialDsl)
@@ -110,7 +85,7 @@ export function FloorplanBase(props: FloorplanBaseProps) {
       }
 
       if (props.onCoreReady && core) {
-        props.onCoreReady(core as unknown as CoreInstance);
+        props.onCoreReady(core);
       }
 
       setIsLoading(false);
@@ -136,13 +111,13 @@ export function FloorplanBase(props: FloorplanBaseProps) {
     const app = appInstance();
     if (app && props.dsl) {
       // Capture theme before loading DSL (DSL config may change it)
-      const themeBefore = app.currentTheme;
-      app.loadFromDsl?.(props.dsl);
-      const themeAfter = app.currentTheme;
+      const themeBefore = app.getTheme();
+      app.loadFromDsl(props.dsl);
+      const themeAfter = app.getTheme();
 
       // Always enforce the app-level theme after DSL load
       if (props.theme) {
-        app.setTheme?.(props.theme);
+        app.setTheme(props.theme);
       }
 
       // If DSL tried to change the theme, notify the parent
@@ -160,15 +135,15 @@ export function FloorplanBase(props: FloorplanBaseProps) {
   createEffect(() => {
     const app = appInstance();
     if (app && props.theme) {
-      app.setTheme?.(props.theme);
+      app.setTheme(props.theme);
     }
   });
 
   // React to enableSelection prop changes - toggle selection on the core
   createEffect(() => {
     const app = appInstance();
-    if (app?.selectionManager && props.enableSelection !== undefined) {
-      app.selectionManager.setEnabled(props.enableSelection);
+    if (app && props.enableSelection !== undefined) {
+      app.setSelectionEnabled(props.enableSelection);
     }
   });
 
@@ -177,7 +152,7 @@ export function FloorplanBase(props: FloorplanBaseProps) {
   // 2. Keep scoped container data-theme in sync with the app theme
   createEffect(() => {
     const app = appInstance();
-    if (app?.on) {
+    if (app) {
       const unsub = app.on('themeChange', () => {
         // The viewer core's applyTheme() sets document.documentElement data-theme globally.
         // Restore the global to the app's theme so it doesn't leak to the rest of the page.

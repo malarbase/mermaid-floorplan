@@ -348,7 +348,7 @@ export class InteractiveEditorCore extends FloorplanAppCore {
 
     // Snapshot selected entity identifiers before the scene is rebuilt
     const previousSelection = sm
-      ? Array.from(sm.getSelection()).map((e) => ({
+      ? Array.from(sm.getSelectionSet()).map((e) => ({
           floorId: e.floorId,
           entityType: e.entityType,
           entityId: e.entityId,

@@ -1,7 +1,7 @@
 import { A } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, For, Show } from 'solid-js';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 // Version type from Convex schema
 interface Version {
@@ -40,7 +40,7 @@ interface VersionListProps {
  */
 export function VersionList(props: VersionListProps) {
   // Query project's versions from Convex
-  const versionsQuery = useQuery(convexApi.projects.listVersions, () => ({
+  const versionsQuery = useQuery(api.projects.listVersions, () => ({
     projectId: props.projectId,
   }));
 

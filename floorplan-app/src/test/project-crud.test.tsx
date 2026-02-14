@@ -14,6 +14,19 @@ const mockMutations = vi.hoisted(() => ({
   },
 }));
 
+// Mock the Convex generated api so FunctionReference values are plain strings
+const mockApi = vi.hoisted(() => ({
+  projects: {
+    create: 'projects:create',
+    update: 'projects:update',
+    remove: 'projects:remove',
+  },
+}));
+
+vi.mock('../../convex/_generated/api', () => ({
+  api: mockApi,
+}));
+
 vi.mock('convex-solidjs', () => ({
   useMutation: (ref: string) => {
     if (ref.includes('create')) return mockMutations.create;

@@ -3,7 +3,7 @@ import { clientOnly } from '@solidjs/start';
 import { useMutation } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js';
 import type { ProjectId } from '~/lib/project-types';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 // Use clientOnly to prevent SSR issues with Three.js
 const FloorplanEmbed = clientOnly(() => import('~/components/FloorplanEmbed'));
@@ -85,7 +85,7 @@ export interface FloorplanEditorProps {
  */
 export function FloorplanEditor(props: FloorplanEditorProps) {
   const _navigate = useNavigate();
-  const saveMutation = useMutation(convexApi.projects.save);
+  const saveMutation = useMutation(api.projects.save);
 
   // State
   const [currentContent, setCurrentContent] = createSignal(props.initialContent);

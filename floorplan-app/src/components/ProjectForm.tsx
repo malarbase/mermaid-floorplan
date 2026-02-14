@@ -2,7 +2,7 @@ import { useMutation } from 'convex-solidjs';
 import { createMemo, createSignal, Show } from 'solid-js';
 import { styledApartmentContent } from '~/lib/mock-floorplan-content';
 import type { ProjectId } from '~/lib/project-types';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 export interface ProjectFormData {
   displayName: string;
@@ -90,8 +90,8 @@ const DEFAULT_CONTENT = styledApartmentContent;
  */
 export function ProjectForm(props: ProjectFormProps) {
   // Convex mutations
-  const createProject = useMutation(convexApi.projects.create);
-  const updateProject = useMutation(convexApi.projects.update);
+  const createProject = useMutation(api.projects.create);
+  const updateProject = useMutation(api.projects.update);
 
   // Form state
   const [displayName, setDisplayName] = createSignal(props.initialValues?.displayName ?? '');

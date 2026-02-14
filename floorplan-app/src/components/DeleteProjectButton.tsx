@@ -2,7 +2,7 @@ import { useMutation } from 'convex-solidjs';
 import { createSignal } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { Modal } from '~/components/ui/Modal';
-import { convexApi } from '~/lib/project-types';
+import { api } from '../../convex/_generated/api';
 
 interface DeleteProjectButtonProps {
   /** Project ID to delete (string type for when generated files don't exist) */
@@ -25,7 +25,7 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
   const [isDeleting, setIsDeleting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
-  const removeMutation = useMutation(convexApi.projects.remove);
+  const removeMutation = useMutation(api.projects.remove);
 
   const canDelete = () => confirmText() === props.projectName;
 
