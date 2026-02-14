@@ -159,6 +159,45 @@
   }
 }
 
+/* ============================================
+   Drag-and-drop overlay (editor mode)
+   ============================================ */
+
+.fp-drag-drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(var(--color-base-100) / 0.85);
+  border: 2px dashed oklch(var(--color-primary));
+  border-radius: 0.5rem;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.fp-drag-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fp-drag-drop-icon {
+  font-size: 2.5rem;
+}
+
+.fp-drag-drop-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: oklch(var(--color-primary));
+}
+
+.fp-drag-drop-hint {
+  font-size: 0.75rem;
+  color: oklch(var(--color-base-content) / 0.5);
+}
+
 /* TABLET: 640px-1024px */
 @media (min-width: 640px) and (max-width: 1023px) {
   .fab-button,

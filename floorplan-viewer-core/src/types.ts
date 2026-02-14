@@ -116,6 +116,18 @@ export interface ViewerPublicApi {
     setCameraState?: (state: CameraState) => void;
   };
 
+  // -- File Operations --
+  // Available when the core is FloorplanAppCore (not all implementations support these).
+
+  /** Handle a dropped file (DSL or JSON). */
+  handleFileDrop?(file: File, content: string): void;
+
+  /** Dispatch a file action (open-file, save-floorplan, export-json, etc.). */
+  handleFileAction?(action: string, data?: unknown): void;
+
+  /** Open a native file picker dialog. */
+  openFilePicker?(): void;
+
   // -- Events --
 
   /**

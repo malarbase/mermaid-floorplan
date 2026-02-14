@@ -3,6 +3,7 @@ import { A, useNavigate, useParams } from '@solidjs/router';
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
 import { CreateVersionModal } from '~/components/CreateVersionModal';
+import { DeleteVersionModal } from '~/components/DeleteVersionModal';
 import { Modal } from '~/components/ui/Modal';
 import { useProjectData } from '~/hooks/useProjectData';
 import { copyToClipboard, generatePermalink } from '~/lib/permalink';
@@ -61,6 +62,8 @@ const formatActionText = (action: string, metadata: any): string => {
       return `created version "${metadata?.versionName ?? ''}"${metadata?.fromVersion ? ` from "${metadata.fromVersion}"` : ''}`;
     case 'version.restore':
       return `restored version "${metadata?.versionName ?? ''}" to snapshot ${metadata?.toSnapshotId?.slice?.(0, 6) ?? ''}`;
+    case 'version.delete':
+      return `deleted version "${metadata?.versionName ?? ''}"`;
     case 'project.update':
       return 'updated project settings';
     case 'project.rename':
@@ -183,6 +186,7 @@ function VersionCard(props: {
   });
 
   // For a given snapshot, get the original if this is a content duplicate
+  const [showDeleteModal, setShowDeleteModal] = createSignal(false);
   const getContentOriginal = (snapshot: VersionSnapshot) => {
     const first = contentOriginals().get(snapshot.contentHash);
     if (first && first.snapshotHash !== snapshot.snapshotHash) return first;
@@ -247,6 +251,27 @@ function VersionCard(props: {
             <span class="font-mono font-bold text-sm sm:text-base">{props.version.name}</span>
             <Show when={props.isDefault}>
               <span class="badge badge-primary badge-xs sm:badge-sm">default</span>
+            </Show>
+            {/* Delete button for non-default versions */}
+            <Show when={props.isOwner && !props.isDefault}>
+              <button
+                type="button"
+                class="btn btn-ghost btn-xs text-error/60 hover:text-error"
+                title={`Delete version "${props.version.name}"`}
+                onClick={(e: MouseEvent) => {
+                  e.stopPropagation();
+                  setShowDeleteModal(true);
+                }}
+              >
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                  />
+                </svg>
+              </button>
             </Show>
             <Show when={props.version.description}>
               <span class="text-xs sm:text-sm text-base-content/60 truncate max-w-[200px] sm:max-w-none">
@@ -452,6 +477,16 @@ function VersionCard(props: {
           </button>
         </div>
       </Modal>
+
+      {/* Delete version modal */}
+      <Show when={!props.isDefault}>
+        <DeleteVersionModal
+          isOpen={showDeleteModal()}
+          onClose={() => setShowDeleteModal(false)}
+          projectId={props.projectId}
+          versionName={props.version.name}
+        />
+      </Show>
     </div>
   );
 }

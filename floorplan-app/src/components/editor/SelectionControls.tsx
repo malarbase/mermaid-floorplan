@@ -20,7 +20,7 @@ interface SelectionControlsProps {
  */
 export default function SelectionControls(props: SelectionControlsProps) {
   return (
-    <div class="flex flex-nowrap items-center gap-1 px-2 py-1.5 bg-base-200/80 border-b border-base-300 overflow-hidden">
+    <div class="flex flex-nowrap items-center gap-1 px-2 py-1.5 overflow-hidden flex-1 min-w-0">
       {/* Add Room - always enabled */}
       <button
         type="button"

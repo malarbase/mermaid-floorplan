@@ -215,10 +215,10 @@ export function ProjectForm(props: ProjectFormProps) {
 
   return (
     <form onSubmit={handleSubmit} class="card bg-base-100 shadow-xl">
-      <div class="card-body">
+      <div class="card-body gap-0">
         {/* Error Alert */}
         <Show when={error()}>
-          <div class="alert alert-error mb-4">
+          <div class="alert alert-error mb-6">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               class="stroke-current shrink-0 h-6 w-6"
@@ -236,66 +236,74 @@ export function ProjectForm(props: ProjectFormProps) {
           </div>
         </Show>
 
-        {/* Project Name */}
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text font-medium">Project Name</span>
-          </label>
-          <input
-            type="text"
-            placeholder="My Beach House"
-            class="input input-bordered"
-            value={displayName()}
-            onInput={handleNameChange}
-            disabled={isSubmitting()}
-            required
-          />
-        </div>
+        {/* Section: Identity — Name + Slug */}
+        <div class="space-y-4">
+          {/* Project Name */}
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">Project Name</span>
+            </label>
+            <input
+              type="text"
+              placeholder="My Beach House"
+              class="input input-bordered w-full"
+              value={displayName()}
+              onInput={handleNameChange}
+              disabled={isSubmitting()}
+              required
+            />
+          </div>
 
-        {/* URL Slug */}
-        <div class="form-control">
-          <label class="label">
-            <span class="label-text font-medium">URL Slug</span>
-            <span class="label-text-alt text-base-content/50">{urlPreview()}</span>
-          </label>
-          <input
-            type="text"
-            placeholder="my-beach-house"
-            class={`input input-bordered font-mono ${
-              slug() && !isValidSlug() ? 'input-error' : ''
-            }`}
-            value={slug()}
-            onInput={handleSlugChange}
-            disabled={isSubmitting() || !isCreateMode()}
-            required
-          />
-          <label class="label">
-            <span
-              class={`label-text-alt ${
-                slug() && !isValidSlug() ? 'text-error' : 'text-base-content/50'
+          {/* URL Slug */}
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-medium">URL Slug</span>
+            </label>
+            <input
+              type="text"
+              placeholder="my-beach-house"
+              class={`input input-bordered font-mono w-full ${
+                slug() && !isValidSlug() ? 'input-error' : ''
               }`}
-            >
-              {slug() && !isValidSlug()
-                ? 'Only lowercase letters, numbers, and hyphens allowed'
-                : 'Only lowercase letters, numbers, and hyphens'}
-            </span>
-            <Show when={!isCreateMode()}>
-              <span class="label-text-alt text-base-content/50">
-                Cannot be changed after creation
+              value={slug()}
+              onInput={handleSlugChange}
+              disabled={isSubmitting() || !isCreateMode()}
+              required
+            />
+            {/* URL Preview */}
+            <div class="mt-2 rounded-lg bg-base-200 px-3 py-2 text-sm font-mono text-base-content/60">
+              {urlPreview()}
+            </div>
+            <label class="label">
+              <span
+                class={`label-text-alt ${
+                  slug() && !isValidSlug() ? 'text-error' : 'text-base-content/50'
+                }`}
+              >
+                {slug() && !isValidSlug()
+                  ? 'Only lowercase letters, numbers, and hyphens allowed'
+                  : 'Only lowercase letters, numbers, and hyphens'}
               </span>
-            </Show>
-          </label>
+              <Show when={!isCreateMode()}>
+                <span class="label-text-alt text-base-content/50">
+                  Cannot be changed after creation
+                </span>
+              </Show>
+            </label>
+          </div>
         </div>
 
-        {/* Description */}
+        <div class="divider my-2"></div>
+
+        {/* Section: Details — Description */}
         <div class="form-control">
           <label class="label">
             <span class="label-text font-medium">Description</span>
-            <span class="label-text-alt">Optional</span>
+            <span class="label-text-alt text-base-content/50">Optional</span>
           </label>
           <textarea
             placeholder="A modern beach house design..."
-            class="textarea textarea-bordered"
+            class="textarea textarea-bordered w-full"
             value={description()}
             onInput={(e) => setDescription((e.target as HTMLTextAreaElement).value)}
             disabled={isSubmitting()}
@@ -303,7 +311,9 @@ export function ProjectForm(props: ProjectFormProps) {
           />
         </div>
 
-        {/* Visibility Toggle */}
+        <div class="divider my-2"></div>
+
+        {/* Section: Settings — Visibility */}
         <div class="form-control">
           <label class="label cursor-pointer justify-start gap-4">
             <input
@@ -323,7 +333,7 @@ export function ProjectForm(props: ProjectFormProps) {
         </div>
 
         {/* Form Actions */}
-        <div class="card-actions justify-end mt-4">
+        <div class="card-actions justify-end mt-6 pt-4 border-t border-base-300">
           <Show when={props.onCancel}>
             <button
               type="button"

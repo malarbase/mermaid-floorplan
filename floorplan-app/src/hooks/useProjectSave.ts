@@ -8,19 +8,33 @@ import { useMutation } from 'convex-solidjs';
 import { type Accessor, createEffect, createMemo, createSignal, onCleanup } from 'solid-js';
 import { api } from '../../convex/_generated/api';
 
+interface UseProjectSaveOptions {
+  /**
+   * Called after a successful save. Useful for auto-capturing a thumbnail preview.
+   * Runs asynchronously — failures are silently ignored so they don't block saves.
+   */
+  onSaveSuccess?: () => Promise<unknown> | void;
+  /** Minimum interval (ms) between onSaveSuccess calls. Default: 30 000 (30s). */
+  onSaveSuccessThrottleMs?: number;
+}
+
 /**
  * @param content - Accessor to the server-side (last-saved) DSL content
  * @param projectId - Accessor to the current project ID
  * @param versionName - Accessor to the version name to save to (e.g. "main" or a named version)
  * @param isOwner - Accessor indicating whether the current user owns the project
+ * @param options - Optional callbacks (e.g. auto-capture preview on save)
  */
 export function useProjectSave(
   content: Accessor<string | undefined>,
   projectId: Accessor<string | undefined>,
   versionName: Accessor<string | undefined>,
   isOwner: Accessor<boolean>,
+  options?: UseProjectSaveOptions,
 ) {
   const saveMutation = useMutation(api.projects.save);
+  const throttleMs = options?.onSaveSuccessThrottleMs ?? 30_000;
+  let lastSuccessCallbackAt = 0;
 
   const [currentDsl, setCurrentDsl] = createSignal('');
   const [isSaving, setIsSaving] = createSignal(false);
@@ -53,7 +67,7 @@ export function useProjectSave(
     setSaveError(null);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (message?: string) => {
     const pid = projectId();
     const ver = versionName();
     if (!isOwner() || !pid || !ver || !hasUnsavedChanges() || isSaving()) return;
@@ -66,11 +80,21 @@ export function useProjectSave(
         projectId: pid,
         versionName: ver,
         content: currentDsl(),
+        message: message || undefined,
       });
       setLastSavedContent(currentDsl());
       setJustSaved(true);
       setShowSaveSuccess(true);
       setTimeout(() => setShowSaveSuccess(false), 2000);
+
+      // Fire onSaveSuccess (e.g. auto-capture preview), throttled
+      if (options?.onSaveSuccess) {
+        const now = Date.now();
+        if (now - lastSuccessCallbackAt >= throttleMs) {
+          lastSuccessCallbackAt = now;
+          Promise.resolve(options.onSaveSuccess()).catch(() => {});
+        }
+      }
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setSaveError(error.message);

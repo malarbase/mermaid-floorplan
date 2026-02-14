@@ -314,6 +314,14 @@ export const mockConvexMutations = {
     return { success: true, snapshotId: args.snapshotId };
   },
 
+  'projects:deleteVersion': (args: any) => {
+    console.log('[MOCK] projects.deleteVersion() called', args);
+    if (args.versionName === 'main') {
+      throw new Error('Cannot delete the default version');
+    }
+    return undefined;
+  },
+
   'projects:delete': (args: { projectId: any }) => {
     console.log('[MOCK] projects.delete() called', args);
     const index = mockProjectsData.findIndex((p) => p._id === args.projectId);

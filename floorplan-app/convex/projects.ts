@@ -753,6 +753,59 @@ export const createVersion = mutation({
 });
 
 /**
+ * Delete a non-default version (branch).
+ * Snapshots are NOT cascade-deleted — they may be referenced by permalinks or other versions.
+ */
+export const deleteVersion = mutation({
+  args: {
+    projectId: v.id('projects'),
+    versionName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Auth: owner or editor
+    const isOwner = project.userId === user._id;
+    if (!isOwner) {
+      const access = await ctx.db
+        .query('projectAccess')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.and(q.eq(q.field('userId'), user._id), q.eq(q.field('role'), 'editor')))
+        .first();
+
+      if (!access) throw new Error('Not authorized');
+    }
+
+    // Guard: cannot delete the default version
+    if (args.versionName === project.defaultVersion) {
+      throw new Error('Cannot delete the default version');
+    }
+
+    const version = await ctx.db
+      .query('versions')
+      .withIndex('by_project_name', (q) =>
+        q.eq('projectId', args.projectId).eq('name', args.versionName),
+      )
+      .first();
+
+    if (!version) throw new Error('Version not found');
+
+    await ctx.db.delete(version._id);
+
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'version.delete',
+      userId: user._id,
+      metadata: { versionName: args.versionName },
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/**
  * Move a version to point at a different existing snapshot (rollback/restore).
  * Like `git reset --hard <commit>` - moves the branch pointer without creating a new snapshot.
  */

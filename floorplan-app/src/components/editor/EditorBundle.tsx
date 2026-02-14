@@ -13,6 +13,7 @@ import {
 } from './dsl-edit-plan';
 import type { EditorCore, EditorPanelAPI } from './EditorPanel';
 import EditorPanel from './EditorPanel';
+import FileActionsToolbar from './FileActionsToolbar';
 import PropertiesPanel from './PropertiesPanel';
 import SelectionControls from './SelectionControls';
 import ValidationWarnings, { ParseErrorBanner, type ValidationWarning } from './ValidationWarnings';
@@ -28,6 +29,10 @@ import ValidationWarnings, { ParseErrorBanner, type ValidationWarning } from './
 interface EditorBundleCoreApi extends EditorCore {
   dispose(): void;
   focusOnSelection?(): void;
+  // File operations (optional — available when core is FloorplanAppCore)
+  handleFileDrop?(file: File, content: string): void;
+  handleFileAction?(action: string, data?: unknown): void;
+  openFilePicker?(): void;
 }
 
 interface EditorBundleProps {
@@ -82,6 +87,16 @@ export default function EditorBundle(props: EditorBundleProps) {
 
   // Imperative editor API from EditorPanel (available after Monaco initializes)
   let editorAPI: EditorPanelAPI | null = null;
+
+  // Sync editor when DSL changes externally (drag-drop, import button, etc.)
+  // Only updates when the editor's current content differs from props.dsl,
+  // preventing feedback loops (Solid signals use === equality).
+  createEffect(() => {
+    const dsl = props.dsl;
+    if (editorAPI && dsl !== editorAPI.getValue()) {
+      editorAPI.setValue(dsl);
+    }
+  });
 
   /**
    * Callback to fetch entity data for the properties panel.
@@ -385,8 +400,13 @@ export default function EditorBundle(props: EditorBundleProps) {
 
   return (
     <div class="flex flex-col h-full w-full overflow-hidden">
-      {/* Top: Compact toolbar with type breakdown */}
-      <div class="flex-shrink-0">
+      {/* Top: File actions + selection toolbar (single row) */}
+      <div class="flex flex-row items-center flex-shrink-0 border-b border-base-300 bg-base-200/80">
+        <FileActionsToolbar
+          core={props.core}
+          getContent={() => editorAPI?.getValue() ?? ''}
+          filename="floorplan.floorplan"
+        />
         <SelectionControls
           hasSelection={selection().hasSelection}
           selectedCount={selection().count}

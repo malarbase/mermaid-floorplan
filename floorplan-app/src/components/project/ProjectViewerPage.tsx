@@ -124,11 +124,13 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
   const thumbnail = useThumbnailCapture(coreInstance, () => project()?._id as string | undefined);
 
   // --- Save functionality (shared hook) ---
+  // Auto-capture a preview thumbnail after each save (throttled to every 30s)
   const save = useProjectSave(
     content,
     () => project()?._id as string | undefined,
     props.versionName,
     isOwner,
+    { onSaveSuccess: () => thumbnail.capture() },
   );
 
   // Handle version created

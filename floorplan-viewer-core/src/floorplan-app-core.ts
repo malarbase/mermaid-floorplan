@@ -525,7 +525,7 @@ export class FloorplanAppCore extends BaseViewer implements ViewerPublicApi {
   /**
    * Open file picker dialog.
    */
-  private openFilePicker(): void {
+  public openFilePicker(): void {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.floorplan,.json';

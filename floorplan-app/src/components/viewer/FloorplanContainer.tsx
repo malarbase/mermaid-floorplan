@@ -9,7 +9,12 @@ import { FloorplanBase } from './FloorplanBase';
 import { ControlPanelsSkeleton, EditorSkeleton, ViewerSkeleton } from './skeletons';
 import { ViewerErrorBoundary } from './ViewerError';
 import './viewer-layout.css';
-import { getLayoutManager, type ViewerPublicApi } from 'floorplan-viewer-core';
+import {
+  type DragDropHandler,
+  getLayoutManager,
+  initializeDragDrop,
+  type ViewerPublicApi,
+} from 'floorplan-viewer-core';
 import { useAppTheme } from '~/lib/theme';
 
 /** Min/max editor panel width in pixels */
@@ -125,6 +130,11 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   // DSL theme suggestion state
   const [dslThemeSuggestion, setDslThemeSuggestion] = createSignal<'light' | 'dark' | null>(null);
 
+  // Drag-and-drop ref + handler
+  let floorplan3dRef: HTMLDivElement | undefined;
+  let dragDropHandler: DragDropHandler | null = null;
+  let ideDropCleanup: (() => void) | null = null;
+
   // Sync mode with props changes
   createEffect(() => {
     const newMode = getMode();
@@ -170,6 +180,72 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     const handleResize = () => setIsMobile(window.innerWidth < 640);
     window.addEventListener('resize', handleResize);
     onCleanup(() => window.removeEventListener('resize', handleResize));
+  });
+
+  // Drag-and-drop: enable only in editor mode when core is ready
+  createEffect(() => {
+    const core = coreInstance();
+    const isEditor = mode() === 'editor';
+    const target = floorplan3dRef;
+
+    if (core && isEditor && target && !dragDropHandler) {
+      dragDropHandler = initializeDragDrop({
+        target,
+        onFileDrop: (file, content) => {
+          core.handleFileDrop?.(file, content);
+          // Propagate DSL to parent so editor + save state stay in sync
+          if (file.name.toLowerCase().endsWith('.floorplan')) {
+            props.onDslChange?.(content);
+          }
+        },
+        onInvalidFile: (_file, reason) => {
+          console.warn('Drag-drop:', reason);
+        },
+      });
+      dragDropHandler.enable();
+
+      // Swallow drops from Cursor IDE / VS Code file explorer (they provide
+      // URI-list data instead of File objects, which we can't read in-browser).
+      // Without this guard the browser's default drop behaviour can inject
+      // the dev-server HTML shell into the editor.
+      const handleIdeDrop = (e: DragEvent) => {
+        if (e.dataTransfer?.files?.length) return; // OS drop — library handler has it
+        e.preventDefault();
+        e.stopPropagation();
+        console.info(
+          'Drag from IDE detected — use your OS file manager (Finder) to drop files here.',
+        );
+      };
+      target.addEventListener('drop', handleIdeDrop);
+      ideDropCleanup = () => target.removeEventListener('drop', handleIdeDrop);
+    } else if (dragDropHandler && !isEditor) {
+      dragDropHandler.disable();
+    }
+  });
+
+  onCleanup(() => {
+    ideDropCleanup?.();
+    ideDropCleanup = null;
+    dragDropHandler?.dispose();
+    dragDropHandler = null;
+  });
+
+  // Propagate core-initiated DSL changes (import button, programmatic loads)
+  // to the parent save state. Drag-drop already calls onDslChange directly,
+  // but the import button goes through core.openFilePicker() → handleFileDrop()
+  // → loadFromDsl() which only emits this event.
+  createEffect(() => {
+    const core = coreInstance();
+    if (!core) return;
+
+    const unsub = core.on('dslChange', (...args: unknown[]) => {
+      const payload = args[0] as { content: string } | undefined;
+      if (payload?.content) {
+        props.onDslChange?.(payload.content);
+      }
+    });
+
+    onCleanup(() => unsub?.());
   });
 
   const handleCoreReady = (core: CoreInstance) => {
@@ -286,7 +362,7 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
           </Show>
 
           {/* 3D Viewer (always visible) */}
-          <div class="floorplan-3d">
+          <div ref={floorplan3dRef} class="floorplan-3d">
             <FloorplanBase {...baseProps()} />
           </div>
 

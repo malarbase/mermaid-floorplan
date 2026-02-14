@@ -1,6 +1,8 @@
 import { A, useNavigate } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
+import { Portal } from 'solid-js/web';
+import { DeleteVersionModal } from '~/components/DeleteVersionModal';
 import { api } from '../../convex/_generated/api';
 
 // Version type from Convex schema
@@ -52,6 +54,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
   const navigate = useNavigate();
   const [isOpen, setIsOpen] = createSignal(false);
   const [searchQuery, setSearchQuery] = createSignal('');
+  const [deleteTarget, setDeleteTarget] = createSignal<string | null>(null);
 
   // Query project's versions from Convex
   const versionsQuery = useQuery(api.projects.listVersions, () => ({
@@ -277,6 +280,35 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
                             <span class="text-xs text-base-content/50">
                               {formatRelativeTime(version.updatedAt)}
                             </span>
+                            {/* Delete button for non-default versions */}
+                            <Show
+                              when={props.canCreateVersion && version.name !== props.defaultVersion}
+                            >
+                              <button
+                                type="button"
+                                class="btn btn-ghost btn-xs text-error/60 hover:text-error px-1"
+                                title={`Delete version "${version.name}"`}
+                                onClick={(e: MouseEvent) => {
+                                  e.stopPropagation();
+                                  setDeleteTarget(version.name);
+                                  setIsOpen(false);
+                                }}
+                              >
+                                <svg
+                                  class="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                              </button>
+                            </Show>
                           </div>
                         </button>
                       </li>
@@ -334,6 +366,23 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
           </Show>
         </div>
       </Show>
+
+      {/* Delete version modal — Portal escapes header's backdrop-blur containing block */}
+      <Portal>
+        <DeleteVersionModal
+          isOpen={!!deleteTarget()}
+          onClose={() => setDeleteTarget(null)}
+          projectId={props.projectId}
+          versionName={deleteTarget() ?? ''}
+          onSuccess={() => {
+            const deletedVersion = deleteTarget();
+            setDeleteTarget(null);
+            if (deletedVersion === props.currentVersion) {
+              navigate(`/u/${props.username}/${props.projectSlug}`);
+            }
+          }}
+        />
+      </Portal>
     </div>
   );
 }
