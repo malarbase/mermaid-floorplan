@@ -53,6 +53,7 @@ const mockSnapshotsData = [
     _id: 'mock-snapshot-1' as any,
     _creationTime: Date.now(),
     projectId: 'mock-project-1' as any,
+    snapshotHash: 'a1b2c3d4e5f6',
     contentHash: 'a1b2c3d4',
     content: styledApartmentContent,
     message: 'Initial version',
@@ -109,8 +110,12 @@ export const mockConvexQueries = {
     console.log('[MOCK] projects.getByHash() called', args);
     return (
       mockSnapshotsData.find(
+        (s) => s.projectId === args.projectId && s.snapshotHash === args.hash,
+      ) ||
+      mockSnapshotsData.find(
         (s) => s.projectId === args.projectId && s.contentHash === args.hash,
-      ) || null
+      ) ||
+      null
     );
   },
 
@@ -119,6 +124,52 @@ export const mockConvexQueries = {
     return mockSnapshotsData
       .filter((s) => s.projectId === args.projectId)
       .slice(0, args.limit || 50);
+  },
+
+  'projects:getVersionHistory': (args: {
+    projectId: any;
+    versionName?: string;
+    limit?: number;
+  }) => {
+    console.log('[MOCK] projects.getVersionHistory() called', args);
+    // Flat query: return all snapshots for the project with headOf info
+    const projectSnapshots = mockSnapshotsData.filter((s) => s.projectId === args.projectId);
+    const projectVersions = mockVersionsData.filter((v) => v.projectId === args.projectId);
+    const headMap = new Map<string, string[]>();
+    for (const v of projectVersions) {
+      const existing = headMap.get(v.snapshotId) ?? [];
+      existing.push(v.name);
+      headMap.set(v.snapshotId, existing);
+    }
+    return projectSnapshots
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, args.limit ?? 50)
+      .map((s) => ({
+        ...s,
+        isHead: headMap.has(s._id),
+        headOf: headMap.get(s._id) ?? [],
+      }));
+  },
+
+  'projects:getProjectActivity': (args: { projectId: any; limit?: number }) => {
+    console.log('[MOCK] projects.getProjectActivity() called', args);
+    // Return mock activity events
+    return [
+      {
+        _id: 'mock-event-1',
+        action: 'project.create',
+        metadata: { slug: 'sample-apartment', displayName: 'Sample Apartment' },
+        createdAt: Date.now() - 86400000,
+        user: { username: 'testuser', displayName: 'Test User', avatarUrl: null },
+      },
+      {
+        _id: 'mock-event-2',
+        action: 'snapshot.save',
+        metadata: { versionName: 'main', message: 'Initial version' },
+        createdAt: Date.now() - 86400000,
+        user: { username: 'testuser', displayName: 'Test User', avatarUrl: null },
+      },
+    ].slice(0, args.limit ?? 50);
   },
 
   // Users queries
@@ -256,6 +307,11 @@ export const mockConvexMutations = {
     console.log('[MOCK] projects.save() called', args);
     const hash = Math.random().toString(36).substring(7);
     return { snapshotId: `mock-snapshot-${Date.now()}`, hash };
+  },
+
+  'projects:moveVersionToSnapshot': (args: any) => {
+    console.log('[MOCK] projects.moveVersionToSnapshot() called', args);
+    return { success: true, snapshotId: args.snapshotId };
   },
 
   'projects:delete': (args: { projectId: any }) => {

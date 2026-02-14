@@ -80,6 +80,7 @@ export interface ForkedFrom {
 export interface Snapshot {
   _id?: string;
   content: string;
+  snapshotHash: string;
   contentHash: string;
   message?: string;
   createdAt: number;

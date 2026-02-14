@@ -1,7 +1,7 @@
 import { v } from 'convex/values';
 import type { Doc } from './_generated/dataModel';
 import type { QueryCtx } from './_generated/server';
-import { mutation, query } from './_generated/server';
+import { internalMutation, mutation, query } from './_generated/server';
 import { getCurrentUser, requireUser } from './lib/auth';
 
 /**
@@ -47,6 +47,25 @@ async function contentHash(content: string): Promise<string> {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
   return hashHex.slice(0, 8);
+}
+
+/**
+ * Generate snapshot hash (first 12 chars of SHA256 of content + metadata)
+ * Like a Git commit SHA - unique per save event, even for identical content.
+ */
+async function snapshotHash(
+  content: string,
+  parentId: string | undefined,
+  authorId: string,
+  createdAt: number,
+): Promise<string> {
+  const payload = `${content}\0${parentId ?? ''}\0${authorId}\0${createdAt}`;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(payload);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return hashHex.slice(0, 12);
 }
 
 export const list = query({
@@ -171,8 +190,11 @@ export const create = mutation({
       updatedAt: now,
     });
 
+    const snapHash = await snapshotHash(args.content, undefined, user.authId, now);
+
     const snapshotId = await ctx.db.insert('snapshots', {
       projectId,
+      snapshotHash: snapHash,
       contentHash: hash,
       content: args.content,
       message: 'Initial version',
@@ -186,6 +208,14 @@ export const create = mutation({
       snapshotId,
       createdAt: now,
       updatedAt: now,
+    });
+
+    await ctx.db.insert('projectEvents', {
+      projectId,
+      action: 'project.create',
+      userId: user._id,
+      metadata: { slug: args.slug, displayName: args.displayName },
+      createdAt: now,
     });
 
     return projectId;
@@ -230,13 +260,29 @@ export const save = mutation({
       )
       .first();
 
+    // Deduplicate: skip snapshot creation if content is unchanged from HEAD
+    if (version?.snapshotId) {
+      const headSnapshot = await ctx.db.get(version.snapshotId);
+      if (headSnapshot && headSnapshot.contentHash === hash && !args.message) {
+        return {
+          snapshotId: version.snapshotId,
+          hash: headSnapshot.snapshotHash,
+          deduplicated: true,
+        };
+      }
+    }
+
     // Create new snapshot
+    const parentSnapshotId = version?.snapshotId;
+    const snapHash = await snapshotHash(args.content, parentSnapshotId, user._id, now);
+
     const snapshotId = await ctx.db.insert('snapshots', {
       projectId: args.projectId,
+      snapshotHash: snapHash,
       contentHash: hash,
       content: args.content,
       message: args.message,
-      parentId: version?.snapshotId,
+      parentId: parentSnapshotId,
       authorId: user._id,
       createdAt: now,
     });
@@ -257,7 +303,20 @@ export const save = mutation({
     // Update project timestamp
     await ctx.db.patch(args.projectId, { updatedAt: now });
 
-    return { snapshotId, hash };
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'snapshot.save',
+      userId: user._id,
+      metadata: {
+        versionName: args.versionName,
+        snapshotId,
+        snapshotHash: snapHash,
+        message: args.message,
+      },
+      createdAt: now,
+    });
+
+    return { snapshotId, hash: snapHash };
   },
 });
 
@@ -349,7 +408,8 @@ export const getPublic = query({
 });
 
 /**
- * Get snapshot by hash (for permalinks)
+ * Get snapshot by snapshot hash (for permalinks).
+ * Falls back to content hash for backwards compatibility with old URLs.
  */
 export const getByHash = query({
   args: { projectId: v.id('projects'), hash: v.string() },
@@ -357,9 +417,22 @@ export const getByHash = query({
     const project = await ctx.db.get(args.projectId);
     if (!project || !(await canAccessProject(ctx, project))) return null;
 
+    // Try snapshot hash first (new unique permalinks)
+    const bySnapshotHash = await ctx.db
+      .query('snapshots')
+      .withIndex('by_snapshot_hash', (q) =>
+        q.eq('projectId', args.projectId).eq('snapshotHash', args.hash),
+      )
+      .first();
+
+    if (bySnapshotHash) return bySnapshotHash;
+
+    // Fall back to content hash (backwards compatibility with old URLs)
     return ctx.db
       .query('snapshots')
-      .withIndex('by_hash', (q) => q.eq('projectId', args.projectId).eq('contentHash', args.hash))
+      .withIndex('by_content_hash', (q) =>
+        q.eq('projectId', args.projectId).eq('contentHash', args.hash),
+      )
       .first();
   },
 });
@@ -466,6 +539,107 @@ export const getHistory = query({
 });
 
 /**
+ * Get snapshot history for a project.
+ * Returns ALL snapshots for the project (flat query, no parent-walking), ordered by createdAt desc.
+ * For each snapshot, indicates which version(s) currently point at it (isHead, headOf).
+ */
+export const getVersionHistory = query({
+  args: {
+    projectId: v.id('projects'),
+    versionName: v.optional(v.string()), // Keep arg for compatibility but not used for filtering snapshots
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project || !(await canAccessProject(ctx, project))) return [];
+
+    // Get all versions to know which snapshots are HEAD of which versions
+    const versions = await ctx.db
+      .query('versions')
+      .withIndex('by_project_name', (q) => q.eq('projectId', args.projectId))
+      .collect();
+
+    const headSnapshotIds = new Map<string, string[]>();
+    for (const ver of versions) {
+      const existing = headSnapshotIds.get(ver.snapshotId) ?? [];
+      existing.push(ver.name);
+      headSnapshotIds.set(ver.snapshotId, existing);
+    }
+
+    // Query ALL snapshots for the project (no parent-walking)
+    const maxSnapshots = args.limit ?? 50;
+    const snapshots = await ctx.db
+      .query('snapshots')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
+      .take(maxSnapshots);
+
+    return snapshots.map((snapshot) => ({
+      _id: snapshot._id,
+      snapshotHash: snapshot.snapshotHash,
+      contentHash: snapshot.contentHash,
+      message: snapshot.message,
+      parentId: snapshot.parentId,
+      authorId: snapshot.authorId,
+      createdAt: snapshot.createdAt,
+      isHead: headSnapshotIds.has(snapshot._id),
+      headOf: headSnapshotIds.get(snapshot._id) ?? [],
+    }));
+  },
+});
+
+/**
+ * Get project activity feed (audit trail).
+ * Returns recent events with user info for display.
+ */
+export const getProjectActivity = query({
+  args: {
+    projectId: v.id('projects'),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const project = await ctx.db.get(args.projectId);
+    if (!project || !(await canAccessProject(ctx, project))) return [];
+
+    const maxEvents = args.limit ?? 50;
+    const events = await ctx.db
+      .query('projectEvents')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .order('desc')
+      .take(maxEvents);
+
+    // Join user info
+    const userCache = new Map<
+      string,
+      { username: string; displayName?: string; avatarUrl?: string }
+    >();
+
+    return Promise.all(
+      events.map(async (event) => {
+        let userInfo = userCache.get(event.userId);
+        if (!userInfo) {
+          const user = await ctx.db.get(event.userId);
+          userInfo = {
+            username: user?.username ?? 'unknown',
+            displayName: user?.displayName,
+            avatarUrl: user?.avatarUrl,
+          };
+          userCache.set(event.userId, userInfo);
+        }
+
+        return {
+          _id: event._id,
+          action: event.action,
+          metadata: event.metadata,
+          createdAt: event.createdAt,
+          user: userInfo,
+        };
+      }),
+    );
+  },
+});
+
+/**
  * Update project settings (name, visibility, etc.)
  */
 export const update = mutation({
@@ -493,6 +667,19 @@ export const update = mutation({
     if (args.defaultVersion !== undefined) updates.defaultVersion = args.defaultVersion;
 
     await ctx.db.patch(args.projectId, updates);
+
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'project.update',
+      userId: user._id,
+      metadata: {
+        ...(args.displayName !== undefined && { displayName: args.displayName }),
+        ...(args.description !== undefined && { description: args.description }),
+        ...(args.isPublic !== undefined && { isPublic: args.isPublic }),
+        ...(args.defaultVersion !== undefined && { defaultVersion: args.defaultVersion }),
+      },
+      createdAt: Date.now(),
+    });
 
     return { success: true };
   },
@@ -553,7 +740,86 @@ export const createVersion = mutation({
       updatedAt: now,
     });
 
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'version.create',
+      userId: user._id,
+      metadata: { versionName: args.name, fromVersion: sourceVersionName },
+      createdAt: now,
+    });
+
     return versionId;
+  },
+});
+
+/**
+ * Move a version to point at a different existing snapshot (rollback/restore).
+ * Like `git reset --hard <commit>` - moves the branch pointer without creating a new snapshot.
+ */
+export const moveVersionToSnapshot = mutation({
+  args: {
+    projectId: v.id('projects'),
+    versionName: v.string(),
+    snapshotId: v.id('snapshots'),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Check permissions (owner or editor)
+    const isOwner = project.userId === user._id;
+    if (!isOwner) {
+      const access = await ctx.db
+        .query('projectAccess')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.and(q.eq(q.field('userId'), user._id), q.eq(q.field('role'), 'editor')))
+        .first();
+
+      if (!access) throw new Error('Not authorized');
+    }
+
+    // Verify the snapshot exists and belongs to this project
+    const snapshot = await ctx.db.get(args.snapshotId);
+    if (!snapshot) throw new Error('Snapshot not found');
+    if (snapshot.projectId !== args.projectId) {
+      throw new Error('Snapshot does not belong to this project');
+    }
+
+    // Find the version
+    const version = await ctx.db
+      .query('versions')
+      .withIndex('by_project_name', (q) =>
+        q.eq('projectId', args.projectId).eq('name', args.versionName),
+      )
+      .first();
+
+    if (!version) throw new Error('Version not found');
+
+    // Move the version pointer
+    const now = Date.now();
+    await ctx.db.patch(version._id, {
+      snapshotId: args.snapshotId,
+      updatedAt: now,
+    });
+
+    // Update project timestamp
+    await ctx.db.patch(args.projectId, { updatedAt: now });
+
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'version.restore',
+      userId: user._id,
+      metadata: {
+        versionName: args.versionName,
+        fromSnapshotId: version.snapshotId,
+        toSnapshotId: args.snapshotId,
+      },
+      createdAt: now,
+    });
+
+    return { success: true, snapshotId: args.snapshotId };
   },
 });
 
@@ -607,6 +873,14 @@ export const updateSlug = mutation({
       updatedAt: now,
     });
 
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'project.rename',
+      userId: user._id,
+      metadata: { oldSlug, newSlug: args.newSlug },
+      createdAt: now,
+    });
+
     return { success: true, oldSlug, newSlug: args.newSlug };
   },
 });
@@ -652,5 +926,37 @@ export const resolveSlug = query({
     if (!(await canAccessProject(ctx, targetProject))) return null;
 
     return { projectId: targetProject._id, currentSlug: redirect.toSlug, wasRedirected: true };
+  },
+});
+
+/**
+ * Backfill snapshotHash for existing snapshots that don't have one.
+ * Internal mutation — callable via `npx convex run projects:backfillSnapshotHashes`.
+ * Safe to run multiple times. Returns { processed, done }.
+ */
+export const backfillSnapshotHashes = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const batchSize = 100;
+    let processed = 0;
+
+    // Scan all snapshots and patch any missing snapshotHash
+    const snapshots = await ctx.db.query('snapshots').order('asc').collect();
+
+    for (const snapshot of snapshots) {
+      if (snapshot.snapshotHash) continue;
+
+      const hash = await snapshotHash(
+        snapshot.content,
+        snapshot.parentId,
+        snapshot.authorId,
+        snapshot.createdAt,
+      );
+
+      await ctx.db.patch(snapshot._id, { snapshotHash: hash });
+      processed++;
+    }
+
+    return { processed, total: snapshots.length, done: true };
   },
 });

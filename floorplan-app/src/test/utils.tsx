@@ -155,12 +155,14 @@ export const createMockSnapshot = (
   overrides: Partial<{
     _id: string;
     versionId: string;
+    snapshotHash: string;
     contentHash: string;
     dsl: string;
   }> = {},
 ) => ({
   _id: 'snapshot-123',
   versionId: 'version-123',
+  snapshotHash: 'abc123def456',
   contentHash: 'abc123',
   dsl: 'floorplan\n  floor Ground {\n    room Lobby at (0,0) size (10x10) walls [top: solid]\n  }',
   ...overrides,

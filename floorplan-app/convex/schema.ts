@@ -93,7 +93,8 @@ export default defineSchema({
   // Snapshots (like Git commits - immutable)
   snapshots: defineTable({
     projectId: v.id('projects'),
-    contentHash: v.string(), // SHA256 prefix for permalinks
+    snapshotHash: v.string(), // Unique per-save hash (like Git commit SHA) for permalinks
+    contentHash: v.string(), // Content-only hash for equivalence checks
     content: v.string(), // DSL content
     message: v.optional(v.string()), // "Added kitchen island"
     parentId: v.optional(v.id('snapshots')), // For history chain
@@ -101,7 +102,8 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_project', ['projectId', 'createdAt'])
-    .index('by_hash', ['projectId', 'contentHash']),
+    .index('by_snapshot_hash', ['projectId', 'snapshotHash'])
+    .index('by_content_hash', ['projectId', 'contentHash']),
 
   // Project access control (invites)
   projectAccess: defineTable({
@@ -155,6 +157,15 @@ export default defineSchema({
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index('by_slug', ['slug']),
+
+  // Project activity audit trail
+  projectEvents: defineTable({
+    projectId: v.id('projects'),
+    action: v.string(), // "snapshot.save", "version.restore", "version.create", etc.
+    userId: v.id('users'),
+    metadata: v.optional(v.any()), // Action-specific data (snapshotId, versionName, etc.)
+    createdAt: v.number(),
+  }).index('by_project', ['projectId', 'createdAt']),
 
   // Slug redirects (for URL migration history)
   slugRedirects: defineTable({

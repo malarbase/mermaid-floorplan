@@ -101,7 +101,7 @@ export function useVersionData(
   });
 
   const content = createMemo(() => versionData()?.snapshot?.content);
-  const currentHash = createMemo(() => versionData()?.snapshot?.contentHash);
+  const currentHash = createMemo(() => versionData()?.snapshot?.snapshotHash);
   const versionExists = createMemo(() => versionData()?.version != null);
 
   const isVersionLoading = createMemo(() => {

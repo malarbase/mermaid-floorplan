@@ -9,7 +9,7 @@
  * Generate a permalink URL for a snapshot
  * @param username - Project owner's username
  * @param projectSlug - Project slug
- * @param hash - Content hash of the snapshot (8 character hex)
+ * @param hash - Snapshot hash (12 character hex, unique per save)
  * @param absolute - Whether to return absolute URL (default: false)
  */
 export function generatePermalink(

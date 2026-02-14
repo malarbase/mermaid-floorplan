@@ -9,6 +9,25 @@ async function generateShareToken(): Promise<string> {
   return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
+/**
+ * Generate snapshot hash (first 12 chars of SHA256 of content + metadata)
+ * Like a Git commit SHA - unique per save event, even for identical content.
+ */
+async function snapshotHash(
+  content: string,
+  parentId: string | undefined,
+  authorId: string,
+  createdAt: number,
+): Promise<string> {
+  const payload = `${content}\0${parentId ?? ''}\0${authorId}\0${createdAt}`;
+  const encoder = new TextEncoder();
+  const data = encoder.encode(payload);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  return hashHex.slice(0, 12);
+}
+
 export const checkAccess = optionalAuthQuery({
   args: {
     projectId: v.id('projects'),
@@ -188,6 +207,17 @@ export const inviteByUsername = authenticatedMutation({
     if (existingAccess) {
       if (existingAccess.role !== args.role) {
         await ctx.db.patch(existingAccess._id, { role: args.role });
+        await ctx.db.insert('projectEvents', {
+          projectId: args.projectId,
+          action: 'collaborator.roleChange',
+          userId: ctx.user._id,
+          metadata: {
+            targetUsername: args.username,
+            oldRole: existingAccess.role,
+            newRole: args.role,
+          },
+          createdAt: Date.now(),
+        });
         return { success: true, action: 'updated', accessId: existingAccess._id };
       }
       return { success: true, action: 'exists', accessId: existingAccess._id };
@@ -198,6 +228,14 @@ export const inviteByUsername = authenticatedMutation({
       userId: invitee._id,
       role: args.role,
       invitedBy: ctx.user._id,
+      createdAt: Date.now(),
+    });
+
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'collaborator.invite',
+      userId: ctx.user._id,
+      metadata: { inviteeUsername: args.username, role: args.role },
       createdAt: Date.now(),
     });
 
@@ -230,6 +268,14 @@ export const removeCollaborator = authenticatedMutation({
 
     await ctx.db.delete(access._id);
 
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'collaborator.remove',
+      userId: ctx.user._id,
+      metadata: { removedUserId: args.userId },
+      createdAt: Date.now(),
+    });
+
     return { success: true };
   },
 });
@@ -260,6 +306,14 @@ export const updateCollaboratorRole = authenticatedMutation({
 
     await ctx.db.patch(access._id, { role: args.role });
 
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'collaborator.roleChange',
+      userId: ctx.user._id,
+      metadata: { targetUserId: args.userId, oldRole: access.role, newRole: args.role },
+      createdAt: Date.now(),
+    });
+
     return { success: true };
   },
 });
@@ -289,6 +343,14 @@ export const createShareLink = authenticatedMutation({
       createdAt: now,
     });
 
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'shareLink.create',
+      userId: ctx.user._id,
+      metadata: { role: args.role },
+      createdAt: Date.now(),
+    });
+
     return { success: true, linkId, token };
   },
 });
@@ -307,6 +369,13 @@ export const revokeShareLink = authenticatedMutation({
     }
 
     await ctx.db.delete(args.linkId);
+
+    await ctx.db.insert('projectEvents', {
+      projectId: link.projectId,
+      action: 'shareLink.revoke',
+      userId: ctx.user._id,
+      createdAt: Date.now(),
+    });
 
     return { success: true };
   },
@@ -453,8 +522,11 @@ export const forkProject = authenticatedMutation({
       updatedAt: now,
     });
 
+    const snapHash = await snapshotHash(sourceSnapshot.content, undefined, ctx.user.authId, now);
+
     const newSnapshotId = await ctx.db.insert('snapshots', {
       projectId: newProjectId,
+      snapshotHash: snapHash,
       contentHash: sourceSnapshot.contentHash,
       content: sourceSnapshot.content,
       message: `Forked from ${sourceProject.displayName}`,
@@ -473,6 +545,14 @@ export const forkProject = authenticatedMutation({
     await ctx.db.patch(args.projectId, {
       forkCount: (sourceProject.forkCount ?? 0) + 1,
       updatedAt: now,
+    });
+
+    await ctx.db.insert('projectEvents', {
+      projectId: newProjectId,
+      action: 'project.fork',
+      userId: ctx.user._id,
+      metadata: { sourceProjectId: args.projectId },
+      createdAt: now,
     });
 
     return { success: true, projectId: newProjectId };
@@ -524,6 +604,13 @@ export const leaveProject = authenticatedMutation({
     }
 
     await ctx.db.delete(access._id);
+
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'collaborator.leave',
+      userId: ctx.user._id,
+      createdAt: Date.now(),
+    });
 
     return { success: true };
   },

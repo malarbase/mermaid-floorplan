@@ -237,6 +237,13 @@ docker-convex-deploy: ## Deploy Convex functions to self-hosted backend (Docker)
 		echo "Convex functions deployed successfully" || \
 		echo "Error: Make sure 'docker compose up -d convex app' is running"
 
+docker-convex-backfill: ## Run Convex backfill mutations (after schema migration deploy)
+	@echo "Running backfill: projects:backfillSnapshotHashes..."
+	@ADMIN_KEY="$$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n')" && \
+		docker compose exec -T app sh -c "cd /app/floorplan-app && npx convex run projects:backfillSnapshotHashes --url http://convex:3210 --admin-key '$$ADMIN_KEY'" && \
+		echo "Backfill complete" || \
+		echo "Error: Make sure 'docker compose up -d convex app' is running"
+
 docker-convex-admin-key: ## Print the Convex admin key (for local CLI use)
 	@docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n' || \
 		echo "Error: Convex backend is not running. Run 'make docker-up' first."
