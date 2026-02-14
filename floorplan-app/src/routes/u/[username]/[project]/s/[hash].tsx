@@ -12,8 +12,8 @@ import {
   ProjectBreadcrumbs,
   ProjectPageLayout,
 } from '~/components/project/ProjectPageLayout';
-import type { ViewerMode } from '~/components/viewer/FloorplanContainer';
 import { useProjectData, useSnapshotData } from '~/hooks/useProjectData';
+import type { ViewerMode } from '~/lib/project-types';
 
 // Use clientOnly to prevent SSR issues with Three.js
 const FloorplanContainer = clientOnly(() => import('~/components/viewer/FloorplanContainer'));

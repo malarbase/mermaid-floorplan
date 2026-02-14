@@ -1,14 +1,7 @@
 import { A, useNavigate } from '@solidjs/router';
-import type { FunctionReference } from 'convex/server';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
-
-// Type-safe API reference builder for when generated files don't exist yet
-const api = {
-  projects: {
-    listVersions: 'projects:listVersions' as unknown as FunctionReference<'query'>,
-  },
-};
+import { convexApi } from '~/lib/project-types';
 
 // Version type from Convex schema
 interface Version {
@@ -61,7 +54,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
   const [searchQuery, setSearchQuery] = createSignal('');
 
   // Query project's versions from Convex
-  const versionsQuery = useQuery(api.projects.listVersions, () => ({
+  const versionsQuery = useQuery(convexApi.projects.listVersions, () => ({
     projectId: props.projectId,
   }));
 
@@ -238,7 +231,7 @@ export function VersionSwitcher(props: VersionSwitcherProps) {
                 <ul class="menu menu-sm p-2">
                   <For each={filteredVersions()}>
                     {(version) => (
-                      <li aria-selected={version.name === props.currentVersion}>
+                      <li aria-current={version.name === props.currentVersion ? 'true' : undefined}>
                         <button
                           type="button"
                           class={`flex items-center justify-between w-full ${

@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createSignal, For, Show } from 'solid-js';
 import { useToast } from '~/components/ui/Toast';
+import { convexApi } from '~/lib/project-types';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 
@@ -13,7 +14,7 @@ export default function UserManagement() {
   // Check if super admin (frontend approximation - backend enforces)
   const isSuperAdmin = () => currentUser.data()?.isAdmin ?? false;
 
-  const users = useQuery((api.admin as any).listAllUsers, () => ({
+  const users = useQuery(convexApi.admin.listAllUsers, () => ({
     search: search(),
     limit: 100,
   }));

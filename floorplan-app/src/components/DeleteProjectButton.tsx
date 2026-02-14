@@ -1,14 +1,8 @@
-import type { FunctionReference } from 'convex/server';
 import { useMutation } from 'convex-solidjs';
-import { createSignal, Show } from 'solid-js';
+import { createSignal } from 'solid-js';
 import { Portal } from 'solid-js/web';
-
-// Type-safe API reference builder for when generated files don't exist yet
-const api = {
-  projects: {
-    remove: 'projects:remove' as unknown as FunctionReference<'mutation'>,
-  },
-};
+import { Modal } from '~/components/ui/Modal';
+import { convexApi } from '~/lib/project-types';
 
 interface DeleteProjectButtonProps {
   /** Project ID to delete (string type for when generated files don't exist) */
@@ -31,7 +25,7 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
   const [isDeleting, setIsDeleting] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
-  const removeMutation = useMutation(api.projects.remove);
+  const removeMutation = useMutation(convexApi.projects.remove);
 
   const canDelete = () => confirmText() === props.projectName;
 
@@ -84,85 +78,67 @@ export function DeleteProjectButton(props: DeleteProjectButtonProps) {
         </svg>
       </button>
 
-      <Show when={isModalOpen()}>
-        <Portal>
-          <dialog class="modal modal-open">
-            <div class="modal-box">
-              <h3 class="font-bold text-lg text-error">Delete Project</h3>
-              <p class="py-4">
-                Are you sure you want to delete{' '}
-                <strong class="text-error">{props.projectName}</strong>? This action cannot be
-                undone.
-              </p>
-              <p class="text-sm text-base-content/70 mb-4">
-                All versions, snapshots, and collaborator access will be permanently deleted.
-              </p>
+      <Portal>
+        <Modal
+          isOpen={isModalOpen()}
+          onClose={handleCloseModal}
+          useDialog
+          title={<span class="text-error">Delete Project</span>}
+          description={
+            <>
+              Are you sure you want to delete{' '}
+              <strong class="text-error">{props.projectName}</strong>? This action cannot be undone.
+            </>
+          }
+          error={error() ?? undefined}
+        >
+          <p class="text-sm text-base-content/70 mb-4">
+            All versions, snapshots, and collaborator access will be permanently deleted.
+          </p>
 
-              <div class="form-control w-full">
-                <label class="label">
-                  <span class="label-text">
-                    Type <strong>{props.projectName}</strong> to confirm:
-                  </span>
-                </label>
-                <input
-                  type="text"
-                  class="input input-bordered w-full"
-                  placeholder="Project name"
-                  value={confirmText()}
-                  onInput={(e) => setConfirmText(e.currentTarget.value)}
-                  disabled={isDeleting()}
-                />
-              </div>
+          <div class="form-control w-full">
+            <label class="label">
+              <span class="label-text">
+                Type <strong>{props.projectName}</strong> to confirm:
+              </span>
+            </label>
+            <input
+              type="text"
+              class="input input-bordered w-full"
+              placeholder="Project name"
+              value={confirmText()}
+              onInput={(e) => setConfirmText(e.currentTarget.value)}
+              disabled={isDeleting()}
+            />
+          </div>
 
-              <Show when={error()}>
-                <div class="alert alert-error mt-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    class="stroke-current shrink-0 h-6 w-6"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      stroke-linecap="round"
-                      stroke-linejoin="round"
-                      stroke-width="2"
-                      d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                    />
-                  </svg>
-                  <span>{error()}</span>
-                </div>
-              </Show>
-
-              <div class="modal-action">
-                <button
-                  type="button"
-                  class="btn btn-ghost"
-                  onClick={handleCloseModal}
-                  disabled={isDeleting()}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  class="btn btn-error"
-                  onClick={handleDelete}
-                  disabled={!canDelete() || isDeleting()}
-                >
-                  {isDeleting() ? (
-                    <>
-                      <span class="loading loading-spinner loading-sm"></span>
-                      Deleting...
-                    </>
-                  ) : (
-                    'Delete Project'
-                  )}
-                </button>
-              </div>
-            </div>
-            <div class="modal-backdrop" onClick={handleCloseModal} />
-          </dialog>
-        </Portal>
-      </Show>
+          <div class="modal-action">
+            <button
+              type="button"
+              class="btn btn-ghost"
+              onClick={handleCloseModal}
+              disabled={isDeleting()}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-error"
+              onClick={handleDelete}
+              disabled={!canDelete() || isDeleting()}
+            >
+              {isDeleting() ? (
+                <>
+                  <span class="loading loading-spinner loading-sm"></span>
+                  Deleting...
+                </>
+              ) : (
+                'Delete Project'
+              )}
+            </button>
+          </div>
+        </Modal>
+      </Portal>
     </>
   );
 }

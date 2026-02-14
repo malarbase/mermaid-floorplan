@@ -1,21 +1,12 @@
 import { useNavigate } from '@solidjs/router';
 import { clientOnly } from '@solidjs/start';
-import type { FunctionReference } from 'convex/server';
 import { useMutation } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, onCleanup, Show } from 'solid-js';
+import type { ProjectId } from '~/lib/project-types';
+import { convexApi } from '~/lib/project-types';
 
 // Use clientOnly to prevent SSR issues with Three.js
 const FloorplanEmbed = clientOnly(() => import('~/components/FloorplanEmbed'));
-
-// Type-safe API reference builder for when generated files don't exist yet
-const api = {
-  projects: {
-    save: 'projects:save' as unknown as FunctionReference<'mutation'>,
-  },
-};
-
-// Type alias for project ID (matches Convex's Id<"projects">)
-type ProjectId = string;
 
 export interface FloorplanEditorProps {
   /**
@@ -94,7 +85,7 @@ export interface FloorplanEditorProps {
  */
 export function FloorplanEditor(props: FloorplanEditorProps) {
   const _navigate = useNavigate();
-  const saveMutation = useMutation(api.projects.save);
+  const saveMutation = useMutation(convexApi.projects.save);
 
   // State
   const [currentContent, setCurrentContent] = createSignal(props.initialContent);

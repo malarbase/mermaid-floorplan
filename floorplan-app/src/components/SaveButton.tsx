@@ -1,17 +1,7 @@
-import type { FunctionReference } from 'convex/server';
 import { useMutation } from 'convex-solidjs';
 import { createMemo, createSignal, Show } from 'solid-js';
-
-// Type-safe API reference builder for when generated files don't exist yet
-// This will be replaced with proper imports once `npx convex dev` generates the API
-const api = {
-  projects: {
-    save: 'projects:save' as unknown as FunctionReference<'mutation'>,
-  },
-};
-
-// Type alias for project ID (matches Convex's Id<"projects">)
-type ProjectId = string;
+import type { ProjectId } from '~/lib/project-types';
+import { convexApi } from '~/lib/project-types';
 
 export interface SaveButtonProps {
   /**
@@ -81,7 +71,7 @@ export interface SaveButtonProps {
  * />
  */
 export function SaveButton(props: SaveButtonProps) {
-  const saveMutation = useMutation(api.projects.save);
+  const saveMutation = useMutation(convexApi.projects.save);
 
   const [isSaving, setIsSaving] = createSignal(false);
   const [lastSaveError, setLastSaveError] = createSignal<string | null>(null);

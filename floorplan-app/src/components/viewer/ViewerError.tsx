@@ -1,7 +1,7 @@
 import { type Component, ErrorBoundary, type JSX } from 'solid-js';
 
 interface ViewerErrorProps {
-  error?: any;
+  error?: Error | string | { message?: string };
   reset?: () => void;
 }
 

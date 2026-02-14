@@ -21,7 +21,10 @@ interface PropertiesPanelProps {
   /** Rich property definitions (from useSelection) */
   propertyDefs: PropertyDefinition[];
   /** Called when a property value changes */
-  onPropertyChange?: (property: string, value: any) => void;
+  onPropertyChange?: (
+    property: string,
+    value: string | number | boolean | PositioningData | WallConfig,
+  ) => void;
   /** Raw entity data from getEntityData (needed for fieldsets) */
   entityData?: Record<string, unknown>;
   /** Available room names for relative positioning reference dropdown */
@@ -144,7 +147,7 @@ export default function PropertiesPanel(props: PropertiesPanelProps) {
 
 function renderField(
   def: PropertyDefinition,
-  onPropertyChange?: (property: string, value: any) => void,
+  onPropertyChange?: (property: string, value: string | number | boolean) => void,
 ) {
   // Mixed values across multi-selection -- show placeholder
   if (def.mixed) {

@@ -1,19 +1,8 @@
-import type { FunctionReference } from 'convex/server';
 import { useMutation } from 'convex-solidjs';
 import { createMemo, createSignal, Show } from 'solid-js';
 import { styledApartmentContent } from '~/lib/mock-floorplan-content';
-
-// Type-safe API reference builder for when generated files don't exist yet
-// This will be replaced with proper imports once `npx convex dev` generates the API
-const api = {
-  projects: {
-    create: 'projects:create' as unknown as FunctionReference<'mutation'>,
-    update: 'projects:update' as unknown as FunctionReference<'mutation'>,
-  },
-};
-
-// Type alias for project ID (matches Convex's Id<"projects">)
-type ProjectId = string;
+import type { ProjectId } from '~/lib/project-types';
+import { convexApi } from '~/lib/project-types';
 
 export interface ProjectFormData {
   displayName: string;
@@ -101,8 +90,8 @@ const DEFAULT_CONTENT = styledApartmentContent;
  */
 export function ProjectForm(props: ProjectFormProps) {
   // Convex mutations
-  const createProject = useMutation(api.projects.create);
-  const updateProject = useMutation(api.projects.update);
+  const createProject = useMutation(convexApi.projects.create);
+  const updateProject = useMutation(convexApi.projects.update);
 
   // Form state
   const [displayName, setDisplayName] = createSignal(props.initialValues?.displayName ?? '');

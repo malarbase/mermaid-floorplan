@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { useToast } from '~/components/ui/Toast';
+import { convexApi } from '~/lib/project-types';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
 
@@ -23,16 +24,15 @@ export default function FeaturedProjects() {
   const [limit, setLimit] = createSignal(50);
   const toast = useToast();
 
-  // Cast api.admin to any because listAllProjects might not be in the generated types yet
-  const projects = useQuery((api.admin as any).listAllProjects, () => ({
+  const projects = useQuery(convexApi.admin.listAllProjects, () => ({
     search: search(),
     limit: limit(),
   }));
 
   const setFeatured = useMutation(api.admin.setFeatured);
-  const deleteProject = useMutation((api.admin as any).deleteProject);
+  const deleteProject = useMutation(convexApi.admin.deleteProject);
 
-  const adminStatus = useQuery((api.admin as any).getCurrentUserAdminStatus, {});
+  const adminStatus = useQuery(convexApi.admin.getCurrentUserAdminStatus, {});
   const isSuperAdmin = () => adminStatus.data()?.isSuperAdmin ?? false;
 
   const filteredProjects = createMemo(() => {
@@ -118,7 +118,9 @@ export default function FeaturedProjects() {
           <select
             class="select select-bordered w-full sm:w-auto"
             value={filter()}
-            onChange={(e) => setFilter(e.currentTarget.value as any)}
+            onChange={(e) =>
+              setFilter(e.currentTarget.value as 'all' | 'featured' | 'not-featured')
+            }
           >
             <option value="all">All Projects</option>
             <option value="featured">Featured Only</option>

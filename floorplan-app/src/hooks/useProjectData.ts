@@ -7,7 +7,7 @@ import { useQuery } from 'convex-solidjs';
 import { type Accessor, createEffect, createMemo, createSignal } from 'solid-js';
 import { useSession } from '~/lib/auth-client';
 import type { ProjectQueryResult, Snapshot, VersionData } from '~/lib/project-types';
-import { projectApi } from '~/lib/project-types';
+import { convexApi } from '~/lib/project-types';
 import type { Id } from '../../convex/_generated/dataModel';
 
 /**
@@ -21,7 +21,7 @@ export function useProjectData(
   const sessionSignal = useSession();
 
   // Query project data from Convex
-  const projectQuery = useQuery(projectApi.projects.getBySlug, () => ({
+  const projectQuery = useQuery(convexApi.projects.getBySlug, () => ({
     username: username(),
     projectSlug: projectSlug(),
   }));
@@ -87,7 +87,7 @@ export function useVersionData(
   versionName: Accessor<string | undefined>,
 ) {
   const versionQuery = useQuery(
-    projectApi.projects.getVersion,
+    convexApi.projects.getVersion,
     () => ({
       projectId: projectId() ?? ('' as Id<'projects'>),
       versionName: versionName() ?? 'main',
@@ -125,7 +125,7 @@ export function useSnapshotData(
   hash: Accessor<string | undefined>,
 ) {
   const snapshotQuery = useQuery(
-    projectApi.projects.getByHash,
+    convexApi.projects.getByHash,
     () => ({
       projectId: projectId() ?? ('' as Id<'projects'>),
       hash: hash(),

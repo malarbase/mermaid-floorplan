@@ -36,19 +36,35 @@ export interface PropertyDefinition {
 }
 
 // ============================================================================
+// Selection Entity
+// ============================================================================
+
+/**
+ * A selectable entity in the 3D scene.
+ * Represents a room, wall, opening, or fixture that the user can click on.
+ */
+export interface SelectionEntity {
+  entityType: string;
+  entityId: string;
+  floorId?: string;
+  /** The underlying Three.js mesh (present for fallback property building) */
+  mesh?: { position?: { x: number; y: number; z: number } };
+}
+
+// ============================================================================
 // Selection State
 // ============================================================================
 
 /** The reactive selection state returned by useSelection */
 export interface SelectionState {
   /** All selected entities */
-  entities: any[];
+  entities: SelectionEntity[];
   /** Number of selected entities */
   count: number;
   /** Whether anything is selected */
   hasSelection: boolean;
   /** The first (primary) selected entity, or null */
-  primary: any | null;
+  primary: SelectionEntity | null;
   /** Entity type of primary selection (e.g., "room", "wall") */
   primaryType: string;
   /** Entity ID of primary selection (e.g., "LivingRoom") */
@@ -102,7 +118,7 @@ export type GetEntityDataFn = (entityType: string, entityId: string) => Record<s
  * @returns Accessor for the current SelectionState
  */
 export function useSelection(
-  core: Accessor<any>,
+  core: Accessor<Record<string, unknown> | null>,
   getEntityData?: GetEntityDataFn,
 ): Accessor<SelectionState> {
   const [state, setState] = createSignal<SelectionState>(EMPTY_STATE);
@@ -119,8 +135,8 @@ export function useSelection(
       return;
     }
 
-    const unsub = sm.onSelectionChange((event: any) => {
-      const selection: ReadonlySet<any> = event.selection;
+    const unsub = sm.onSelectionChange((event: { selection: ReadonlySet<SelectionEntity> }) => {
+      const selection = event.selection;
       const arr = Array.from(selection);
       const primary = arr[0] ?? null;
 
@@ -315,7 +331,7 @@ function buildPropertyDefinitions(
  * Fallback: build basic property definitions from the Three.js mesh
  * when no getEntityData callback is available.
  */
-function buildFallbackPropertyDefs(entity: any): PropertyDefinition[] {
+function buildFallbackPropertyDefs(entity: SelectionEntity): PropertyDefinition[] {
   const mesh = entity.mesh;
   const props: PropertyDefinition[] = [];
 
@@ -340,7 +356,7 @@ function roundTo(value: number, decimals: number): number {
  * Properties present in all entities are shown; differing values are marked as "mixed".
  */
 function buildMergedPropertyDefs(
-  entities: any[],
+  entities: SelectionEntity[],
   getEntityData: GetEntityDataFn,
 ): PropertyDefinition[] {
   if (entities.length === 0) return [];

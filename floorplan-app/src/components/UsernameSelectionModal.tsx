@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
+import { Modal } from '~/components/ui/Modal';
 import { api } from '../../convex/_generated/api';
 
 interface UsernameSelectionModalProps {
@@ -135,141 +136,114 @@ export function UsernameSelectionModal(props: UsernameSelectionModalProps) {
   });
 
   return (
-    <Show when={props.isOpen}>
-      <div class="modal modal-open">
-        <div class="modal-box">
-          <h3 class="font-bold text-lg">
-            {props.isFirstLogin ? 'Welcome! Choose your username' : 'Change username'}
-          </h3>
+    <Modal
+      isOpen={props.isOpen}
+      onClose={() => {
+        if (!props.isFirstLogin) props.onClose?.();
+      }}
+      title={props.isFirstLogin ? 'Welcome! Choose your username' : 'Change username'}
+      description={
+        props.isFirstLogin
+          ? 'Your username will be used in your profile URL and to identify you across the platform.'
+          : 'Change your username. Your old username will be reserved based on how long you held it.'
+      }
+      error={error()}
+    >
+      <form onSubmit={handleSubmit}>
+        {/* Username input */}
+        <div class="form-control w-full">
+          <label class="label">
+            <span class="label-text">Username</span>
+            <span class="label-text-alt text-base-content/50">3-30 characters</span>
+          </label>
+          <div class="join w-full">
+            <span class="join-item btn btn-disabled no-animation">@</span>
+            <input
+              type="text"
+              placeholder="yourname"
+              class={`input input-bordered join-item w-full ${
+                username().length >= 3 ? (isAvailable() ? 'input-success' : 'input-error') : ''
+              }`}
+              value={username()}
+              onInput={(e) => handleUsernameChange(e.currentTarget.value)}
+              maxLength={30}
+              minLength={3}
+              pattern="[a-z0-9_]+"
+              required
+            />
+          </div>
 
-          <p class="py-4 text-base-content/70">
-            {props.isFirstLogin
-              ? 'Your username will be used in your profile URL and to identify you across the platform.'
-              : 'Change your username. Your old username will be reserved based on how long you held it.'}
-          </p>
-
-          <form onSubmit={handleSubmit}>
-            {/* Username input */}
-            <div class="form-control w-full">
-              <label class="label">
-                <span class="label-text">Username</span>
-                <span class="label-text-alt text-base-content/50">3-30 characters</span>
-              </label>
-              <div class="join w-full">
-                <span class="join-item btn btn-disabled no-animation">@</span>
-                <input
-                  type="text"
-                  placeholder="yourname"
-                  class={`input input-bordered join-item w-full ${
-                    username().length >= 3 ? (isAvailable() ? 'input-success' : 'input-error') : ''
-                  }`}
-                  value={username()}
-                  onInput={(e) => handleUsernameChange(e.currentTarget.value)}
-                  maxLength={30}
-                  minLength={3}
-                  pattern="[a-z0-9_]+"
-                  required
-                />
-              </div>
-
-              {/* Availability status */}
-              <label class="label">
-                <Show when={isChecking() || availabilityQuery.isLoading()}>
-                  <span class="label-text-alt flex items-center gap-2">
-                    <span class="loading loading-spinner loading-xs"></span>
-                    Checking availability...
-                  </span>
-                </Show>
-                <Show
-                  when={!isChecking() && !availabilityQuery.isLoading() && username().length >= 3}
-                >
-                  <span class={`label-text-alt ${isAvailable() ? 'text-success' : 'text-error'}`}>
-                    {availabilityMessage()}
-                  </span>
-                </Show>
-              </label>
-            </div>
-
-            {/* Suggestions */}
-            <Show when={suggestions().length > 0}>
-              <div class="mt-4">
-                <span class="text-sm text-base-content/70">Suggestions:</span>
-                <div class="flex flex-wrap gap-2 mt-2">
-                  <For each={suggestions()}>
-                    {(suggestion) => (
-                      <button
-                        type="button"
-                        class={`btn btn-sm ${username() === suggestion ? 'btn-primary' : 'btn-ghost'}`}
-                        onClick={() => selectSuggestion(suggestion)}
-                      >
-                        @{suggestion}
-                      </button>
-                    )}
-                  </For>
-                </div>
-              </div>
+          {/* Availability status */}
+          <label class="label">
+            <Show when={isChecking() || availabilityQuery.isLoading()}>
+              <span class="label-text-alt flex items-center gap-2">
+                <span class="loading loading-spinner loading-xs"></span>
+                Checking availability...
+              </span>
             </Show>
-
-            {/* Error message */}
-            <Show when={error()}>
-              <div class="alert alert-error mt-4">
-                <svg class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>{error()}</span>
-              </div>
+            <Show when={!isChecking() && !availabilityQuery.isLoading() && username().length >= 3}>
+              <span class={`label-text-alt ${isAvailable() ? 'text-success' : 'text-error'}`}>
+                {availabilityMessage()}
+              </span>
             </Show>
-
-            {/* Actions */}
-            <div class="modal-action">
-              <Show when={!props.isFirstLogin}>
-                <button
-                  type="button"
-                  class="btn"
-                  onClick={() => props.onClose?.()}
-                  disabled={isSubmitting()}
-                >
-                  Cancel
-                </button>
-              </Show>
-              <button
-                type="submit"
-                class="btn btn-primary"
-                disabled={!isAvailable() || isSubmitting() || isChecking()}
-              >
-                <Show when={isSubmitting()}>
-                  <span class="loading loading-spinner loading-sm"></span>
-                </Show>
-                {props.isFirstLogin ? 'Get Started' : 'Save Username'}
-              </button>
-            </div>
-          </form>
-
-          {/* URL Preview */}
-          <Show when={username().length >= 3 && isAvailable()}>
-            <div class="mt-4 p-4 bg-base-200 rounded-lg">
-              <span class="text-sm text-base-content/70">Your profile URL:</span>
-              <div class="font-mono text-sm mt-1">
-                floorplan.app/u/<span class="text-primary">{username()}</span>
-              </div>
-            </div>
-          </Show>
+          </label>
         </div>
 
-        {/* Modal backdrop - only clickable for non-first-login */}
-        <Show when={!props.isFirstLogin}>
-          <div class="modal-backdrop" onClick={() => props.onClose?.()}></div>
+        {/* Suggestions */}
+        <Show when={suggestions().length > 0}>
+          <div class="mt-4">
+            <span class="text-sm text-base-content/70">Suggestions:</span>
+            <div class="flex flex-wrap gap-2 mt-2">
+              <For each={suggestions()}>
+                {(suggestion) => (
+                  <button
+                    type="button"
+                    class={`btn btn-sm ${username() === suggestion ? 'btn-primary' : 'btn-ghost'}`}
+                    onClick={() => selectSuggestion(suggestion)}
+                  >
+                    @{suggestion}
+                  </button>
+                )}
+              </For>
+            </div>
+          </div>
         </Show>
-        <Show when={props.isFirstLogin}>
-          <div class="modal-backdrop"></div>
-        </Show>
-      </div>
-    </Show>
+
+        {/* Actions */}
+        <div class="modal-action">
+          <Show when={!props.isFirstLogin}>
+            <button
+              type="button"
+              class="btn"
+              onClick={() => props.onClose?.()}
+              disabled={isSubmitting()}
+            >
+              Cancel
+            </button>
+          </Show>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            disabled={!isAvailable() || isSubmitting() || isChecking()}
+          >
+            <Show when={isSubmitting()}>
+              <span class="loading loading-spinner loading-sm"></span>
+            </Show>
+            {props.isFirstLogin ? 'Get Started' : 'Save Username'}
+          </button>
+        </div>
+      </form>
+
+      {/* URL Preview */}
+      <Show when={username().length >= 3 && isAvailable()}>
+        <div class="mt-4 p-4 bg-base-200 rounded-lg">
+          <span class="text-sm text-base-content/70">Your profile URL:</span>
+          <div class="font-mono text-sm mt-1">
+            floorplan.app/u/<span class="text-primary">{username()}</span>
+          </div>
+        </div>
+      </Show>
+    </Modal>
   );
 }
 

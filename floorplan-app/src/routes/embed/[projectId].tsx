@@ -1,14 +1,8 @@
 import { useParams } from '@solidjs/router';
-import type { FunctionReference } from 'convex/server';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, Show, Suspense } from 'solid-js';
 import { FloorplanEmbed } from '~/components/FloorplanEmbed';
-
-const api = {
-  projects: {
-    getPublic: 'projects:getPublic' as unknown as FunctionReference<'query'>,
-  },
-};
+import { convexApi } from '~/lib/project-types';
 
 interface ProjectData {
   snapshot: {
@@ -26,7 +20,7 @@ interface ProjectData {
 export default function EmbedPage() {
   const params = useParams();
 
-  const projectQuery = useQuery(api.projects.getPublic, () => ({
+  const projectQuery = useQuery(convexApi.projects.getPublic, () => ({
     projectId: params.projectId,
   }));
 

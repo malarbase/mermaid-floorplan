@@ -1,30 +1,9 @@
-import { A, useLocation, useNavigate, useParams, useSearchParams } from '@solidjs/router';
-import { clientOnly } from '@solidjs/start';
+import { A, useLocation, useNavigate, useParams } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
-import { createMemo, createSignal, Show } from 'solid-js';
-import { CopyPermalinkButton } from '~/components/CopyPermalinkButton';
-import { CreateVersionModal } from '~/components/CreateVersionModal';
-import { ForkButton } from '~/components/ForkButton';
-import { Header } from '~/components/Header';
-import { CapturePreviewButton } from '~/components/project/CapturePreviewButton';
-import {
-  ContentMissingCard,
-  NotFoundCard,
-  ProjectBreadcrumbs,
-  ProjectPageLayout,
-  SettingsIcon,
-} from '~/components/project/ProjectPageLayout';
-import { SaveIndicator } from '~/components/project/SaveIndicator';
-import { VersionSwitcher } from '~/components/VersionSwitcher';
-import { VisibilityToggle } from '~/components/VisibilityToggle';
-import type { ViewerMode } from '~/components/viewer/FloorplanContainer';
+import { createMemo } from 'solid-js';
+import { ProjectViewerPage } from '~/components/project/ProjectViewerPage';
 import { useProjectData, useVersionData } from '~/hooks/useProjectData';
-import { useProjectSave } from '~/hooks/useProjectSave';
-import { useThumbnailCapture } from '~/hooks/useThumbnailCapture';
-import { projectApi } from '~/lib/project-types';
-
-// Use clientOnly to prevent SSR issues with Three.js
-const FloorplanContainer = clientOnly(() => import('~/components/viewer/FloorplanContainer'));
+import { convexApi } from '~/lib/project-types';
 
 /**
  * Project view page - shows project at default version.
@@ -37,15 +16,13 @@ export default function ProjectView() {
   const params = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const [showCreateVersionModal, setShowCreateVersionModal] = createSignal(false);
 
   // Route params
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
 
   // Check for slug redirects before loading project
-  const slugResolveQuery = useQuery(projectApi.projects.resolveSlug, () => ({
+  const slugResolveQuery = useQuery(convexApi.projects.resolveSlug, () => ({
     username: username(),
     slug: projectSlug(),
   }));
@@ -70,219 +47,21 @@ export default function ProjectView() {
     defaultVersion,
   );
 
-  // Loading state
-  const isLoading = createMemo(() => {
-    if (isProjectLoading()) return true;
-    if (projectNotFound()) return false;
-    return isVersionLoading();
-  });
-
-  // Content missing check
-  const isContentMissing = createMemo(() => {
-    if (isLoading()) return false;
-    if (!projectData()) return false;
-    return !content();
-  });
-
-  // Viewer mode
-  const mode = createMemo((): ViewerMode => {
-    const modeParam = typeof searchParams.mode === 'string' ? searchParams.mode : undefined;
-    if (modeParam && ['basic', 'advanced', 'editor'].includes(modeParam)) {
-      return modeParam as ViewerMode;
-    }
-    return isOwner() ? 'editor' : 'advanced';
-  });
-
-  // --- Core instance (for thumbnail capture) ---
-  const [coreInstance, setCoreInstance] = createSignal<any>(null);
-
-  // --- Thumbnail capture hook ---
-  const thumbnail = useThumbnailCapture(coreInstance, () => project()?._id as string | undefined);
-
-  // --- Save functionality (shared hook) ---
-  const save = useProjectSave(
-    content,
-    () => project()?._id as string | undefined,
-    defaultVersion,
-    isOwner,
-  );
-
-  // Header actions
-  const headerActions = () => (
-    <>
-      {/* Version Switcher */}
-      <Show when={project() && username() && projectSlug()}>
-        <VersionSwitcher
-          projectId={project()!._id as string}
-          username={username()!}
-          projectSlug={projectSlug()!}
-          defaultVersion={project()?.defaultVersion}
-          currentVersion={project()?.defaultVersion ?? 'main'}
-          canCreateVersion={isOwner()}
-          onCreateNew={() => setShowCreateVersionModal(true)}
-          size="sm"
-        />
-      </Show>
-
-      {/* Permalink with copy button */}
-      <Show when={currentHash() && username() && projectSlug()}>
-        <div class="flex items-center gap-1">
-          <A
-            href={`/u/${username()}/${projectSlug()}/s/${currentHash()}`}
-            class="badge badge-ghost font-mono"
-            title="Permalink to this version"
-          >
-            #{currentHash()?.slice(0, 6)}
-          </A>
-          <CopyPermalinkButton
-            username={username()!}
-            projectSlug={projectSlug()!}
-            hash={currentHash()!}
-            size="xs"
-            variant="ghost"
-          />
-        </div>
-      </Show>
-
-      <A href={`/u/${username()}/${projectSlug()}/history`} class="btn btn-ghost btn-sm">
-        History
-      </A>
-
-      {/* Visibility toggle for owners, static badge for others */}
-      <Show
-        when={isOwner()}
-        fallback={
-          <Show when={project()?.isPublic}>
-            <span class="badge badge-success badge-outline">Public</span>
-          </Show>
-        }
-      >
-        <VisibilityToggle
-          projectId={project()!._id as string}
-          isPublic={project()?.isPublic ?? false}
-        />
-      </Show>
-
-      <Show when={isOwner()}>
-        <CapturePreviewButton
-          onCapture={() => thumbnail.capture()}
-          isCapturing={thumbnail.isCapturing}
-          showSuccess={thumbnail.showSuccess}
-          disabled={!coreInstance() || save.hasUnsavedChanges()}
-          disabledReason={
-            save.hasUnsavedChanges() ? 'Save changes before capturing preview' : undefined
-          }
-        />
-        <A href={`/u/${username()}/${projectSlug()}/settings`} class="btn btn-ghost btn-sm">
-          <SettingsIcon />
-        </A>
-      </Show>
-
-      <Show when={isOwner()}>
-        <SaveIndicator
-          hasUnsavedChanges={save.hasUnsavedChanges}
-          isSaving={save.isSaving}
-          showSaveSuccess={save.showSaveSuccess}
-          saveError={save.saveError}
-          onSave={save.handleSave}
-        />
-      </Show>
-
-      <button
-        class="badge badge-outline cursor-pointer hover:badge-primary transition-colors min-w-[6.5rem] justify-center"
-        onClick={() => {
-          const modes: ViewerMode[] = ['basic', 'advanced', 'editor'];
-          const currentIndex = modes.indexOf(mode());
-          const nextMode = modes[(currentIndex + 1) % modes.length];
-          setSearchParams({ mode: nextMode });
-        }}
-        title="Click to cycle viewer modes"
-      >
-        {mode() === 'editor' ? '✏️ Editor' : mode() === 'advanced' ? '⚙️ Advanced' : '👁️ Basic'}
-      </button>
-
-      {/* Fork button for non-owners */}
-      <Show when={!isOwner() && project()}>
-        <ForkButton
-          projectId={project()!._id as string}
-          projectSlug={projectSlug()!}
-          projectName={project()!.displayName}
-          ownerUsername={username()!}
-          size="sm"
-          variant="ghost"
-        />
-      </Show>
-    </>
-  );
-
   return (
-    <ProjectPageLayout
-      title={`${project()?.displayName ?? projectSlug()} - Floorplan`}
-      isLoading={isLoading()}
-      showNotFound={projectNotFound()}
-      notFoundFallback={
-        <NotFoundCard
-          title="Project not found"
-          message="This project doesn't exist or you don't have access."
-          actions={
-            <A href="/" class="btn btn-primary">
-              Go Home
-            </A>
-          }
-        />
-      }
-    >
-      {/* Header */}
-      <Header
-        centerContent={
-          <ProjectBreadcrumbs
-            username={username()!}
-            projectSlug={projectSlug()!}
-            project={project()}
-            forkedFrom={forkedFrom()}
-            compact
-          />
-        }
-        actions={headerActions()}
-        hideUserMenu={false}
-      />
-
-      {/* Viewer/Editor Container */}
-      <div class="flex-1 overflow-hidden">
-        <Show
-          when={!isContentMissing()}
-          fallback={
-            <ContentMissingCard
-              username={username()!}
-              projectSlug={projectSlug()!}
-              message="This project version has no content. The data may be corrupted or missing."
-            />
-          }
-        >
-          <FloorplanContainer
-            dsl={save.currentDsl() || content()!}
-            mode={mode()}
-            onDslChange={save.handleDslChange}
-            onCoreReady={setCoreInstance}
-            initialCameraState={project()?.cameraState}
-          />
-        </Show>
-      </div>
-
-      {/* Create Version Modal */}
-      <Show when={isOwner() && project() && username() && projectSlug()}>
-        <CreateVersionModal
-          isOpen={showCreateVersionModal()}
-          onClose={() => setShowCreateVersionModal(false)}
-          projectId={project()!._id as string}
-          fromVersion={project()?.defaultVersion}
-          username={username()!}
-          projectSlug={projectSlug()!}
-          onSuccess={(_versionId, _versionName) => {
-            // Navigation is handled by the modal
-          }}
-        />
-      </Show>
-    </ProjectPageLayout>
+    <ProjectViewerPage
+      username={username}
+      projectSlug={projectSlug}
+      project={project}
+      forkedFrom={forkedFrom}
+      projectData={projectData}
+      isOwner={isOwner}
+      isProjectLoading={isProjectLoading}
+      projectNotFound={projectNotFound}
+      content={content}
+      currentHash={currentHash}
+      isVersionLoading={isVersionLoading}
+      versionName={defaultVersion}
+      pageTitle={`${project()?.displayName ?? projectSlug()} - Floorplan`}
+    />
   );
 }

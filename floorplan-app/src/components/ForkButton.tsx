@@ -1,19 +1,10 @@
 import { useNavigate, useSearchParams } from '@solidjs/router';
-import type { FunctionReference } from 'convex/server';
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
+import { Modal } from '~/components/ui/Modal';
 import { useToast } from '~/components/ui/Toast';
 import { useSession } from '~/lib/auth-client';
-
-// Type-safe API reference for when generated files don't exist yet
-const api = {
-  sharing: {
-    forkProject: 'sharing:forkProject' as unknown as FunctionReference<'mutation'>,
-  },
-  projects: {
-    list: 'projects:list' as unknown as FunctionReference<'query'>,
-  },
-};
+import { convexApi } from '~/lib/project-types';
 
 interface ForkButtonProps {
   projectId: string;
@@ -48,8 +39,8 @@ export function ForkButton(props: ForkButtonProps) {
   const [isForking, setIsForking] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
 
-  const forkProject = useMutation(api.sharing.forkProject);
-  const userProjects = useQuery(api.projects.list, {});
+  const forkProject = useMutation(convexApi.sharing.forkProject);
+  const userProjects = useQuery(convexApi.projects.list, {});
 
   const session = createMemo(() => sessionSignal());
   const currentUser = createMemo(() => session()?.data?.user);
@@ -95,7 +86,7 @@ export function ForkButton(props: ForkButtonProps) {
     setError(null);
 
     const projects = userProjects.data() || [];
-    const existingSlugs = new Set((projects as any[]).map((p) => p.slug));
+    const existingSlugs = new Set((projects as { slug: string }[]).map((p) => p.slug));
 
     let baseSlug = baseName
       .toLowerCase()
@@ -219,82 +210,66 @@ export function ForkButton(props: ForkButtonProps) {
       </Show>
 
       {/* Fork Modal */}
-      <Show when={isModalOpen()}>
-        <div class="modal modal-open">
-          <div class="modal-box">
-            <h3 class="font-bold text-lg">Fork Project</h3>
-            <p class="py-2 text-base-content/70">
-              Create a copy of <strong>{props.projectName}</strong> in your account.
-            </p>
-
-            <div class="form-control w-full mt-4">
-              <label class="label">
-                <span class="label-text">Project Name</span>
-              </label>
-              <input
-                type="text"
-                placeholder="My Fork"
-                class="input input-bordered w-full"
-                value={displayName()}
-                onInput={(e) => setDisplayName(e.currentTarget.value)}
-              />
-            </div>
-
-            <div class="form-control w-full mt-3">
-              <label class="label">
-                <span class="label-text">URL Slug</span>
-              </label>
-              <input
-                type="text"
-                placeholder="my-fork"
-                class="input input-bordered w-full font-mono"
-                value={slug()}
-                onInput={(e) => setSlug(e.currentTarget.value.toLowerCase())}
-              />
-              <label class="label">
-                <span class="label-text-alt text-base-content/60">
-                  Your project will be at: /u/{currentUsername()}/{slug() || '...'}
-                </span>
-              </label>
-            </div>
-
-            <Show when={error()}>
-              <div class="alert alert-error mt-4">
-                <svg class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
-                  <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    stroke-width="2"
-                    d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                <span>{error()}</span>
-              </div>
-            </Show>
-
-            <div class="modal-action">
-              <button class="btn btn-ghost" onClick={closeModal} disabled={isForking()}>
-                Cancel
-              </button>
-              <button
-                class="btn btn-primary"
-                onClick={handleFork}
-                disabled={isForking() || !slug().trim()}
-              >
-                <Show
-                  when={!isForking()}
-                  fallback={<span class="loading loading-spinner loading-sm"></span>}
-                >
-                  Fork Project
-                </Show>
-              </button>
-            </div>
-          </div>
-          <form method="dialog" class="modal-backdrop">
-            <button onClick={closeModal}>close</button>
-          </form>
+      <Modal
+        isOpen={isModalOpen()}
+        onClose={closeModal}
+        title="Fork Project"
+        description={
+          <>
+            Create a copy of <strong>{props.projectName}</strong> in your account.
+          </>
+        }
+        error={error() ?? undefined}
+      >
+        <div class="form-control w-full mt-4">
+          <label class="label">
+            <span class="label-text">Project Name</span>
+          </label>
+          <input
+            type="text"
+            placeholder="My Fork"
+            class="input input-bordered w-full"
+            value={displayName()}
+            onInput={(e) => setDisplayName(e.currentTarget.value)}
+          />
         </div>
-      </Show>
+
+        <div class="form-control w-full mt-3">
+          <label class="label">
+            <span class="label-text">URL Slug</span>
+          </label>
+          <input
+            type="text"
+            placeholder="my-fork"
+            class="input input-bordered w-full font-mono"
+            value={slug()}
+            onInput={(e) => setSlug(e.currentTarget.value.toLowerCase())}
+          />
+          <label class="label">
+            <span class="label-text-alt text-base-content/60">
+              Your project will be at: /u/{currentUsername()}/{slug() || '...'}
+            </span>
+          </label>
+        </div>
+
+        <div class="modal-action">
+          <button class="btn btn-ghost" onClick={closeModal} disabled={isForking()}>
+            Cancel
+          </button>
+          <button
+            class="btn btn-primary"
+            onClick={handleFork}
+            disabled={isForking() || !slug().trim()}
+          >
+            <Show
+              when={!isForking()}
+              fallback={<span class="loading loading-spinner loading-sm"></span>}
+            >
+              Fork Project
+            </Show>
+          </button>
+        </div>
+      </Modal>
     </>
   );
 }

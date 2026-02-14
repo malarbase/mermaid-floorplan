@@ -1,5 +1,6 @@
 import { useLocation, useSearchParams } from '@solidjs/router';
 import { createEffect, createSignal, onCleanup, onMount, Show, Suspense } from 'solid-js';
+import type { CameraStateData, CoreInstance, ViewerMode } from '~/lib/project-types';
 import EditorBundle from '../editor/EditorBundle';
 import { BottomSheet } from './BottomSheet';
 import ControlPanels from './ControlPanels';
@@ -8,26 +9,15 @@ import { FloorplanBase } from './FloorplanBase';
 import { ControlPanelsSkeleton, EditorSkeleton, ViewerSkeleton } from './skeletons';
 import { ViewerErrorBoundary } from './ViewerError';
 import './viewer-layout.css';
-import { getLayoutManager } from 'floorplan-viewer-core';
+import { type FloorplanAppCore, getLayoutManager } from 'floorplan-viewer-core';
 import { useAppTheme } from '~/lib/theme';
 
 /** Min/max editor panel width in pixels */
 const EDITOR_MIN_WIDTH = 250;
 const EDITOR_MAX_WIDTH = 800;
 
-// Define the mode types
-export type ViewerMode = 'basic' | 'advanced' | 'editor';
-
 /** localStorage key for "don't ask about DSL theme" preference */
 const DSL_THEME_PROMPT_KEY = 'floorplan-app-dsl-theme-prompt-disabled';
-
-/** Serialized camera state for initial view restore */
-interface CameraStateData {
-  position: { x: number; y: number; z: number };
-  target: { x: number; y: number; z: number };
-  mode: 'perspective' | 'orthographic';
-  fov: number;
-}
 
 interface FloorplanContainerProps {
   dsl: string;
@@ -37,7 +27,7 @@ interface FloorplanContainerProps {
   onDslChange?: (dsl: string) => void;
   onSave?: (dsl: string) => void;
   /** Called when the viewer core instance is ready (for thumbnail capture, etc.) */
-  onCoreReady?: (core: any) => void;
+  onCoreReady?: (core: CoreInstance) => void;
   /** Initial camera state to restore on load (from project data) */
   initialCameraState?: CameraStateData;
   className?: string;
@@ -123,7 +113,9 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
   };
 
   const [mode, setMode] = createSignal<ViewerMode>(getMode());
-  const [coreInstance, setCoreInstance] = createSignal<any>(null);
+  // Internal signal uses the concrete type for compatibility with EditorBundle/ControlPanels.
+  // The public `onCoreReady` callback receives the narrower `CoreInstance` interface.
+  const [coreInstance, setCoreInstance] = createSignal<FloorplanAppCore | null>(null);
   const [isBottomSheetOpen, setIsBottomSheetOpen] = createSignal(false);
   const [isMobile, setIsMobile] = createSignal(
     typeof window !== 'undefined' ? window.innerWidth < 640 : false,
@@ -188,8 +180,9 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     onCleanup(() => window.removeEventListener('resize', handleResize));
   });
 
-  const handleCoreReady = (core: any) => {
-    setCoreInstance(core);
+  const handleCoreReady = (core: CoreInstance) => {
+    // FloorplanBase delivers CoreInstance; we know the underlying object is FloorplanAppCore.
+    setCoreInstance(core as unknown as FloorplanAppCore);
     props.onCoreReady?.(core);
   };
 
@@ -262,8 +255,11 @@ export function FloorplanContainer(props: FloorplanContainerProps) {
     initialCameraState: props.initialCameraState,
   });
 
+  // EditorBundle defines its own `EditorBundleCoreApi` interface whose
+  // SelectionManager shape diverges slightly from the concrete class.
+  // The runtime object is correct, so we use a structural cast here.
   const editorProps = () => ({
-    core: coreInstance(),
+    core: coreInstance()! as unknown as Record<string, unknown>,
     dsl: props.dsl,
     theme: theme(),
     onDslChange: props.onDslChange || (() => {}),

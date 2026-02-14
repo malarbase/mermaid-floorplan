@@ -1,9 +1,9 @@
 import { Title } from '@solidjs/meta';
 import { useNavigate } from '@solidjs/router';
-import { createEffect, createMemo, Show } from 'solid-js';
+import { createMemo, Show } from 'solid-js';
 import { Header } from '~/components/Header';
 import { ProjectForm } from '~/components/ProjectForm';
-import { useSession } from '~/lib/auth-client';
+import { useAuthRedirect } from '~/hooks/useAuthRedirect';
 
 /**
  * Create new project page (protected route).
@@ -13,19 +13,8 @@ import { useSession } from '~/lib/auth-client';
  * After successful creation, navigates to the project view page.
  */
 export default function NewProject() {
-  const sessionSignal = useSession();
+  const { user, isLoading } = useAuthRedirect('/login?redirect=/new');
   const navigate = useNavigate();
-
-  const session = createMemo(() => sessionSignal());
-  const isLoading = createMemo(() => session()?.isPending ?? true);
-  const user = createMemo(() => session()?.data?.user);
-
-  // Redirect to login if not authenticated
-  createEffect(() => {
-    if (!isLoading() && !user()) {
-      navigate('/login?redirect=/new', { replace: true });
-    }
-  });
 
   // Get username for URL (use username field, not display name)
   const username = createMemo(() => user()?.username ?? user()?.name ?? 'you');

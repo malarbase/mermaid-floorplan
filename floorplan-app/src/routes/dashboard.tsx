@@ -1,13 +1,13 @@
 import { Title } from '@solidjs/meta';
 import { A, useNavigate } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
-import { createEffect, createMemo, createSignal, Show } from 'solid-js';
+import { createMemo, createSignal, Show } from 'solid-js';
 import { Header } from '~/components/Header';
 import { ProjectList } from '~/components/ProjectList';
 import { SharedProjectList } from '~/components/SharedProjectList';
 import { TempUsernameNudge } from '~/components/TempUsernameNudge';
 import { UsernameSelectionModal } from '~/components/UsernameSelectionModal';
-import { useSession } from '~/lib/auth-client';
+import { useAuthRedirect } from '~/hooks/useAuthRedirect';
 import { api } from '../../convex/_generated/api';
 
 /**
@@ -15,13 +15,9 @@ import { api } from '../../convex/_generated/api';
  * Route: /dashboard
  */
 export default function Dashboard() {
-  const sessionSignal = useSession();
+  const { user, isLoading } = useAuthRedirect();
   const navigate = useNavigate();
   const [showUsernameModal, setShowUsernameModal] = createSignal(false);
-
-  const session = createMemo(() => sessionSignal());
-  const isLoading = createMemo(() => session()?.isPending ?? true);
-  const user = createMemo(() => session()?.data?.user);
 
   // Query current user from Convex for authoritative username
   // This ensures we always have the latest username after changes
@@ -45,13 +41,6 @@ export default function Dashboard() {
   const sharedCount = createMemo(() => {
     const data = sharedQuery.data() as unknown[] | undefined;
     return data?.length ?? 0;
-  });
-
-  // Redirect to login if not authenticated
-  createEffect(() => {
-    if (!isLoading() && !user()) {
-      navigate('/login', { replace: true });
-    }
   });
 
   // Use Convex user data as primary source of truth for username

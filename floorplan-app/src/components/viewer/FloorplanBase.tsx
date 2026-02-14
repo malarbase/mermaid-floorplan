@@ -1,21 +1,30 @@
 import { createEffect, createSignal, onCleanup, onMount } from 'solid-js';
+import type { CameraStateData, CoreInstance } from '~/lib/project-types';
 import { ViewerSkeleton } from './skeletons';
 import { ViewerErrorState } from './ViewerError';
 
-// Define generic types for the cores to avoid strict dependency on the package during build time if not installed
-type CoreInstance = {
-  dispose: () => void;
-  loadFromDsl?: (dsl: string) => void;
-  setTheme?: (theme: 'light' | 'dark') => void;
-  [key: string]: any;
-};
-
-/** Serialized camera state for initial view restore */
-interface CameraStateData {
-  position: { x: number; y: number; z: number };
-  target: { x: number; y: number; z: number };
-  mode: 'perspective' | 'orthographic';
-  fov: number;
+/**
+ * Extended internal type for the dynamically-imported viewer core instance.
+ * Adds members that exist on the concrete FloorplanAppCore / InteractiveEditorCore
+ * classes but are intentionally omitted from the public `CoreInstance` interface
+ * (protected members, concrete-class-only APIs, etc.).
+ *
+ * Only used inside this bridge layer; consumers receive `CoreInstance`.
+ */
+interface InternalCoreInstance extends CoreInstance {
+  /** Protected on the concrete class — accessed here via dynamic import */
+  currentTheme?: string;
+  selectionManager?: { setEnabled: (enabled: boolean) => void };
+  annotationManager?: {
+    state: Record<string, boolean>;
+    updateFloorSummary: () => void;
+    updateAll: () => void;
+  };
+  layoutManager?: {
+    setOverlay2DVisible: (visible: boolean) => void;
+    setFloorSummaryVisible: (visible: boolean) => void;
+  };
+  overlayContainer?: HTMLElement;
 }
 
 export interface FloorplanBaseProps {
@@ -37,7 +46,7 @@ export interface FloorplanBaseProps {
 
 export function FloorplanBase(props: FloorplanBaseProps) {
   let containerRef: HTMLDivElement | undefined;
-  const [appInstance, setAppInstance] = createSignal<CoreInstance | null>(null);
+  const [appInstance, setAppInstance] = createSignal<InternalCoreInstance | null>(null);
   const [isLoading, setIsLoading] = createSignal(true);
   const [error, setError] = createSignal<Error | null>(null);
 
@@ -90,7 +99,9 @@ export function FloorplanBase(props: FloorplanBaseProps) {
         allowSelectionToggle: props.allowSelectionToggle ?? true,
       });
 
-      setAppInstance(core);
+      // The concrete class (FloorplanAppCore/InteractiveEditorCore) satisfies
+      // InternalCoreInstance structurally, but has protected members so we cast.
+      setAppInstance(core as unknown as InternalCoreInstance);
 
       // Restore saved camera state if available (must be after DSL load
       // which happens in the core constructor via initialDsl)
@@ -99,7 +110,7 @@ export function FloorplanBase(props: FloorplanBaseProps) {
       }
 
       if (props.onCoreReady && core) {
-        props.onCoreReady(core);
+        props.onCoreReady(core as unknown as CoreInstance);
       }
 
       setIsLoading(false);

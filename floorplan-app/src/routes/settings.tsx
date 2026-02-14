@@ -1,36 +1,22 @@
 import { Title } from '@solidjs/meta';
-import { useNavigate } from '@solidjs/router';
-import type { FunctionReference } from 'convex/server';
 import { useMutation, useQuery } from 'convex-solidjs';
-import { createEffect, createMemo, createSignal, Show } from 'solid-js';
+import { createMemo, createSignal, Show } from 'solid-js';
 import { Header } from '~/components/Header';
 import { LogoutButton } from '~/components/LogoutButton';
 import { UsernameChangeModal, useUsernameChangeModal } from '~/components/UsernameChangeModal';
-import { useSession } from '~/lib/auth-client';
-
-// Type-safe API reference builder for when generated files don't exist yet
-const api = {
-  users: {
-    getCurrentUser: 'users:getCurrentUser' as unknown as FunctionReference<'query'>,
-    updateProfile: 'users:updateProfile' as unknown as FunctionReference<'mutation'>,
-  },
-};
+import { useAuthRedirect } from '~/hooks/useAuthRedirect';
+import { convexApi } from '~/lib/project-types';
 
 /**
  * User settings page - allows users to manage their account.
  * Route: /settings
  */
 export default function Settings() {
-  const sessionSignal = useSession();
-  const navigate = useNavigate();
+  const { user, isLoading } = useAuthRedirect();
   const usernameChangeModal = useUsernameChangeModal();
 
-  const session = createMemo(() => sessionSignal());
-  const isLoading = createMemo(() => session()?.isPending ?? true);
-  const user = createMemo(() => session()?.data?.user);
-
   // Get user profile from Convex
-  const userProfileQuery = useQuery(api.users.getCurrentUser, () => ({}));
+  const userProfileQuery = useQuery(convexApi.users.getCurrentUser, () => ({}));
 
   const userProfile = createMemo(() => {
     return userProfileQuery.data() as
@@ -44,13 +30,6 @@ export default function Settings() {
       | undefined;
   });
 
-  // Redirect to login if not authenticated
-  createEffect(() => {
-    if (!isLoading() && !user()) {
-      navigate('/login', { replace: true });
-    }
-  });
-
   const isTempUsername = createMemo(() => {
     const profile = userProfile();
     if (!profile) return false;
@@ -61,7 +40,7 @@ export default function Settings() {
   const [isEditingName, setIsEditingName] = createSignal(false);
   const [editedName, setEditedName] = createSignal('');
   const [isSavingName, setIsSavingName] = createSignal(false);
-  const updateProfileMutation = useMutation(api.users.updateProfile);
+  const updateProfileMutation = useMutation(convexApi.users.updateProfile);
 
   const startEditingName = () => {
     setEditedName(userProfile()?.displayName ?? '');

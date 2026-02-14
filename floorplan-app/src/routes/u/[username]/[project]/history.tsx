@@ -1,41 +1,11 @@
 import { Title } from '@solidjs/meta';
 import { A, useNavigate, useParams } from '@solidjs/router';
-import type { FunctionReference } from 'convex/server';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { CreateVersionModal } from '~/components/CreateVersionModal';
-import { useSession } from '~/lib/auth-client';
+import { useProjectData } from '~/hooks/useProjectData';
 import { copyToClipboard, generatePermalink } from '~/lib/permalink';
-
-// Type-safe API reference builder for when generated files don't exist yet
-const api = {
-  projects: {
-    getBySlug: 'projects:getBySlug' as unknown as FunctionReference<'query'>,
-    listVersions: 'projects:listVersions' as unknown as FunctionReference<'query'>,
-    getHistory: 'projects:getHistory' as unknown as FunctionReference<'query'>,
-  },
-};
-
-// Types
-interface Project {
-  _id: string;
-  displayName: string;
-  description?: string;
-  isPublic: boolean;
-  defaultVersion: string;
-  userId: string;
-  slug: string;
-}
-
-interface Owner {
-  _id: string;
-  username: string;
-}
-
-interface ForkedFrom {
-  project: Project;
-  owner: Owner;
-}
+import { convexApi } from '~/lib/project-types';
 
 interface Version {
   _id: string;
@@ -61,44 +31,19 @@ interface Snapshot {
 export default function ProjectHistory() {
   const params = useParams();
   const navigate = useNavigate();
-  const sessionSignal = useSession();
 
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
 
-  // Auth state
-  const session = createMemo(() => sessionSignal());
-  const currentUser = createMemo(() => session()?.data?.user);
-
-  // Query project data
-  const projectQuery = useQuery(api.projects.getBySlug, () => ({
-    username: username(),
-    projectSlug: projectSlug(),
-  }));
-
-  const projectData = createMemo(() => {
-    const data = projectQuery.data() as
-      | { project: Project; owner: Owner; forkedFrom: ForkedFrom | null }
-      | null
-      | undefined;
-    return data;
-  });
-
-  const project = createMemo(() => projectData()?.project);
-  const owner = createMemo(() => projectData()?.owner);
-  const forkedFrom = createMemo(() => projectData()?.forkedFrom);
-
-  // Check if current user is the owner
-  const isOwner = createMemo(() => {
-    const user = currentUser();
-    const own = owner();
-    if (!user || !own) return false;
-    return (user.username ?? user.name) === own.username;
-  });
+  // Project data from shared hook
+  const { project, owner, forkedFrom, projectData, isOwner, isProjectLoading } = useProjectData(
+    username,
+    projectSlug,
+  );
 
   // Query versions
   const versionsQuery = useQuery(
-    api.projects.listVersions,
+    convexApi.projects.listVersions,
     () => ({ projectId: project()?._id ?? '' }),
     () => ({ enabled: !!project() }),
   );
@@ -117,7 +62,7 @@ export default function ProjectHistory() {
 
   // Query snapshots
   const historyQuery = useQuery(
-    api.projects.getHistory,
+    convexApi.projects.getHistory,
     () => ({ projectId: project()?._id ?? '', limit: 50 }),
     () => ({ enabled: !!project() }),
   );
@@ -129,7 +74,7 @@ export default function ProjectHistory() {
 
   // Loading states
   const isLoading = createMemo(
-    () => projectQuery.isLoading() || versionsQuery.isLoading() || historyQuery.isLoading(),
+    () => isProjectLoading() || versionsQuery.isLoading() || historyQuery.isLoading(),
   );
 
   // Create version modal state

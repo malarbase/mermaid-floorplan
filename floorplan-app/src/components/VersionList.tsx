@@ -1,15 +1,7 @@
 import { A } from '@solidjs/router';
-import type { FunctionReference } from 'convex/server';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, For, Show } from 'solid-js';
-
-// Type-safe API reference builder for when generated files don't exist yet
-// This will be replaced with proper imports once `npx convex dev` generates the API
-const api = {
-  projects: {
-    listVersions: 'projects:listVersions' as unknown as FunctionReference<'query'>,
-  },
-};
+import { convexApi } from '~/lib/project-types';
 
 // Version type from Convex schema
 interface Version {
@@ -48,7 +40,7 @@ interface VersionListProps {
  */
 export function VersionList(props: VersionListProps) {
   // Query project's versions from Convex
-  const versionsQuery = useQuery(api.projects.listVersions, () => ({
+  const versionsQuery = useQuery(convexApi.projects.listVersions, () => ({
     projectId: props.projectId,
   }));
 

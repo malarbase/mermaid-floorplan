@@ -8,24 +8,8 @@
 
 import { useMutation } from 'convex-solidjs';
 import { type Accessor, createSignal } from 'solid-js';
-import { projectApi } from '~/lib/project-types';
-
-/** Serialized camera state — matches CameraState from floorplan-viewer-core */
-interface CameraStateData {
-  position: { x: number; y: number; z: number };
-  target: { x: number; y: number; z: number };
-  mode: 'perspective' | 'orthographic';
-  fov: number;
-}
-
-type CoreInstance = {
-  captureScreenshot?: (options?: Record<string, unknown>) => Promise<Blob>;
-  cameraManager?: {
-    getCameraState?: () => CameraStateData;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-};
+import type { CoreInstance } from '~/lib/project-types';
+import { convexApi } from '~/lib/project-types';
 
 /**
  * Hook that encapsulates the thumbnail capture → upload → save pipeline.
@@ -38,8 +22,8 @@ export function useThumbnailCapture(
   coreInstance: Accessor<CoreInstance | null>,
   projectId: Accessor<string | undefined>,
 ) {
-  const generateUploadUrl = useMutation(projectApi.storage.generateUploadUrl);
-  const saveThumbnailMutation = useMutation(projectApi.storage.saveThumbnail);
+  const generateUploadUrl = useMutation(convexApi.storage.generateUploadUrl);
+  const saveThumbnailMutation = useMutation(convexApi.storage.saveThumbnail);
 
   const [isCapturing, setIsCapturing] = createSignal(false);
   const [showSuccess, setShowSuccess] = createSignal(false);

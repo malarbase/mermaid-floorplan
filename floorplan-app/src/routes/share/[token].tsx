@@ -1,15 +1,8 @@
 import { Title } from '@solidjs/meta';
 import { A, useNavigate, useParams } from '@solidjs/router';
-import type { FunctionReference } from 'convex/server';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, onMount, Show } from 'solid-js';
-
-// Type-safe API reference
-const api = {
-  sharing: {
-    validateShareLink: 'sharing:validateShareLink' as unknown as FunctionReference<'query'>,
-  },
-};
+import { convexApi } from '~/lib/project-types';
 
 interface ShareLinkValidation {
   valid: boolean;
@@ -35,7 +28,7 @@ export default function ShareLinkPage() {
   const token = createMemo(() => params.token);
 
   // Validate the share link
-  const validationQuery = useQuery(api.sharing.validateShareLink, () => ({
+  const validationQuery = useQuery(convexApi.sharing.validateShareLink, () => ({
     token: token(),
   }));
 

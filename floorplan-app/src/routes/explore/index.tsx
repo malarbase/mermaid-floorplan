@@ -138,8 +138,8 @@ export default function ExplorePage() {
                 <div class="hidden md:block mt-8">
                   <h2 class="text-lg font-bold mb-4 px-1">Collections</h2>
                   <div class="flex flex-col gap-2">
-                    <For each={collections()}>
-                      {(collection: any) => (
+                    <For each={collections() as { slug: string; displayName: string }[]}>
+                      {(collection) => (
                         <A
                           href={`/explore/collection/${collection.slug}`}
                           class="link link-hover text-sm px-1 block py-1"

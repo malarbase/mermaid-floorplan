@@ -1,20 +1,33 @@
 import { useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
-import { api } from '../../../convex/_generated/api';
+import { convexApi } from '~/lib/project-types';
+
+interface AuditLogEntry {
+  _id: string;
+  ts: number;
+  action: string;
+  actor?: string;
+  target?: string;
+  table?: string;
+  details: string;
+  userId?: string;
+  username?: string;
+  targetId?: string;
+  targetType?: string;
+}
 
 export default function AuditLog() {
   const [dateFrom, setDateFrom] = createSignal('');
   const [dateTo, setDateTo] = createSignal('');
   const [actionFilter, setActionFilter] = createSignal('all');
 
-  // Cast api.admin to any because getAuditLog might not be in the generated types yet
-  const auditLog = useQuery((api.admin as any).getAuditLog, { limit: 100 });
+  const auditLog = useQuery(convexApi.admin.getAuditLog, { limit: 100 });
 
   const filteredLog = createMemo(() => {
     const log = auditLog.data();
     if (!log) return [];
 
-    return log.filter((entry: any) => {
+    return log.filter((entry: AuditLogEntry) => {
       // Date filter
       if (dateFrom()) {
         const fromTime = new Date(dateFrom()).getTime();
@@ -140,7 +153,7 @@ export default function AuditLog() {
               </Show>
 
               <For each={filteredLog()}>
-                {(entry: any) => (
+                {(entry: AuditLogEntry) => (
                   <tr class="hover:bg-base-200/30 transition-colors">
                     <td class="whitespace-nowrap font-mono text-xs text-base-content/70">
                       {new Date(entry.ts).toLocaleString()}

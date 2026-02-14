@@ -1,8 +1,8 @@
 import { createAuthClient } from 'better-auth/solid';
-import type { FunctionReference } from 'convex/server';
 import { useQuery } from 'convex-solidjs';
 import { type Accessor, createMemo, createSignal, onMount } from 'solid-js';
 import { isDevLoggedIn } from './mock-auth';
+import { convexApi } from './project-types';
 
 /**
  * Client-side auth utilities for Solid.js components.
@@ -50,11 +50,6 @@ export interface SessionData {
   error: Error | null;
 }
 
-// Type-safe API reference for the Convex query used in dev mode
-const usersApi = {
-  getCurrentUser: 'users:getCurrentUser' as unknown as FunctionReference<'query'>,
-};
-
 /**
  * Session hook that supports dev authentication bypass.
  *
@@ -82,7 +77,7 @@ export function useSession(): Accessor<SessionData> {
 
     // Query Convex for the actual dev user (only when logged in)
     const convexUser = useQuery(
-      usersApi.getCurrentUser,
+      convexApi.users.getCurrentUser,
       () => ({}),
       () => ({ enabled: devLoggedIn() }),
     );

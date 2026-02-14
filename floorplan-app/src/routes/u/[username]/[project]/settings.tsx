@@ -1,51 +1,13 @@
 import { Title } from '@solidjs/meta';
 import { A, useNavigate, useParams } from '@solidjs/router';
-import type { FunctionReference } from 'convex/server';
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, For, onCleanup, Show } from 'solid-js';
 import { CreateShareLinkModal } from '~/components/CreateShareLinkModal';
 import { DeleteProjectButton } from '~/components/DeleteProjectButton';
 import { InviteByUsernameModal } from '~/components/InviteByUsernameModal';
 import { VisibilityToggle } from '~/components/VisibilityToggle';
-import { useSession } from '~/lib/auth-client';
-
-// Type-safe API reference builder for when generated files don't exist yet
-const api = {
-  projects: {
-    getBySlug: 'projects:getBySlug' as unknown as FunctionReference<'query'>,
-    update: 'projects:update' as unknown as FunctionReference<'mutation'>,
-    updateSlug: 'projects:updateSlug' as unknown as FunctionReference<'mutation'>,
-  },
-  sharing: {
-    getCollaborators: 'sharing:getCollaborators' as unknown as FunctionReference<'query'>,
-    getShareLinks: 'sharing:getShareLinks' as unknown as FunctionReference<'query'>,
-    removeCollaborator: 'sharing:removeCollaborator' as unknown as FunctionReference<'mutation'>,
-    updateCollaboratorRole:
-      'sharing:updateCollaboratorRole' as unknown as FunctionReference<'mutation'>,
-    revokeShareLink: 'sharing:revokeShareLink' as unknown as FunctionReference<'mutation'>,
-  },
-};
-
-// Types
-interface Project {
-  _id: string;
-  displayName: string;
-  description?: string;
-  isPublic: boolean;
-  defaultVersion: string;
-  userId: string;
-  slug: string;
-}
-
-interface Owner {
-  _id: string;
-  username: string;
-}
-
-interface ForkedFrom {
-  project: Project;
-  owner: Owner;
-}
+import { useProjectData } from '~/hooks/useProjectData';
+import { convexApi } from '~/lib/project-types';
 
 interface Collaborator {
   _id: string;
@@ -76,7 +38,6 @@ interface ShareLink {
 export default function ProjectSettings() {
   const params = useParams();
   const navigate = useNavigate();
-  const sessionSignal = useSession();
 
   const [showInviteModal, setShowInviteModal] = createSignal(false);
   const [showShareLinkModal, setShowShareLinkModal] = createSignal(false);
@@ -95,27 +56,9 @@ export default function ProjectSettings() {
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
 
-  // Get current user session
-  const session = createMemo(() => sessionSignal());
-  const currentUser = createMemo(() => session()?.data?.user);
-
-  // Query project data from Convex
-  const projectQuery = useQuery(api.projects.getBySlug, () => ({
-    username: username(),
-    projectSlug: projectSlug(),
-  }));
-
-  const projectData = createMemo(() => {
-    const data = projectQuery.data() as
-      | { project: Project; owner: Owner; forkedFrom: ForkedFrom | null }
-      | null
-      | undefined;
-    return data;
-  });
-
-  const project = createMemo(() => projectData()?.project);
-  const owner = createMemo(() => projectData()?.owner);
-  const forkedFrom = createMemo(() => projectData()?.forkedFrom);
+  // Project data from shared hook
+  const { project, owner, forkedFrom, projectData, isOwner, isProjectLoading, currentUser } =
+    useProjectData(username, projectSlug);
 
   // Initialize form values when project loads
   createEffect(() => {
@@ -128,7 +71,7 @@ export default function ProjectSettings() {
 
   // Query collaborators
   const collaboratorsQuery = useQuery(
-    api.sharing.getCollaborators,
+    convexApi.sharing.getCollaborators,
     () => ({ projectId: project()?._id ?? '' }),
     () => ({ enabled: !!project() }),
   );
@@ -139,32 +82,23 @@ export default function ProjectSettings() {
 
   // Query share links
   const shareLinksQuery = useQuery(
-    api.sharing.getShareLinks,
+    convexApi.sharing.getShareLinks,
     () => ({ projectId: project()?._id ?? '' }),
     () => ({ enabled: !!project() }),
   );
 
   const shareLinks = createMemo(() => (shareLinksQuery.data() as ShareLink[] | undefined) ?? []);
 
-  // Check if current user is the owner
-  const isOwner = createMemo(() => {
-    const user = currentUser();
-    const proj = project();
-    const own = owner();
-    if (!user || !proj || !own) return false;
-    return (user.username ?? user.name) === own.username;
-  });
-
   // Mutations
-  const updateProject = useMutation(api.projects.update);
-  const updateProjectSlug = useMutation(api.projects.updateSlug);
-  const removeCollaborator = useMutation(api.sharing.removeCollaborator);
-  const updateCollaboratorRole = useMutation(api.sharing.updateCollaboratorRole);
-  const revokeShareLink = useMutation(api.sharing.revokeShareLink);
+  const updateProject = useMutation(convexApi.projects.update);
+  const updateProjectSlug = useMutation(convexApi.projects.updateSlug);
+  const removeCollaborator = useMutation(convexApi.sharing.removeCollaborator);
+  const updateCollaboratorRole = useMutation(convexApi.sharing.updateCollaboratorRole);
+  const revokeShareLink = useMutation(convexApi.sharing.revokeShareLink);
 
   // Loading state
   const isLoading = createMemo(
-    () => projectQuery.isLoading() || collaboratorsQuery.isLoading() || shareLinksQuery.isLoading(),
+    () => isProjectLoading() || collaboratorsQuery.isLoading() || shareLinksQuery.isLoading(),
   );
 
   // Handle save general settings
@@ -199,7 +133,7 @@ export default function ProjectSettings() {
   });
 
   const slugCheckQuery = useQuery(
-    api.projects.getBySlug,
+    convexApi.projects.getBySlug,
     () => ({ username: username(), projectSlug: debouncedSlug() || '' }),
     () => ({
       enabled: isEditingSlug() && !!debouncedSlug() && debouncedSlug() !== projectSlug(),
