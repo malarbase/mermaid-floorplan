@@ -20,6 +20,8 @@ import { normalizeConfigKey } from './styles.js';
 export interface FrontmatterResult {
   /** Title from frontmatter */
   title?: string;
+  /** Version string from frontmatter (quotes stripped) */
+  version?: string;
   /** Config values from frontmatter (keys normalized to camelCase) */
   config: Record<string, unknown>;
   /** The DSL content without the frontmatter */
@@ -29,10 +31,11 @@ export interface FrontmatterResult {
 }
 
 /**
- * Regex to detect YAML frontmatter at start of document
- * Matches: ---\n<yaml content>\n---
+ * Regex to detect YAML frontmatter at start of document.
+ * Allows optional leading comments (# ...) and blank lines before the opening ---.
+ * Matches: [optional comments/blanks]---\n<yaml content>\n---
  */
-const FRONTMATTER_REGEX = /^---\s*\n([\s\S]*?)\n---\s*\n?/;
+const FRONTMATTER_REGEX = /^(?:\s*#[^\n]*\n|\s*\n)*---\s*\n([\s\S]*?)\n---\s*\n?/;
 
 /**
  * Simple YAML parser for frontmatter
@@ -144,6 +147,13 @@ export function parseFrontmatter(input: string): FrontmatterResult {
     // Extract title
     const title = typeof parsed.title === 'string' ? parsed.title : undefined;
 
+    // Extract version (strip quotes if present)
+    let version: string | undefined;
+    if (parsed.version !== undefined) {
+      const vStr = String(parsed.version);
+      version = vStr.startsWith('"') && vStr.endsWith('"') ? vStr.slice(1, -1) : vStr;
+    }
+
     // Extract and normalize config
     let config: Record<string, unknown> = {};
     if (parsed.config && typeof parsed.config === 'object') {
@@ -152,6 +162,7 @@ export function parseFrontmatter(input: string): FrontmatterResult {
 
     return {
       title,
+      version,
       config,
       content: dslContent,
       hasFrontmatter: true,
@@ -178,4 +189,50 @@ export function hasFrontmatter(input: string): boolean {
  */
 export function stripFrontmatter(input: string): string {
   return input.replace(FRONTMATTER_REGEX, '');
+}
+
+/**
+ * Result of preprocessing DSL input with frontmatter extraction.
+ * Designed as the standard entry point for parsing DSL that may contain
+ * Mermaid-style YAML frontmatter.
+ */
+export interface PreprocessedDsl {
+  /** DSL content with frontmatter stripped (ready for Langium parsing) */
+  content: string;
+  /** Config values from frontmatter (keys normalized to camelCase) */
+  frontmatterConfig: Record<string, unknown>;
+  /** Title from frontmatter */
+  title?: string;
+  /** Version string from frontmatter */
+  version?: string;
+  /** Whether frontmatter was found */
+  hasFrontmatter: boolean;
+}
+
+/**
+ * Preprocess DSL input by extracting YAML frontmatter.
+ *
+ * This is the recommended entry point for parsing floorplan DSL that may
+ * contain Mermaid-style frontmatter. It extracts config, title, and version
+ * from the frontmatter block and returns clean DSL content for Langium parsing.
+ *
+ * Usage:
+ * ```ts
+ * const { content, frontmatterConfig } = preprocessDsl(rawInput);
+ * const document = await parse(content);         // Langium parses clean DSL
+ * const config = resolveConfig(document.parseResult.value, frontmatterConfig);
+ * ```
+ *
+ * @param input - Raw DSL input potentially including YAML frontmatter
+ * @returns Preprocessed result with separated content and config
+ */
+export function preprocessDsl(input: string): PreprocessedDsl {
+  const result = parseFrontmatter(input);
+  return {
+    content: result.content,
+    frontmatterConfig: result.config,
+    title: result.title,
+    version: result.version,
+    hasFrontmatter: result.hasFrontmatter,
+  };
 }

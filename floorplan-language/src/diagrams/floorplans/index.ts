@@ -57,7 +57,9 @@ export { calculateFloorBounds, type FloorBounds, generateFloorRectangle } from '
 export {
   type FrontmatterResult,
   hasFrontmatter,
+  type PreprocessedDsl,
   parseFrontmatter,
+  preprocessDsl,
   stripFrontmatter,
 } from './frontmatter-parser.js';
 // Unified Generator API (following Langium generator pattern)

@@ -88,6 +88,12 @@ export interface RenderOptions {
   /** Scale factor for output dimensions */
   scale?: number;
   /**
+   * Config from YAML frontmatter (Mermaid v10.5.0+ compatible).
+   * Pass the `frontmatterConfig` from `preprocessDsl()` here.
+   * These values are applied as defaults; inline `config {}` takes precedence.
+   */
+  frontmatterConfig?: Record<string, unknown>;
+  /**
    * Array of floor IDs to render.
    * - undefined/empty: renders all floors
    * - single floor: renders just that floor
@@ -151,7 +157,8 @@ export function render(document: LangiumDocument<Floorplan>, options: RenderOpti
   }
 
   // Resolve config from DSL (supports theme, darkMode, fontFamily, etc.)
-  const resolvedConfig = resolveConfig(floorplan);
+  // Frontmatter config is applied first (lower precedence), inline config overwrites
+  const resolvedConfig = resolveConfig(floorplan, options.frontmatterConfig);
 
   // Resolve theme options from config (handles theme + darkMode)
   const configTheme = resolveThemeOptions(resolvedConfig);
@@ -230,7 +237,7 @@ function renderMultipleFloors(
   styleContext?: StyleContext,
   showLabels: boolean = true,
 ): string {
-  const resolvedConfig = resolveConfig(floorplan);
+  const resolvedConfig = resolveConfig(floorplan, options.frontmatterConfig);
   const opts = { ...defaultRenderOptions, ...options };
   const padding = opts.padding ?? 0;
   const floorGap = 5; // Gap between floors
@@ -414,7 +421,7 @@ export function renderFloor(
   try {
     const floorplan = floor.$container;
     if (floorplan) {
-      const config = resolveConfig(floorplan as Floorplan);
+      const config = resolveConfig(floorplan as Floorplan, opts.frontmatterConfig);
       defaultUnit = config.defaultUnit as LengthUnit;
     }
   } catch (_e) {

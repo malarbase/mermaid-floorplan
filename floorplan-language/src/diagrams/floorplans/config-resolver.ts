@@ -93,79 +93,104 @@ function extractPropertyValue(prop: ConfigProperty): unknown {
 }
 
 /**
- * Extract and normalize configuration from a floorplan
+ * Apply a single config key-value pair to the config object.
+ * Used by both frontmatter config and inline config resolution.
  */
-export function resolveConfig(floorplan: Floorplan): ParsedConfig {
+function applyConfigValue(config: ParsedConfig, key: string, value: unknown): void {
+  switch (key) {
+    case 'theme':
+      config.theme = value as string;
+      break;
+    case 'darkMode':
+      config.darkMode = value as boolean;
+      break;
+    case 'wallThickness':
+      config.wallThickness = value as number;
+      break;
+    case 'floorThickness':
+      config.floorThickness = value as number;
+      break;
+    case 'defaultHeight':
+      config.defaultHeight = value as number;
+      break;
+    case 'doorWidth':
+      config.doorWidth = value as number;
+      break;
+    case 'doorHeight':
+      config.doorHeight = value as number;
+      break;
+    case 'doorSize':
+      config.doorSize = value as { width: number; height: number };
+      break;
+    case 'windowWidth':
+      config.windowWidth = value as number;
+      break;
+    case 'windowHeight':
+      config.windowHeight = value as number;
+      break;
+    case 'windowSill':
+      config.windowSill = value as number;
+      break;
+    case 'windowSize':
+      config.windowSize = value as { width: number; height: number };
+      break;
+    case 'defaultStyle':
+      config.defaultStyle = value as string;
+      break;
+    case 'defaultUnit':
+      config.defaultUnit = value as string;
+      break;
+    case 'areaUnit':
+      config.areaUnit = value as string;
+      break;
+    case 'fontFamily':
+      config.fontFamily = value as string;
+      break;
+    case 'fontSize':
+      config.fontSize = value as number;
+      break;
+    case 'showLabels':
+      config.showLabels = value as boolean;
+      break;
+    case 'showDimensions':
+      config.showDimensions = value as boolean;
+      break;
+  }
+}
+
+/**
+ * Extract and normalize configuration from a floorplan.
+ *
+ * Supports Mermaid-style frontmatter config: if `frontmatterConfig` is provided
+ * (from `parseFrontmatter()`), it is applied first as lower-precedence defaults.
+ * Inline `config {}` block values take precedence over frontmatter values.
+ *
+ * @param floorplan - Parsed floorplan AST
+ * @param frontmatterConfig - Optional config from YAML frontmatter preprocessing
+ */
+export function resolveConfig(
+  floorplan: Floorplan,
+  frontmatterConfig?: Record<string, unknown>,
+): ParsedConfig {
   const config: ParsedConfig = { ...DEFAULT_CONFIG };
 
-  if (!floorplan.config) {
-    return config;
+  // Apply frontmatter config first (lower precedence)
+  if (frontmatterConfig) {
+    for (const [key, value] of Object.entries(frontmatterConfig)) {
+      if (value !== undefined) {
+        applyConfigValue(config, normalizeConfigKey(key), value);
+      }
+    }
   }
 
-  for (const prop of floorplan.config.properties) {
-    const normalizedKey = normalizeConfigKey(prop.name);
-    const value = extractPropertyValue(prop);
+  // Apply inline config (higher precedence, overwrites frontmatter)
+  if (floorplan.config) {
+    for (const prop of floorplan.config.properties) {
+      const normalizedKey = normalizeConfigKey(prop.name);
+      const value = extractPropertyValue(prop);
 
-    if (value !== undefined) {
-      // Type-safe assignment based on key
-      switch (normalizedKey) {
-        case 'theme':
-          config.theme = value as string;
-          break;
-        case 'darkMode':
-          config.darkMode = value as boolean;
-          break;
-        case 'wallThickness':
-          config.wallThickness = value as number;
-          break;
-        case 'floorThickness':
-          config.floorThickness = value as number;
-          break;
-        case 'defaultHeight':
-          config.defaultHeight = value as number;
-          break;
-        case 'doorWidth':
-          config.doorWidth = value as number;
-          break;
-        case 'doorHeight':
-          config.doorHeight = value as number;
-          break;
-        case 'doorSize':
-          config.doorSize = value as { width: number; height: number };
-          break;
-        case 'windowWidth':
-          config.windowWidth = value as number;
-          break;
-        case 'windowHeight':
-          config.windowHeight = value as number;
-          break;
-        case 'windowSill':
-          config.windowSill = value as number;
-          break;
-        case 'windowSize':
-          config.windowSize = value as { width: number; height: number };
-          break;
-        case 'defaultStyle':
-          config.defaultStyle = value as string;
-          break;
-        case 'defaultUnit':
-          config.defaultUnit = value as string;
-          break;
-        case 'areaUnit':
-          config.areaUnit = value as string;
-          break;
-        case 'fontFamily':
-          config.fontFamily = value as string;
-          break;
-        case 'fontSize':
-          config.fontSize = value as number;
-          break;
-        case 'showLabels':
-          config.showLabels = value as boolean;
-          break;
-        case 'showDimensions':
-          config.showDimensions = value as boolean;
-          break;
+      if (value !== undefined) {
+        applyConfigValue(config, normalizedKey, value);
       }
     }
   }

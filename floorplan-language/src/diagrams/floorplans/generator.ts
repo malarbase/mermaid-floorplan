@@ -37,6 +37,11 @@ export interface SvgGeneratorOptions extends RenderOptions {
 /** Options for JSON generation */
 export interface JsonGeneratorOptions {
   format: 'json';
+  /**
+   * Config from YAML frontmatter (Mermaid v10.5.0+ compatible).
+   * Pass the `frontmatterConfig` from `preprocessDsl()` here.
+   */
+  frontmatterConfig?: Record<string, unknown>;
 }
 
 /** Union of all generator options */

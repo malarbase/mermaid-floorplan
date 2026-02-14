@@ -1,9 +1,3 @@
-# Example: YAML Frontmatter (Mermaid v10.5.0+ compatible)
-#
-# This demonstrates the new frontmatter support that aligns with Mermaid.js
-# The frontmatter uses camelCase keys (Mermaid convention), while inline config
-# continues to support snake_case (legacy DSL convention).
-
 ---
 version: "1.0"
 title: Modern Apartment
@@ -12,6 +6,17 @@ config:
   fontFamily: "Roboto, sans-serif"
   wallThickness: 0.3
 ---
+# Example: YAML Frontmatter (Mermaid v10.5.0+ compatible)
+#
+# This demonstrates frontmatter support aligned with Mermaid.js v10.5.0+.
+# The frontmatter block uses `---` delimiters and supports nested `config:`.
+# Keys use camelCase (Mermaid convention); inline config supports snake_case too.
+#
+# Usage: call preprocessDsl() to extract config before Langium parsing:
+#   const { content, frontmatterConfig } = preprocessDsl(rawInput);
+#   const doc = await parse(content);
+#   const config = resolveConfig(doc.parseResult.value, frontmatterConfig);
+
 floorplan
 
 # Define room templates
