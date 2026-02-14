@@ -6,12 +6,19 @@ interface ViewerErrorProps {
 }
 
 export const ViewerErrorState: Component<ViewerErrorProps> = (props) => {
+  const message = () => {
+    const e = props.error;
+    if (!e) return 'An unexpected error occurred in the viewer.';
+    if (typeof e === 'string') return e;
+    return e.message ?? 'An unexpected error occurred in the viewer.';
+  };
+
   return (
     <div class="absolute inset-0 flex items-center justify-center bg-base-300 z-50">
       <div class="card bg-error text-error-content max-w-md shadow-xl">
         <div class="card-body">
           <h2 class="card-title">Viewer Error</h2>
-          <p>{props.error?.message || 'An unexpected error occurred in the viewer.'}</p>
+          <p>{message()}</p>
           <div class="card-actions justify-end">
             <button
               class="btn btn-sm btn-ghost"

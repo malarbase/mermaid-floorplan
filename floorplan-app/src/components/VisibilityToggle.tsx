@@ -4,7 +4,7 @@ import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 
 export interface VisibilityToggleProps {
-  projectId: Id<'projects'> | string;
+  projectId: Id<'projects'>;
 
   /**
    * Current visibility state
@@ -58,7 +58,7 @@ export function VisibilityToggle(props: VisibilityToggleProps) {
 
     try {
       await updateProject.mutate({
-        projectId: props.projectId as Id<'projects'>,
+        projectId: props.projectId,
         isPublic: newValue,
       });
       props.onToggle?.(newValue);
@@ -118,9 +118,9 @@ export function VisibilityToggle(props: VisibilityToggleProps) {
   // Full dropdown toggle
   return (
     <div class={`dropdown dropdown-end ${props.class ?? ''}`}>
-      <div
+      <button
+        type="button"
         tabindex="0"
-        role="button"
         class={`btn btn-sm gap-1 ${isPublic() ? 'btn-success btn-outline' : 'btn-ghost'}`}
       >
         <Show when={isLoading()}>
@@ -159,7 +159,7 @@ export function VisibilityToggle(props: VisibilityToggleProps) {
             d="M19 9l-7 7-7-7"
           />
         </svg>
-      </div>
+      </button>
       <ul
         tabindex="0"
         class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-box w-64 border border-base-300"

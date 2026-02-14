@@ -171,7 +171,9 @@ export function FloorplanBase(props: FloorplanBaseProps) {
       data-theme={props.theme ?? 'dark'}
     >
       {isLoading() && <ViewerSkeleton />}
-      {error() && <ViewerErrorState error={error()} reset={() => window.location.reload()} />}
+      {error() && (
+        <ViewerErrorState error={error() ?? undefined} reset={() => window.location.reload()} />
+      )}
 
       <div
         ref={containerRef}

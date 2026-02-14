@@ -1,6 +1,7 @@
 import { fireEvent, render, waitFor } from '@solidjs/testing-library';
 import type { JSX } from 'solid-js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { asId } from '~/lib/project-types';
 
 const mockMutations = vi.hoisted(() => ({
   create: {
@@ -161,7 +162,11 @@ describe('Project CRUD Operations', () => {
 
     it('should render edit form with initial values', () => {
       const result = render(() => (
-        <ProjectForm mode="edit" projectId="project-123" initialValues={initialValues} />
+        <ProjectForm
+          mode="edit"
+          projectId={asId<'projects'>('project-123')}
+          initialValues={initialValues}
+        />
       ));
 
       const nameInput = result.getByPlaceholderText('My Beach House') as HTMLInputElement;
@@ -176,7 +181,11 @@ describe('Project CRUD Operations', () => {
 
     it('should show slug cannot be changed message', () => {
       const result = render(() => (
-        <ProjectForm mode="edit" projectId="project-123" initialValues={initialValues} />
+        <ProjectForm
+          mode="edit"
+          projectId={asId<'projects'>('project-123')}
+          initialValues={initialValues}
+        />
       ));
 
       expect(result.getByText('Cannot be changed after creation')).toBeDefined();
@@ -187,7 +196,7 @@ describe('Project CRUD Operations', () => {
       const result = render(() => (
         <ProjectForm
           mode="edit"
-          projectId="project-123"
+          projectId={asId<'projects'>('project-123')}
           initialValues={initialValues}
           onSuccess={onSuccess}
         />

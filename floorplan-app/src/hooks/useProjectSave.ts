@@ -7,6 +7,7 @@
 import { useMutation } from 'convex-solidjs';
 import { type Accessor, createEffect, createMemo, createSignal, onCleanup } from 'solid-js';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 interface UseProjectSaveOptions {
   /**
@@ -27,7 +28,7 @@ interface UseProjectSaveOptions {
  */
 export function useProjectSave(
   content: Accessor<string | undefined>,
-  projectId: Accessor<string | undefined>,
+  projectId: Accessor<Id<'projects'> | undefined>,
   versionName: Accessor<string | undefined>,
   isOwner: Accessor<boolean>,
   options?: UseProjectSaveOptions,

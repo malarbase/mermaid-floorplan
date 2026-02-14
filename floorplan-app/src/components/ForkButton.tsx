@@ -5,9 +5,10 @@ import { Modal } from '~/components/ui/Modal';
 import { useToast } from '~/components/ui/Toast';
 import { useSession } from '~/lib/auth-client';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 interface ForkButtonProps {
-  projectId: string;
+  projectId: Id<'projects'>;
   projectSlug: string;
   projectName: string;
   ownerUsername: string;

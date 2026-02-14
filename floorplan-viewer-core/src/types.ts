@@ -110,11 +110,25 @@ export interface ViewerPublicApi {
 
   // -- Camera --
 
-  /** Camera state access (for save/restore). */
+  /** Camera state access (for save/restore and advanced control). */
   cameraManager?: {
     getCameraState?: () => CameraState;
     setCameraState?: (state: CameraState) => void;
+    /** Toggle between perspective and orthographic camera modes. */
+    toggleCameraMode?(): void;
+    /** Snap to isometric (45°/60°) view. */
+    setIsometricView?(): void;
   };
+
+  /** Set the perspective camera's field of view in degrees. */
+  setFov?(fov: number): void;
+
+  // -- Selection Manager --
+
+  /** Get the selection manager for subscribing to selection changes. */
+  getSelectionManager?(): {
+    onSelectionChange(cb: (event: { selection: ReadonlySet<SelectionEntity> }) => void): () => void;
+  } | null;
 
   // -- File Operations --
   // Available when the core is FloorplanAppCore (not all implementations support these).

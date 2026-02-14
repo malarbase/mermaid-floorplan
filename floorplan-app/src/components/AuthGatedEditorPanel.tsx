@@ -1,6 +1,7 @@
 import { useNavigate } from '@solidjs/router';
 import { createMemo, Show } from 'solid-js';
 import { useSession } from '~/lib/auth-client';
+import type { Id } from '../../convex/_generated/dataModel';
 import { FloorplanEditor } from './FloorplanEditor';
 import { ForkButton } from './ForkButton';
 
@@ -13,7 +14,7 @@ export interface AuthGatedEditorPanelProps {
   /**
    * The project ID (required for forking)
    */
-  projectId: string;
+  projectId: Id<'projects'>;
 
   /**
    * The project slug (required for forking)

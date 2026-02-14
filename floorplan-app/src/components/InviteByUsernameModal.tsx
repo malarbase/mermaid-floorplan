@@ -2,6 +2,7 @@ import { useMutation } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 interface InviteByUsernameModalProps {
   /** Whether the modal is open */
@@ -9,7 +10,7 @@ interface InviteByUsernameModalProps {
   /** Callback when modal is closed */
   onClose: () => void;
   /** Project ID to invite to */
-  projectId: string;
+  projectId: Id<'projects'>;
   /** Callback when invitation is successful */
   onSuccess?: (username: string, role: 'viewer' | 'editor') => void;
 }

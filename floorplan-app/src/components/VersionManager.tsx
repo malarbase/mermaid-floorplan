@@ -1,5 +1,6 @@
 import { useNavigate } from '@solidjs/router';
 import { createSignal, Show } from 'solid-js';
+import type { Id } from '../../convex/_generated/dataModel';
 import { CreateVersionModal } from './CreateVersionModal';
 import { VersionList } from './VersionList';
 
@@ -15,7 +16,7 @@ interface Version {
 
 interface VersionManagerProps {
   /** Project ID */
-  projectId: string;
+  projectId: Id<'projects'>;
   /** Username for URLs */
   username: string;
   /** Project slug for URLs */

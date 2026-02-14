@@ -2,6 +2,7 @@ import { useMutation } from 'convex-solidjs';
 import { createEffect, createSignal, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 interface DeleteVersionModalProps {
   /** Whether the modal is open */
@@ -9,7 +10,7 @@ interface DeleteVersionModalProps {
   /** Callback when modal is closed */
   onClose: () => void;
   /** Project ID */
-  projectId: string;
+  projectId: Id<'projects'>;
   /** Version name to delete */
   versionName: string;
   /** Callback when version is deleted successfully */

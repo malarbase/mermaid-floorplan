@@ -13,17 +13,11 @@
  * So we use a minimal worker setup that just satisfies Monaco's requirements.
  */
 
-declare global {
-  interface Window {
-    MonacoEnvironment?: {
-      getWorker: (workerId: string, label: string) => Worker;
-    };
-  }
-}
-
 // Configure Monaco Environment for Vite/SolidStart
 if (typeof window !== 'undefined' && !window.MonacoEnvironment) {
-  window.MonacoEnvironment = {
+  (
+    window as { MonacoEnvironment?: { getWorker: (workerId: string, label: string) => Worker } }
+  ).MonacoEnvironment = {
     // Return a stub worker for the editor
     // Our DSL uses Monarch tokenizer (synchronous) so we don't need language workers
     getWorker(_workerId: string, _label: string) {

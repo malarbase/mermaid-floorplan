@@ -23,11 +23,11 @@ export default function AuditLog() {
 
   const auditLog = useQuery(api.admin.getAuditLog, { limit: 100 });
 
-  const filteredLog = createMemo(() => {
-    const log = auditLog.data();
+  const filteredLog = createMemo((): AuditLogEntry[] => {
+    const log = auditLog.data() as AuditLogEntry[] | undefined;
     if (!log) return [];
 
-    return log.filter((entry: AuditLogEntry) => {
+    return log.filter((entry) => {
       // Date filter
       if (dateFrom()) {
         const fromTime = new Date(dateFrom()).getTime();
@@ -153,7 +153,7 @@ export default function AuditLog() {
               </Show>
 
               <For each={filteredLog()}>
-                {(entry: AuditLogEntry) => (
+                {(entry) => (
                   <tr class="hover:bg-base-200/30 transition-colors">
                     <td class="whitespace-nowrap font-mono text-xs text-base-content/70">
                       {new Date(entry.ts).toLocaleString()}

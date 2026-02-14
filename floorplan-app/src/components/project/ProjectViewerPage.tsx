@@ -121,17 +121,13 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
   const [coreInstance, setCoreInstance] = createSignal<CoreInstance | null>(null);
 
   // --- Thumbnail capture hook ---
-  const thumbnail = useThumbnailCapture(coreInstance, () => project()?._id as string | undefined);
+  const thumbnail = useThumbnailCapture(coreInstance, () => project()?._id);
 
   // --- Save functionality (shared hook) ---
   // Auto-capture a preview thumbnail after each save (throttled to every 30s)
-  const save = useProjectSave(
-    content,
-    () => project()?._id as string | undefined,
-    props.versionName,
-    isOwner,
-    { onSaveSuccess: () => thumbnail.capture() },
-  );
+  const save = useProjectSave(content, () => project()?._id, props.versionName, isOwner, {
+    onSaveSuccess: () => thumbnail.capture(),
+  });
 
   // Handle version created
   const handleVersionCreated = (versionId: string, newVersionName: string) => {
@@ -169,7 +165,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
       {/* Version Switcher */}
       <Show when={project() && username() && projectSlug()}>
         <VersionSwitcher
-          projectId={project()!._id as string}
+          projectId={project()!._id}
           username={username()!}
           projectSlug={projectSlug()!}
           defaultVersion={project()?.defaultVersion}
@@ -213,10 +209,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
           </Show>
         }
       >
-        <VisibilityToggle
-          projectId={project()!._id as string}
-          isPublic={project()?.isPublic ?? false}
-        />
+        <VisibilityToggle projectId={project()!._id} isPublic={project()?.isPublic ?? false} />
       </Show>
 
       <Show when={isOwner()}>
@@ -264,7 +257,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
       {/* Fork button for non-owners */}
       <Show when={!isOwner() && project()}>
         <ForkButton
-          projectId={project()!._id as string}
+          projectId={project()!._id}
           projectSlug={projectSlug()!}
           projectName={project()!.displayName}
           ownerUsername={username()!}
@@ -329,7 +322,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
         <CreateVersionModal
           isOpen={showCreateVersionModal()}
           onClose={() => setShowCreateVersionModal(false)}
-          projectId={project()!._id as string}
+          projectId={project()!._id}
           fromVersion={props.versionName()}
           username={username()!}
           projectSlug={projectSlug()!}

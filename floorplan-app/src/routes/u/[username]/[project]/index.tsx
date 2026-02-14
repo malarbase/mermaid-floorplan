@@ -23,8 +23,8 @@ export default function ProjectView() {
 
   // Check for slug redirects before loading project
   const slugResolveQuery = useQuery(api.projects.resolveSlug, () => ({
-    username: username(),
-    slug: projectSlug(),
+    username: username() ?? '',
+    slug: projectSlug() ?? '',
   }));
 
   // Handle redirect if slug has changed
@@ -43,7 +43,7 @@ export default function ProjectView() {
   // Version data (default version)
   const defaultVersion = createMemo(() => project()?.defaultVersion ?? 'main');
   const { content, currentHash, isVersionLoading } = useVersionData(
-    () => project()?._id as string | undefined,
+    () => project()?._id,
     defaultVersion,
   );
 

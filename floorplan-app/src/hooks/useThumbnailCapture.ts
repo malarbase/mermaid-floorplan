@@ -10,6 +10,7 @@ import { useMutation } from 'convex-solidjs';
 import { type Accessor, createSignal } from 'solid-js';
 import type { CoreInstance } from '~/lib/project-types';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 /**
  * Hook that encapsulates the thumbnail capture → upload → save pipeline.
@@ -20,7 +21,7 @@ import { api } from '../../convex/_generated/api';
  */
 export function useThumbnailCapture(
   coreInstance: Accessor<CoreInstance | null>,
-  projectId: Accessor<string | undefined>,
+  projectId: Accessor<Id<'projects'> | undefined>,
 ) {
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const saveThumbnailMutation = useMutation(api.storage.saveThumbnail);

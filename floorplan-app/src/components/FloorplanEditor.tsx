@@ -327,7 +327,9 @@ export function FloorplanEditor(props: FloorplanEditorProps) {
           dsl={currentContent()}
           editable={props.editable}
           onDslChange={handleContentChange}
-          onSave={quickSave}
+          onSave={() => {
+            quickSave();
+          }}
         />
       </div>
 

@@ -152,7 +152,7 @@ function VersionCard(props: {
   onToggle: () => void;
   username: string;
   projectSlug: string;
-  projectId: string;
+  projectId: Id<'projects'>;
   isOwner: boolean;
   copiedHash: () => string | null;
   onCopied: (hash: string) => void;
@@ -161,7 +161,7 @@ function VersionCard(props: {
   const historyQuery = useQuery(
     api.projects.getVersionHistory,
     () => ({
-      projectId: props.projectId as Id<'projects'>,
+      projectId: props.projectId,
       versionName: props.version.name,
       limit: 50,
     }),
@@ -211,9 +211,9 @@ function VersionCard(props: {
     setRestoreError('');
     try {
       await moveToSnapshot.mutate({
-        projectId: props.projectId as Id<'projects'>,
+        projectId: props.projectId,
         versionName: props.version.name,
-        snapshotId: snapshot._id as Id<'snapshots'>,
+        snapshotId: snapshot._id as Id<'snapshots'>, // snapshot._id comes from Convex data
       });
       setRestoreTarget(null);
     } catch (err) {

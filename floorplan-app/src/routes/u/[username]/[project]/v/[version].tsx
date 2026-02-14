@@ -27,7 +27,7 @@ export default function VersionView() {
 
   // Version data
   const { content, currentHash, versionExists, isVersionLoading } = useVersionData(
-    () => project()?._id as string | undefined,
+    () => project()?._id,
     versionName,
   );
 

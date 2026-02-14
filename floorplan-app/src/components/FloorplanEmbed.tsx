@@ -7,6 +7,8 @@ export interface FloorplanEmbedProps {
   editable?: boolean;
   /** Container ID (auto-generated if not provided) */
   containerId?: string;
+  /** Theme override ('light' | 'dark'). Falls back to app-level theme when omitted. */
+  theme?: 'light' | 'dark';
   /** Whether to show the full UI (toolbar, command palette, etc.) */
   withUI?: boolean;
   /** Callback when DSL changes (for editable mode) */
@@ -29,6 +31,7 @@ export function FloorplanEmbed(props: FloorplanEmbedProps) {
     <FloorplanContainer
       dsl={props.dsl}
       containerId={props.containerId}
+      theme={props.theme}
       editable={props.editable}
       withUI={props.withUI}
       onDslChange={props.onDslChange}

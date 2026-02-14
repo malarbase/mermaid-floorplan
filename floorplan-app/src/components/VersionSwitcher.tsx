@@ -4,6 +4,7 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { DeleteVersionModal } from '~/components/DeleteVersionModal';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 // Version type from Convex schema
 interface Version {
@@ -17,7 +18,7 @@ interface Version {
 
 export interface VersionSwitcherProps {
   /** Project ID to fetch versions for */
-  projectId: string;
+  projectId: Id<'projects'>;
   /** Username for constructing version URLs */
   username: string;
   /** Project slug for constructing version URLs */

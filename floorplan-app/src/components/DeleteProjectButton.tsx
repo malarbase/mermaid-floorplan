@@ -3,10 +3,11 @@ import { createSignal } from 'solid-js';
 import { Portal } from 'solid-js/web';
 import { Modal } from '~/components/ui/Modal';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 interface DeleteProjectButtonProps {
-  /** Project ID to delete (string type for when generated files don't exist) */
-  projectId: string;
+  /** Project ID to delete */
+  projectId: Id<'projects'>;
   /** Project name for confirmation dialog */
   projectName: string;
   /** Callback when deletion completes */

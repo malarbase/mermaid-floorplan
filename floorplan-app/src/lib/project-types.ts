@@ -3,7 +3,8 @@
  * Used across route components that display floorplan projects.
  */
 
-import type { Id } from '../../convex/_generated/dataModel';
+import type { SystemTableNames } from 'convex/server';
+import type { Id, TableNames } from '../../convex/_generated/dataModel';
 
 // ---------------------------------------------------------------------------
 // Viewer & Core Types
@@ -33,11 +34,19 @@ export interface SelectionChangeEvent {
 }
 
 // ---------------------------------------------------------------------------
-// ID Aliases
+// ID Aliases & Helpers
 // ---------------------------------------------------------------------------
 
-/** Project ID — accepts both Convex Id and plain string */
-export type ProjectId = Id<'projects'> | string;
+/** Project ID — always a Convex Id<'projects'> inside the app */
+export type ProjectId = Id<'projects'>;
+
+/**
+ * Cast a raw string (e.g. route param) to a Convex Id.
+ * Use at the route/boundary layer only — interior code should pass Id types.
+ */
+export function asId<T extends TableNames | SystemTableNames>(s: string): Id<T> {
+  return s as unknown as Id<T>;
+}
 
 // ---------------------------------------------------------------------------
 // Domain Types
@@ -47,12 +56,12 @@ export type ProjectId = Id<'projects'> | string;
  * Project entity from Convex
  */
 export interface Project {
-  _id: ProjectId;
+  _id: Id<'projects'>;
   displayName: string;
   description?: string;
   isPublic: boolean;
   defaultVersion: string;
-  userId: string;
+  userId: Id<'users'>;
   slug: string;
   thumbnail?: string;
   cameraState?: CameraStateData;
@@ -62,7 +71,7 @@ export interface Project {
  * Project owner information
  */
 export interface Owner {
-  _id: string;
+  _id: Id<'users'>;
   username: string;
 }
 
@@ -78,20 +87,20 @@ export interface ForkedFrom {
  * Snapshot (immutable content version)
  */
 export interface Snapshot {
-  _id?: string;
+  _id?: Id<'snapshots'>;
   content: string;
   snapshotHash: string;
   contentHash: string;
   message?: string;
   createdAt: number;
-  authorId?: string;
+  authorId?: Id<'users'>;
 }
 
 /**
  * Version data with associated snapshot
  */
 export interface VersionData {
-  version: { name: string; snapshotId: string };
+  version: { name: string; snapshotId: Id<'snapshots'> };
   snapshot: Snapshot | null;
 }
 

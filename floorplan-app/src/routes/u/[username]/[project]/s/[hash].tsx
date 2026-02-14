@@ -40,7 +40,7 @@ export default function SnapshotView() {
 
   // Snapshot data
   const { snapshot, content, isSnapshotLoading, snapshotNotFound } = useSnapshotData(
-    () => project()?._id as string | undefined,
+    () => project()?._id,
     hash,
   );
 

@@ -2,6 +2,7 @@ import { useMutation } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 interface CreateVersionModalProps {
   /** Whether the modal is open */
@@ -9,7 +10,7 @@ interface CreateVersionModalProps {
   /** Callback when modal is closed */
   onClose: () => void;
   /** Project ID to create version for */
-  projectId: string;
+  projectId: Id<'projects'>;
   /** Current version name to branch from (defaults to project's default) */
   fromVersion?: string;
   /** Callback when version is created successfully */

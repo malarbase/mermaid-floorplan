@@ -22,8 +22,8 @@ export function useProjectData(
 
   // Query project data from Convex
   const projectQuery = useQuery(api.projects.getBySlug, () => ({
-    username: username(),
-    projectSlug: projectSlug(),
+    username: username() ?? '',
+    projectSlug: projectSlug() ?? '',
   }));
 
   // Get current user session
@@ -83,13 +83,13 @@ export function useProjectData(
  * Hook for fetching version data (mutable reference to snapshot).
  */
 export function useVersionData(
-  projectId: Accessor<string | undefined>,
+  projectId: Accessor<Id<'projects'> | undefined>,
   versionName: Accessor<string | undefined>,
 ) {
   const versionQuery = useQuery(
     api.projects.getVersion,
     () => ({
-      projectId: projectId() ?? ('' as Id<'projects'>),
+      projectId: (projectId() ?? '') as Id<'projects'>,
       versionName: versionName() ?? 'main',
     }),
     () => ({ enabled: !!projectId() }),
@@ -121,16 +121,16 @@ export function useVersionData(
  * Hook for fetching snapshot data by hash (immutable permalink).
  */
 export function useSnapshotData(
-  projectId: Accessor<string | undefined>,
+  projectId: Accessor<Id<'projects'> | undefined>,
   hash: Accessor<string | undefined>,
 ) {
   const snapshotQuery = useQuery(
     api.projects.getByHash,
     () => ({
-      projectId: projectId() ?? ('' as Id<'projects'>),
-      hash: hash(),
+      projectId: (projectId() ?? '') as Id<'projects'>,
+      hash: hash() ?? '',
     }),
-    () => ({ enabled: !!projectId() }),
+    () => ({ enabled: !!projectId() && !!hash() }),
   );
 
   const snapshot = createMemo(() => {

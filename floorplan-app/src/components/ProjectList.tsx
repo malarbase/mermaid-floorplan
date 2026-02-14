@@ -2,12 +2,13 @@ import { A } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
 import { createMemo, For, Show } from 'solid-js';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 import { DeleteProjectButton } from './DeleteProjectButton';
 import { VisibilityToggle } from './VisibilityToggle';
 
 // Project type from Convex schema
 interface Project {
-  _id: string;
+  _id: Id<'projects'>;
   slug: string;
   displayName: string;
   description?: string;

@@ -7,7 +7,9 @@ import { DeleteProjectButton } from '~/components/DeleteProjectButton';
 import { InviteByUsernameModal } from '~/components/InviteByUsernameModal';
 import { VisibilityToggle } from '~/components/VisibilityToggle';
 import { useProjectData } from '~/hooks/useProjectData';
+import { asId } from '~/lib/project-types';
 import { api } from '../../../../../convex/_generated/api';
+import type { Id } from '../../../../../convex/_generated/dataModel';
 
 interface Collaborator {
   _id: string;
@@ -72,7 +74,7 @@ export default function ProjectSettings() {
   // Query collaborators
   const collaboratorsQuery = useQuery(
     api.sharing.getCollaborators,
-    () => ({ projectId: project()?._id ?? '' }),
+    () => ({ projectId: (project()?._id ?? '') as Id<'projects'> }),
     () => ({ enabled: !!project() }),
   );
 
@@ -83,7 +85,7 @@ export default function ProjectSettings() {
   // Query share links
   const shareLinksQuery = useQuery(
     api.sharing.getShareLinks,
-    () => ({ projectId: project()?._id ?? '' }),
+    () => ({ projectId: (project()?._id ?? '') as Id<'projects'> }),
     () => ({ enabled: !!project() }),
   );
 
@@ -134,7 +136,7 @@ export default function ProjectSettings() {
 
   const slugCheckQuery = useQuery(
     api.projects.getBySlug,
-    () => ({ username: username(), projectSlug: debouncedSlug() || '' }),
+    () => ({ username: username() ?? '', projectSlug: debouncedSlug() || '' }),
     () => ({
       enabled: isEditingSlug() && !!debouncedSlug() && debouncedSlug() !== projectSlug(),
     }),
@@ -191,7 +193,7 @@ export default function ProjectSettings() {
     try {
       await removeCollaborator.mutate({
         projectId: proj._id,
-        userId,
+        userId: asId<'users'>(userId),
       });
     } catch (err) {
       console.error('Failed to remove collaborator:', err);
@@ -206,7 +208,7 @@ export default function ProjectSettings() {
     try {
       await updateCollaboratorRole.mutate({
         projectId: proj._id,
-        userId,
+        userId: asId<'users'>(userId),
         role: newRole,
       });
     } catch (err) {
@@ -219,7 +221,7 @@ export default function ProjectSettings() {
     if (!confirm('Revoke this share link? Anyone using it will lose access.')) return;
 
     try {
-      await revokeShareLink.mutate({ linkId });
+      await revokeShareLink.mutate({ linkId: asId<'shareLinks'>(linkId) });
     } catch (err) {
       console.error('Failed to revoke share link:', err);
     }

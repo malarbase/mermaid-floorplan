@@ -108,6 +108,16 @@ const EMPTY_STATE: SelectionState = {
 export type GetEntityDataFn = (entityType: string, entityId: string) => Record<string, unknown>;
 
 /**
+ * Minimal interface for a core instance that exposes selection management.
+ * Both `EditorBundleCoreApi` and `ViewerPublicApi` satisfy this structurally.
+ */
+export interface SelectionSource {
+  getSelectionManager?(): {
+    onSelectionChange(cb: (event: { selection: ReadonlySet<SelectionEntity> }) => void): () => void;
+  } | null;
+}
+
+/**
  * Subscribe to selection changes from the 3D viewer core.
  *
  * Uses `createEffect` to wait for the core to become available (handles async init),
@@ -118,7 +128,7 @@ export type GetEntityDataFn = (entityType: string, entityId: string) => Record<s
  * @returns Accessor for the current SelectionState
  */
 export function useSelection(
-  core: Accessor<Record<string, unknown> | null>,
+  core: Accessor<SelectionSource | null>,
   getEntityData?: GetEntityDataFn,
 ): Accessor<SelectionState> {
   const [state, setState] = createSignal<SelectionState>(EMPTY_STATE);

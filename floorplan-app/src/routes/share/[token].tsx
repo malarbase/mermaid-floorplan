@@ -29,7 +29,7 @@ export default function ShareLinkPage() {
 
   // Validate the share link
   const validationQuery = useQuery(api.sharing.validateShareLink, () => ({
-    token: token(),
+    token: token() ?? '',
   }));
 
   const validation = createMemo(() => {

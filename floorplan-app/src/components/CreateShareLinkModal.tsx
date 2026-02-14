@@ -2,11 +2,12 @@ import { useMutation } from 'convex-solidjs';
 import { createSignal, Show } from 'solid-js';
 import { Modal } from '~/components/ui/Modal';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
 
 interface CreateShareLinkModalProps {
   isOpen: boolean;
   onClose: () => void;
-  projectId: string;
+  projectId: Id<'projects'>;
   onSuccess?: (token: string, role: 'viewer' | 'editor') => void;
 }
 

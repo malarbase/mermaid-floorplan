@@ -27,6 +27,8 @@ const DSL_THEME_PROMPT_KEY = 'floorplan-app-dsl-theme-prompt-disabled';
 interface FloorplanContainerProps {
   dsl: string;
   containerId?: string;
+  /** Theme override. Falls back to app-level theme from useAppTheme() when omitted. */
+  theme?: 'light' | 'dark';
   mode?: ViewerMode;
   initialMode?: ViewerMode;
   onDslChange?: (dsl: string) => void;
@@ -101,7 +103,9 @@ function ThemeSuggestionBanner(props: {
 }
 
 export function FloorplanContainer(props: FloorplanContainerProps) {
-  const { theme, setTheme, toggleTheme } = useAppTheme();
+  const appTheme = useAppTheme();
+  const theme = () => props.theme ?? appTheme.theme();
+  const { setTheme, toggleTheme } = appTheme;
   const [params] = useSearchParams();
   const _location = useLocation();
 
