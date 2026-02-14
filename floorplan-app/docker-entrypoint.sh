@@ -37,8 +37,24 @@ if [ $attempt -eq $max_attempts ]; then
   exec "$@"
 fi
 
-# Deploy Convex functions
+# Generate dev auth keys if needed (must happen before Convex deploy
+# so auth.config.ts has the correct JWKS when functions are deployed)
 cd /app/floorplan-app
+if [ ! -f dev-keys/private.pem ]; then
+  echo "Generating dev auth keys..."
+  npx tsx scripts/generate-dev-keys.ts 2>&1
+else
+  # Keys exist — ensure auth.config.ts is patched (it may have been
+  # reset to an empty jwks placeholder by a git operation)
+  if grep -q "jwks: ''," convex/auth.config.ts 2>/dev/null; then
+    echo "Dev keys exist but auth.config.ts has empty JWKS — re-patching..."
+    npx tsx scripts/generate-dev-keys.ts 2>&1
+  else
+    echo "Dev auth keys already present"
+  fi
+fi
+
+# Deploy Convex functions
 
 echo "Setting Convex environment variables..."
 npx convex env set DEV_AUTH_ENABLED true \

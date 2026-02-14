@@ -49,6 +49,9 @@ The app uses a structured environment configuration system:
 # From workspace root
 npm install
 
+# Generate dev auth keys (first time only — auto-runs on `npm run dev` if missing)
+npm run --workspace floorplan-app generate-dev-keys
+
 # Start development server
 npm run --workspace floorplan-app dev
 
@@ -57,6 +60,10 @@ npm run dev
 ```
 
 The dev server runs at http://localhost:3000.
+
+> **Note:** Dev auth keys (`dev-keys/`) are gitignored. They're auto-generated on
+> first `npm run dev`, or you can run `npm run generate-dev-keys` manually. The
+> script also patches `convex/auth.config.ts` with the matching JWKS public key.
 
 ### Testing 3D Viewer
 

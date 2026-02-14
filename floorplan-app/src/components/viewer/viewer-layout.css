@@ -21,12 +21,19 @@
   right: 10px;
   width: 320px;
   z-index: 10;
-  pointer-events: none; /* Allow clicks through to canvas */
+  /* pointer-events: none removed -- wrapper matches content size,
+     so no dead zones block canvas clicks. Needed for :hover to work. */
+  opacity: 0.15;
+  transition: opacity 0.3s ease;
+}
+
+.control-panel:hover {
+  opacity: 1;
 }
 
 /* The inner wrapper contains the actual control panel */
 .control-panel > div {
-  pointer-events: auto; /* Re-enable clicks for the panel content */
+  pointer-events: auto; /* Keep for explicitness */
 }
 
 /* Let the fp-control-panel use its natural floating styles */

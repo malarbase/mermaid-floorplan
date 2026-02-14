@@ -32,6 +32,9 @@ services:
       - ./floorplan-app/convex:/app/floorplan-app/convex
       - ./floorplan-app/app.config.ts:/app/floorplan-app/app.config.ts
       - ./floorplan-app/package.json:/app/floorplan-app/package.json
+      # Dev auth keys + key generation script (shared between host and container)
+      - ./floorplan-app/dev-keys:/app/floorplan-app/dev-keys
+      - ./floorplan-app/scripts:/app/floorplan-app/scripts
       # Mount shared packages for development
       - ./floorplan-viewer-core/src:/app/floorplan-viewer-core/src
       - ./floorplan-3d-core/src:/app/floorplan-3d-core/src

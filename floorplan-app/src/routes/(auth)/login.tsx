@@ -1,33 +1,43 @@
 import { Title } from '@solidjs/meta';
-import { A, useNavigate } from '@solidjs/router';
-import { createEffect, createMemo } from 'solid-js';
+import { A, useNavigate, useSearchParams } from '@solidjs/router';
+import { createEffect, createMemo, Show } from 'solid-js';
 import { Header } from '~/components/Header';
 import { authClient, useSession } from '~/lib/auth-client';
 
 /**
  * Login page with Google OAuth sign-in.
  * Features a polished, centered card design with visual appeal.
+ *
+ * Supports ?returnUrl= query param for post-login redirect (e.g., from fork button).
+ * In dev mode, shows a "Dev Login" link for multi-persona testing.
  */
 export default function Login() {
   const sessionSignal = useSession();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Derive session state from the signal
   const session = createMemo(() => sessionSignal());
   const isLoggedIn = createMemo(() => session()?.data != null);
   const isPending = createMemo(() => session()?.isPending ?? false);
 
-  // Redirect to dashboard if already logged in
+  const returnUrl = (): string => {
+    const param = searchParams.returnUrl;
+    if (Array.isArray(param)) return param[0] ?? '/dashboard';
+    return param ?? '/dashboard';
+  };
+
+  // Redirect if already logged in
   createEffect(() => {
     if (isLoggedIn()) {
-      navigate('/dashboard', { replace: true });
+      navigate(returnUrl(), { replace: true });
     }
   });
 
   const handleGoogleSignIn = () => {
     authClient.signIn.social({
       provider: 'google',
-      callbackURL: '/dashboard',
+      callbackURL: returnUrl(),
     });
   };
 
@@ -127,6 +137,17 @@ export default function Login() {
               >
                 Continue as guest (view only)
               </A>
+
+              {/* Dev login link (dev mode only) */}
+              <Show when={import.meta.env.DEV}>
+                <div class="divider text-xs text-base-content/40 my-4">dev</div>
+                <A
+                  href={`/dev-login${returnUrl() !== '/dashboard' ? `?returnUrl=${encodeURIComponent(returnUrl())}` : ''}`}
+                  class="btn btn-ghost btn-sm w-full text-warning hover:text-warning"
+                >
+                  Dev Login (multi-persona)
+                </A>
+              </Show>
             </div>
           </div>
 

@@ -40,8 +40,48 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
     if (convexUrl) {
       console.log('Connecting to Convex at:', convexUrl);
       const convexClient = new ConvexClient(convexUrl);
-      setClient(convexClient);
-      setIsReady(true);
+
+      // In dev mode, wire up JWT-based auth before exposing the client.
+      // This ensures ctx.auth.getUserIdentity() returns a real identity
+      // on the first query.
+      if (import.meta.env.DEV) {
+        import('~/lib/mock-auth').then(({ getDevToken }) => {
+          let authSettled = false;
+
+          convexClient.setAuth(
+            async () => getDevToken(),
+            (isAuthenticated) => {
+              if (!authSettled) {
+                authSettled = true;
+                setClient(convexClient);
+                setIsReady(true);
+              }
+            },
+          );
+
+          // Safety timeout: if onChange never fires within 2s, render anyway
+          setTimeout(() => {
+            if (!authSettled) {
+              authSettled = true;
+              setClient(convexClient);
+              setIsReady(true);
+            }
+          }, 2000);
+
+          // Re-trigger auth when dev user switches (localStorage change)
+          window.addEventListener('storage', (e) => {
+            if (e.key === 'dev-auth-token') {
+              convexClient.setAuth(
+                async () => getDevToken(),
+                () => {},
+              );
+            }
+          });
+        });
+      } else {
+        setClient(convexClient);
+        setIsReady(true);
+      }
     } else {
       console.warn('VITE_CONVEX_URL not set - Convex features disabled');
       setIsReady(true);

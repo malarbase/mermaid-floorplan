@@ -1,6 +1,6 @@
 import { createAuthClient } from 'better-auth/solid';
 import { useQuery } from 'convex-solidjs';
-import { type Accessor, createMemo, createSignal, onMount } from 'solid-js';
+import { type Accessor, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import { api } from '../../convex/_generated/api';
 import { isDevLoggedIn } from './mock-auth';
 
@@ -51,92 +51,94 @@ export interface SessionData {
 }
 
 /**
- * Session hook that supports dev authentication bypass.
+ * Session hook that works identically in dev and production.
  *
  * In development:
- *   - Checks the dev-logged-in flag from localStorage
- *   - If logged in, queries Convex `users:getCurrentUser` for the real dev user data
- *   - This means Convex is the single source of truth — username changes,
- *     profile updates, etc. are automatically reflected without manual sync
- *   - If not logged in, returns null (visitor)
+ *   - JWT from mock-auth.ts is verified by Convex's customJwt provider
+ *   - ctx.auth.getUserIdentity() returns a real identity
+ *   - getCurrentUser query works via the standard auth path
+ *   - Listens for localStorage changes to re-query when personas switch
  *
  * In production:
  *   - Uses Better Auth session (real OAuth)
  */
 export function useSession(): Accessor<SessionData> {
-  // Dev mode: derive session from Convex dev user
+  // Dev mode: derive session from getCurrentUser (backed by JWT auth).
+  // ConvexProvider.tsx calls setAuth() with the dev JWT, so
+  // ctx.auth.getUserIdentity() works identically to production.
   if (import.meta.env.DEV) {
     const [devLoggedIn, setDevLoggedIn] = createSignal(false);
     const [isChecked, setIsChecked] = createSignal(false);
+    const [authVersion, setAuthVersion] = createSignal(0);
 
-    // Check localStorage flag on mount (client-side only)
     onMount(() => {
       setDevLoggedIn(isDevLoggedIn());
       setIsChecked(true);
+
+      const onStorageChange = (e: StorageEvent) => {
+        if (e.key === 'dev-auth-token') {
+          setDevLoggedIn(isDevLoggedIn());
+          setAuthVersion((v) => v + 1);
+        }
+      };
+      window.addEventListener('storage', onStorageChange);
+      onCleanup(() => window.removeEventListener('storage', onStorageChange));
     });
 
-    // Query Convex for the actual dev user (only when logged in)
+    // Query Convex for the current user — works via JWT auth in dev
     const convexUser = useQuery(
       api.users.getCurrentUser,
-      () => ({}),
+      () => {
+        void authVersion();
+        return {};
+      },
       () => ({ enabled: devLoggedIn() }),
     );
 
-    // Use real auth hook as fallback when not using dev login
-    const realSession = realUseSession();
-
     return createMemo(() => {
-      // Still checking localStorage
       if (!isChecked()) {
         return { data: null, isPending: true, error: null };
       }
 
-      // Dev logged in — use Convex user data as session
-      if (devLoggedIn()) {
-        const user = convexUser.data() as
-          | {
-              _id: string;
-              authId: string;
-              username: string;
-              displayName?: string;
-              avatarUrl?: string | null;
-              isAdmin?: boolean;
-            }
-          | null
-          | undefined;
-
-        if (user === undefined) {
-          // Query still loading
-          return { data: null, isPending: true, error: null };
-        }
-
-        if (!user) {
-          // Dev user not found in Convex (shouldn't happen normally)
-          return { data: null, isPending: false, error: null };
-        }
-
-        return {
-          data: {
-            user: {
-              id: user.authId,
-              email: `${user.username}@dev.local`,
-              name: user.displayName ?? user.username,
-              username: user.username,
-              image: user.avatarUrl,
-              isAdmin: user.isAdmin,
-            } as SessionUser,
-          },
-          isPending: false,
-          error: null,
-        };
+      if (!devLoggedIn()) {
+        return { data: null, isPending: false, error: null };
       }
 
-      // Not dev-logged-in — fall back to real auth
-      const session = realSession();
+      const user = convexUser.data() as
+        | {
+            _id: string;
+            authId: string;
+            username: string;
+            displayName?: string;
+            avatarUrl?: string | null;
+            isAdmin?: boolean;
+          }
+        | null
+        | undefined;
+
+      // undefined = query hasn't returned yet; null = no user found
+      if (user === undefined) {
+        return { data: null, isPending: true, error: null };
+      }
+
+      if (!user) {
+        // getCurrentUser returned null — JWT not verified or no user document
+        return { data: null, isPending: false, error: null };
+      }
+
       return {
-        data: session.data ? { user: session.data.user as unknown as SessionUser } : null,
-        isPending: session.isPending,
-        error: session.error ?? null,
+        data: {
+          user: {
+            id: user.authId,
+            email: `${user.username}@dev.local`,
+            name: user.displayName ?? user.username,
+            username: user.username,
+            image: user.avatarUrl,
+            isAdmin: user.isAdmin,
+          } as SessionUser,
+        },
+        isPending: false,
+        error: null,
       };
     });
   }
