@@ -669,10 +669,12 @@ function extractEntityLocations(jsonData: JsonExport): EntityLocation[] {
   return locations;
 }
 
-function findSelectedEntity() {
+function findSelectedEntity(): EntityLocation | null {
   const selection = editorCore.getSelection();
-  if (selection.size !== 1) return null;
-  return Array.from(selection)[0];
+  if (selection.length !== 1) return null;
+  const selected = selection[0];
+  // Look up EntityLocation (which has sourceRange) from editor core
+  return editorCore.findEntityByName(selected.entityId) ?? null;
 }
 
 function applyEdit(editOp: {
