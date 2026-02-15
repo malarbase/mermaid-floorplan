@@ -23,6 +23,7 @@ import {
   SettingsIcon,
 } from '~/components/project/ProjectPageLayout';
 import { SaveIndicator } from '~/components/project/SaveIndicator';
+import { HardNavigate } from '~/components/ui/HardNavigate';
 import { VersionSwitcher } from '~/components/VersionSwitcher';
 import { VisibilityToggle } from '~/components/VisibilityToggle';
 import { useProjectSave } from '~/hooks/useProjectSave';
@@ -149,9 +150,9 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
         title="Project not found"
         message="This project doesn't exist or you don't have access."
         actions={
-          <A href="/" class="btn btn-primary">
+          <HardNavigate href="/" class="btn btn-primary">
             Go Home
-          </A>
+          </HardNavigate>
         }
       />
     );

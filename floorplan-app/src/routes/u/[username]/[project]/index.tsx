@@ -1,6 +1,6 @@
-import { A, useLocation, useNavigate, useParams } from '@solidjs/router';
+import { useLocation, useNavigate, useParams } from '@solidjs/router';
 import { useQuery } from 'convex-solidjs';
-import { createMemo } from 'solid-js';
+import { createEffect, createMemo, on } from 'solid-js';
 import { ProjectViewerPage } from '~/components/project/ProjectViewerPage';
 import { useProjectData, useShareToken, useVersionData } from '~/hooks/useProjectData';
 import { api } from '../../../../../convex/_generated/api';
@@ -31,19 +31,27 @@ export default function ProjectView() {
     shareToken: shareToken(),
   }));
 
-  // Handle redirect if slug has changed
-  createMemo(() => {
-    const resolved = slugResolveQuery.data();
-    if (resolved?.wasRedirected) {
-      const newUrl = `/u/${username()}/${resolved.currentSlug}${location.search}${location.hash}`;
-      navigate(newUrl, { replace: true });
-    }
-  });
+  // Handle redirect if slug has changed.
+  // Uses createEffect (not createMemo) because this is a side effect.
+  // The `on()` wrapper with `defer: true` ensures it only fires when
+  // slugResolveQuery.data() actually changes, not during route transitions
+  // where params may briefly be undefined.
+  createEffect(
+    on(
+      () => slugResolveQuery.data(),
+      (resolved) => {
+        if (resolved?.wasRedirected && username() && projectSlug()) {
+          const newUrl = `/u/${username()}/${resolved.currentSlug}${location.search}${location.hash}`;
+          navigate(newUrl, { replace: true });
+        }
+      },
+      { defer: true },
+    ),
+  );
 
   // Project data
   const {
     project,
-    owner,
     forkedFrom,
     projectData,
     isOwner,

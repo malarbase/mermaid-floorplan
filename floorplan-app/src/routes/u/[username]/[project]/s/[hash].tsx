@@ -12,6 +12,7 @@ import {
   ProjectBreadcrumbs,
   ProjectPageLayout,
 } from '~/components/project/ProjectPageLayout';
+import { HardNavigate } from '~/components/ui/HardNavigate';
 import { useProjectData, useShareToken, useSnapshotData } from '~/hooks/useProjectData';
 import type { ViewerMode } from '~/lib/project-types';
 
@@ -38,8 +39,11 @@ export default function SnapshotView() {
   const shareToken = useShareToken();
 
   // Project data
-  const { project, forkedFrom, projectData, isOwner, isProjectLoading, projectNotFound } =
-    useProjectData(username, projectSlug, shareToken);
+  const { project, forkedFrom, projectData, isProjectLoading, projectNotFound } = useProjectData(
+    username,
+    projectSlug,
+    shareToken,
+  );
 
   // Snapshot data
   const { snapshot, content, isSnapshotLoading, snapshotNotFound } = useSnapshotData(
@@ -143,9 +147,9 @@ export default function SnapshotView() {
                 </A>
               </Show>
               <Show when={!projectData()}>
-                <A href="/" class="btn btn-ghost">
+                <HardNavigate href="/" class="btn btn-ghost">
                   Go Home
-                </A>
+                </HardNavigate>
               </Show>
             </>
           }

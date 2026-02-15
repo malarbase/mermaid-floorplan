@@ -2,6 +2,7 @@ import { Title } from '@solidjs/meta';
 import { A } from '@solidjs/router';
 import { HttpStatusCode } from '@solidjs/start';
 import { Header } from '~/components/Header';
+import { HardNavigate } from '~/components/ui/HardNavigate';
 
 /**
  * 404 Not Found page.
@@ -44,9 +45,9 @@ export default function NotFound() {
             </p>
 
             <div class="flex gap-3 justify-center">
-              <A href="/" class="btn btn-primary">
+              <HardNavigate href="/" class="btn btn-primary">
                 Go Home
-              </A>
+              </HardNavigate>
               <A href="/dashboard" class="btn btn-ghost">
                 Dashboard
               </A>

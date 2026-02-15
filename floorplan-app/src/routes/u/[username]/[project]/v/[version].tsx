@@ -2,6 +2,7 @@ import { A, useNavigate, useParams } from '@solidjs/router';
 import { createMemo, Show } from 'solid-js';
 import { NotFoundCard } from '~/components/project/ProjectPageLayout';
 import { ProjectViewerPage } from '~/components/project/ProjectViewerPage';
+import { HardNavigate } from '~/components/ui/HardNavigate';
 import { useProjectData, useShareToken, useVersionData } from '~/hooks/useProjectData';
 
 /**
@@ -79,9 +80,9 @@ export default function VersionView() {
           }
           actions={
             <>
-              <A href="/" class="btn btn-ghost">
+              <HardNavigate href="/" class="btn btn-ghost">
                 Go Home
-              </A>
+              </HardNavigate>
               <Show when={projectData()}>
                 <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary">
                   View Project

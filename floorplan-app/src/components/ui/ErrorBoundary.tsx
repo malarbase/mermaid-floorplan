@@ -1,5 +1,5 @@
-import { A } from '@solidjs/router';
 import { type ParentProps, ErrorBoundary as SolidErrorBoundary } from 'solid-js';
+import { HardNavigate } from '~/components/ui/HardNavigate';
 
 interface ErrorBoundaryProps extends ParentProps {
   /** Fallback component or render function */
@@ -95,9 +95,9 @@ export function ErrorBoundary(props: ErrorBoundaryProps) {
               </svg>
               Try Again
             </button>
-            <A href="/" class="btn btn-ghost">
+            <HardNavigate href="/" class="btn btn-ghost">
               Go Home
-            </A>
+            </HardNavigate>
           </div>
         </div>
       </div>
@@ -169,9 +169,9 @@ export function PageErrorBoundary(props: ParentProps) {
                 >
                   Reload Page
                 </button>
-                <A href="/" class="btn btn-ghost">
+                <HardNavigate href="/" class="btn btn-ghost">
                   Go Home
-                </A>
+                </HardNavigate>
               </div>
             </div>
           </div>

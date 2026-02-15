@@ -4,6 +4,7 @@ import { useMutation, useQuery } from 'convex-solidjs';
 import { createEffect, createMemo, createSignal, For, Show } from 'solid-js';
 import { CreateVersionModal } from '~/components/CreateVersionModal';
 import { DeleteVersionModal } from '~/components/DeleteVersionModal';
+import { HardNavigate } from '~/components/ui/HardNavigate';
 import { Modal } from '~/components/ui/Modal';
 import { useProjectData, useShareToken } from '~/hooks/useProjectData';
 import { copyToClipboard, generatePermalink } from '~/lib/permalink';
@@ -594,9 +595,9 @@ export default function ProjectHistory() {
                 <div class="card-body text-center">
                   <h2 class="card-title">Project not found</h2>
                   <p>This project doesn't exist or you don't have access.</p>
-                  <A href="/" class="btn btn-ghost mt-4">
+                  <HardNavigate href="/" class="btn btn-ghost mt-4">
                     Go Home
-                  </A>
+                  </HardNavigate>
                 </div>
               </div>
             </div>

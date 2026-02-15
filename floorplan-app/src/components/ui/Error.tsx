@@ -1,5 +1,5 @@
-import { A } from '@solidjs/router';
 import { Show } from 'solid-js';
+import { HardNavigate } from '~/components/ui/HardNavigate';
 
 export type ErrorSeverity = 'error' | 'warning' | 'info';
 
@@ -122,9 +122,9 @@ export function ErrorDisplay(props: ErrorDisplayProps) {
         </Show>
 
         <Show when={props.showHomeLink}>
-          <A href="/" class="btn btn-ghost">
+          <HardNavigate href="/" class="btn btn-ghost">
             Go Home
-          </A>
+          </HardNavigate>
         </Show>
       </div>
     </div>
@@ -214,9 +214,9 @@ export function NotFoundError(props: {
               "The resource you're looking for doesn't exist or you don't have access."}
           </p>
 
-          <A href={props.backHref ?? '/'} class="btn btn-primary mt-4">
+          <HardNavigate href={props.backHref ?? '/'} class="btn btn-primary mt-4">
             {props.backLabel ?? 'Go Home'}
-          </A>
+          </HardNavigate>
         </div>
       </div>
     </div>
@@ -252,13 +252,13 @@ export function AccessDeniedError(props: { message?: string; showLoginLink?: boo
           </p>
 
           <div class="flex gap-3 justify-center mt-4">
-            <A href="/" class="btn btn-ghost">
+            <HardNavigate href="/" class="btn btn-ghost">
               Go Home
-            </A>
+            </HardNavigate>
             <Show when={props.showLoginLink}>
-              <A href="/login" class="btn btn-primary">
+              <HardNavigate href="/login" class="btn btn-primary">
                 Log In
-              </A>
+              </HardNavigate>
             </Show>
           </div>
         </div>
