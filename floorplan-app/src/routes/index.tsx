@@ -86,7 +86,7 @@ export default function Home() {
           </h2>
 
           <div class="grid gap-6 md:gap-8 md:grid-cols-3">
-            <div class="project-card p-6 sm:p-8 card-hover">
+            <div class="project-card border border-neutral shadow-sm p-6 sm:p-8 card-hover">
               <div
                 class="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
                 style={{ background: 'oklch(75% 0.18 195 / 0.15)' }}
@@ -118,7 +118,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div class="project-card p-6 sm:p-8 card-hover">
+            <div class="project-card border border-neutral shadow-sm p-6 sm:p-8 card-hover">
               <div
                 class="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
                 style={{ background: 'oklch(75% 0.18 195 / 0.15)' }}
@@ -149,7 +149,7 @@ export default function Home() {
               </p>
             </div>
 
-            <div class="project-card p-6 sm:p-8 card-hover">
+            <div class="project-card border border-neutral shadow-sm p-6 sm:p-8 card-hover">
               <div
                 class="w-12 h-12 rounded-lg flex items-center justify-center mb-4"
                 style={{ background: 'oklch(75% 0.18 195 / 0.15)' }}

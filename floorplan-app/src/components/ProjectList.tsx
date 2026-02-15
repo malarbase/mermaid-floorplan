@@ -255,7 +255,7 @@ export function ProjectList(props: ProjectListProps) {
                 fallback={(() => {
                   const shared = (item as { kind: 'shared'; data: SharedProjectInfo }).data;
                   return (
-                    <div class={`project-card card-shared group`}>
+                    <div class={`project-card card-shared group border border-neutral shadow-sm`}>
                       <A
                         href={`/u/${shared.owner.username}/${shared.project.slug}`}
                         class="absolute inset-0 z-0"
@@ -355,7 +355,7 @@ export function ProjectList(props: ProjectListProps) {
                   const project = (item as { kind: 'own'; data: Project }).data;
                   return (
                     <div
-                      class={`project-card group ${getCardClass(project.isPublic, project.isShared)}`}
+                      class={`project-card group border border-neutral shadow-sm ${getCardClass(project.isPublic, project.isShared)}`}
                     >
                       <A
                         href={`/u/${props.username ?? 'me'}/${project.slug}`}

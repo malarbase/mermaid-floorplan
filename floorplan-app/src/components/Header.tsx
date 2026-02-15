@@ -113,7 +113,7 @@ export const Header: Component<HeaderProps> = (props) => {
 
           <Show when={props.variant !== 'minimal'}>
             <A
-              href="/"
+              href={user() ? '/dashboard' : '/'}
               class="btn btn-ghost text-lg sm:text-xl tracking-wider flex-shrink-0"
               style={{ 'font-family': "'Bebas Neue', sans-serif" }}
             >
