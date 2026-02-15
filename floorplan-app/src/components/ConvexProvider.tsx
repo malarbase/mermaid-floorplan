@@ -79,6 +79,16 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
           });
         });
       } else {
+        // Production: use BA-issued JWT for Convex auth
+        convexClient.setAuth(async () => {
+          try {
+            const res = await fetch('/api/auth/convex/token');
+            const data = await res.json();
+            return data?.token ?? null;
+          } catch {
+            return null;
+          }
+        });
         setClient(convexClient);
         setIsReady(true);
       }

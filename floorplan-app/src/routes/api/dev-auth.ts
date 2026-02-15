@@ -43,6 +43,7 @@ export async function POST(event: APIEvent) {
 
   const body = await event.request.json().catch(() => null);
   const authId = body?.authId;
+  const sessionId = body?.sessionId; // Optional: Better Auth session ID
 
   if (!authId || typeof authId !== 'string') {
     return new Response(JSON.stringify({ error: 'Missing or invalid authId' }), {
@@ -54,7 +55,14 @@ export async function POST(event: APIEvent) {
   try {
     const privateKey = await getPrivateKey();
 
-    const token = await new SignJWT({ sub: authId })
+    // Build JWT claims — include sessionId when provided so that
+    // isSessionValid can do a precise per-session lookup in dev mode
+    const claims: Record<string, unknown> = { sub: authId };
+    if (sessionId && typeof sessionId === 'string') {
+      claims.sessionId = sessionId;
+    }
+
+    const token = await new SignJWT(claims)
       .setProtectedHeader({ alg: JWT_ALG, kid: JWT_KID, typ: 'JWT' })
       .setIssuer(JWT_ISSUER)
       .setAudience(JWT_AUDIENCE)

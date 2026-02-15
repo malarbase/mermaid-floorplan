@@ -43,8 +43,8 @@ export default defineConfig({
     ssr: {
       // External packages that shouldn't be bundled for SSR
       external: ['three', 'monaco-editor'],
-      // Don't externalize better-auth - let it be bundled
-      noExternal: ['better-auth'],
+      // Don't externalize auth packages - let them be bundled for SSR
+      noExternal: ['better-auth', '@convex-dev/better-auth'],
     },
     build: {
       // For client builds, provide a shim for require

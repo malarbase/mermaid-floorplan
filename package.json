@@ -52,6 +52,7 @@
     "floorplan-mcp-server",
     "floorplan-viewer",
     "floorplan-editor",
+    "convex-better-auth-solid-start",
     "floorplan-app"
   ],
   "dependencies": {

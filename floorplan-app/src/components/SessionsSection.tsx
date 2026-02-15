@@ -2,9 +2,10 @@
  * Sessions management section for the Settings page.
  *
  * Displays active sessions with device info, highlights the current session,
- * and allows revoking individual or all other sessions. Uses Better Auth's
- * built-in session APIs — in dev mode, sessions will be empty since dev auth
- * uses custom JWTs rather than Better Auth sessions.
+ * and allows revoking individual or all other sessions. Session list is powered
+ * by a Convex real-time subscription so updates appear instantly.
+ *
+ * Session revocation detection is handled globally by SessionGuard (app.tsx).
  */
 
 import { type Component, createMemo, createSignal, For, Show } from 'solid-js';
@@ -136,7 +137,7 @@ const SessionRow: Component<{
 };
 
 export const SessionsSection: Component = () => {
-  const { sessions, revokeSession, revokeOtherSessions } = useActiveSessions();
+  const { sessions, isLoading, revokeSession, revokeOtherSessions } = useActiveSessions();
   const [isRevokingAll, setIsRevokingAll] = createSignal(false);
   const [currentSessionToken, setCurrentSessionToken] = createSignal<string | null>(null);
 
@@ -195,14 +196,14 @@ export const SessionsSection: Component = () => {
         </div>
 
         {/* Loading state */}
-        <Show when={sessions.loading}>
+        <Show when={isLoading()}>
           <div class="flex justify-center py-6">
             <span class="loading loading-spinner loading-md" />
           </div>
         </Show>
 
         {/* Sessions list */}
-        <Show when={!sessions.loading}>
+        <Show when={!isLoading()}>
           <Show
             when={sessionCount() > 0}
             fallback={
@@ -221,11 +222,6 @@ export const SessionsSection: Component = () => {
                   />
                 </svg>
                 <p class="text-sm">No active sessions</p>
-                <Show when={import.meta.env.DEV}>
-                  <p class="text-xs mt-1 text-base-content/40">
-                    Session tracking requires OAuth login (production mode)
-                  </p>
-                </Show>
               </div>
             }
           >

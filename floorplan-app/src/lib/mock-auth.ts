@@ -19,8 +19,13 @@ const DEV_AUTH_USER_ID_KEY = 'dev-auth-user-id';
 /**
  * Request a signed JWT from the dev auth server endpoint and store it.
  * Call this when the user selects a persona on the dev-login page.
+ *
+ * @param authId - The dev persona identifier (e.g. "testuser")
+ * @param sessionId - Optional Better Auth session ID. When provided, the JWT
+ *   includes a `sessionId` claim so that `isSessionValid` can do a precise
+ *   per-session lookup (enables SessionGuard in dev mode).
  */
-export async function setDevUser(authId: string): Promise<string> {
+export async function setDevUser(authId: string, sessionId?: string): Promise<string> {
   if (import.meta.env.PROD) {
     console.warn('Dev login is only available in development');
     return '';
@@ -29,7 +34,7 @@ export async function setDevUser(authId: string): Promise<string> {
   const res = await fetch('/api/dev-auth', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ authId }),
+    body: JSON.stringify({ authId, ...(sessionId ? { sessionId } : {}) }),
   });
 
   if (!res.ok) {
@@ -77,7 +82,7 @@ export function isDevLoggedIn(): boolean {
 /**
  * Clear the dev login state (logout).
  */
-export function clearDevLogin(): void {
+export async function clearDevLogin(): Promise<void> {
   localStorage.removeItem(DEV_AUTH_TOKEN_KEY);
   localStorage.removeItem(DEV_AUTH_USER_ID_KEY);
 
@@ -87,4 +92,13 @@ export function clearDevLogin(): void {
 
   // Dispatch storage event so ConvexProvider can react
   window.dispatchEvent(new StorageEvent('storage', { key: DEV_AUTH_TOKEN_KEY }));
+
+  // Also revoke the Better Auth session
+  // Dynamic import to avoid circular dependency (auth-client imports mock-auth)
+  try {
+    const { authClient } = await import('./auth-client');
+    await authClient.signOut();
+  } catch {
+    // Not authenticated via Better Auth — ignore
+  }
 }

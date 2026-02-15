@@ -1,3 +1,4 @@
+import { convexClient } from '@convex-dev/better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/solid';
 import { useQuery } from 'convex-solidjs';
 import { type Accessor, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
@@ -29,6 +30,7 @@ import { isDevLoggedIn } from './mock-auth';
  */
 export const authClient = createAuthClient({
   baseURL: import.meta.env.VITE_BETTER_AUTH_URL ?? 'http://localhost:3000',
+  plugins: [convexClient()],
 });
 
 // Re-export the real useSession for non-mock mode

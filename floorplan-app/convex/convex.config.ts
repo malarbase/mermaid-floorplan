@@ -1,11 +1,9 @@
+import betterAuth from '@convex-dev/better-auth/convex.config';
 import { defineApp } from 'convex/server';
 import tableHistory from 'convex-table-history/convex.config';
 
-// Temporarily disabled for self-hosted deployment testing
-// import betterAuth from "@convex-dev/better-auth/convex.config";
-
 const app = defineApp();
-// app.use(betterAuth);
+app.use(betterAuth);
 
 // Configure audit log for admin actions
 // Scope controlled by AUDIT_TRAIL_SCOPE env var:

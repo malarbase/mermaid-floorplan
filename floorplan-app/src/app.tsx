@@ -3,6 +3,7 @@ import { Router } from '@solidjs/router';
 import { FileRoutes } from '@solidjs/start/router';
 import { Suspense } from 'solid-js';
 import { ConvexClientProvider } from '~/components/ConvexProvider';
+import SessionGuard from '~/components/SessionGuard';
 import { PageErrorBoundary } from '~/components/ui/ErrorBoundary';
 import { Loading } from '~/components/ui/Loading';
 import { ToastProvider } from '~/components/ui/Toast';
@@ -29,6 +30,7 @@ export default function App() {
             <ConvexClientProvider>
               <ThemeProvider>
                 <ToastProvider position="top-right" defaultDuration={4000}>
+                  <SessionGuard />
                   <Suspense
                     fallback={
                       <div class="min-h-screen flex items-center justify-center bg-base-200">

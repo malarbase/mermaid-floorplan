@@ -12,6 +12,7 @@ import { useNavigate, useSearchParams } from '@solidjs/router';
 import { useMutation } from 'convex-solidjs';
 import { createSignal, For, onMount, Show } from 'solid-js';
 import { useActiveSessions } from '~/hooks/useActiveSessions';
+import { authClient } from '~/lib/auth-client';
 import { clearDevLogin, getDevUserId, isDevLoggedIn, setDevUser } from '~/lib/mock-auth';
 import { api } from '../../convex/_generated/api';
 
@@ -90,9 +91,30 @@ export default function DevLogin() {
         isAdmin: persona.isAdmin,
       });
 
+      // 4. Create Better Auth session (enables listSessions/revokeSessions)
+      const email = `${persona.authId}@dev.local`;
+      const password = `dev-${persona.authId}`;
+      try {
+        await authClient.signUp.email({ name: persona.displayName, email, password });
+      } catch {
+        // Already registered — expected on repeat logins
+      }
+      await authClient.signIn.email({ email, password });
+
+      // 5. Re-generate JWT with BA sessionId so SessionGuard works in dev mode.
+      //    The first JWT (step 1) had no sessionId — now we have one from BA.
+      //    Fetch the current session to get the internal session ID.
+      const sessionResult = await authClient.getSession();
+      const baSessionId = sessionResult.data?.session?.id;
+      if (baSessionId) {
+        await setDevUser(persona.authId, baSessionId);
+        // Small delay to let ConvexProvider pick up the updated token
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
       setCurrentUser(persona.authId);
 
-      // 4. Navigate to returnUrl
+      // 6. Navigate to returnUrl
       navigate(returnUrl());
     } catch (err) {
       console.error('Dev login failed:', err);
@@ -106,8 +128,8 @@ export default function DevLogin() {
     }
   };
 
-  const handleLogout = () => {
-    clearDevLogin();
+  const handleLogout = async () => {
+    await clearDevLogin();
     setCurrentUser(null);
   };
 
