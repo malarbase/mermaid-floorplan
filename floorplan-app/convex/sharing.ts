@@ -419,6 +419,7 @@ export const getSharedWithMe = optionalAuthQuery({
             description: project.description,
             isPublic: project.isPublic,
             updatedAt: project.updatedAt,
+            thumbnail: project.thumbnail,
           },
           owner: {
             username: owner?.username ?? 'unknown',

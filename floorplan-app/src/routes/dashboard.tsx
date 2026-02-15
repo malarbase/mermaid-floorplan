@@ -202,6 +202,11 @@ export default function Dashboard() {
     return convexUser?.username ?? user()?.username ?? user()?.name ?? 'me';
   });
 
+  const sharedByMeCount = createMemo(() => {
+    const data = projectsQuery.data() as { isShared?: boolean }[] | undefined;
+    return data?.filter((p) => p.isShared).length ?? 0;
+  });
+
   // Filter state for stat card toggles
   const [filter, setFilter] = createSignal<FilterType>('all');
 
@@ -249,8 +254,11 @@ export default function Dashboard() {
         <Show when={!isLoading()}>
           <div class="stats-grid animate-slide-up">
             <button
-              class="stat-card"
-              classList={{ 'stat-card-active': filter() === 'all' }}
+              class="stat-card stat-card-hero bg-base-200 border border-neutral shadow-sm hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              classList={{
+                'stat-card-active !border-primary !bg-primary/12 !shadow-[0_2px_8px] !shadow-primary/20':
+                  filter() === 'all',
+              }}
               onClick={() => setFilter('all')}
               type="button"
             >
@@ -271,8 +279,11 @@ export default function Dashboard() {
             </button>
 
             <button
-              class="stat-card"
-              classList={{ 'stat-card-active': filter() === 'public' }}
+              class="stat-card bg-base-200 border border-neutral shadow-sm hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              classList={{
+                'stat-card-active !border-primary !bg-primary/12 !shadow-[0_2px_8px] !shadow-primary/20':
+                  filter() === 'public',
+              }}
               onClick={() => setFilter((f) => (f === 'public' ? 'all' : 'public'))}
               type="button"
             >
@@ -293,8 +304,11 @@ export default function Dashboard() {
             </button>
 
             <button
-              class="stat-card"
-              classList={{ 'stat-card-active': filter() === 'private' }}
+              class="stat-card bg-base-200 border border-neutral shadow-sm hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              classList={{
+                'stat-card-active !border-primary !bg-primary/12 !shadow-[0_2px_8px] !shadow-primary/20':
+                  filter() === 'private',
+              }}
               onClick={() => setFilter((f) => (f === 'private' ? 'all' : 'private'))}
               type="button"
             >
@@ -315,8 +329,36 @@ export default function Dashboard() {
             </button>
 
             <button
-              class="stat-card"
-              classList={{ 'stat-card-active': filter() === 'shared' }}
+              class="stat-card bg-base-200 border border-neutral shadow-sm hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              classList={{
+                'stat-card-active !border-primary !bg-primary/12 !shadow-[0_2px_8px] !shadow-primary/20':
+                  filter() === 'shared-by-me',
+              }}
+              onClick={() => setFilter((f) => (f === 'shared-by-me' ? 'all' : 'shared-by-me'))}
+              type="button"
+            >
+              <div class="stat-card-icon warning">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                  />
+                </svg>
+              </div>
+              <div class="stat-card-content">
+                <div class="stat-card-value">{sharedByMeCount()}</div>
+                <div class="stat-card-label">Shared by me</div>
+              </div>
+            </button>
+
+            <button
+              class="stat-card bg-base-200 border border-neutral shadow-sm hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              classList={{
+                'stat-card-active !border-primary !bg-primary/12 !shadow-[0_2px_8px] !shadow-primary/20':
+                  filter() === 'shared',
+              }}
               onClick={() => setFilter((f) => (f === 'shared' ? 'all' : 'shared'))}
               type="button"
             >

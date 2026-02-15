@@ -8,7 +8,7 @@ import { LeaveProjectButton } from './LeaveProjectButton';
 import { VisibilityToggle } from './VisibilityToggle';
 
 /** Filter type for stat card filtering */
-export type FilterType = 'all' | 'public' | 'private' | 'shared';
+export type FilterType = 'all' | 'public' | 'private' | 'shared' | 'shared-by-me';
 
 /** Shared project info from getSharedWithMe query */
 export interface SharedProjectInfo {
@@ -19,6 +19,7 @@ export interface SharedProjectInfo {
     description?: string;
     isPublic: boolean;
     updatedAt: number;
+    thumbnail?: string;
   };
   owner: {
     username: string;
@@ -92,6 +93,8 @@ export function ProjectList(props: ProjectListProps) {
         return ownItems.filter((item) => (item.data as Project).isPublic);
       case 'private':
         return ownItems.filter((item) => !(item.data as Project).isPublic);
+      case 'shared-by-me':
+        return ownItems.filter((item) => (item.data as Project).isShared);
       case 'shared':
         return sharedItems;
       default:
@@ -222,7 +225,9 @@ export function ProjectList(props: ProjectListProps) {
               ? 'public'
               : props.filter === 'private'
                 ? 'private'
-                : 'shared'}{' '}
+                : props.filter === 'shared-by-me'
+                  ? 'shared by me'
+                  : 'shared'}{' '}
             projects
           </p>
         </div>
@@ -244,6 +249,36 @@ export function ProjectList(props: ProjectListProps) {
                         class="absolute inset-0 z-0"
                         aria-label={`Open ${shared.project.displayName}`}
                       />
+                      <div class="project-card-thumbnail">
+                        <Show when={shared.project.thumbnail}>
+                          <img
+                            src={shared.project.thumbnail}
+                            alt={shared.project.displayName}
+                            class="w-full h-full object-cover"
+                          />
+                        </Show>
+                        <Show when={!shared.project.thumbnail}>
+                          <svg
+                            class="project-card-thumbnail-icon"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="1.5"
+                              d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"
+                            />
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="1.5"
+                              d="M7 10h10M7 14h6"
+                            />
+                          </svg>
+                        </Show>
+                      </div>
                       <div class="project-card-body">
                         <div class="flex items-start justify-between gap-2 mb-2">
                           <div class="flex-1 min-w-0">
