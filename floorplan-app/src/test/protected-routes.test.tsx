@@ -52,10 +52,6 @@ vi.mock('~/components/ProjectList', () => ({
   ProjectList: () => <div data-testid="project-list">Projects</div>,
 }));
 
-vi.mock('~/components/SharedProjectList', () => ({
-  SharedProjectList: () => <div data-testid="shared-projects">Shared</div>,
-}));
-
 import Dashboard from '~/routes/dashboard';
 
 describe('Protected Routes', () => {

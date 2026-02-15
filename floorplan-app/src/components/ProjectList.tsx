@@ -4,7 +4,32 @@ import { createMemo, For, Show } from 'solid-js';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import { DeleteProjectButton } from './DeleteProjectButton';
+import { LeaveProjectButton } from './LeaveProjectButton';
 import { VisibilityToggle } from './VisibilityToggle';
+
+/** Filter type for stat card filtering */
+export type FilterType = 'all' | 'public' | 'private' | 'shared';
+
+/** Shared project info from getSharedWithMe query */
+export interface SharedProjectInfo {
+  project: {
+    _id: string;
+    slug: string;
+    displayName: string;
+    description?: string;
+    isPublic: boolean;
+    updatedAt: number;
+  };
+  owner: {
+    username: string;
+    displayName?: string;
+  };
+  role: 'viewer' | 'editor' | 'admin';
+  sharedAt: number;
+}
+
+/** Discriminated union for rendering both own and shared project cards */
+type DisplayProject = { kind: 'own'; data: Project } | { kind: 'shared'; data: SharedProjectInfo };
 
 // Project type from Convex schema
 interface Project {
@@ -23,6 +48,10 @@ interface ProjectListProps {
   username?: string;
   /** Empty state call to action */
   onCreateNew?: () => void;
+  /** Shared projects from getSharedWithMe query */
+  sharedProjects?: SharedProjectInfo[];
+  /** Active filter from stat cards */
+  filter?: FilterType;
 }
 
 /**
@@ -48,6 +77,30 @@ export function ProjectList(props: ProjectListProps) {
 
   const error = createMemo(() => {
     return projectsQuery.error();
+  });
+
+  const displayedProjects = createMemo((): DisplayProject[] => {
+    const own = projects();
+    const shared = props.sharedProjects ?? [];
+    const f = props.filter ?? 'all';
+
+    const ownItems: DisplayProject[] = own.map((p) => ({ kind: 'own' as const, data: p }));
+    const sharedItems: DisplayProject[] = shared.map((s) => ({ kind: 'shared' as const, data: s }));
+
+    switch (f) {
+      case 'public':
+        return ownItems.filter((item) => (item.data as Project).isPublic);
+      case 'private':
+        return ownItems.filter((item) => !(item.data as Project).isPublic);
+      case 'shared':
+        return sharedItems;
+      default:
+        return [...ownItems, ...sharedItems];
+    }
+  });
+
+  const hasAnyProjects = createMemo(() => {
+    return projects().length > 0 || (props.sharedProjects ?? []).length > 0;
   });
 
   // Format date for display
@@ -97,8 +150,8 @@ export function ProjectList(props: ProjectListProps) {
         </div>
       </Show>
 
-      {/* Empty State */}
-      <Show when={!isLoading() && !hasError() && projects().length === 0}>
+      {/* Empty State - no projects at all */}
+      <Show when={!isLoading() && !hasError() && !hasAnyProjects()}>
         <div class="empty-state">
           <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -145,65 +198,123 @@ export function ProjectList(props: ProjectListProps) {
         </div>
       </Show>
 
+      {/* Filtered empty state */}
+      <Show
+        when={!isLoading() && !hasError() && hasAnyProjects() && displayedProjects().length === 0}
+      >
+        <div class="flex flex-col items-center justify-center py-12 text-base-content/60">
+          <svg
+            class="w-12 h-12 mb-3 opacity-40"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="1.5"
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+          <p class="text-sm">
+            No{' '}
+            {props.filter === 'public'
+              ? 'public'
+              : props.filter === 'private'
+                ? 'private'
+                : 'shared'}{' '}
+            projects
+          </p>
+        </div>
+      </Show>
+
       {/* Projects Grid */}
-      <Show when={!isLoading() && !hasError() && projects().length > 0}>
+      <Show when={!isLoading() && !hasError() && displayedProjects().length > 0}>
         <div class="projects-grid">
-          <For each={projects()}>
-            {(project) => (
-              <div class="project-card group">
-                {/* Link overlay for entire card */}
-                <A
-                  href={`/u/${props.username ?? 'me'}/${project.slug}`}
-                  class="absolute inset-0 z-0"
-                  aria-label={`Open ${project.displayName}`}
-                />
-                {/* Thumbnail */}
-                <div class="project-card-thumbnail">
-                  <Show when={project.thumbnail}>
-                    <img
-                      src={project.thumbnail}
-                      alt={project.displayName}
-                      class="w-full h-full object-cover"
-                    />
-                  </Show>
-                  <Show when={!project.thumbnail}>
-                    <svg
-                      class="project-card-thumbnail-icon"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="1.5"
-                        d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"
+          <For each={displayedProjects()}>
+            {(item) => (
+              <Show
+                when={item.kind === 'own'}
+                fallback={(() => {
+                  const shared = (item as { kind: 'shared'; data: SharedProjectInfo }).data;
+                  return (
+                    <div class="project-card group">
+                      <A
+                        href={`/u/${shared.owner.username}/${shared.project.slug}`}
+                        class="absolute inset-0 z-0"
+                        aria-label={`Open ${shared.project.displayName}`}
                       />
-                      <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="1.5"
-                        d="M7 10h10M7 14h6"
+                      <div class="project-card-body">
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                          <div class="flex-1 min-w-0">
+                            <h2 class="project-card-title truncate">
+                              {shared.project.displayName}
+                            </h2>
+                            <p class="text-sm text-base-content/60 truncate flex items-center gap-1">
+                              <svg
+                                class="w-3.5 h-3.5 inline flex-shrink-0"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                                />
+                              </svg>
+                              {shared.owner.displayName ?? shared.owner.username}
+                            </p>
+                          </div>
+                          <span class={`role-badge ${shared.role}`}>
+                            {shared.role === 'admin'
+                              ? 'Can manage'
+                              : shared.role === 'editor'
+                                ? 'Can edit'
+                                : 'View only'}
+                          </span>
+                        </div>
+                        <Show when={shared.project.description}>
+                          <p class="project-card-description">{shared.project.description}</p>
+                        </Show>
+                        <div class="project-card-footer">
+                          <span class="project-card-meta">
+                            Shared {formatDate(shared.sharedAt)}
+                          </span>
+                          <div class="project-card-actions">
+                            <LeaveProjectButton
+                              projectId={shared.project._id as Id<'projects'>}
+                              projectName={shared.project.displayName}
+                              class="opacity-0 group-hover:opacity-100 transition-opacity"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+              >
+                {(() => {
+                  const project = (item as { kind: 'own'; data: Project }).data;
+                  return (
+                    <div class="project-card group">
+                      <A
+                        href={`/u/${props.username ?? 'me'}/${project.slug}`}
+                        class="absolute inset-0 z-0"
+                        aria-label={`Open ${project.displayName}`}
                       />
-                    </svg>
-                  </Show>
-                </div>
-                {/* Card Body */}
-                <div class="project-card-body">
-                  <h2 class="project-card-title">{project.displayName}</h2>
-                  <Show when={project.description}>
-                    <p class="project-card-description">{project.description}</p>
-                  </Show>
-                  <div class="project-card-footer">
-                    <div class="flex items-center gap-2">
-                      <span class="project-card-meta">{formatDate(project.updatedAt)}</span>
-                      <Show when={project.isShared}>
-                        <span
-                          class="inline-flex items-center gap-1 text-xs text-base-content/50"
-                          title="Shared with collaborators"
-                        >
+                      <div class="project-card-thumbnail">
+                        <Show when={project.thumbnail}>
+                          <img
+                            src={project.thumbnail}
+                            alt={project.displayName}
+                            class="w-full h-full object-cover"
+                          />
+                        </Show>
+                        <Show when={!project.thumbnail}>
                           <svg
-                            class="w-3.5 h-3.5"
+                            class="project-card-thumbnail-icon"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -211,50 +322,92 @@ export function ProjectList(props: ProjectListProps) {
                             <path
                               stroke-linecap="round"
                               stroke-linejoin="round"
-                              stroke-width="2"
-                              d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                              stroke-width="1.5"
+                              d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"
+                            />
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="1.5"
+                              d="M7 10h10M7 14h6"
                             />
                           </svg>
-                          Shared
-                        </span>
-                      </Show>
+                        </Show>
+                      </div>
+                      <div class="project-card-body">
+                        <h2 class="project-card-title">{project.displayName}</h2>
+                        <Show when={project.description}>
+                          <p class="project-card-description">{project.description}</p>
+                        </Show>
+                        <div class="project-card-footer">
+                          <div class="flex items-center gap-2">
+                            <span class="project-card-meta">{formatDate(project.updatedAt)}</span>
+                            <Show when={project.isShared}>
+                              <span
+                                class="inline-flex items-center gap-1 text-xs text-base-content/50"
+                                title="Shared with collaborators"
+                              >
+                                <svg
+                                  class="w-3.5 h-3.5"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  viewBox="0 0 24 24"
+                                >
+                                  <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
+                                  />
+                                </svg>
+                                Shared
+                              </span>
+                            </Show>
+                          </div>
+                          <div class="project-card-actions">
+                            <VisibilityToggle
+                              projectId={project._id}
+                              isPublic={project.isPublic}
+                              compact
+                            />
+                            <A
+                              href={`/u/${props.username ?? 'me'}/${project.slug}/settings`}
+                              class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity z-10"
+                              title="Project Settings"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <svg
+                                class="w-4 h-4"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
+                                />
+                                <path
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                  stroke-width="2"
+                                  d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                                />
+                              </svg>
+                            </A>
+                            <DeleteProjectButton
+                              projectId={project._id}
+                              projectName={project.displayName}
+                              class="opacity-0 group-hover:opacity-100 transition-opacity"
+                            />
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div class="project-card-actions">
-                      <VisibilityToggle
-                        projectId={project._id}
-                        isPublic={project.isPublic}
-                        compact
-                      />
-                      <A
-                        href={`/u/${props.username ?? 'me'}/${project.slug}/settings`}
-                        class="btn btn-ghost btn-xs opacity-0 group-hover:opacity-100 transition-opacity z-10"
-                        title="Project Settings"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                          />
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                          />
-                        </svg>
-                      </A>
-                      <DeleteProjectButton
-                        projectId={project._id}
-                        projectName={project.displayName}
-                        class="opacity-0 group-hover:opacity-100 transition-opacity"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+                  );
+                })()}
+              </Show>
             )}
           </For>
         </div>

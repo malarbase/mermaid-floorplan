@@ -3,8 +3,8 @@ import { A, useNavigate } from '@solidjs/router';
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 import { Header } from '~/components/Header';
+import type { FilterType } from '~/components/ProjectList';
 import { ProjectList } from '~/components/ProjectList';
-import { SharedProjectList } from '~/components/SharedProjectList';
 import { TempUsernameNudge } from '~/components/TempUsernameNudge';
 import { UsernameSelectionModal } from '~/components/UsernameSelectionModal';
 import { useAuthRedirect } from '~/hooks/useAuthRedirect';
@@ -202,6 +202,9 @@ export default function Dashboard() {
     return convexUser?.username ?? user()?.username ?? user()?.name ?? 'me';
   });
 
+  // Filter state for stat card toggles
+  const [filter, setFilter] = createSignal<FilterType>('all');
+
   return (
     <main class="dashboard-bg">
       <Title>Dashboard - Floorplan</Title>
@@ -245,7 +248,12 @@ export default function Dashboard() {
         {/* Stats Section */}
         <Show when={!isLoading()}>
           <div class="stats-grid animate-slide-up">
-            <div class="stat-card">
+            <button
+              class="stat-card"
+              classList={{ 'stat-card-active': filter() === 'all' }}
+              onClick={() => setFilter('all')}
+              type="button"
+            >
               <div class="stat-card-icon primary">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -260,9 +268,14 @@ export default function Dashboard() {
                 <div class="stat-card-value">{totalProjects()}</div>
                 <div class="stat-card-label">Total Projects</div>
               </div>
-            </div>
+            </button>
 
-            <div class="stat-card">
+            <button
+              class="stat-card"
+              classList={{ 'stat-card-active': filter() === 'public' }}
+              onClick={() => setFilter((f) => (f === 'public' ? 'all' : 'public'))}
+              type="button"
+            >
               <div class="stat-card-icon secondary">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -277,9 +290,14 @@ export default function Dashboard() {
                 <div class="stat-card-value">{publicProjects()}</div>
                 <div class="stat-card-label">Public</div>
               </div>
-            </div>
+            </button>
 
-            <div class="stat-card">
+            <button
+              class="stat-card"
+              classList={{ 'stat-card-active': filter() === 'private' }}
+              onClick={() => setFilter((f) => (f === 'private' ? 'all' : 'private'))}
+              type="button"
+            >
               <div class="stat-card-icon accent">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -294,9 +312,14 @@ export default function Dashboard() {
                 <div class="stat-card-value">{totalProjects() - publicProjects()}</div>
                 <div class="stat-card-label">Private</div>
               </div>
-            </div>
+            </button>
 
-            <div class="stat-card">
+            <button
+              class="stat-card"
+              classList={{ 'stat-card-active': filter() === 'shared' }}
+              onClick={() => setFilter((f) => (f === 'shared' ? 'all' : 'shared'))}
+              type="button"
+            >
               <div class="stat-card-icon info">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
@@ -311,7 +334,7 @@ export default function Dashboard() {
                 <div class="stat-card-value">{sharedCount()}</div>
                 <div class="stat-card-label">Shared with me</div>
               </div>
-            </div>
+            </button>
           </div>
         </Show>
 
@@ -337,10 +360,12 @@ export default function Dashboard() {
               </div>
             }
           >
-            <ProjectList username={username()} onCreateNew={() => navigate('/new')} />
-
-            {/* Shared With Me Section */}
-            <SharedProjectList class="shared-section" />
+            <ProjectList
+              username={username()}
+              onCreateNew={() => navigate('/new')}
+              sharedProjects={sharedQuery.data() as any}
+              filter={filter()}
+            />
           </Show>
         </div>
       </div>
