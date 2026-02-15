@@ -5,10 +5,10 @@
   "type": "module",
   "private": true,
   "scripts": {
-    "clean": "npm run clean --workspaces",
+    "clean": "npm run clean --workspaces --if-present",
     "dev": "npm run --workspace floorplan-viewer dev",
-    "build": "echo | npm run langium:generate && npm run build --workspaces",
-    "build:all": "echo | npm run langium:generate && npm run build --workspaces",
+    "build": "echo | npm run langium:generate && npm run build --workspaces --if-present",
+    "build:all": "echo | npm run langium:generate && npm run build --workspaces --if-present",
     "langium:generate": "npm run --workspace floorplan-language langium:generate",
     "langium:watch": "npm run --workspace floorplan-language langium:watch",
     "test": "npm run --workspace floorplan-language test && npm run --workspace floorplan-mcp-server test",
