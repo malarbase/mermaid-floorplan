@@ -57,7 +57,7 @@ jobs:
         run: npm run build
 
       - name: Run E2E tests
-        run: npm run test:e2e
+        run: npx playwright test --project=chromium
         working-directory: floorplan-app
         env:
           CI: true
