@@ -10,7 +10,7 @@
  * - System preference detection
  */
 
-import { createSignal, createEffect, onMount } from 'solid-js';
+import { createEffect, createSignal, onMount } from 'solid-js';
 
 // ============================================================================
 // Types
@@ -123,7 +123,7 @@ export function ThemeToggle(props: ThemeToggleProps) {
 
   // Toggle handler
   const handleToggle = () => {
-    setTheme(t => t === 'dark' ? 'light' : 'dark');
+    setTheme((t) => (t === 'dark' ? 'light' : 'dark'));
   };
 
   // Keyboard handler
@@ -152,9 +152,7 @@ export function ThemeToggle(props: ThemeToggleProps) {
         {theme() === 'dark' ? '☀️' : '🌙'}
       </span>
       {props.showLabel && (
-        <span class="fp-theme-toggle-label">
-          {theme() === 'dark' ? 'Light' : 'Dark'}
-        </span>
+        <span class="fp-theme-toggle-label">{theme() === 'dark' ? 'Light' : 'Dark'}</span>
       )}
     </button>
   );

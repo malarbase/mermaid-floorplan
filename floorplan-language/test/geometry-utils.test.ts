@@ -3,20 +3,20 @@
  * These utilities are used by both SVG (2D) and 3D renderers
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from 'vitest';
 import {
-  calculateWallOverlap,
   calculatePositionOnOverlap,
+  calculatePositionOnWallOverlap,
   calculatePositionWithFallback,
   calculateWallBoundsOverlap,
-  calculatePositionOnWallOverlap,
+  calculateWallOverlap,
   type RoomBounds,
   type WallBounds,
-} from "../src/diagrams/floorplans/geometry-utils.js";
+} from '../src/diagrams/floorplans/geometry-utils.js';
 
-describe("geometry-utils", () => {
-  describe("calculateWallOverlap", () => {
-    it("should calculate overlap for horizontal walls (same width rooms)", () => {
+describe('geometry-utils', () => {
+  describe('calculateWallOverlap', () => {
+    it('should calculate overlap for horizontal walls (same width rooms)', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 0, y: 10, width: 10, height: 10 };
 
@@ -28,7 +28,7 @@ describe("geometry-utils", () => {
       expect(overlap!.length).toBe(10);
     });
 
-    it("should calculate overlap for horizontal walls (offset rooms)", () => {
+    it('should calculate overlap for horizontal walls (offset rooms)', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 5, y: 10, width: 10, height: 10 };
 
@@ -40,7 +40,7 @@ describe("geometry-utils", () => {
       expect(overlap!.length).toBe(5);
     });
 
-    it("should calculate overlap for vertical walls (same height rooms)", () => {
+    it('should calculate overlap for vertical walls (same height rooms)', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 10, y: 0, width: 10, height: 10 };
 
@@ -52,7 +52,7 @@ describe("geometry-utils", () => {
       expect(overlap!.length).toBe(10);
     });
 
-    it("should calculate overlap for vertical walls (offset rooms)", () => {
+    it('should calculate overlap for vertical walls (offset rooms)', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 10, y: 3, width: 10, height: 10 };
 
@@ -82,7 +82,7 @@ describe("geometry-utils", () => {
       expect(overlap).toBeNull();
     });
 
-    it("should handle partial overlap (target smaller than source)", () => {
+    it('should handle partial overlap (target smaller than source)', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 20, height: 10 };
       const targetRoom: RoomBounds = { x: 5, y: 10, width: 5, height: 10 };
 
@@ -94,7 +94,7 @@ describe("geometry-utils", () => {
       expect(overlap!.length).toBe(5);
     });
 
-    it("should handle real-world case: adjacent rooms with partial overlap", () => {
+    it('should handle real-world case: adjacent rooms with partial overlap', () => {
       // Simulating a living room with two adjacent rooms below (kitchen + passage)
       // Living room: x=0, width=20 (spans full width)
       // Kitchen: x=10, width=10 (right half of living room's bottom)
@@ -127,8 +127,8 @@ describe("geometry-utils", () => {
     });
   });
 
-  describe("calculatePositionOnOverlap", () => {
-    it("should calculate 50% position on overlap", () => {
+  describe('calculatePositionOnOverlap', () => {
+    it('should calculate 50% position on overlap', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 0, y: 10, width: 10, height: 10 };
 
@@ -137,7 +137,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(5); // 50% of 10 units starting at 0
     });
 
-    it("should calculate 50% position on partial overlap", () => {
+    it('should calculate 50% position on partial overlap', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 5, y: 10, width: 10, height: 10 };
 
@@ -147,7 +147,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(7.5);
     });
 
-    it("should calculate 0% position (start of overlap)", () => {
+    it('should calculate 0% position (start of overlap)', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 5, y: 10, width: 10, height: 10 };
 
@@ -156,7 +156,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(5); // Start of overlap
     });
 
-    it("should calculate 100% position (end of overlap)", () => {
+    it('should calculate 100% position (end of overlap)', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 5, y: 10, width: 10, height: 10 };
 
@@ -165,7 +165,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(10); // End of overlap
     });
 
-    it("should return null when no overlap", () => {
+    it('should return null when no overlap', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 20, y: 10, width: 10, height: 10 };
 
@@ -174,7 +174,7 @@ describe("geometry-utils", () => {
       expect(position).toBeNull();
     });
 
-    it("should handle vertical wall positions", () => {
+    it('should handle vertical wall positions', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 10, y: 2, width: 10, height: 6 };
 
@@ -185,8 +185,8 @@ describe("geometry-utils", () => {
     });
   });
 
-  describe("calculatePositionWithFallback", () => {
-    it("should use shared segment when target room provided", () => {
+  describe('calculatePositionWithFallback', () => {
+    it('should use shared segment when target room provided', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 5, y: 10, width: 10, height: 10 };
 
@@ -196,7 +196,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(7.5);
     });
 
-    it("should fall back to full wall when no target room", () => {
+    it('should fall back to full wall when no target room', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
 
       const position = calculatePositionWithFallback(sourceRoom, null, false, 50);
@@ -205,7 +205,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(5);
     });
 
-    it("should fall back to full wall when target room has no overlap", () => {
+    it('should fall back to full wall when target room has no overlap', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 20, y: 10, width: 10, height: 10 };
 
@@ -215,7 +215,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(5);
     });
 
-    it("should handle vertical walls with fallback", () => {
+    it('should handle vertical walls with fallback', () => {
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 20 };
 
       const position = calculatePositionWithFallback(sourceRoom, null, true, 25);
@@ -225,8 +225,8 @@ describe("geometry-utils", () => {
     });
   });
 
-  describe("calculateWallBoundsOverlap (SVG renderer API)", () => {
-    it("should calculate overlap for two horizontal walls", () => {
+  describe('calculateWallBoundsOverlap (SVG renderer API)', () => {
+    it('should calculate overlap for two horizontal walls', () => {
       const fromBounds: WallBounds = { x: 0, y: 10, length: 10, isHorizontal: true };
       const toBounds: WallBounds = { x: 5, y: 10, length: 10, isHorizontal: true };
 
@@ -238,7 +238,7 @@ describe("geometry-utils", () => {
       expect(overlap!.length).toBe(5);
     });
 
-    it("should calculate overlap for two vertical walls", () => {
+    it('should calculate overlap for two vertical walls', () => {
       const fromBounds: WallBounds = { x: 10, y: 0, length: 10, isHorizontal: false };
       const toBounds: WallBounds = { x: 10, y: 3, length: 10, isHorizontal: false };
 
@@ -250,7 +250,7 @@ describe("geometry-utils", () => {
       expect(overlap!.length).toBe(7);
     });
 
-    it("should return null for mixed orientation walls", () => {
+    it('should return null for mixed orientation walls', () => {
       const fromBounds: WallBounds = { x: 0, y: 10, length: 10, isHorizontal: true };
       const toBounds: WallBounds = { x: 10, y: 0, length: 10, isHorizontal: false };
 
@@ -259,7 +259,7 @@ describe("geometry-utils", () => {
       expect(overlap).toBeNull();
     });
 
-    it("should return null for non-overlapping horizontal walls", () => {
+    it('should return null for non-overlapping horizontal walls', () => {
       const fromBounds: WallBounds = { x: 0, y: 10, length: 5, isHorizontal: true };
       const toBounds: WallBounds = { x: 10, y: 10, length: 5, isHorizontal: true };
 
@@ -269,8 +269,8 @@ describe("geometry-utils", () => {
     });
   });
 
-  describe("calculatePositionOnWallOverlap (SVG renderer API)", () => {
-    it("should calculate position on horizontal wall overlap", () => {
+  describe('calculatePositionOnWallOverlap (SVG renderer API)', () => {
+    it('should calculate position on horizontal wall overlap', () => {
       const fromBounds: WallBounds = { x: 0, y: 10, length: 10, isHorizontal: true };
       const toBounds: WallBounds = { x: 0, y: 10, length: 10, isHorizontal: true };
 
@@ -279,7 +279,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(5);
     });
 
-    it("should calculate position on partial horizontal overlap", () => {
+    it('should calculate position on partial horizontal overlap', () => {
       const fromBounds: WallBounds = { x: 0, y: 10, length: 10, isHorizontal: true };
       const toBounds: WallBounds = { x: 5, y: 10, length: 10, isHorizontal: true };
 
@@ -289,7 +289,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(7.5);
     });
 
-    it("should calculate position on vertical wall overlap", () => {
+    it('should calculate position on vertical wall overlap', () => {
       const fromBounds: WallBounds = { x: 10, y: 0, length: 10, isHorizontal: false };
       const toBounds: WallBounds = { x: 10, y: 2, length: 6, isHorizontal: false };
 
@@ -299,7 +299,7 @@ describe("geometry-utils", () => {
       expect(position).toBe(5);
     });
 
-    it("should return null for no overlap", () => {
+    it('should return null for no overlap', () => {
       const fromBounds: WallBounds = { x: 0, y: 10, length: 5, isHorizontal: true };
       const toBounds: WallBounds = { x: 10, y: 10, length: 5, isHorizontal: true };
 
@@ -309,12 +309,12 @@ describe("geometry-utils", () => {
     });
   });
 
-  describe("consistency between Room and Wall APIs", () => {
-    it("should produce same results for equivalent inputs", () => {
+  describe('consistency between Room and Wall APIs', () => {
+    it('should produce same results for equivalent inputs', () => {
       // Room-based calculation (3D style)
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 10, height: 10 };
       const targetRoom: RoomBounds = { x: 5, y: 10, width: 10, height: 10 };
-      
+
       // Wall-based calculation (SVG style) - simulating bottom wall of sourceRoom
       const fromWall: WallBounds = { x: 0, y: 10, length: 10, isHorizontal: true };
       const toWall: WallBounds = { x: 5, y: 10, length: 10, isHorizontal: true };
@@ -327,7 +327,7 @@ describe("geometry-utils", () => {
       expect(roomPosition).toBe(7.5);
     });
 
-    it("should handle edge case: touching at single point", () => {
+    it('should handle edge case: touching at single point', () => {
       // Rooms that touch at exactly one point
       const sourceRoom: RoomBounds = { x: 0, y: 0, width: 5, height: 10 };
       const targetRoom: RoomBounds = { x: 5, y: 10, width: 10, height: 10 };
@@ -340,4 +340,3 @@ describe("geometry-utils", () => {
     });
   });
 });
-

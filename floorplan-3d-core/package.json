@@ -34,10 +34,14 @@
   },
   "peerDependencies": {
     "three": ">=0.150.0",
-    "three-bvh-csg": ">=0.0.16"
+    "three-bvh-csg": ">=0.0.16",
+    "three-mesh-bvh": ">=0.7.0"
   },
   "peerDependenciesMeta": {
     "three-bvh-csg": {
+      "optional": true
+    },
+    "three-mesh-bvh": {
       "optional": true
     }
   },

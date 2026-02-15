@@ -4,7 +4,7 @@ An MCP (Model Context Protocol) server that enables AI assistants to render, val
 
 ## Features
 
-- **`render_floorplan`** - Parse DSL and render to PNG image, SVG vector, or 3D PNG + room metadata
+- **`render_floorplan`** - Parse DSL and render to PNG image, SVG vector, DXF CAD file, or 3D PNG + room metadata
 - **`validate_floorplan`** - Fast syntax validation without rendering
 - **`modify_floorplan`** - Apply programmatic modifications to DSL code
 - **`floorplan://schema`** - DSL documentation and examples
@@ -15,6 +15,7 @@ An MCP (Model Context Protocol) server that enables AI assistants to render, val
 |--------|-------------|----------|
 | `png` | 2D top-down view | Floor layouts, room arrangements |
 | `svg` | 2D vector (scalable) | High-quality exports, web embedding |
+| `dxf` | AutoCAD DXF format | CAD software import (AutoCAD, LibreCAD) |
 | `3d-png` | 3D perspective or isometric | Visualization, architectural presentation |
 
 ## Installation
@@ -77,11 +78,11 @@ Renders floorplan DSL to a PNG image, SVG vector, or 3D PNG.
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
 | `dsl` | string | required | Floorplan DSL code to render |
-| `format` | `"png"` \| `"svg"` \| `"3d-png"` | `"png"` | Output format |
-| `width` | number | 800 | Image width in pixels |
-| `height` | number | 600 | Image height in pixels |
+| `format` | `"png"` \| `"svg"` \| `"dxf"` \| `"3d-png"` | `"png"` | Output format |
+| `width` | number | 800 | Image width in pixels (PNG/3D only) |
+| `height` | number | 600 | Image height in pixels (PNG/3D only) |
 | `floorIndex` | number | 0 | Which floor to render (0-based index) |
-| `renderAllFloors` | boolean | false | Render all floors in a single image |
+| `renderAllFloors` | boolean | false | Render all floors in a single image/file |
 | `multiFloorLayout` | `"stacked"` \| `"sideBySide"` | `"sideBySide"` | Layout for 2D multi-floor rendering |
 
 **3D-Specific Parameters:**
@@ -102,6 +103,42 @@ Renders floorplan DSL to a PNG image, SVG vector, or 3D PNG.
 - SVG markup as text (can be saved directly to `.svg` file)
 - Room metadata with positions, sizes, walls, labels
 - Floor count and which floor(s) were rendered
+
+**Output (DXF):**
+- DXF file content as text (can be saved directly to `.dxf` file)
+- Compatible with AutoCAD, LibreCAD, Illustrator
+- Organized layers: WALLS, DOORS, WINDOWS, ROOMS, LABELS, DIMENSIONS
+- Respects configured units (feet, meters, millimeters, inches)
+- Multi-floor support: renders each floor to a separate layer or creates separate files
+
+**DXF Export Examples:**
+```json
+// Export single floor to DXF
+{
+  "dsl": "floorplan\n  config { default_unit: ft }\n  floor Ground {...}",
+  "format": "dxf"
+}
+
+// Export specific floor from multi-floor building
+{
+  "dsl": "floorplan\n  floor Ground {...}\n  floor First {...}",
+  "format": "dxf",
+  "floorIndex": 1
+}
+
+// Export with metric units
+{
+  "dsl": "floorplan\n  config { default_unit: m }\n  floor Ground {...}",
+  "format": "dxf"
+}
+
+// Export all floors to single DXF with layered structure
+{
+  "dsl": "floorplan\n  floor Ground {...}\n  floor First {...}",
+  "format": "dxf",
+  "renderAllFloors": true
+}
+```
 
 **2D Multi-Floor Examples:**
 ```json

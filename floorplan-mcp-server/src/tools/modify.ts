@@ -1,43 +1,49 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-import { parseFloorplan } from "../utils/parser.js";
-import { FloorplanAstEditor, type RoomParams } from "../utils/ast-editor.js";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
+import { FloorplanAstEditor, type RoomParams } from '../utils/ast-editor.js';
+import { parseFloorplan } from '../utils/parser.js';
 import {
-  extractAllRoomBounds,
   buildRelativeAssignments,
+  extractAllRoomBounds,
   validateForConversion,
-} from "../utils/spatial.js";
+} from '../utils/spatial.js';
 
 const WallsSchema = z.object({
-  top: z.enum(["solid", "door", "window", "open"]).optional(),
-  right: z.enum(["solid", "door", "window", "open"]).optional(),
-  bottom: z.enum(["solid", "door", "window", "open"]).optional(),
-  left: z.enum(["solid", "door", "window", "open"]).optional(),
+  top: z.enum(['solid', 'door', 'window', 'open']).optional(),
+  right: z.enum(['solid', 'door', 'window', 'open']).optional(),
+  bottom: z.enum(['solid', 'door', 'window', 'open']).optional(),
+  left: z.enum(['solid', 'door', 'window', 'open']).optional(),
 });
 
 const RelativePositionSchema = z.object({
   direction: z.enum([
-    "right-of", "left-of", "above", "below",
-    "above-right-of", "above-left-of", "below-right-of", "below-left-of"
+    'right-of',
+    'left-of',
+    'above',
+    'below',
+    'above-right-of',
+    'above-left-of',
+    'below-right-of',
+    'below-left-of',
   ]),
   reference: z.string(),
   gap: z.number().optional(),
-  alignment: z.enum(["top", "bottom", "left", "right", "center"]).optional(),
+  alignment: z.enum(['top', 'bottom', 'left', 'right', 'center']).optional(),
 });
 
-const OperationSchema = z.discriminatedUnion("action", [
+const OperationSchema = z.discriminatedUnion('action', [
   z.object({
-    action: z.literal("add_room"),
+    action: z.literal('add_room'),
     params: z.object({
       name: z.string(),
       // Position is now optional when using relative positioning
       position: z.object({ x: z.number(), y: z.number() }).optional(),
       size: z.object({ width: z.number(), height: z.number() }),
       walls: z.object({
-        top: z.enum(["solid", "door", "window", "open"]),
-        right: z.enum(["solid", "door", "window", "open"]),
-        bottom: z.enum(["solid", "door", "window", "open"]),
-        left: z.enum(["solid", "door", "window", "open"]),
+        top: z.enum(['solid', 'door', 'window', 'open']),
+        right: z.enum(['solid', 'door', 'window', 'open']),
+        bottom: z.enum(['solid', 'door', 'window', 'open']),
+        left: z.enum(['solid', 'door', 'window', 'open']),
       }),
       label: z.string().optional(),
       // New: relative positioning support
@@ -45,11 +51,11 @@ const OperationSchema = z.discriminatedUnion("action", [
     }),
   }),
   z.object({
-    action: z.literal("remove_room"),
+    action: z.literal('remove_room'),
     target: z.string(),
   }),
   z.object({
-    action: z.literal("resize_room"),
+    action: z.literal('resize_room'),
     target: z.string(),
     params: z.object({
       width: z.number(),
@@ -57,7 +63,7 @@ const OperationSchema = z.discriminatedUnion("action", [
     }),
   }),
   z.object({
-    action: z.literal("move_room"),
+    action: z.literal('move_room'),
     target: z.string(),
     params: z.object({
       x: z.number(),
@@ -65,26 +71,26 @@ const OperationSchema = z.discriminatedUnion("action", [
     }),
   }),
   z.object({
-    action: z.literal("rename_room"),
+    action: z.literal('rename_room'),
     target: z.string(),
     params: z.object({
       newName: z.string(),
     }),
   }),
   z.object({
-    action: z.literal("update_walls"),
+    action: z.literal('update_walls'),
     target: z.string(),
     params: WallsSchema,
   }),
   z.object({
-    action: z.literal("add_label"),
+    action: z.literal('add_label'),
     target: z.string(),
     params: z.object({
       label: z.string(),
     }),
   }),
   z.object({
-    action: z.literal("convert_to_relative"),
+    action: z.literal('convert_to_relative'),
     params: z.object({
       // The anchor room keeps its absolute position
       anchorRoom: z.string().describe("Room to keep absolute 'at (x,y)' position"),
@@ -97,8 +103,8 @@ const OperationSchema = z.discriminatedUnion("action", [
 ]);
 
 const ModifyInputSchema = z.object({
-  dsl: z.string().describe("Current floorplan DSL code"),
-  operations: z.array(OperationSchema).describe("List of modifications to apply"),
+  dsl: z.string().describe('Current floorplan DSL code'),
+  operations: z.array(OperationSchema).describe('List of modifications to apply'),
 });
 
 type Operation = z.infer<typeof OperationSchema>;
@@ -106,14 +112,14 @@ type Operation = z.infer<typeof OperationSchema>;
 interface ChangeResult {
   action: string;
   target: string;
-  result: "applied" | "skipped" | "error";
+  result: 'applied' | 'skipped' | 'error';
   message?: string;
 }
 
 export function registerModifyTool(server: McpServer): void {
   server.tool(
-    "modify_floorplan",
-    "Apply modifications to a floorplan DSL and return the updated code",
+    'modify_floorplan',
+    'Apply modifications to a floorplan DSL and return the updated code',
     ModifyInputSchema.shape,
     async (args) => {
       const { dsl, operations } = ModifyInputSchema.parse(args);
@@ -124,7 +130,7 @@ export function registerModifyTool(server: McpServer): void {
         return {
           content: [
             {
-              type: "text" as const,
+              type: 'text' as const,
               text: JSON.stringify({
                 success: false,
                 errors: parseResult.errors.map((e, i) => ({
@@ -149,14 +155,19 @@ export function registerModifyTool(server: McpServer): void {
           changes.push(result.change);
         } catch (error) {
           errors.push({
-            message: error instanceof Error ? error.message : "Unknown error",
+            message: error instanceof Error ? error.message : 'Unknown error',
             operation: i,
           });
           changes.push({
             action: op.action,
-            target: "target" in op ? op.target : "params" in op && "name" in op.params ? op.params.name : "unknown",
-            result: "error",
-            message: error instanceof Error ? error.message : "Unknown error",
+            target:
+              'target' in op
+                ? op.target
+                : 'params' in op && 'name' in op.params
+                  ? op.params.name
+                  : 'unknown',
+            result: 'error',
+            message: error instanceof Error ? error.message : 'Unknown error',
           });
         }
       }
@@ -167,7 +178,7 @@ export function registerModifyTool(server: McpServer): void {
         return {
           content: [
             {
-              type: "text" as const,
+              type: 'text' as const,
               text: JSON.stringify({
                 success: false,
                 dsl: currentDsl,
@@ -187,7 +198,7 @@ export function registerModifyTool(server: McpServer): void {
       return {
         content: [
           {
-            type: "text" as const,
+            type: 'text' as const,
             text: JSON.stringify({
               success: errors.length === 0,
               dsl: currentDsl,
@@ -197,65 +208,65 @@ export function registerModifyTool(server: McpServer): void {
           },
         ],
       };
-    }
+    },
   );
 }
 
 async function applyOperation(
   dsl: string,
-  op: Operation
+  op: Operation,
 ): Promise<{ dsl: string; change: ChangeResult }> {
   // Parse the DSL for AST-based operations
   const parseResult = await parseFloorplan(dsl);
   if (!parseResult.document) {
-    throw new Error("Failed to parse floorplan");
+    throw new Error('Failed to parse floorplan');
   }
 
   const editor = new FloorplanAstEditor(parseResult.document, dsl);
 
   switch (op.action) {
-    case "add_room":
+    case 'add_room':
       return addRoom(editor, op.params);
-    case "remove_room":
+    case 'remove_room':
       return removeRoom(editor, op.target);
-    case "resize_room":
+    case 'resize_room':
       return resizeRoom(editor, op.target, op.params);
-    case "move_room":
+    case 'move_room':
       return moveRoom(editor, op.target, op.params);
-    case "rename_room":
+    case 'rename_room':
       return renameRoom(editor, op.target, op.params.newName);
-    case "update_walls":
+    case 'update_walls':
       return updateWalls(editor, op.target, op.params);
-    case "add_label":
+    case 'add_label':
       return addLabel(editor, op.target, op.params.label);
-    case "convert_to_relative":
+    case 'convert_to_relative':
       return convertToRelative(editor, op.params);
   }
 }
 
 function addRoom(
   editor: FloorplanAstEditor,
-  params: RoomParams
+  params: RoomParams,
 ): { dsl: string; change: ChangeResult } {
   const success = editor.addRoom(params);
 
   if (!success) {
-    throw new Error("Could not find floor block to add room");
+    throw new Error('Could not find floor block to add room');
   }
 
   return {
     dsl: editor.apply(),
     change: {
-      action: "add_room",
+      action: 'add_room',
       target: params.name,
-      result: "applied",
+      result: 'applied',
     },
   };
 }
 
 function removeRoom(
   editor: FloorplanAstEditor,
-  target: string
+  target: string,
 ): { dsl: string; change: ChangeResult } {
   const room = editor.findRoom(target);
   if (!room) {
@@ -270,9 +281,9 @@ function removeRoom(
   return {
     dsl: editor.apply(),
     change: {
-      action: "remove_room",
+      action: 'remove_room',
       target,
-      result: "applied",
+      result: 'applied',
     },
   };
 }
@@ -280,7 +291,7 @@ function removeRoom(
 function resizeRoom(
   editor: FloorplanAstEditor,
   target: string,
-  params: { width: number; height: number }
+  params: { width: number; height: number },
 ): { dsl: string; change: ChangeResult } {
   const room = editor.findRoom(target);
   if (!room) {
@@ -295,9 +306,9 @@ function resizeRoom(
   return {
     dsl: editor.apply(),
     change: {
-      action: "resize_room",
+      action: 'resize_room',
       target,
-      result: "applied",
+      result: 'applied',
       message: `Resized to ${params.width} x ${params.height}`,
     },
   };
@@ -306,7 +317,7 @@ function resizeRoom(
 function moveRoom(
   editor: FloorplanAstEditor,
   target: string,
-  params: { x: number; y: number }
+  params: { x: number; y: number },
 ): { dsl: string; change: ChangeResult } {
   const room = editor.findRoom(target);
   if (!room) {
@@ -325,9 +336,9 @@ function moveRoom(
   return {
     dsl: editor.apply(),
     change: {
-      action: "move_room",
+      action: 'move_room',
       target,
-      result: "applied",
+      result: 'applied',
       message,
     },
   };
@@ -336,7 +347,7 @@ function moveRoom(
 function renameRoom(
   editor: FloorplanAstEditor,
   target: string,
-  newName: string
+  newName: string,
 ): { dsl: string; change: ChangeResult } {
   const room = editor.findRoom(target);
   if (!room) {
@@ -351,9 +362,9 @@ function renameRoom(
   return {
     dsl: editor.apply(),
     change: {
-      action: "rename_room",
+      action: 'rename_room',
       target,
-      result: "applied",
+      result: 'applied',
       message: `Renamed to ${newName}`,
     },
   };
@@ -362,7 +373,7 @@ function renameRoom(
 function updateWalls(
   editor: FloorplanAstEditor,
   target: string,
-  params: { top?: string; right?: string; bottom?: string; left?: string }
+  params: { top?: string; right?: string; bottom?: string; left?: string },
 ): { dsl: string; change: ChangeResult } {
   const room = editor.findRoom(target);
   if (!room) {
@@ -377,9 +388,9 @@ function updateWalls(
   return {
     dsl: editor.apply(),
     change: {
-      action: "update_walls",
+      action: 'update_walls',
       target,
-      result: "applied",
+      result: 'applied',
     },
   };
 }
@@ -387,7 +398,7 @@ function updateWalls(
 function addLabel(
   editor: FloorplanAstEditor,
   target: string,
-  label: string
+  label: string,
 ): { dsl: string; change: ChangeResult } {
   const room = editor.findRoom(target);
   if (!room) {
@@ -403,10 +414,10 @@ function addLabel(
   return {
     dsl: editor.apply(),
     change: {
-      action: "add_label",
+      action: 'add_label',
       target,
-      result: "applied",
-      message: hadLabel ? "Updated existing label" : undefined,
+      result: 'applied',
+      message: hadLabel ? 'Updated existing label' : undefined,
     },
   };
 }
@@ -417,7 +428,7 @@ function convertToRelative(
     anchorRoom: string;
     alignmentTolerance?: number;
     targetRooms?: string[];
-  }
+  },
 ): { dsl: string; change: ChangeResult } {
   const { anchorRoom, alignmentTolerance = 1, targetRooms } = params;
 
@@ -427,7 +438,7 @@ function convertToRelative(
   // Validate the conversion is possible
   const validation = validateForConversion(allRooms, anchorRoom);
   if (!validation.valid) {
-    throw new Error(`Cannot convert to relative: ${validation.errors.join("; ")}`);
+    throw new Error(`Cannot convert to relative: ${validation.errors.join('; ')}`);
   }
 
   // Extract room bounds for spatial analysis
@@ -437,13 +448,13 @@ function convertToRelative(
   const { assignments, unresolved } = buildRelativeAssignments(
     roomBounds,
     anchorRoom,
-    alignmentTolerance
+    alignmentTolerance,
   );
 
   if (unresolved.length > 0) {
     throw new Error(
-      `Could not determine relative positions for rooms: ${unresolved.join(", ")}. ` +
-      `These rooms may be too far from other rooms.`
+      `Could not determine relative positions for rooms: ${unresolved.join(', ')}. ` +
+        `These rooms may be too far from other rooms.`,
     );
   }
 
@@ -467,16 +478,16 @@ function convertToRelative(
       assignment.direction,
       assignment.reference,
       assignment.gap,
-      assignment.alignment
+      assignment.alignment,
     );
   }
 
   return {
     dsl: editor.apply(),
     change: {
-      action: "convert_to_relative",
+      action: 'convert_to_relative',
       target: anchorRoom,
-      result: "applied",
+      result: 'applied',
       message: `Converted ${filteredAssignments.length} room(s) to relative positioning`,
     },
   };

@@ -1,17 +1,17 @@
 /**
  * Centralized DaisyUI/Tailwind class definitions
- * 
+ *
  * Why this file exists:
  * - Tailwind CSS v4 has a regression where @apply cannot reference classes
  *   defined in @layer blocks (which is how DaisyUI defines its components)
  * - This file centralizes all class strings for maintainability
  * - When Tailwind fixes @apply, we can migrate to CSS classes by updating
  *   only this file (see .cursor/skills/solidjs-daisyui/SKILL.md)
- * 
+ *
  * Usage:
  *   import { cls } from './class-names.js';
  *   button.className = cls.btn.ghost;
- * 
+ *
  * @see https://github.com/tailwindlabs/tailwindcss/issues/15139
  */
 
@@ -129,7 +129,8 @@ export const cls = {
     /** Top border: border-t border-base-content/10 */
     top: 'border-t border-base-content/10',
     /** Title with bottom border and spacing */
-    titleSection: 'text-xs font-semibold text-base-content/60 mb-3 pb-2 border-b border-base-content/10',
+    titleSection:
+      'text-xs font-semibold text-base-content/60 mb-3 pb-2 border-b border-base-content/10',
     /** Action section with top border and spacing */
     actionSection: 'mt-3 pt-2 border-t border-base-content/10',
   },

@@ -2,9 +2,9 @@
  * Tests for connection matching and deduplication logic
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { findMatchingConnections, shouldRenderConnection } from '../src/connection-matcher.js';
-import type { JsonRoom, JsonWall, JsonConnection } from '../src/types.js';
+import type { JsonConnection, JsonRoom, JsonWall } from '../src/types.js';
 
 describe('connection-matcher', () => {
   describe('findMatchingConnections', () => {
@@ -36,7 +36,7 @@ describe('connection-matcher', () => {
       ];
 
       const matches = findMatchingConnections(room, wall, connections);
-      
+
       expect(matches).toHaveLength(1);
       expect(matches[0].isFromRoom).toBe(true);
       expect(matches[0].otherRoomName).toBe('kitchen');
@@ -71,7 +71,7 @@ describe('connection-matcher', () => {
       ];
 
       const matches = findMatchingConnections(room, wall, connections);
-      
+
       expect(matches).toHaveLength(1);
       expect(matches[0].isFromRoom).toBe(false);
       expect(matches[0].otherRoomName).toBe('living');
@@ -106,7 +106,7 @@ describe('connection-matcher', () => {
       ];
 
       const matches = findMatchingConnections(room, wall, connections);
-      
+
       expect(matches).toHaveLength(0);
     });
   });
@@ -278,4 +278,3 @@ describe('connection-matcher', () => {
     });
   });
 });
-

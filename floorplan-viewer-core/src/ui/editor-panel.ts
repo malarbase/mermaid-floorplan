@@ -1,6 +1,6 @@
 /**
  * Editor Panel UI Component
- * 
+ *
  * A collapsible side panel containing the DSL editor with:
  * - Read-only mode for unauthenticated viewers
  * - Editable mode for authenticated users

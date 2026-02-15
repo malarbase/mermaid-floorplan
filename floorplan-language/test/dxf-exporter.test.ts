@@ -2,14 +2,18 @@
  * Tests for DXF Export functionality
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  exportFloorToDxf,
-  exportFloorplanToDxf,
-  DXF_LAYERS,
   DXF_COLORS,
+  DXF_LAYERS,
+  exportFloorplanToDxf,
+  exportFloorToDxf,
 } from '../src/diagrams/floorplans/dxf-exporter.js';
-import type { JsonFloor, JsonConnection, JsonRoom } from '../src/diagrams/floorplans/json-converter.js';
+import type {
+  JsonConnection,
+  JsonFloor,
+  JsonRoom,
+} from '../src/diagrams/floorplans/json-converter.js';
 
 describe('DXF Exporter', () => {
   // Sample room data
@@ -140,17 +144,13 @@ describe('DXF Exporter', () => {
     const multiFloorData: JsonFloor[] = [
       {
         id: 'Ground Floor',
-        rooms: [
-          { name: 'Living', label: 'Living', x: 0, z: 0, width: 20, height: 15 },
-        ],
+        rooms: [{ name: 'Living', label: 'Living', x: 0, z: 0, width: 20, height: 15 }],
         stairs: [],
         lifts: [],
       },
       {
         id: 'First Floor',
-        rooms: [
-          { name: 'Bedroom', label: 'Bedroom', x: 0, z: 0, width: 15, height: 12 },
-        ],
+        rooms: [{ name: 'Bedroom', label: 'Bedroom', x: 0, z: 0, width: 15, height: 12 }],
         stairs: [],
         lifts: [],
       },
@@ -187,9 +187,7 @@ describe('DXF Exporter', () => {
       const floorWithStairs: JsonFloor = {
         id: 'Ground',
         rooms: [],
-        stairs: [
-          { name: 'Main Stairs', label: 'Main Stairs', x: 10, z: 5, width: 4 },
-        ],
+        stairs: [{ name: 'Main Stairs', label: 'Main Stairs', x: 10, z: 5, width: 4 }],
         lifts: [],
       };
 
@@ -204,15 +202,52 @@ describe('DXF Exporter', () => {
         id: 'Ground',
         rooms: [],
         stairs: [],
-        lifts: [
-          { name: 'Elevator 1', label: 'Elevator', x: 15, z: 10, width: 6, height: 6 },
-        ],
+        lifts: [{ name: 'Elevator 1', label: 'Elevator', x: 15, z: 10, width: 6, height: 6 }],
       };
 
       const result = exportFloorToDxf(floorWithLift, []);
 
       expect(result.content).toContain('LIFTS');
       expect(result.content).toContain('Elevator');
+    });
+  });
+
+  describe('Unit normalization', () => {
+    it('should set units to Meters when config specifies m', () => {
+      const result = exportFloorToDxf(sampleFloor, [], { units: 'm' });
+
+      // DXF should contain INSUNITS header variable for meters
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?6/); // 6 = Meters
+    });
+
+    it('should set units to Feet when config specifies ft', () => {
+      const result = exportFloorToDxf(sampleFloor, [], { units: 'ft' });
+
+      // DXF should contain INSUNITS header variable for feet
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?2/); // 2 = Feet
+    });
+
+    it('should set units to Millimeters when config specifies mm', () => {
+      const result = exportFloorToDxf(sampleFloor, [], { units: 'mm' });
+
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?4/); // 4 = Millimeters
+    });
+
+    it('should set units to Inches when config specifies in', () => {
+      const result = exportFloorToDxf(sampleFloor, [], { units: 'in' });
+
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?1/); // 1 = Inches
+    });
+
+    it('should default to Feet when no units specified', () => {
+      const result = exportFloorToDxf(sampleFloor, []);
+
+      expect(result.content).toContain('$INSUNITS');
+      expect(result.content).toMatch(/\$INSUNITS[\s\S]*?2/); // 2 = Feet
     });
   });
 

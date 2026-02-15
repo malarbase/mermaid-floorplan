@@ -1,6 +1,6 @@
 /**
  * Drag and Drop Handler
- * 
+ *
  * Enables drag-and-drop file loading on the 3D canvas:
  * - Visual overlay on drag-over
  * - Supports .floorplan and .json files
@@ -63,9 +63,9 @@ export function initializeDragDrop(config: DragDropConfig): DragDropHandler {
   function handleDragEnter(e: DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     dragCounter++;
-    
+
     if (dragCounter === 1) {
       showOverlay();
       onDragStateChange?.(true);
@@ -75,7 +75,7 @@ export function initializeDragDrop(config: DragDropConfig): DragDropHandler {
   function handleDragOver(e: DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     // Set drop effect
     if (e.dataTransfer) {
       e.dataTransfer.dropEffect = 'copy';
@@ -85,9 +85,9 @@ export function initializeDragDrop(config: DragDropConfig): DragDropHandler {
   function handleDragLeave(e: DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     dragCounter--;
-    
+
     if (dragCounter === 0) {
       hideOverlay();
       onDragStateChange?.(false);
@@ -97,7 +97,7 @@ export function initializeDragDrop(config: DragDropConfig): DragDropHandler {
   function handleDrop(e: DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-    
+
     dragCounter = 0;
     hideOverlay();
     onDragStateChange?.(false);
@@ -111,10 +111,13 @@ export function initializeDragDrop(config: DragDropConfig): DragDropHandler {
 
   function processFile(file: File) {
     const ext = getFileExtension(file.name).toLowerCase();
-    
+
     // Check if file type is supported
     if (!acceptedExtensions.includes(ext)) {
-      onInvalidFile?.(file, `Unsupported file type: ${ext || 'unknown'}. Expected: ${acceptedExtensions.join(', ')}`);
+      onInvalidFile?.(
+        file,
+        `Unsupported file type: ${ext || 'unknown'}. Expected: ${acceptedExtensions.join(', ')}`,
+      );
       return;
     }
 
@@ -147,7 +150,7 @@ export function initializeDragDrop(config: DragDropConfig): DragDropHandler {
   function enable() {
     if (enabled) return;
     enabled = true;
-    
+
     target.addEventListener('dragenter', handleDragEnter);
     target.addEventListener('dragover', handleDragOver);
     target.addEventListener('dragleave', handleDragLeave);
@@ -157,12 +160,12 @@ export function initializeDragDrop(config: DragDropConfig): DragDropHandler {
   function disable() {
     if (!enabled) return;
     enabled = false;
-    
+
     target.removeEventListener('dragenter', handleDragEnter);
     target.removeEventListener('dragover', handleDragOver);
     target.removeEventListener('dragleave', handleDragLeave);
     target.removeEventListener('drop', handleDrop);
-    
+
     hideOverlay();
     dragCounter = 0;
   }

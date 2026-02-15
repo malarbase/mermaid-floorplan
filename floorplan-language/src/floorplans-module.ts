@@ -1,32 +1,42 @@
-import { type Module, inject } from 'langium';
-import { createDefaultModule, createDefaultSharedModule, type DefaultSharedModuleContext, type LangiumServices, type LangiumSharedServices, type PartialLangiumServices } from 'langium/lsp';
-import { FloorplansGeneratedModule, FloorplansGeneratedSharedModule } from './generated/module.js';
+import { inject, type Module } from 'langium';
+import {
+  createDefaultModule,
+  createDefaultSharedModule,
+  type DefaultSharedModuleContext,
+  type LangiumServices,
+  type LangiumSharedServices,
+  type PartialLangiumServices,
+} from 'langium/lsp';
 import { FloorplansValidator, registerValidationChecks } from './floorplans-validator.js';
+import { FloorplansGeneratedModule, FloorplansGeneratedSharedModule } from './generated/module.js';
 
 /**
  * Declaration of custom services - add your own service classes here.
  */
 export type FloorplansAddedServices = {
-    validation: {
-        FloorplansValidator: FloorplansValidator
-    }
-}
+  validation: {
+    FloorplansValidator: FloorplansValidator;
+  };
+};
 
 /**
  * Union of Langium default services and your custom services - use this as constructor parameter
  * of custom service classes.
  */
-export type FloorplansServices = LangiumServices & FloorplansAddedServices
+export type FloorplansServices = LangiumServices & FloorplansAddedServices;
 
 /**
  * Dependency injection module that overrides Langium default services and contributes the
  * declared custom services. The Langium defaults can be partially specified to override only
  * selected services, while the custom services must be fully specified.
  */
-export const FloorplansModule: Module<FloorplansServices, PartialLangiumServices & FloorplansAddedServices> = {
-    validation: {
-        FloorplansValidator: () => new FloorplansValidator()
-    }
+export const FloorplansModule: Module<
+  FloorplansServices,
+  PartialLangiumServices & FloorplansAddedServices
+> = {
+  validation: {
+    FloorplansValidator: () => new FloorplansValidator(),
+  },
 };
 
 /**
@@ -45,24 +55,21 @@ export const FloorplansModule: Module<FloorplansServices, PartialLangiumServices
  * @returns An object wrapping the shared services and the language-specific services
  */
 export function createFloorplansServices(context: DefaultSharedModuleContext): {
-    shared: LangiumSharedServices,
-    Floorplans: FloorplansServices
+  shared: LangiumSharedServices;
+  Floorplans: FloorplansServices;
 } {
-    const shared = inject(
-        createDefaultSharedModule(context),
-        FloorplansGeneratedSharedModule
-    );
-    const Floorplans = inject(
-        createDefaultModule({ shared }),
-        FloorplansGeneratedModule,
-        FloorplansModule
-    );
-    shared.ServiceRegistry.register(Floorplans);
-    registerValidationChecks(Floorplans);
-    if (!context.connection) {
-        // We don't run inside a language server
-        // Therefore, initialize the configuration provider instantly
-        shared.workspace.ConfigurationProvider.initialized({});
-    }
-    return { shared, Floorplans };
+  const shared = inject(createDefaultSharedModule(context), FloorplansGeneratedSharedModule);
+  const Floorplans = inject(
+    createDefaultModule({ shared }),
+    FloorplansGeneratedModule,
+    FloorplansModule,
+  );
+  shared.ServiceRegistry.register(Floorplans);
+  registerValidationChecks(Floorplans);
+  if (!context.connection) {
+    // We don't run inside a language server
+    // Therefore, initialize the configuration provider instantly
+    shared.workspace.ConfigurationProvider.initialized({});
+  }
+  return { shared, Floorplans };
 }

@@ -212,7 +212,7 @@ class PerformanceUtil {
       console.log(
         `  ${name}: avg=${stats.avg.toFixed(2)}ms, ` +
           `min=${stats.min.toFixed(2)}ms, max=${stats.max.toFixed(2)}ms, ` +
-          `count=${stats.count} ${status}`
+          `count=${stats.count} ${status}`,
       );
     }
 

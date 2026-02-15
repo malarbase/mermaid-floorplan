@@ -11,7 +11,16 @@
  * - Auth-aware command filtering (lock icon for protected commands)
  */
 
-import { createSignal, createMemo, createEffect, For, Show, onMount, onCleanup, type Accessor } from 'solid-js';
+import {
+  type Accessor,
+  createEffect,
+  createMemo,
+  createSignal,
+  For,
+  onCleanup,
+  onMount,
+  Show,
+} from 'solid-js';
 
 // ============================================================================
 // Types
@@ -79,7 +88,7 @@ export function CommandPalette(props: CommandPaletteProps) {
     const query = searchQuery().toLowerCase().trim();
     if (!query) return commands;
 
-    return commands.filter(cmd => {
+    return commands.filter((cmd) => {
       const labelMatch = cmd.label.toLowerCase().includes(query);
       const descMatch = cmd.description?.toLowerCase().includes(query);
       const categoryMatch = cmd.category?.toLowerCase().includes(query);
@@ -108,7 +117,7 @@ export function CommandPalette(props: CommandPaletteProps) {
 
   // Flatten for keyboard navigation
   const flatCommands = createMemo(() => {
-    return groupedCommands().flatMap(g => g.commands);
+    return groupedCommands().flatMap((g) => g.commands);
   });
 
   // Reset selection when search changes
@@ -124,23 +133,24 @@ export function CommandPalette(props: CommandPaletteProps) {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setSelectedIndex(i => Math.min(i + 1, commands.length - 1));
+        setSelectedIndex((i) => Math.min(i + 1, commands.length - 1));
         scrollToSelected();
         break;
 
       case 'ArrowUp':
         e.preventDefault();
-        setSelectedIndex(i => Math.max(i - 1, 0));
+        setSelectedIndex((i) => Math.max(i - 1, 0));
         scrollToSelected();
         break;
 
-      case 'Enter':
+      case 'Enter': {
         e.preventDefault();
         const selected = commands[selectedIndex()];
         if (selected) {
           executeCommand(selected);
         }
         break;
+      }
 
       case 'Escape':
         e.preventDefault();
@@ -204,7 +214,7 @@ export function CommandPalette(props: CommandPaletteProps) {
 
   // ============================================================================
   // Render - Using inline Tailwind utilities + DaisyUI classes
-  // 
+  //
   // With @source directives in tailwind-styles.css and resolve.alias in
   // vite.config.ts pointing to source files, Tailwind v4 scans this file
   // for utility classes. Using inline utilities is the recommended approach.
@@ -238,18 +248,11 @@ export function CommandPalette(props: CommandPaletteProps) {
           </div>
 
           {/* Command List */}
-          <div
-            ref={listRef}
-            id="command-list"
-            class="flex-1 overflow-y-auto p-2"
-            role="listbox"
-          >
+          <div ref={listRef} id="command-list" class="flex-1 overflow-y-auto p-2" role="listbox">
             <Show
               when={flatCommands().length > 0}
               fallback={
-                <div class="py-6 text-center text-base-content/60 text-sm">
-                  No commands found
-                </div>
+                <div class="py-6 text-center text-base-content/60 text-sm">No commands found</div>
               }
             >
               <For each={groupedCommands()}>
@@ -288,9 +291,7 @@ export function CommandPalette(props: CommandPaletteProps) {
 
                             {/* Label and Description */}
                             <div class="flex-1 flex flex-col gap-0.5 min-w-0">
-                              <span class="font-medium text-sm text-base-content">
-                                {cmd.label}
-                              </span>
+                              <span class="font-medium text-sm text-base-content">{cmd.label}</span>
                               <Show when={cmd.description}>
                                 <span class="text-xs text-base-content/60 truncate">
                                   {cmd.description}
@@ -301,7 +302,9 @@ export function CommandPalette(props: CommandPaletteProps) {
                             {/* Right side: shortcut or lock icon */}
                             <div class="flex items-center gap-2 flex-shrink-0">
                               <Show when={cmd.requiresAuth && !getIsAuthenticated()}>
-                                <span class="text-sm" title="Requires authentication">🔒</span>
+                                <span class="text-sm" title="Requires authentication">
+                                  🔒
+                                </span>
                               </Show>
                               <Show when={cmd.shortcut}>
                                 <kbd class="kbd kbd-sm">{cmd.shortcut}</kbd>
@@ -319,9 +322,15 @@ export function CommandPalette(props: CommandPaletteProps) {
 
           {/* Footer - keyboard hints */}
           <div class="flex gap-4 px-4 py-2.5 border-t border-base-content/10 text-xs text-base-content/60">
-            <span><kbd class="kbd kbd-xs mr-1">↑↓</kbd> Navigate</span>
-            <span><kbd class="kbd kbd-xs mr-1">↵</kbd> Select</span>
-            <span><kbd class="kbd kbd-xs mr-1">Esc</kbd> Close</span>
+            <span>
+              <kbd class="kbd kbd-xs mr-1">↑↓</kbd> Navigate
+            </span>
+            <span>
+              <kbd class="kbd kbd-xs mr-1">↵</kbd> Select
+            </span>
+            <span>
+              <kbd class="kbd kbd-xs mr-1">Esc</kbd> Close
+            </span>
           </div>
         </div>
       </div>

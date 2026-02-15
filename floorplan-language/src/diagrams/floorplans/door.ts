@@ -1,12 +1,12 @@
 /**
  * Door rendering utilities for floorplan SVG generation
  * Following Mermaid diagram conventions
- * 
+ *
  * Supports:
  * - Single doors with swing arc
  * - Double doors with mirrored swing arcs
  * - Swing direction (left/right)
- * 
+ *
  * Door arc convention (top-down floor plan view):
  * - A door on a wall swings perpendicular to that wall
  * - The door panel (straight line) shows the door in its OPEN position
@@ -15,15 +15,15 @@
  * - "swing: right" means hinge on left/top, door swings right/down
  */
 
-import type { DoorType, SwingDirection } from "../../generated/ast.js";
+import type { DoorType, SwingDirection } from '../../generated/ast.js';
 
 /**
  * Generate SVG path for a single door swing arc
- * 
+ *
  * For a top-down floor plan:
  * - Horizontal walls (top/bottom): Door panel extends vertically (up/down into room)
  * - Vertical walls (left/right): Door panel extends horizontally (left/right into room)
- * 
+ *
  * The path consists of:
  * 1. Move to hinge point (on the wall)
  * 2. Line to door end (door panel in open position, perpendicular to wall)
@@ -36,19 +36,19 @@ function generateSingleDoorPath(
   wallThickness: number,
   isHorizontal: boolean,
   wallDirection: string,
-  swingDirection?: SwingDirection
+  swingDirection?: SwingDirection,
 ): string {
-  const effectiveSwing = swingDirection ?? "right";
+  const effectiveSwing = swingDirection ?? 'right';
   const radius = doorWidth * 0.85; // Door swing radius
-  
+
   if (isHorizontal) {
     // Door on horizontal wall (top or bottom)
     // Door panel extends vertically (perpendicular to wall)
     const centerY = y + wallThickness / 2;
-    
-    if (wallDirection === "top") {
+
+    if (wallDirection === 'top') {
       // Door on TOP wall - opens downward into the room
-      if (effectiveSwing === "left") {
+      if (effectiveSwing === 'left') {
         // Hinge on right side of opening, door swings down-left
         const hingeX = x + doorWidth;
         const doorEndY = centerY + radius;
@@ -63,7 +63,7 @@ function generateSingleDoorPath(
       }
     } else {
       // Door on BOTTOM wall - opens upward into the room
-      if (effectiveSwing === "left") {
+      if (effectiveSwing === 'left') {
         // Hinge on right side of opening, door swings up-left
         const hingeX = x + doorWidth;
         const doorEndY = centerY - radius;
@@ -79,10 +79,10 @@ function generateSingleDoorPath(
     // Door on vertical wall (left or right)
     // Door panel extends horizontally (perpendicular to wall)
     const centerX = x + wallThickness / 2;
-    
-    if (wallDirection === "left") {
+
+    if (wallDirection === 'left') {
       // Door on LEFT wall - opens rightward into the room
-      if (effectiveSwing === "left") {
+      if (effectiveSwing === 'left') {
         // Hinge on bottom of opening, door swings right-up
         const hingeY = y + doorWidth;
         const doorEndX = centerX + radius;
@@ -99,7 +99,7 @@ function generateSingleDoorPath(
       // Door on RIGHT wall - opens leftward into the room on the left
       // Note: Right wall swing is inverted from left wall to match "facing from inside" perspective
       // When facing right wall (+X), your right points to min Y (top), left points to max Y (bottom)
-      if (effectiveSwing === "left") {
+      if (effectiveSwing === 'left') {
         // Hinge on top of opening, door swings left-down
         const hingeY = y;
         const doorEndX = centerX - radius;
@@ -124,28 +124,60 @@ function generateDoubleDoor(
   y: number,
   width: number,
   height: number,
-  wallDirection: string
+  wallDirection: string,
 ): string {
   const isHorizontal = width > height;
   const doorWidth = isHorizontal ? width : height;
   const wallThickness = isHorizontal ? height : width;
   const halfDoorWidth = doorWidth / 2;
   const gap = 0.05; // Small gap between doors
-  
+
   let leftPath: string, rightPath: string;
-  
+
   if (isHorizontal) {
     // Horizontal wall - doors side by side
     // Left door swings right, right door swings left (both open into room)
-    leftPath = generateSingleDoorPath(x, y, halfDoorWidth - gap, wallThickness, true, wallDirection, "right");
-    rightPath = generateSingleDoorPath(x + halfDoorWidth + gap, y, halfDoorWidth - gap, wallThickness, true, wallDirection, "left");
+    leftPath = generateSingleDoorPath(
+      x,
+      y,
+      halfDoorWidth - gap,
+      wallThickness,
+      true,
+      wallDirection,
+      'right',
+    );
+    rightPath = generateSingleDoorPath(
+      x + halfDoorWidth + gap,
+      y,
+      halfDoorWidth - gap,
+      wallThickness,
+      true,
+      wallDirection,
+      'left',
+    );
   } else {
-    // Vertical wall - doors stacked  
+    // Vertical wall - doors stacked
     // Top door swings down, bottom door swings up (both open into room)
-    leftPath = generateSingleDoorPath(x, y, halfDoorWidth - gap, wallThickness, false, wallDirection, "right");
-    rightPath = generateSingleDoorPath(x, y + halfDoorWidth + gap, halfDoorWidth - gap, wallThickness, false, wallDirection, "left");
+    leftPath = generateSingleDoorPath(
+      x,
+      y,
+      halfDoorWidth - gap,
+      wallThickness,
+      false,
+      wallDirection,
+      'right',
+    );
+    rightPath = generateSingleDoorPath(
+      x,
+      y + halfDoorWidth + gap,
+      halfDoorWidth - gap,
+      wallThickness,
+      false,
+      wallDirection,
+      'left',
+    );
   }
-  
+
   return `<g class="double-door" data-type="double-door" data-direction="${wallDirection}">
     <path d="${leftPath}" fill="white" stroke="black" stroke-width="0.05" />
     <path d="${rightPath}" fill="white" stroke="black" stroke-width="0.05" />
@@ -161,23 +193,23 @@ export function generateDoor(
   width: number,
   height: number,
   wallDirection?: string,
-  doorType: DoorType = "door",
-  swingDirection?: SwingDirection
+  doorType: DoorType = 'door',
+  swingDirection?: SwingDirection,
 ): string {
   // Handle opening (doorless passage/archway)
   // Creates a gap in the wall without a door arc
-  if (doorType === "opening") {
+  if (doorType === 'opening') {
     // Draw a white rectangle to "cut" through the wall, creating the opening
     // No door arc is drawn - just the gap
     return `<rect x="${x}" y="${y}" width="${width}" height="${height}" 
       fill="white" stroke="none" class="opening" data-type="opening" data-direction="${wallDirection}" />`;
   }
-  
+
   // Handle double-door
-  if (doorType === "double-door") {
-    return generateDoubleDoor(x, y, width, height, wallDirection ?? "top");
+  if (doorType === 'double-door') {
+    return generateDoubleDoor(x, y, width, height, wallDirection ?? 'top');
   }
-  
+
   // Single door
   const isHorizontal = width > height;
   const doorWidth = isHorizontal ? width : height;
@@ -189,9 +221,9 @@ export function generateDoor(
     doorWidth,
     wallThickness,
     isHorizontal,
-    wallDirection ?? "top",
-    swingDirection
+    wallDirection ?? 'top',
+    swingDirection,
   );
 
-  return `<path d="${pathData}" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="${wallDirection}" data-swing="${swingDirection ?? "default"}" />`;
+  return `<path d="${pathData}" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="${wallDirection}" data-swing="${swingDirection ?? 'default'}" />`;
 }

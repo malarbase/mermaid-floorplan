@@ -1,7 +1,7 @@
 /**
  * Shortcut info panel - compact persistent panel showing basic navigation hints
- * 
- * This panel displays quick reference shortcuts and hints users to press H/? 
+ *
+ * This panel displays quick reference shortcuts and hints users to press H/?
  * for the full keyboard shortcuts overlay.
  */
 import { injectStyles } from './styles.js';
@@ -47,47 +47,52 @@ const DEFAULT_SHORTCUTS: ShortcutItem[] = [
  */
 export function createShortcutInfoUI(options: ShortcutInfoUIOptions = {}): ShortcutInfoUI {
   injectStyles();
-  
+
   const {
     title = 'Floorplan 3D Viewer',
     shortcuts = DEFAULT_SHORTCUTS,
     helpHint = 'Press <b>?</b> or <b>H</b> for shortcuts',
     visible = true,
   } = options;
-  
+
   const panel = document.createElement('div');
   panel.className = 'fp-shortcut-info';
   panel.id = 'info';
-  
+
   // Title
   const titleEl = document.createElement('h3');
   titleEl.textContent = title;
   panel.appendChild(titleEl);
-  
+
   // Shortcuts list
   shortcuts.forEach(({ label, description }) => {
     const p = document.createElement('p');
     p.textContent = `${label}: ${description}`;
     panel.appendChild(p);
   });
-  
+
   // Help hint
   const hint = document.createElement('p');
   hint.className = 'fp-shortcut-info-hint';
   hint.innerHTML = helpHint;
   panel.appendChild(hint);
-  
+
   // Initial visibility
   if (!visible) {
     panel.style.display = 'none';
   }
-  
+
   return {
     element: panel,
-    show: () => { panel.style.display = 'block'; },
-    hide: () => { panel.style.display = 'none'; },
-    setVisible: (v) => { panel.style.display = v ? 'block' : 'none'; },
+    show: () => {
+      panel.style.display = 'block';
+    },
+    hide: () => {
+      panel.style.display = 'none';
+    },
+    setVisible: (v) => {
+      panel.style.display = v ? 'block' : 'none';
+    },
     isVisible: () => panel.style.display !== 'none',
   };
 }
-

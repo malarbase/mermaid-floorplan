@@ -1,38 +1,31 @@
 /**
  * Unified wall generation with optional CSG support
- * 
+ *
  * This module provides wall generation that works in both CSG-enabled and
  * non-CSG environments. When `three-bvh-csg` is available, walls are generated
  * with proper cutouts for doors/windows. Otherwise, simple box walls are used
  * (doors/windows clip through).
- * 
+ *
  * Usage:
  *   // Initialize CSG (call once at startup via csg-manager)
  *   const csgEnabled = await initCSG();
- *   
+ *
  *   // Generate walls (uses CSG if available)
  *   const wallBuilder = new WallBuilder();
  *   wallBuilder.generateWall(...);
  */
 
 import * as THREE from 'three';
-import type { JsonWall, JsonRoom, JsonConnection, JsonConfig } from './types.js';
-import { DIMENSIONS, getThemeColors } from './constants.js';
-import type { ViewerTheme, ThemeColors } from './constants.js';
-import { MaterialFactory, type MaterialSet, type MaterialStyle } from './materials.js';
-import { reassignMaterialsByNormal } from './csg-utils.js';
-import {
-  analyzeWallOwnership,
-  type StyleResolver,
-  type WallSegment,
-} from './wall-ownership.js';
-import {
-  findMatchingConnections,
-  shouldRenderConnection,
-} from './connection-matcher.js';
 import { generateConnection } from './connection-geometry.js';
+import { findMatchingConnections, shouldRenderConnection } from './connection-matcher.js';
+import type { ThemeColors, ViewerTheme } from './constants.js';
+import { DIMENSIONS, getThemeColors } from './constants.js';
 // Use centralized CSG manager - ensures single source of truth for CSG initialization
-import { isCsgAvailable, getCSG, type CSGEvaluator, type CSGBrush } from './csg-manager.js';
+import { type CSGBrush, type CSGEvaluator, getCSG, isCsgAvailable } from './csg-manager.js';
+import { reassignMaterialsByNormal } from './csg-utils.js';
+import { MaterialFactory, type MaterialSet } from './materials.js';
+import type { JsonConfig, JsonConnection, JsonRoom, JsonWall } from './types.js';
+import { analyzeWallOwnership, type StyleResolver, type WallSegment } from './wall-ownership.js';
 
 /**
  * Hole specification for wall cutouts
@@ -60,7 +53,7 @@ export interface WallGeometry {
 
 /**
  * Calculate wall geometry (dimensions and position)
- * 
+ *
  * @param wall - Wall data
  * @param room - Room data
  * @param wallThickness - Wall thickness
@@ -69,12 +62,15 @@ export interface WallGeometry {
 export function calculateWallGeometry(
   wall: JsonWall,
   room: JsonRoom,
-  wallThickness: number
+  wallThickness: number,
 ): WallGeometry {
   const centerX = room.x + room.width / 2;
   const centerZ = room.z + room.height / 2;
 
-  let width = 0, depth = 0, posX = 0, posZ = 0;
+  let width = 0,
+    depth = 0,
+    posX = 0,
+    posZ = 0;
   let isVertical = false;
 
   switch (wall.direction) {
@@ -111,7 +107,7 @@ export function calculateWallGeometry(
 
 /**
  * Create geometry for a wall segment
- * 
+ *
  * @param segment - Wall segment data
  * @param wallThickness - Wall thickness
  * @param wallHeight - Wall height
@@ -122,7 +118,7 @@ export function createWallSegmentGeometry(
   segment: WallSegment,
   wallThickness: number,
   wallHeight: number,
-  isVertical: boolean
+  isVertical: boolean,
 ): THREE.BoxGeometry {
   const segmentLength = segment.endPos - segment.startPos;
 
@@ -135,7 +131,7 @@ export function createWallSegmentGeometry(
 
 /**
  * Calculate position for a wall segment
- * 
+ *
  * @param segment - Wall segment data
  * @param wall - Wall data
  * @param room - Room data
@@ -146,7 +142,7 @@ export function calculateWallSegmentPosition(
   segment: WallSegment,
   wall: JsonWall,
   room: JsonRoom,
-  wallThickness: number
+  wallThickness: number,
 ): { x: number; z: number } {
   const segmentLength = segment.endPos - segment.startPos;
   const baseGeom = calculateWallGeometry(wall, room, wallThickness);
@@ -178,7 +174,7 @@ export interface WallBuilderOptions {
 
 /**
  * Wall builder class that manages CSG operations
- * 
+ *
  * Uses the centralized CSG manager from csg-manager.ts.
  * Call initCSG() before creating WallBuilder instances to enable CSG operations.
  */
@@ -222,32 +218,60 @@ export class WallBuilder {
     connections: JsonConnection[],
     materials: MaterialSet,
     group: THREE.Group,
-    config: JsonConfig = {}
+    config: JsonConfig = {},
   ): void {
     const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
     const elevation = room.elevation || 0;
-    const wallHeight = wall.wallHeight || room.roomHeight || config.default_height || DIMENSIONS.WALL.HEIGHT;
+    const wallHeight =
+      wall.wallHeight || room.roomHeight || config.default_height || DIMENSIONS.WALL.HEIGHT;
 
     // Analyze wall ownership
     const ownership = analyzeWallOwnership(room, wall, allRooms, this.styleResolver);
 
     if (!ownership.shouldRender) {
       // Still need to process connections for door rendering
-      this.processConnectionsOnly(wall, room, allRooms, connections, materials, group, elevation, config);
+      this.processConnectionsOnly(
+        wall,
+        room,
+        allRooms,
+        connections,
+        materials,
+        group,
+        elevation,
+        config,
+      );
       return;
     }
 
     if (this.evaluator && isCsgAvailable()) {
       // CSG path: generate wall with proper cutouts
       this.generateWallWithCSG(
-        wall, room, ownership.segments, allRooms, connections,
-        materials, group, elevation, wallHeight, wallThickness, config
+        wall,
+        room,
+        ownership.segments,
+        allRooms,
+        connections,
+        materials,
+        group,
+        elevation,
+        wallHeight,
+        wallThickness,
+        config,
       );
     } else {
       // Fallback path: simple box walls (doors clip through)
       this.generateSimpleWall(
-        wall, room, ownership.segments, allRooms, connections,
-        materials, group, elevation, wallHeight, wallThickness, config
+        wall,
+        room,
+        ownership.segments,
+        allRooms,
+        connections,
+        materials,
+        group,
+        elevation,
+        wallHeight,
+        wallThickness,
+        config,
       );
     }
   }
@@ -266,7 +290,7 @@ export class WallBuilder {
     elevation: number,
     wallHeight: number,
     wallThickness: number,
-    config: JsonConfig
+    config: JsonConfig,
   ): void {
     const { Brush, SUBTRACTION } = getCSG();
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
@@ -277,12 +301,26 @@ export class WallBuilder {
 
     // Handle explicit wall type (window/door)
     if (wall.type === 'door' || wall.type === 'window') {
-      const holeBrush = this.createExplicitHole(wall, room, baseGeometry, wallThickness, elevation, config);
+      const holeBrush = this.createExplicitHole(
+        wall,
+        room,
+        baseGeometry,
+        wallThickness,
+        elevation,
+        config,
+      );
       if (holeBrush) {
         holes.push(holeBrush);
         // Add glass for windows
         if (wall.type === 'window') {
-          const glassMesh = this.createWindowGlass(wall, room, baseGeometry, elevation, materials, config);
+          const glassMesh = this.createWindowGlass(
+            wall,
+            room,
+            baseGeometry,
+            elevation,
+            materials,
+            config,
+          );
           if (glassMesh) group.add(glassMesh);
         }
       }
@@ -292,14 +330,27 @@ export class WallBuilder {
     const connectionMatches = findMatchingConnections(room, wall, connections);
     for (const match of connectionMatches) {
       const shouldRender = shouldRenderConnection(match, wall, allRooms);
-      const holeData = this.createConnectionHole(match.connection, room, wall, baseGeometry, wallThickness, elevation, allRooms, config);
+      const holeData = this.createConnectionHole(
+        match.connection,
+        room,
+        wall,
+        baseGeometry,
+        wallThickness,
+        elevation,
+        allRooms,
+        config,
+      );
       if (holeData) {
         holes.push(holeData.brush);
         // Add door/window mesh if this wall should render it
         if (shouldRender && match.connection.doorType !== 'opening') {
           const connectionMesh = generateConnection(
-            match.connection, room, allRooms.find(r => r.name === match.connection.toRoom),
-            wall, wallThickness, this.themeColors
+            match.connection,
+            room,
+            allRooms.find((r) => r.name === match.connection.toRoom),
+            wall,
+            wallThickness,
+            this.themeColors,
           );
           if (connectionMesh) {
             connectionMesh.position.y += elevation;
@@ -315,7 +366,14 @@ export class WallBuilder {
       if (segmentLength < 0.01) continue;
 
       // Calculate segment geometry
-      const segmentGeom = this.getSegmentGeometry(segment, wall, room, wallThickness, wallHeight, isVertical);
+      const segmentGeom = this.getSegmentGeometry(
+        segment,
+        wall,
+        room,
+        wallThickness,
+        wallHeight,
+        isVertical,
+      );
       const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
 
       // Create per-face materials
@@ -323,7 +381,7 @@ export class WallBuilder {
         segment.ownerStyle,
         segment.hasAdjacentRoom ? segment.adjacentStyle : undefined,
         wall.direction,
-        this.theme
+        this.theme,
       );
 
       // Create brush
@@ -356,14 +414,21 @@ export class WallBuilder {
     elevation: number,
     wallHeight: number,
     wallThickness: number,
-    config: JsonConfig
+    config: JsonConfig,
   ): void {
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
     const baseGeometry = this.getWallGeometry(wall, room, wallThickness);
 
     // Handle explicit wall type (window)
     if (wall.type === 'window') {
-      const glassMesh = this.createWindowGlass(wall, room, baseGeometry, elevation, materials, config);
+      const glassMesh = this.createWindowGlass(
+        wall,
+        room,
+        baseGeometry,
+        elevation,
+        materials,
+        config,
+      );
       if (glassMesh) group.add(glassMesh);
     }
 
@@ -373,8 +438,12 @@ export class WallBuilder {
       const shouldRender = shouldRenderConnection(match, wall, allRooms);
       if (shouldRender && match.connection.doorType !== 'opening') {
         const connectionMesh = generateConnection(
-          match.connection, room, allRooms.find(r => r.name === match.connection.toRoom),
-          wall, wallThickness, this.themeColors
+          match.connection,
+          room,
+          allRooms.find((r) => r.name === match.connection.toRoom),
+          wall,
+          wallThickness,
+          this.themeColors,
         );
         if (connectionMesh) {
           connectionMesh.position.y += elevation;
@@ -388,7 +457,14 @@ export class WallBuilder {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue;
 
-      const segmentGeom = this.getSegmentGeometry(segment, wall, room, wallThickness, wallHeight, isVertical);
+      const segmentGeom = this.getSegmentGeometry(
+        segment,
+        wall,
+        room,
+        wallThickness,
+        wallHeight,
+        isVertical,
+      );
       const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
 
       const segmentMaterial = MaterialFactory.createWallMaterial(segment.ownerStyle, this.theme);
@@ -408,10 +484,10 @@ export class WallBuilder {
     room: JsonRoom,
     allRooms: JsonRoom[],
     connections: JsonConnection[],
-    materials: MaterialSet,
+    _materials: MaterialSet,
     group: THREE.Group,
     elevation: number,
-    config: JsonConfig
+    config: JsonConfig,
   ): void {
     const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
     const connectionMatches = findMatchingConnections(room, wall, connections);
@@ -420,8 +496,12 @@ export class WallBuilder {
       const shouldRender = shouldRenderConnection(match, wall, allRooms);
       if (shouldRender && match.connection.doorType !== 'opening') {
         const connectionMesh = generateConnection(
-          match.connection, room, allRooms.find(r => r.name === match.connection.toRoom),
-          wall, wallThickness, this.themeColors
+          match.connection,
+          room,
+          allRooms.find((r) => r.name === match.connection.toRoom),
+          wall,
+          wallThickness,
+          this.themeColors,
         );
         if (connectionMesh) {
           connectionMesh.position.y += elevation;
@@ -447,7 +527,7 @@ export class WallBuilder {
     _room: JsonRoom,
     wallThickness: number,
     wallHeight: number,
-    isVertical: boolean
+    isVertical: boolean,
   ): THREE.BoxGeometry {
     return createWallSegmentGeometry(segment, wallThickness, wallHeight, isVertical);
   }
@@ -460,7 +540,7 @@ export class WallBuilder {
     wall: JsonWall,
     room: JsonRoom,
     wallThickness: number,
-    _isVertical: boolean
+    _isVertical: boolean,
   ): { x: number; z: number } {
     return calculateWallSegmentPosition(segment, wall, room, wallThickness);
   }
@@ -474,7 +554,7 @@ export class WallBuilder {
     geometry: WallGeometry,
     wallThickness: number,
     elevation: number,
-    config: JsonConfig
+    config: JsonConfig,
   ): CSGBrush | null {
     if (!isCsgAvailable()) return null;
     const { Brush } = getCSG();
@@ -491,8 +571,8 @@ export class WallBuilder {
     const holeWidth = wall.width || defaultWidth;
     const holeHeight = wall.height || defaultHeight;
 
-    const holeY = elevation +
-      (wall.type === 'door' ? holeHeight / 2 : windowSillHeight + holeHeight / 2);
+    const holeY =
+      elevation + (wall.type === 'door' ? holeHeight / 2 : windowSillHeight + holeHeight / 2);
 
     let holeX = geometry.posX;
     let holeZ = geometry.posZ;
@@ -516,7 +596,7 @@ export class WallBuilder {
     const holeGeom = new THREE.BoxGeometry(
       geometry.isVertical ? wallThickness * 2 : holeWidth,
       holeHeight,
-      geometry.isVertical ? holeWidth : wallThickness * 2
+      geometry.isVertical ? holeWidth : wallThickness * 2,
     );
     const holeBrush = new Brush(holeGeom);
     holeBrush.position.set(holeX, holeY, holeZ);
@@ -533,7 +613,7 @@ export class WallBuilder {
     geometry: WallGeometry,
     elevation: number,
     materials: MaterialSet,
-    config: JsonConfig
+    config: JsonConfig,
   ): THREE.Mesh | null {
     const defaultWindowWidth = config.window_width ?? DIMENSIONS.WINDOW.WIDTH;
     const defaultWindowHeight = config.window_height ?? DIMENSIONS.WINDOW.HEIGHT;
@@ -547,7 +627,9 @@ export class WallBuilder {
     let holeZ = geometry.posZ;
 
     if (wall.position !== undefined) {
-      let ratio = wall.isPercentage ? wall.position / 100 : wall.position / (geometry.isVertical ? room.height : room.width);
+      const ratio = wall.isPercentage
+        ? wall.position / 100
+        : wall.position / (geometry.isVertical ? room.height : room.width);
       if (geometry.isVertical) {
         holeZ = room.z + room.height * ratio;
       } else {
@@ -558,7 +640,7 @@ export class WallBuilder {
     const glassGeom = new THREE.BoxGeometry(
       geometry.isVertical ? DIMENSIONS.WINDOW.GLASS_THICKNESS : holeWidth,
       holeHeight,
-      geometry.isVertical ? holeWidth : DIMENSIONS.WINDOW.GLASS_THICKNESS
+      geometry.isVertical ? holeWidth : DIMENSIONS.WINDOW.GLASS_THICKNESS,
     );
     const glassMesh = new THREE.Mesh(glassGeom, materials.window);
     glassMesh.position.set(holeX, holeY, holeZ);
@@ -571,12 +653,12 @@ export class WallBuilder {
   private createConnectionHole(
     connection: JsonConnection,
     room: JsonRoom,
-    wall: JsonWall,
+    _wall: JsonWall,
     geometry: WallGeometry,
     wallThickness: number,
     elevation: number,
     allRooms: JsonRoom[],
-    config: JsonConfig
+    config: JsonConfig,
   ): { brush: CSGBrush; x: number; z: number; y: number } | null {
     if (!isCsgAvailable()) return null;
     const { Brush } = getCSG();
@@ -607,7 +689,7 @@ export class WallBuilder {
 
     const holeY = elevation + doorHeight / 2;
 
-    const sourceRoom = allRooms.find(r => r.name === connection.fromRoom) || room;
+    const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
     const percentage = connection.position ?? 50;
     const ratio = percentage / 100;
 
@@ -625,7 +707,7 @@ export class WallBuilder {
     const holeGeom = new THREE.BoxGeometry(
       geometry.isVertical ? wallThickness * 2 : doorWidth,
       doorHeight,
-      geometry.isVertical ? doorWidth : wallThickness * 2
+      geometry.isVertical ? doorWidth : wallThickness * 2,
     );
     const holeBrush = new Brush(holeGeom);
     holeBrush.position.set(holeX, holeY, holeZ);
@@ -641,7 +723,7 @@ export class WallBuilder {
     holes: CSGBrush[],
     segment: WallSegment,
     room: JsonRoom,
-    isVertical: boolean
+    isVertical: boolean,
   ): CSGBrush[] {
     if (holes.length === 0) return [];
 
@@ -649,7 +731,7 @@ export class WallBuilder {
     const segmentWorldStart = wallStart + segment.startPos;
     const segmentWorldEnd = wallStart + segment.endPos;
 
-    return holes.filter(hole => {
+    return holes.filter((hole) => {
       const holePos = isVertical ? hole.position.z : hole.position.x;
       return holePos >= segmentWorldStart - 0.5 && holePos <= segmentWorldEnd + 0.5;
     });
@@ -662,7 +744,7 @@ export class WallBuilder {
     wallBrush: CSGBrush,
     holes: CSGBrush[],
     materials: THREE.MeshStandardMaterial[],
-    subtraction: number
+    subtraction: number,
   ): THREE.Mesh | null {
     if (!this.evaluator) return null;
 
@@ -685,4 +767,3 @@ export class WallBuilder {
     }
   }
 }
-

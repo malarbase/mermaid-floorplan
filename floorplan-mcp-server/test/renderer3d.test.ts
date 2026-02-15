@@ -2,9 +2,9 @@
  * Integration tests for 3D PNG rendering via Puppeteer
  */
 
-import { describe, it, expect, afterAll } from 'vitest';
-import { render3DToPng, closeBrowser, formatSceneBounds } from '../src/utils/renderer3d.js';
 import type { JsonExport } from 'floorplan-3d-core';
+import { afterAll, describe, expect, it } from 'vitest';
+import { closeBrowser, formatSceneBounds, render3DToPng } from '../src/utils/renderer3d.js';
 
 // Simple test floorplan data
 const simpleFloorplan: JsonExport = {
@@ -83,9 +83,7 @@ const multiFloorFloorplan: JsonExport = {
           ],
         },
       ],
-      stairs: [
-        { name: 's1', x: 3, z: 1, width: 1, rise: 3, shape: { type: 'straight' } },
-      ],
+      stairs: [{ name: 's1', x: 3, z: 1, width: 1, rise: 3, shape: { type: 'straight' } }],
       lifts: [],
     },
     {
@@ -237,9 +235,7 @@ const styledFloorplan: JsonExport = {
         },
       ],
       stairs: [],
-      lifts: [
-        { name: 'lift1', x: 5, z: 3, width: 1.5, height: 1.5, doors: ['bottom'] },
-      ],
+      lifts: [{ name: 'lift1', x: 5, z: 3, width: 1.5, height: 1.5, doors: ['bottom'] }],
     },
   ],
   styles: [
@@ -371,7 +367,7 @@ describe('render3DToPng', () => {
       expect(result.pngBuffer).toBeInstanceOf(Buffer);
       expect(result.pngBuffer.length).toBeGreaterThan(0);
       expect(result.metadata.floorsRendered).toContain(0);
-      
+
       // Verify PNG is valid
       expect(result.pngBuffer[0]).toBe(0x89);
       expect(result.pngBuffer[1]).toBe(0x50);

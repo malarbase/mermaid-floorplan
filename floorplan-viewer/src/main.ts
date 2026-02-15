@@ -1,6 +1,6 @@
 /**
  * Floorplan 3D Viewer
- * 
+ *
  * A read-only viewer for .floorplan DSL files with:
  * - Full 3D visualization
  * - Drag-and-drop file loading
@@ -10,7 +10,7 @@
  * - 2D overlay mini-map
  * - Keyboard navigation
  * - Collapsible read-only DSL editor panel
- * 
+ *
  * This uses FloorplanAppCore + FloorplanUI (Solid.js) from floorplan-viewer-core.
  * FloorplanAppCore handles 3D rendering, FloorplanUI handles all 2D UI components.
  */
@@ -18,31 +18,31 @@
 // Import Tailwind CSS (processed by @tailwindcss/vite plugin)
 import '../../floorplan-viewer-core/src/ui/tailwind-styles.css';
 
-import { 
-  FloorplanAppCore,
-  injectStyles,
+import { getUIThemeMode, type ViewerTheme } from 'floorplan-3d-core';
+import {
   cls,
-  createControlPanel,
-  createCameraControlsUI,
-  createLightControlsUI,
-  createFloorControlsUI,
   createAnnotationControlsUI,
-  createOverlay2DUI,
-  createKeyboardHelpUI,
-  createShortcutInfoUI,
-  createValidationWarningsUI,
+  createCameraControlsUI,
+  createControlPanel,
   createControlPanelSection,
-  getSectionContent,
-  createSliderControl,
   createDslEditor,
   createEditorPanel,
-  getLayoutManager,
-  initializeDragDrop,
   createFileCommands,
+  createFloorControlsUI,
+  createKeyboardHelpUI,
+  createLightControlsUI,
+  createOverlay2DUI,
+  createShortcutInfoUI,
+  createSliderControl,
+  createValidationWarningsUI,
   createViewCommands,
+  FloorplanAppCore,
+  getLayoutManager,
+  getSectionContent,
+  initializeDragDrop,
+  injectStyles,
 } from 'floorplan-viewer-core';
 import { createFloorplanUI, type FloorplanUIAPI } from 'floorplan-viewer-core/ui/solid';
-import { getUIThemeMode, type ViewerTheme } from 'floorplan-3d-core';
 
 // Inject legacy styles for components not yet migrated to Tailwind
 injectStyles();
@@ -113,7 +113,7 @@ const validationWarnings = createValidationWarningsUI({
         // Sync UI state
         uiRef?.setEditorOpen(true);
       }
-      
+
       // Navigate to the line
       dslEditor.editor.revealLineInCenter(warning.line);
       dslEditor.editor.setPosition({ lineNumber: warning.line, column: warning.column || 1 });
@@ -155,8 +155,8 @@ function updateEditorTheme(theme: 'light' | 'dark'): void {
 
 // Create read-only editor panel using floorplan-viewer-core's component
 const editorPanel = createEditorPanel({
-  initiallyOpen: false,  // Start collapsed in viewer
-  editable: false,       // Read-only mode
+  initiallyOpen: false, // Start collapsed in viewer
+  editable: false, // Read-only mode
   isAuthenticated: false,
   width: 450,
   onLoginClick: () => {
@@ -168,22 +168,22 @@ const editorPanel = createEditorPanel({
   onToggle: (isOpen: boolean) => {
     // Trigger Monaco editor resize if needed
     setTimeout(() => dslEditor?.editor.layout(), 250);
-    
+
     // Update layout manager to reposition other panels
     layoutManager.setEditorOpen(isOpen);
     layoutManager.setEditorWidth(editorPanel.getWidth());
-    
+
     // Sync body class for CSS alignment (backup)
     document.body.classList.toggle('editor-open', isOpen);
     if (isOpen) {
       document.documentElement.style.setProperty('--editor-width', `${editorPanel.getWidth()}px`);
     }
-    
+
     // Sync FloorplanUI state
     if (uiRef) {
       uiRef.setEditorOpen(isOpen);
     }
-    
+
     // Sync FloorplanAppCore state
     if (viewerRef) {
       viewerRef.setEditorPanelOpen(isOpen);
@@ -192,10 +192,10 @@ const editorPanel = createEditorPanel({
   onResize: (newWidth: number) => {
     // Update layout manager with new width
     layoutManager.setEditorWidth(newWidth);
-    
+
     // Update CSS variable for any backup alignment
     document.documentElement.style.setProperty('--editor-width', `${newWidth}px`);
-    
+
     // Trigger Monaco editor resize
     setTimeout(() => dslEditor?.editor.layout(), 50);
   },
@@ -211,10 +211,10 @@ requestAnimationFrame(() => {
   dslEditor = createDslEditor({
     containerId: editorPanel.editorContainer.id,
     initialContent: defaultFloorplan,
-    theme: 'vs',  // Light theme to match initialTheme: 'light'
+    theme: 'vs', // Light theme to match initialTheme: 'light'
     fontSize: 13,
   });
-  
+
   // Set editor to read-only mode
   dslEditor.editor.updateOptions({ readOnly: true });
 });
@@ -227,11 +227,11 @@ const viewer = new FloorplanAppCore({
   containerId: 'app',
   initialTheme: 'light',
   initialDsl: defaultFloorplan,
-  
+
   // Viewer-only feature flags
-  enableSelection: false,      // Selection off by default in viewer
-  allowSelectionToggle: true,  // User can press V to enable selection
-  
+  enableSelection: false, // Selection off by default in viewer
+  allowSelectionToggle: true, // User can press V to enable selection
+
   // No auth required for viewer
   isAuthenticated: false,
   onAuthRequired: async () => {
@@ -275,10 +275,7 @@ const viewCommandsVanilla = createViewCommands({
 });
 
 // Commands now use `execute` directly (no mapping needed)
-const commands = [
-  ...fileCommandsVanilla,
-  ...viewCommandsVanilla,
-];
+const commands = [...fileCommandsVanilla, ...viewCommandsVanilla];
 
 // Create FloorplanUI - handles HeaderBar, FileDropdown, and CommandPalette
 const ui = createFloorplanUI(viewer, {
@@ -394,14 +391,14 @@ let currentElevation = 60;
 
 // Helper to update light position from azimuth/elevation
 function updateLightPosition(azimuth: number, elevation: number): void {
-  const azRad = azimuth * Math.PI / 180;
-  const elRad = elevation * Math.PI / 180;
+  const azRad = (azimuth * Math.PI) / 180;
+  const elRad = (elevation * Math.PI) / 180;
   const distance = 20;
-  
+
   const x = distance * Math.cos(elRad) * Math.sin(azRad);
   const y = distance * Math.sin(elRad);
   const z = distance * Math.cos(elRad) * Math.cos(azRad);
-  
+
   if (viewer.light) {
     viewer.light.position.set(x, y, z);
   }
@@ -445,7 +442,7 @@ if (viewContent) {
       <label class="fp-label">Theme</label>
     </div>
   `;
-  
+
   themeBtnInControlPanel = document.createElement('button');
   themeBtnInControlPanel.className = 'fp-btn fp-btn-secondary';
   themeBtnInControlPanel.id = 'theme-toggle-btn';
@@ -460,7 +457,7 @@ if (viewContent) {
   });
   themeRow.appendChild(themeBtnInControlPanel);
   viewContent.appendChild(themeRow);
-  
+
   // Exploded view slider
   const explodedSlider = createSliderControl({
     id: 'exploded-view',
@@ -513,7 +510,7 @@ let overlay2DCheckbox: HTMLInputElement | null = null;
 if (overlay2DContent) {
   const checkboxRow = document.createElement('label');
   checkboxRow.className = cls.checkbox.wrapper;
-  
+
   overlay2DCheckbox = document.createElement('input');
   overlay2DCheckbox.type = 'checkbox';
   overlay2DCheckbox.className = cls.checkbox.input;
@@ -525,15 +522,15 @@ if (overlay2DContent) {
       overlay2D.hide();
     }
   });
-  
+
   const labelText = document.createElement('span');
   labelText.className = cls.checkbox.label;
   labelText.textContent = 'Show 2D Mini-map';
-  
+
   checkboxRow.appendChild(overlay2DCheckbox);
   checkboxRow.appendChild(labelText);
   overlay2DContent.appendChild(checkboxRow);
-  
+
   // Opacity slider
   const opacitySlider = createSliderControl({
     id: 'overlay-opacity',

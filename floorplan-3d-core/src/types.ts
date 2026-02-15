@@ -74,10 +74,18 @@ export interface JsonFloor {
   rooms: JsonRoom[];
   stairs?: JsonStair[];
   lifts?: JsonLift[];
-  height?: number;  // Floor-level default height
+  height?: number; // Floor-level default height
 }
 
-export type JsonStairShapeType = 'straight' | 'L-shaped' | 'U-shaped' | 'double-L' | 'spiral' | 'curved' | 'winder' | 'custom';
+export type JsonStairShapeType =
+  | 'straight'
+  | 'L-shaped'
+  | 'U-shaped'
+  | 'double-L'
+  | 'spiral'
+  | 'curved'
+  | 'winder'
+  | 'custom';
 
 /** View-relative direction type (consistent with wall directions) */
 export type ViewDirection = 'top' | 'bottom' | 'left' | 'right';
@@ -172,6 +180,14 @@ export interface JsonVerticalConnection {
   links: Array<{ floor: string; element: string }>;
 }
 
+/** Relative positioning data preserved from the DSL for editor operations */
+export interface JsonRelativePosition {
+  direction: string;
+  reference: string;
+  gap?: number;
+  alignment?: string;
+}
+
 export interface JsonRoom {
   name: string;
   label?: string;
@@ -183,13 +199,15 @@ export interface JsonRoom {
   roomHeight?: number;
   elevation?: number;
   style?: string;
+  /** Relative positioning from DSL (preserved for editor cascade operations) */
+  _relativePosition?: JsonRelativePosition;
   /** Source location in DSL file (for editor sync) */
   _sourceRange?: JsonSourceRange;
 }
 
 export interface JsonWall {
-  direction: "top" | "bottom" | "left" | "right";
-  type: string;  // 'solid', 'open', 'door', 'window'
+  direction: 'top' | 'bottom' | 'left' | 'right';
+  type: string; // 'solid', 'open', 'door', 'window'
   position?: number;
   isPercentage?: boolean;
   width?: number; // Window/Door width
@@ -272,4 +290,3 @@ export interface Render3DResult {
     floorsRendered: number[];
   };
 }
-

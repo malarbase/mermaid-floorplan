@@ -5,7 +5,8 @@
 .PHONY: all help install build clean dev test langium langium-watch \
         images images-svg images-png images-annotated render mcp-server mcp-build rebuild watch \
         viewer-dev viewer-build export-json export-images export-svg export-png export-annotated \
-        export-3d export-3d-perspective export-dxf
+        export-3d export-3d-perspective export-dxf \
+        admin-setup admin-dev admin-test admin-reset admin-help
 
 # Default target
 all: help
@@ -199,3 +200,147 @@ watch: ## Start langium watch + vite dev server
 	@echo "Starting langium watch in background..."
 	npm run langium:watch &
 	npm run dev
+
+# ===============================
+# Docker Development
+# ===============================
+
+docker-build: ## Build Docker images
+	docker compose build
+
+docker-up: ## Start all services in Docker
+	docker compose up -d
+
+docker-down: ## Stop all Docker services
+	docker compose down
+
+docker-logs: ## View Docker logs
+	docker compose logs -f
+
+docker-shell: ## Open shell in app container
+	docker compose exec app sh
+
+docker-clean: ## Remove Docker containers, volumes, and images
+	docker compose down -v
+	docker rmi mermaid-floorplan-app 2>/dev/null || true
+
+docker-dev: ## Start development with Docker (interactive logs)
+	docker compose up
+
+docker-restart: ## Restart Docker services
+	docker compose restart
+
+docker-convex-deploy: ## Deploy Convex functions to self-hosted backend (Docker)
+	@echo "Generating admin key and deploying Convex functions..."
+	@ADMIN_KEY="$$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n')" && \
+		docker compose exec -T app sh -c "cd /app/floorplan-app && npx convex dev --once --url http://convex:3210 --admin-key '$$ADMIN_KEY'" && \
+		echo "Convex functions deployed successfully" || \
+		echo "Error: Make sure 'docker compose up -d convex app' is running"
+
+docker-convex-backfill: ## Run Convex backfill mutations (after schema migration deploy)
+	@echo "Running backfill: projects:backfillSnapshotHashes..."
+	@ADMIN_KEY="$$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n')" && \
+		docker compose exec -T app sh -c "cd /app/floorplan-app && npx convex run projects:backfillSnapshotHashes --url http://convex:3210 --admin-key '$$ADMIN_KEY'" && \
+		echo "Backfill complete" || \
+		echo "Error: Make sure 'docker compose up -d convex app' is running"
+
+docker-convex-admin-key: ## Print the Convex admin key (for local CLI use)
+	@docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n' || \
+		echo "Error: Convex backend is not running. Run 'make docker-up' first."
+
+# ===============================
+# SolidStart App
+# ===============================
+
+app-dev: ## Start floorplan-app dev server (local)
+	npm run --workspace floorplan-app dev
+
+app-build: ## Build floorplan-app for production
+	npm run --workspace floorplan-app build
+
+app-start: ## Start floorplan-app production server
+	npm run --workspace floorplan-app start
+
+app-test: ## Run floorplan-app tests
+	npm run --workspace floorplan-app test
+
+# ===============================
+# Mock Auth Setup
+# ===============================
+
+setup-mock-auth: ## Set up mock authentication for development
+	@./scripts/setup-mock-auth.sh
+
+# ===============================
+# Admin Panel Testing
+# ===============================
+
+ADMIN_EMAIL ?= admin@test.local
+
+admin-setup: ## Configure admin testing environment (ADMIN_EMAIL=your@email.com)
+	@echo "Setting up admin testing environment..."
+	@cd floorplan-app && npx convex env set SUPER_ADMIN_EMAIL "$(ADMIN_EMAIL)" 2>/dev/null || \
+		echo "Note: Run 'npx convex dev' first if Convex is not running"
+	@echo ""
+	@echo "Creating .env.local with admin auth bypass..."
+	@echo "# Admin Testing Configuration" > floorplan-app/.env.local
+	@echo "DEV_AUTH_BYPASS=true" >> floorplan-app/.env.local
+	@echo "DEV_USER_EMAIL=$(ADMIN_EMAIL)" >> floorplan-app/.env.local
+	@echo "DEV_USER_NAME=Test Admin" >> floorplan-app/.env.local
+	@echo "DEV_USER_USERNAME=testadmin" >> floorplan-app/.env.local
+	@echo "VITE_MOCK_MODE=false" >> floorplan-app/.env.local
+	@echo ""
+	@echo "Admin setup complete!"
+	@echo "  Super admin email: $(ADMIN_EMAIL)"
+	@echo "  Configuration: floorplan-app/.env.local"
+	@echo ""
+	@echo "Next step: make admin-dev"
+
+admin-dev: ## Start app with admin user pre-configured
+	@if [ ! -f floorplan-app/.env.local ]; then \
+		echo "Error: .env.local not found. Run 'make admin-setup' first."; \
+		exit 1; \
+	fi
+	@echo "Starting admin dev environment..."
+	@echo "Admin panel: http://localhost:3000/admin"
+	@cd floorplan-app && npm run dev
+
+admin-test: ## Run Playwright E2E tests for admin panel
+	@echo "Running admin panel tests..."
+	@cd floorplan-app && npx playwright test --grep "@admin" || \
+		echo "Note: No @admin tagged tests found. Create tests in floorplan-app/tests/"
+
+admin-reset: ## Reset admin state (demote all admins except super admin)
+	@echo "Resetting admin state..."
+	@cd floorplan-app && npx convex run admin:resetAdminState 2>/dev/null || \
+		echo "Note: admin:resetAdminState mutation not found. Manual reset required."
+	@echo "Admin state reset complete."
+
+admin-help: ## Show admin testing help
+	@echo "Admin Panel Testing"
+	@echo "==================="
+	@echo ""
+	@echo "Quick Start:"
+	@echo "  1. make admin-setup ADMIN_EMAIL=your@email.com"
+	@echo "  2. make admin-dev"
+	@echo "  3. Open http://localhost:3000/admin"
+	@echo ""
+	@echo "Alternative: Manual Setup"
+	@echo "  cp floorplan-app/.env.local.admin-example floorplan-app/.env.local"
+	@echo "  # Edit .env.local with your admin email"
+	@echo "  make admin-dev"
+	@echo ""
+	@echo "Testing Routes:"
+	@echo "  /admin           - Dashboard with stats"
+	@echo "  /admin/featured  - Manage featured projects"
+	@echo "  /admin/users     - User management (super admin)"
+	@echo "  /admin/audit     - Audit log viewer"
+	@echo ""
+	@echo "Super Admin Capabilities:"
+	@echo "  - Promote/demote admins"
+	@echo "  - Delete any project"
+	@echo "  - Impersonate users"
+	@echo ""
+	@echo "Regular Admin Capabilities:"
+	@echo "  - Feature/unfeature projects"
+	@echo "  - View user list (read-only)"

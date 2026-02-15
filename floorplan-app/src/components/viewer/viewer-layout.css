@@ -1,0 +1,234 @@
+/* Base container */
+.floorplan-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+}
+
+/* 3D Viewer */
+.floorplan-3d {
+  flex: 1;
+  position: relative;
+  min-width: 0; /* Allow flexbox shrinking */
+}
+
+/* Control Panel (floating over 3D view) */
+.control-panel {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 320px;
+  z-index: 10;
+  /* pointer-events: none removed -- wrapper matches content size,
+     so no dead zones block canvas clicks. Needed for :hover to work. */
+  opacity: 0.15;
+  transition: opacity 0.3s ease;
+}
+
+.control-panel:hover {
+  opacity: 1;
+}
+
+/* The inner wrapper contains the actual control panel */
+.control-panel > div {
+  pointer-events: auto; /* Keep for explicitness */
+}
+
+/* Let the fp-control-panel use its natural floating styles */
+.control-panel .fp-control-panel {
+  position: static;
+  width: 100%;
+  max-height: calc(100vh - 140px); /* Account for header and margins */
+  overflow-y: auto;
+  /* Shadows and styling come from shared-styles.css */
+}
+
+/* Editor Panel (overlays the viewport from the left) */
+.editor-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  /* width is set via inline style from Solid signal */
+  height: 100%;
+  background: oklch(var(--color-base-100));
+  border-right: 1px solid oklch(var(--color-base-content) / 0.1);
+  /* No overflow:hidden here — EditorBundle handles its own overflow,
+     and this would clip Monaco's hover/zone widgets due to transform */
+  transition: transform 0.3s ease;
+  transform: translateX(0);
+  z-index: 20;
+}
+
+/* Drag-to-resize handle on the right edge of the editor panel */
+.editor-resize-handle {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 1001;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.editor-resize-handle:hover,
+.editor-resize-handle.active {
+  background: oklch(var(--color-primary) / 0.4);
+}
+
+.editor-panel.collapsed {
+  transform: translateX(-100%);
+}
+
+/* Collapse button: layout-only in CSS, colors via Tailwind classes on element.
+   This avoids Tailwind v4's base reset overriding button backgrounds
+   (see .cursor/skills/solidjs-daisyui/SKILL.md "CSS Specificity" section). */
+.editor-collapse-btn {
+  position: absolute;
+  top: 50%;
+  right: -24px;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 48px;
+  border-radius: 0 6px 6px 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  z-index: 10;
+  transition: background-color 0.2s ease;
+}
+
+.editor-panel.collapsed .editor-collapse-btn {
+  right: -24px;
+}
+
+/* FAB (phone only) */
+.fab-button {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 50;
+}
+
+/* Bottom Sheet (phone only) */
+.bottom-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 70vh;
+  background: oklch(var(--color-base-100));
+  border-top-left-radius: 1rem;
+  border-top-right-radius: 1rem;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.2);
+  transform: translateY(100%);
+  transition: transform 0.3s ease;
+  z-index: 40;
+}
+
+.bottom-sheet.open {
+  transform: translateY(0);
+}
+
+.bottom-sheet-content {
+  padding: 1rem;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.bottom-sheet-handle {
+  width: 40px;
+  height: 4px;
+  background: oklch(var(--color-base-content) / 0.3);
+  border-radius: 2px;
+  margin: 0 auto 1rem;
+}
+
+/* PHONE: <640px */
+@media (max-width: 639px) {
+  .floorplan-container {
+    flex-direction: column;
+  }
+
+  .editor-panel,
+  .control-panel {
+    display: none; /* Hidden on phone, use bottom sheet instead */
+  }
+
+  .floorplan-3d {
+    width: 100%;
+    height: 100%;
+  }
+}
+
+/* ============================================
+   Drag-and-drop overlay (editor mode)
+   ============================================ */
+
+.fp-drag-drop-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(var(--color-base-100) / 0.85);
+  border: 2px dashed oklch(var(--color-primary));
+  border-radius: 0.5rem;
+  z-index: 40;
+  pointer-events: none;
+}
+
+.fp-drag-drop-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.fp-drag-drop-icon {
+  font-size: 2.5rem;
+}
+
+.fp-drag-drop-text {
+  font-size: 1rem;
+  font-weight: 600;
+  color: oklch(var(--color-primary));
+}
+
+.fp-drag-drop-hint {
+  font-size: 0.75rem;
+  color: oklch(var(--color-base-content) / 0.5);
+}
+
+/* TABLET: 640px-1024px */
+@media (min-width: 640px) and (max-width: 1023px) {
+  .fab-button,
+  .bottom-sheet {
+    display: none;
+  }
+
+  /* Editor width is controlled via inline style + resize handle */
+
+  .control-panel {
+    width: 280px;
+  }
+}
+
+/* DESKTOP: >1024px */
+@media (min-width: 1024px) {
+  .fab-button,
+  .bottom-sheet {
+    display: none;
+  }
+
+  /* Editor width is controlled via inline style + resize handle */
+
+  .control-panel {
+    width: 320px;
+  }
+}

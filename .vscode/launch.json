@@ -9,9 +9,7 @@
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",
-      "args": [
-        "--extensionDevelopmentPath=${workspaceFolder}/packages/extension"
-      ],
+      "args": ["--extensionDevelopmentPath=${workspaceFolder}/packages/extension"],
       "sourceMaps": true,
       "outFiles": ["${workspaceFolder}/language/out/**/*.js"]
     },

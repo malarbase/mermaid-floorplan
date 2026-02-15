@@ -1,25 +1,32 @@
 /**
  * Platform-agnostic scene builder for 3D floorplan rendering
- * 
+ *
  * This module builds a Three.js scene from JSON floorplan data.
  * It works in both browser and Node.js environments.
- * 
+ *
  * Uses WallBuilder for CSG-based wall generation when three-bvh-csg is available,
  * falling back to simple box walls otherwise. This ensures consistent rendering
  * between the interactive viewer and headless (MCP server) rendering.
  */
 
 import * as THREE from 'three';
-import type { JsonExport, JsonFloor, JsonStyle, SceneBounds, Render3DOptions, JsonRoom } from './types.js';
-import { DIMENSIONS, getThemeColors, type ViewerTheme } from './constants.js';
-import { MaterialFactory, type MaterialStyle } from './materials.js';
-import { generateFloorSlabs } from './floor-geometry.js';
-import { WallBuilder } from './wall-builder.js';
+import { type CameraSetupResult, computeSceneBounds, setupCamera } from './camera-utils.js';
 import { generateFloorConnections } from './connection-geometry.js';
-import { StairGenerator } from './stair-geometry.js';
-import { computeSceneBounds, setupCamera, type CameraSetupResult } from './camera-utils.js';
+import { DIMENSIONS, getThemeColors, type ViewerTheme } from './constants.js';
+import { generateFloorSlabs } from './floor-geometry.js';
 import { setupLighting } from './lighting-utils.js';
+import { MaterialFactory, type MaterialStyle } from './materials.js';
+import { StairGenerator } from './stair-geometry.js';
+import type {
+  JsonExport,
+  JsonFloor,
+  JsonRoom,
+  JsonStyle,
+  Render3DOptions,
+  SceneBounds,
+} from './types.js';
 import { normalizeToMeters } from './unit-normalizer.js';
+import { WallBuilder } from './wall-builder.js';
 
 /**
  * Scene building options
@@ -59,13 +66,13 @@ export interface SceneBuildResult {
 
 /**
  * Build a Three.js scene from JSON floorplan data
- * 
+ *
  * Note: This function automatically normalizes all dimensions to meters
  * for consistent 3D rendering, regardless of the source unit.
  */
 export function buildFloorplanScene(
   data: JsonExport,
-  options: SceneBuildOptions = {}
+  options: SceneBuildOptions = {},
 ): SceneBuildResult {
   // Normalize all dimensions to meters for consistent 3D rendering
   const normalizedData = normalizeToMeters(data);
@@ -94,7 +101,7 @@ export function buildFloorplanScene(
     ? normalizedData.floors.filter((_, i) => floorIndices.includes(i))
     : normalizedData.floors;
 
-  const floorsRendered = floorsToRender.map(f => f.index);
+  const floorsRendered = floorsToRender.map((f) => f.index);
 
   // Get config values (already normalized to meters)
   const config = normalizedData.config ?? {};
@@ -107,15 +114,15 @@ export function buildFloorplanScene(
 
   // Render each floor
   const stairGenerator = new StairGenerator();
-  
+
   // Create wall builder with theme and style resolver
   // WallBuilder uses CSG when available (after initCSG() is called) for proper door/window cutouts
   const wallBuilder = new WallBuilder();
   wallBuilder.setTheme(theme ?? 'light');
-  wallBuilder.setStyleResolver((room: JsonRoom) => 
-    styleMap.get(room.style ?? config.default_style ?? '')
+  wallBuilder.setStyleResolver((room: JsonRoom) =>
+    styleMap.get(room.style ?? config.default_style ?? ''),
   );
-  
+
   // Track vertical penetrations from previous floor (for cutting holes)
   let prevFloorPenetrations: THREE.Box3[] = [];
 
@@ -139,7 +146,7 @@ export function buildFloorplanScene(
 
     // Prepare rooms with default heights for wall ownership detection
     const floorHeight = floor.height ?? defaultHeight;
-    const allRooms = floor.rooms.map(r => ({
+    const allRooms = floor.rooms.map((r) => ({
       ...r,
       roomHeight: r.roomHeight ?? floorHeight,
     }));
@@ -154,7 +161,7 @@ export function buildFloorplanScene(
 
         for (const wall of room.walls) {
           if (wall.type === 'open') continue;
-          
+
           wallBuilder.generateWall(
             wall,
             room,
@@ -162,7 +169,7 @@ export function buildFloorplanScene(
             normalizedData.connections ?? [],
             materials,
             floorGroup,
-            config
+            config,
           );
         }
       }
@@ -171,16 +178,12 @@ export function buildFloorplanScene(
     // Generate standalone connections only when walls are disabled
     // (WallBuilder handles connections internally when generating walls)
     if (showConnections && !showWalls) {
-      const connections = generateFloorConnections(
-        floor,
-        normalizedData.connections ?? [],
-        {
-          wallThickness,
-          defaultHeight: floorHeight,
-          theme,
-          styleMap,
-        }
-      );
+      const connections = generateFloorConnections(floor, normalizedData.connections ?? [], {
+        wallThickness,
+        defaultHeight: floorHeight,
+        theme,
+        styleMap,
+      });
       floorGroup.add(connections);
     }
 
@@ -229,14 +232,14 @@ export function buildFloorplanScene(
 
 /**
  * Build a complete scene with camera and lighting
- * 
+ *
  * Note: This function automatically normalizes all dimensions to meters
  * for consistent 3D rendering, regardless of the source unit.
  */
 export function buildCompleteScene(
   data: JsonExport,
   renderOptions: Render3DOptions,
-  sceneOptions: SceneBuildOptions = {}
+  sceneOptions: SceneBuildOptions = {},
 ): {
   scene: THREE.Scene;
   camera: THREE.Camera;
@@ -250,11 +253,9 @@ export function buildCompleteScene(
 
   // Determine theme from config
   const theme = resolveTheme(normalizedData.config);
-  
+
   // Determine which floors to render
-  const floorIndices = renderOptions.renderAllFloors 
-    ? undefined 
-    : [renderOptions.floorIndex ?? 0];
+  const floorIndices = renderOptions.renderAllFloors ? undefined : [renderOptions.floorIndex ?? 0];
 
   // Build scene (normalizedData is already in meters, so buildFloorplanScene
   // will detect this and skip re-normalization)
@@ -306,7 +307,7 @@ function buildStyleMap(styles?: JsonStyle[]): Map<string, MaterialStyle> {
 function calculateFloorPositions(
   floors: JsonFloor[],
   spacing?: number,
-  defaultHeight?: number
+  defaultHeight?: number,
 ): Map<number, number> {
   const positions = new Map<number, number>();
 
@@ -343,4 +344,3 @@ function resolveTheme(config?: JsonExport['config']): ViewerTheme {
 
   return 'light';
 }
-

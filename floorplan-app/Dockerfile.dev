@@ -1,0 +1,44 @@
+# Development Dockerfile for floorplan-app
+# Hot-reload enabled via volume mounts
+
+FROM node:24-alpine
+
+# Install development dependencies
+RUN apk add --no-cache \
+    git \
+    python3 \
+    make \
+    g++
+
+WORKDIR /app
+
+# Copy package files for all workspaces
+COPY package*.json ./
+COPY floorplan-app/package.json ./floorplan-app/
+COPY floorplan-viewer-core/package.json ./floorplan-viewer-core/
+COPY floorplan-3d-core/package.json ./floorplan-3d-core/
+COPY floorplan-common/package.json ./floorplan-common/
+COPY floorplan-language/package.json ./floorplan-language/
+COPY floorplan-mcp-server/package.json ./floorplan-mcp-server/
+
+# Install all dependencies (including workspace dependencies)
+RUN npm ci
+
+# Copy workspace source files (volume mounts will override for hot-reload)
+COPY . .
+
+# Build shared packages that floorplan-app depends on
+RUN npm run build --workspace floorplan-common
+RUN npm run build --workspace floorplan-3d-core
+RUN npm run build --workspace floorplan-viewer-core
+
+# Expose dev server port
+EXPOSE 3000
+
+# Copy entrypoint script
+COPY floorplan-app/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+# Start via entrypoint (deploys Convex functions, then starts dev server)
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+CMD ["npm", "run", "--workspace", "floorplan-app", "dev"]

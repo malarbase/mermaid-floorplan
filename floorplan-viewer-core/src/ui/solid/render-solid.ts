@@ -18,8 +18,8 @@
  *   // Later: cleanup();
  */
 
-import { render } from 'solid-js/web';
 import type { JSXElement } from 'solid-js';
+import { render } from 'solid-js/web';
 
 /** Cleanup function type */
 export type CleanupFunction = () => void;
@@ -50,7 +50,7 @@ const mountedComponents = new WeakMap<Element, CleanupFunction>();
  */
 export function renderSolidComponent(
   container: Element,
-  component: () => JSXElement
+  component: () => JSXElement,
 ): CleanupFunction {
   // Unmount existing component if present
   const existingCleanup = mountedComponents.get(container);

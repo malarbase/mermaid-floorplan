@@ -1,8 +1,9 @@
 /**
  * Selection mode toggle UI component
  */
-import { injectStyles } from './styles.js';
+
 import { cls } from './class-names.js';
+import { injectStyles } from './styles.js';
 
 export interface SelectionModeToggleUIOptions {
   initialEnabled?: boolean;
@@ -21,15 +22,17 @@ export interface SelectionModeToggleUI {
 /**
  * Create selection mode toggle UI
  */
-export function createSelectionModeToggleUI(options: SelectionModeToggleUIOptions = {}): SelectionModeToggleUI {
+export function createSelectionModeToggleUI(
+  options: SelectionModeToggleUIOptions = {},
+): SelectionModeToggleUI {
   injectStyles();
-  
+
   const { initialEnabled = false, onToggle, position = 'bottom-right' } = options;
-  
+
   const container = document.createElement('div');
   container.className = 'fp-selection-mode-toggle';
   container.id = 'selection-mode-toggle';
-  
+
   // Position based on option
   container.style.position = 'absolute';
   switch (position) {
@@ -50,40 +53,40 @@ export function createSelectionModeToggleUI(options: SelectionModeToggleUIOption
       container.style.right = '16px';
       break;
   }
-  
+
   // Checkbox row wrapper
   const checkboxRow = document.createElement('label');
   checkboxRow.className = cls.checkbox.wrapper;
-  
+
   // Checkbox
   const checkbox = document.createElement('input');
   checkbox.type = 'checkbox';
   checkbox.className = cls.checkbox.input;
   checkbox.id = 'selection-mode-checkbox';
   checkbox.checked = initialEnabled;
-  
+
   // Label text
   const labelText = document.createElement('span');
   labelText.className = cls.checkbox.label;
   labelText.textContent = 'Selection';
-  
+
   // Mode indicator
   const indicator = document.createElement('span');
   indicator.className = `fp-selection-mode-indicator ${initialEnabled ? 'selection' : 'navigation'}`;
   indicator.textContent = initialEnabled ? 'ON' : 'NAV';
-  
+
   checkbox.addEventListener('change', () => {
     const enabled = checkbox.checked;
     indicator.className = `fp-selection-mode-indicator ${enabled ? 'selection' : 'navigation'}`;
     indicator.textContent = enabled ? 'ON' : 'NAV';
     onToggle?.(enabled);
   });
-  
+
   checkboxRow.appendChild(checkbox);
   checkboxRow.appendChild(labelText);
   checkboxRow.appendChild(indicator);
   container.appendChild(checkboxRow);
-  
+
   return {
     element: container,
     checkbox,
@@ -96,4 +99,3 @@ export function createSelectionModeToggleUI(options: SelectionModeToggleUIOption
     isEnabled: () => checkbox.checked,
   };
 }
-

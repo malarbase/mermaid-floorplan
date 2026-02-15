@@ -1,12 +1,13 @@
 /**
  * Camera controls UI component (Vanilla)
- * 
+ *
  * @deprecated Use Solid.js version instead: `CameraControls` from './solid/ControlPanels'
  */
-import { injectStyles } from './styles.js';
+
+import { cls } from './class-names.js';
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';
 import { createSliderControl, type SliderControl } from './slider-control.js';
-import { cls } from './class-names.js';
+import { injectStyles } from './styles.js';
 
 export interface CameraControlsUIOptions {
   initialMode?: 'perspective' | 'orthographic';
@@ -30,7 +31,7 @@ export interface CameraControlsUI {
  */
 export function createCameraControlsUI(options: CameraControlsUIOptions = {}): CameraControlsUI {
   injectStyles();
-  
+
   const {
     initialMode = 'perspective',
     initialFov = 75,
@@ -38,38 +39,36 @@ export function createCameraControlsUI(options: CameraControlsUIOptions = {}): C
     onFovChange,
     onIsometric,
   } = options;
-  
+
   let currentMode = initialMode;
-  
+
   const section = createControlPanelSection({
     title: 'Camera',
     id: 'camera-section',
   });
-  
+
   const content = getSectionContent(section)!;
-  
+
   // Camera mode toggle button
   const modeButton = document.createElement('button');
   modeButton.className = cls.btn.full;
   modeButton.id = 'camera-mode-btn';
-  modeButton.textContent = currentMode === 'perspective' 
-    ? 'Switch to Orthographic' 
-    : 'Switch to Perspective';
-  
+  modeButton.textContent =
+    currentMode === 'perspective' ? 'Switch to Orthographic' : 'Switch to Perspective';
+
   modeButton.addEventListener('click', () => {
     currentMode = currentMode === 'perspective' ? 'orthographic' : 'perspective';
-    modeButton.textContent = currentMode === 'perspective' 
-      ? 'Switch to Orthographic' 
-      : 'Switch to Perspective';
-    
+    modeButton.textContent =
+      currentMode === 'perspective' ? 'Switch to Orthographic' : 'Switch to Perspective';
+
     // Show/hide FOV slider
     fovSlider.element.style.display = currentMode === 'perspective' ? '' : 'none';
-    
+
     onModeChange?.(currentMode);
   });
-  
+
   content.appendChild(modeButton);
-  
+
   // FOV slider
   const fovSlider = createSliderControl({
     id: 'fov-slider',
@@ -83,7 +82,7 @@ export function createCameraControlsUI(options: CameraControlsUIOptions = {}): C
   });
   fovSlider.element.id = 'fov-group';
   content.appendChild(fovSlider.element);
-  
+
   // Isometric button
   const isometricButton = document.createElement('button');
   isometricButton.className = cls.btn.ghostFull;
@@ -91,7 +90,7 @@ export function createCameraControlsUI(options: CameraControlsUIOptions = {}): C
   isometricButton.textContent = 'Isometric View';
   isometricButton.addEventListener('click', () => onIsometric?.());
   content.appendChild(isometricButton);
-  
+
   return {
     element: section,
     modeButton,
@@ -99,9 +98,8 @@ export function createCameraControlsUI(options: CameraControlsUIOptions = {}): C
     isometricButton,
     setMode: (mode: 'perspective' | 'orthographic') => {
       currentMode = mode;
-      modeButton.textContent = mode === 'perspective' 
-        ? 'Switch to Orthographic' 
-        : 'Switch to Perspective';
+      modeButton.textContent =
+        mode === 'perspective' ? 'Switch to Orthographic' : 'Switch to Perspective';
       fovSlider.element.style.display = mode === 'perspective' ? '' : 'none';
     },
     setFov: (fov: number) => {
@@ -109,4 +107,3 @@ export function createCameraControlsUI(options: CameraControlsUIOptions = {}): C
     },
   };
 }
-

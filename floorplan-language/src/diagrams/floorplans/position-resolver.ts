@@ -3,8 +3,8 @@
  * Resolves relative positions (right-of, below, etc.) to absolute coordinates
  */
 
-import type { Floor, Room } from "../../generated/ast.js";
-import { getRoomSize, type ResolvedDimension } from "./variable-resolver.js";
+import type { Floor, Room } from '../../generated/ast.js';
+import { getRoomSize, type ResolvedDimension } from './variable-resolver.js';
 
 export interface ResolvedPosition {
   x: number;
@@ -14,7 +14,7 @@ export interface ResolvedPosition {
 export interface PositionResolutionError {
   roomName: string;
   message: string;
-  type: "missing_reference" | "circular_dependency" | "no_position";
+  type: 'missing_reference' | 'circular_dependency' | 'no_position';
 }
 
 export interface OverlapWarning {
@@ -37,19 +37,19 @@ export interface PositionResolutionResult {
  */
 export function getResolvedPosition(
   room: Room,
-  resolvedPositions: Map<string, ResolvedPosition>
+  resolvedPositions: Map<string, ResolvedPosition>,
 ): ResolvedPosition | undefined {
   // First check if we have a resolved position
   const resolved = resolvedPositions.get(room.name);
   if (resolved) {
     return resolved;
   }
-  
+
   // Fall back to explicit position if available
   if (room.position) {
     return { x: room.position.x.value, y: room.position.y.value };
   }
-  
+
   return undefined;
 }
 
@@ -60,71 +60,72 @@ function computePosition(
   room: Room,
   referenceRoom: Room,
   referencePosition: ResolvedPosition,
-  variables?: Map<string, ResolvedDimension>
+  variables?: Map<string, ResolvedDimension>,
 ): ResolvedPosition {
   const rel = room.relativePosition!;
   const gap = rel.gap?.value ?? 0;
   const direction = rel.direction;
   const alignment = rel.alignment;
-  
+
   const refSize = getRoomSize(referenceRoom, variables);
   const roomSize = getRoomSize(room, variables);
   const refWidth = refSize.width;
   const refHeight = refSize.height;
   const roomWidth = roomSize.width;
   const roomHeight = roomSize.height;
-  
+
   let x: number;
   let y: number;
-  
+
   // Calculate base position based on direction
   switch (direction) {
-    case "right-of":
+    case 'right-of':
       x = referencePosition.x + refWidth + gap;
-      y = computeYAlignment(referencePosition.y, refHeight, roomHeight, alignment ?? "top");
+      y = computeYAlignment(referencePosition.y, refHeight, roomHeight, alignment ?? 'top');
       break;
-      
-    case "left-of":
+
+    case 'left-of':
       x = referencePosition.x - roomWidth - gap;
-      y = computeYAlignment(referencePosition.y, refHeight, roomHeight, alignment ?? "top");
+      y = computeYAlignment(referencePosition.y, refHeight, roomHeight, alignment ?? 'top');
       break;
-      
-    case "below":
-      x = computeXAlignment(referencePosition.x, refWidth, roomWidth, alignment ?? "left");
+
+    case 'below':
+      x = computeXAlignment(referencePosition.x, refWidth, roomWidth, alignment ?? 'left');
       y = referencePosition.y + refHeight + gap;
       break;
-      
-    case "above":
-      x = computeXAlignment(referencePosition.x, refWidth, roomWidth, alignment ?? "left");
+
+    case 'above':
+      x = computeXAlignment(referencePosition.x, refWidth, roomWidth, alignment ?? 'left');
       y = referencePosition.y - roomHeight - gap;
       break;
-      
-    case "below-right-of":
+
+    case 'below-right-of':
       x = referencePosition.x + refWidth + gap;
       y = referencePosition.y + refHeight + gap;
       break;
-      
-    case "below-left-of":
+
+    case 'below-left-of':
       x = referencePosition.x - roomWidth - gap;
       y = referencePosition.y + refHeight + gap;
       break;
-      
-    case "above-right-of":
+
+    case 'above-right-of':
       x = referencePosition.x + refWidth + gap;
       y = referencePosition.y - roomHeight - gap;
       break;
-      
-    case "above-left-of":
+
+    case 'above-left-of':
       x = referencePosition.x - roomWidth - gap;
       y = referencePosition.y - roomHeight - gap;
       break;
-      
-    default:
+
+    default: {
       // Exhaustive check
       const _exhaustive: never = direction;
       throw new Error(`Unknown direction: ${_exhaustive}`);
+    }
   }
-  
+
   return { x, y };
 }
 
@@ -135,14 +136,14 @@ function computeYAlignment(
   refY: number,
   refHeight: number,
   roomHeight: number,
-  alignment: string
+  alignment: string,
 ): number {
   switch (alignment) {
-    case "top":
+    case 'top':
       return refY;
-    case "bottom":
+    case 'bottom':
       return refY + refHeight - roomHeight;
-    case "center":
+    case 'center':
       return refY + (refHeight - roomHeight) / 2;
     default:
       return refY; // Default to top
@@ -156,14 +157,14 @@ function computeXAlignment(
   refX: number,
   refWidth: number,
   roomWidth: number,
-  alignment: string
+  alignment: string,
 ): number {
   switch (alignment) {
-    case "left":
+    case 'left':
       return refX;
-    case "right":
+    case 'right':
       return refX + refWidth - roomWidth;
-    case "center":
+    case 'center':
       return refX + (refWidth - roomWidth) / 2;
     default:
       return refX; // Default to left
@@ -179,23 +180,23 @@ function checkOverlap(
   size1: { width: number; height: number },
   room2: string,
   pos2: ResolvedPosition,
-  size2: { width: number; height: number }
+  size2: { width: number; height: number },
 ): OverlapWarning | null {
   const r1Left = pos1.x;
   const r1Right = pos1.x + size1.width;
   const r1Top = pos1.y;
   const r1Bottom = pos1.y + size1.height;
-  
+
   const r2Left = pos2.x;
   const r2Right = pos2.x + size2.width;
   const r2Top = pos2.y;
   const r2Bottom = pos2.y + size2.height;
-  
+
   // Check for overlap (excluding edge-touching which is fine)
   const tolerance = 0.01; // Small tolerance for floating point
   const overlapX = r1Left < r2Right - tolerance && r1Right > r2Left + tolerance;
   const overlapY = r1Top < r2Bottom - tolerance && r1Bottom > r2Top + tolerance;
-  
+
   if (overlapX && overlapY) {
     return {
       room1,
@@ -203,7 +204,7 @@ function checkOverlap(
       message: `Rooms '${room1}' and '${room2}' overlap at their computed positions`,
     };
   }
-  
+
   return null;
 }
 
@@ -213,12 +214,12 @@ function checkOverlap(
  */
 export function resolveFloorPositions(
   floor: Floor,
-  variables?: Map<string, ResolvedDimension>
+  variables?: Map<string, ResolvedDimension>,
 ): PositionResolutionResult {
   const positions = new Map<string, ResolvedPosition>();
   const errors: PositionResolutionError[] = [];
   const warnings: OverlapWarning[] = [];
-  
+
   // Build room lookup map
   const roomMap = new Map<string, Room>();
   for (const room of floor.rooms) {
@@ -228,11 +229,11 @@ export function resolveFloorPositions(
       roomMap.set(subRoom.name, subRoom);
     }
   }
-  
+
   // Track which rooms still need resolution
   const pending = new Set<string>();
   const resolved = new Set<string>();
-  
+
   // First pass: resolve rooms with explicit positions
   for (const room of floor.rooms) {
     if (room.position) {
@@ -244,35 +245,35 @@ export function resolveFloorPositions(
       errors.push({
         roomName: room.name,
         message: `Room '${room.name}' has no position specified (use 'at (x,y)' or relative positioning like 'right-of RoomA')`,
-        type: "no_position",
+        type: 'no_position',
       });
     }
   }
-  
+
   // Iterative resolution with cycle detection
   let maxIterations = pending.size + 1;
   while (pending.size > 0 && maxIterations > 0) {
     maxIterations--;
     let progress = false;
-    
+
     for (const roomName of pending) {
       const room = roomMap.get(roomName)!;
       const rel = room.relativePosition!;
       const refName = rel.reference;
-      
+
       // Check if reference room exists
       const refRoom = roomMap.get(refName);
       if (!refRoom) {
         errors.push({
           roomName,
           message: `Room '${roomName}' references unknown room '${refName}'`,
-          type: "missing_reference",
+          type: 'missing_reference',
         });
         pending.delete(roomName);
         progress = true;
         continue;
       }
-      
+
       // Check if reference room is resolved
       const refPosition = positions.get(refName);
       if (refPosition) {
@@ -284,21 +285,21 @@ export function resolveFloorPositions(
         progress = true;
       }
     }
-    
+
     if (!progress && pending.size > 0) {
       // No progress made - circular dependency
-      const cycleRooms = Array.from(pending).join(", ");
+      const cycleRooms = Array.from(pending).join(', ');
       for (const roomName of pending) {
         errors.push({
           roomName,
           message: `Circular dependency detected involving rooms: ${cycleRooms}`,
-          type: "circular_dependency",
+          type: 'circular_dependency',
         });
       }
       break;
     }
   }
-  
+
   // Check for overlaps among resolved rooms
   const resolvedRooms = Array.from(resolved);
   for (let i = 0; i < resolvedRooms.length; i++) {
@@ -309,25 +310,25 @@ export function resolveFloorPositions(
       const room2 = roomMap.get(room2Name)!;
       const pos1 = positions.get(room1Name)!;
       const pos2 = positions.get(room2Name)!;
-      
+
       const size1 = getRoomSize(room1, variables);
       const size2 = getRoomSize(room2, variables);
-      
+
       const overlap = checkOverlap(
         room1Name,
         pos1,
         { width: size1.width, height: size1.height },
         room2Name,
         pos2,
-        { width: size2.width, height: size2.height }
+        { width: size2.width, height: size2.height },
       );
-      
+
       if (overlap) {
         warnings.push(overlap);
       }
     }
   }
-  
+
   return { positions, errors, warnings };
 }
 
@@ -336,7 +337,7 @@ export function resolveFloorPositions(
  */
 export function resolveAllPositions(
   floors: Floor[],
-  variables?: Map<string, ResolvedDimension>
+  variables?: Map<string, ResolvedDimension>,
 ): Map<string, PositionResolutionResult> {
   const results = new Map<string, PositionResolutionResult>();
   for (const floor of floors) {
@@ -344,4 +345,3 @@ export function resolveAllPositions(
   }
   return results;
 }
-

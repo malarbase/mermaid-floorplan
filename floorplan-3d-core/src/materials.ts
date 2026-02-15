@@ -1,13 +1,13 @@
 /**
  * Material factory for 3D floorplan rendering
  * Supports style-based colors, textures, and PBR properties
- * 
+ *
  * Note: This is the core material factory without browser-specific texture loading.
  * For texture support in browser contexts, use the async methods with a texture loader.
  */
 
 import * as THREE from 'three';
-import { COLORS, MATERIAL_PROPERTIES, ViewerTheme, getThemeColors } from './constants.js';
+import { COLORS, getThemeColors, MATERIAL_PROPERTIES, type ViewerTheme } from './constants.js';
 import type { JsonStyle } from './types.js';
 
 export interface MaterialSet {
@@ -44,11 +44,12 @@ export class MaterialFactory {
   /**
    * Create floor material with optional style and theme
    */
-  static createFloorMaterial(style?: MaterialStyle, theme?: ViewerTheme): THREE.MeshStandardMaterial {
+  static createFloorMaterial(
+    style?: MaterialStyle,
+    theme?: ViewerTheme,
+  ): THREE.MeshStandardMaterial {
     const themeColors = theme ? getThemeColors(theme) : COLORS;
-    const color = style?.floor_color
-      ? parseHexColor(style.floor_color)
-      : themeColors.FLOOR;
+    const color = style?.floor_color ? parseHexColor(style.floor_color) : themeColors.FLOOR;
 
     return new THREE.MeshStandardMaterial({
       color,
@@ -60,11 +61,12 @@ export class MaterialFactory {
   /**
    * Create wall material with optional style and theme
    */
-  static createWallMaterial(style?: MaterialStyle, theme?: ViewerTheme): THREE.MeshStandardMaterial {
+  static createWallMaterial(
+    style?: MaterialStyle,
+    theme?: ViewerTheme,
+  ): THREE.MeshStandardMaterial {
     const themeColors = theme ? getThemeColors(theme) : COLORS;
-    const color = style?.wall_color
-      ? parseHexColor(style.wall_color)
-      : themeColors.WALL;
+    const color = style?.wall_color ? parseHexColor(style.wall_color) : themeColors.WALL;
 
     return new THREE.MeshStandardMaterial({
       color,
@@ -116,12 +118,12 @@ export class MaterialFactory {
    */
   static createMaterialSet(style?: MaterialStyle, theme?: ViewerTheme): MaterialSet {
     return {
-      floor: this.createFloorMaterial(style, theme),
-      wall: this.createWallMaterial(style, theme),
-      window: this.createWindowMaterial(theme),
-      door: this.createDoorMaterial(theme),
-      stair: this.createStairMaterial(),
-      lift: this.createLiftMaterial(),
+      floor: MaterialFactory.createFloorMaterial(style, theme),
+      wall: MaterialFactory.createWallMaterial(style, theme),
+      window: MaterialFactory.createWindowMaterial(theme),
+      door: MaterialFactory.createDoorMaterial(theme),
+      stair: MaterialFactory.createStairMaterial(),
+      lift: MaterialFactory.createLiftMaterial(),
     };
   }
 
@@ -161,21 +163,21 @@ export class MaterialFactory {
     ownerStyle: MaterialStyle | undefined,
     adjacentStyle: MaterialStyle | undefined,
     wallDirection: 'top' | 'bottom' | 'left' | 'right',
-    theme?: ViewerTheme
+    theme?: ViewerTheme,
   ): THREE.MeshStandardMaterial[] {
-    const ownerMat = this.createWallMaterial(ownerStyle, theme);
+    const ownerMat = MaterialFactory.createWallMaterial(ownerStyle, theme);
     const adjMat = adjacentStyle
-      ? this.createWallMaterial(adjacentStyle, theme)
+      ? MaterialFactory.createWallMaterial(adjacentStyle, theme)
       : ownerMat;
 
     // Default: all faces use owner material
     const materials: THREE.MeshStandardMaterial[] = [
-      ownerMat,  // +X
-      ownerMat,  // -X
-      ownerMat,  // +Y (top)
-      ownerMat,  // -Y (bottom)
-      ownerMat,  // +Z
-      ownerMat,  // -Z
+      ownerMat, // +X
+      ownerMat, // -X
+      ownerMat, // +Y (top)
+      ownerMat, // -Y (bottom)
+      ownerMat, // +Z
+      ownerMat, // -Z
     ];
 
     // Set exterior face based on wall direction
@@ -197,4 +199,3 @@ export class MaterialFactory {
     return materials;
   }
 }
-

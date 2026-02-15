@@ -1,15 +1,16 @@
 /**
  * SelectionAPI - Interface for selection operations in the viewer.
- * 
+ *
  * Provides a high-level API for:
  * - Selecting/deselecting objects
  * - Highlighting objects
  * - Listening to selection changes
- * 
+ *
  * The read-only viewer implements basic selection (programmatic highlight).
  * The interactive editor extends this with click selection, marquee, etc.
  */
 import type { SelectableObject } from './scene-context.js';
+import type { SelectionEntity } from './types.js';
 
 /**
  * Event emitted when selection changes.
@@ -28,14 +29,14 @@ export interface SelectionChangeEvent {
 /**
  * Source of a selection change (for sync conflict prevention).
  */
-export type SelectionSource = 
-  | 'click'        // User clicked on 3D object
-  | 'marquee'      // User marquee-selected objects
-  | 'keyboard'     // Keyboard navigation (Tab, Ctrl+A)
-  | 'editor'       // Cursor position change in editor
-  | 'api'          // Programmatic selection via API
-  | 'deselect'     // Explicit deselect (Escape, click empty)
-  | 'visibility';  // Auto-cleared due to visibility change (floor hidden)
+export type SelectionSource =
+  | 'click' // User clicked on 3D object
+  | 'marquee' // User marquee-selected objects
+  | 'keyboard' // Keyboard navigation (Tab, Ctrl+A)
+  | 'editor' // Cursor position change in editor
+  | 'api' // Programmatic selection via API
+  | 'deselect' // Explicit deselect (Escape, click empty)
+  | 'visibility'; // Auto-cleared due to visibility change (floor hidden)
 
 /**
  * Listener for selection change events.
@@ -60,10 +61,13 @@ export interface HighlightStyle {
  * Options for selectMultiple with hierarchical selection support.
  */
 export interface SelectMultipleOptions {
-  /** The primary entity (receives full highlight) when doing hierarchical selection */
-  primaryEntity?: SelectableObject;
+  /** Primary entities that receive full highlight (rooms the cursor is on).
+   *  Non-primary entities in a hierarchical selection get secondary (dimmed) highlight. */
+  primaryEntities?: SelectableObject[];
   /** Whether this is a hierarchical selection (children get secondary highlight) */
   isHierarchical?: boolean;
+  /** If true, suppress the emitChange call (caller will emit with correct source) */
+  silent?: boolean;
 }
 
 /**
@@ -72,64 +76,74 @@ export interface SelectMultipleOptions {
  */
 export interface SelectionAPI {
   /**
-   * Get the current selection set.
+   * Get the current selection as a serializable array of entities.
    */
-  getSelection(): ReadonlySet<SelectableObject>;
-  
+  getSelection(): SelectionEntity[];
+
+  /**
+   * Get the current selection as a read-only Set (internal use).
+   * Provides O(1) membership checks and direct access to SelectableObject meshes.
+   */
+  getSelectionSet(): ReadonlySet<SelectableObject>;
+
   /**
    * Check if an object is currently selected.
    */
   isSelected(obj: SelectableObject): boolean;
-  
+
   /**
    * Select an object.
-   * 
+   *
    * @param obj - Object to select
    * @param additive - If true, add to existing selection; if false, replace selection
    */
   select(obj: SelectableObject, additive?: boolean): void;
-  
+
   /**
    * Select multiple objects at once.
-   * 
+   *
    * @param objs - Objects to select
    * @param additive - If true, add to existing selection; if false, replace selection
    * @param options - Options for hierarchical selection
    */
-  selectMultiple(objs: SelectableObject[], additive?: boolean, options?: SelectMultipleOptions): void;
-  
+  selectMultiple(
+    objs: SelectableObject[],
+    additive?: boolean,
+    options?: SelectMultipleOptions,
+  ): void;
+
   /**
    * Deselect an object. If no object specified, deselect all.
    */
   deselect(obj?: SelectableObject): void;
-  
+
   /**
    * Toggle selection state of an object.
    */
   toggleSelection(obj: SelectableObject): void;
-  
+
   /**
    * Select all selectable objects.
    */
   selectAll(): void;
-  
+
   /**
    * Highlight an object without selecting it.
    * Used for hover preview during marquee selection.
    */
   highlight(obj: SelectableObject): void;
-  
+
   /**
    * Clear highlight from an object.
    */
   clearHighlight(obj?: SelectableObject): void;
-  
+
   /**
    * Add a listener for selection changes.
    * Returns a function to remove the listener.
    */
   onSelectionChange(listener: SelectionChangeListener): () => void;
-  
+
   /**
    * Set the highlight style for selected objects.
    */
@@ -150,11 +164,19 @@ export class BaseSelectionManager implements SelectionAPI {
     emissionIntensity: 0.3,
     useOutline: true,
   };
-  
-  getSelection(): ReadonlySet<SelectableObject> {
+
+  getSelection(): SelectionEntity[] {
+    return Array.from(this.selection).map((obj) => ({
+      entityType: obj.entityType,
+      entityId: obj.entityId,
+      floorId: obj.floorId,
+    }));
+  }
+
+  getSelectionSet(): ReadonlySet<SelectableObject> {
     return this.selection;
   }
-  
+
   isSelected(obj: SelectableObject): boolean {
     // Check by entityId since SelectableObject instances may differ
     for (const selected of this.selection) {
@@ -164,11 +186,11 @@ export class BaseSelectionManager implements SelectionAPI {
     }
     return false;
   }
-  
-  select(obj: SelectableObject, additive = false): void {
+
+  select(obj: SelectableObject, additive = false, silent = false): void {
     const added: SelectableObject[] = [];
     const removed: SelectableObject[] = [];
-    
+
     if (!additive) {
       // Clear existing selection
       for (const selected of this.selection) {
@@ -177,21 +199,27 @@ export class BaseSelectionManager implements SelectionAPI {
       }
       this.selection.clear();
     }
-    
+
     // Add new object if not already selected
     if (!this.isSelected(obj)) {
       this.selection.add(obj);
       added.push(obj);
       this.applyHighlight(obj, true, 'primary');
     }
-    
-    this.emitChange(added, removed, 'api');
+
+    if (!silent) {
+      this.emitChange(added, removed, 'api');
+    }
   }
-  
-  selectMultiple(objs: SelectableObject[], additive = false, options?: SelectMultipleOptions): void {
+
+  selectMultiple(
+    objs: SelectableObject[],
+    additive = false,
+    options?: SelectMultipleOptions,
+  ): void {
     const added: SelectableObject[] = [];
     const removed: SelectableObject[] = [];
-    
+
     if (!additive) {
       for (const selected of this.selection) {
         removed.push(selected);
@@ -199,26 +227,29 @@ export class BaseSelectionManager implements SelectionAPI {
       }
       this.selection.clear();
     }
-    
+
     for (const obj of objs) {
       if (!this.isSelected(obj)) {
         this.selection.add(obj);
         added.push(obj);
-        
+
         // Determine if this is primary or secondary (hierarchical child)
-        const isPrimary = !options?.isHierarchical || 
-          (options.primaryEntity && this.isSameEntity(obj, options.primaryEntity));
-        
+        const isPrimary =
+          !options?.isHierarchical ||
+          (options.primaryEntities?.some((pe) => this.isSameEntity(obj, pe)) ?? false);
+
         this.applyHighlight(obj, true, isPrimary ? 'primary' : 'secondary');
       }
     }
-    
-    this.emitChange(added, removed, 'api');
+
+    if (!options?.silent) {
+      this.emitChange(added, removed, 'api');
+    }
   }
-  
+
   deselect(obj?: SelectableObject): void {
     const removed: SelectableObject[] = [];
-    
+
     if (obj) {
       // Deselect specific object
       for (const selected of this.selection) {
@@ -237,12 +268,12 @@ export class BaseSelectionManager implements SelectionAPI {
       }
       this.selection.clear();
     }
-    
+
     if (removed.length > 0) {
       this.emitChange([], removed, 'deselect');
     }
   }
-  
+
   toggleSelection(obj: SelectableObject): void {
     if (this.isSelected(obj)) {
       this.deselect(obj);
@@ -250,19 +281,19 @@ export class BaseSelectionManager implements SelectionAPI {
       this.select(obj, true);
     }
   }
-  
+
   selectAll(): void {
     // Override in subclass with access to all selectable objects
     throw new Error('selectAll() must be implemented by subclass');
   }
-  
+
   highlight(obj: SelectableObject): void {
     if (!this.isHighlighted(obj)) {
       this.highlighted.add(obj);
       this.applyHighlight(obj, true, 'hover');
     }
   }
-  
+
   clearHighlight(obj?: SelectableObject): void {
     if (obj) {
       for (const highlighted of this.highlighted) {
@@ -284,12 +315,12 @@ export class BaseSelectionManager implements SelectionAPI {
       this.highlighted.clear();
     }
   }
-  
+
   onSelectionChange(listener: SelectionChangeListener): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);
   }
-  
+
   setHighlightStyle(style: HighlightStyle): void {
     this.highlightStyle = { ...this.highlightStyle, ...style };
     // Re-apply highlights with new style
@@ -302,7 +333,7 @@ export class BaseSelectionManager implements SelectionAPI {
       }
     }
   }
-  
+
   /**
    * Highlight level for hierarchical selection.
    */
@@ -311,7 +342,7 @@ export class BaseSelectionManager implements SelectionAPI {
     SECONDARY: 'secondary' as const,
     HOVER: 'hover' as const,
   };
-  
+
   /**
    * Apply or remove highlight from an object.
    * Override in subclass to implement actual visual feedback.
@@ -319,17 +350,21 @@ export class BaseSelectionManager implements SelectionAPI {
    * @param _highlight - Whether to apply or remove highlight
    * @param _level - Highlight level: 'primary' for main selection, 'secondary' for hierarchical children, 'hover' for preview
    */
-  protected applyHighlight(_obj: SelectableObject, _highlight: boolean, _level: 'primary' | 'secondary' | 'hover' = 'primary'): void {
+  protected applyHighlight(
+    _obj: SelectableObject,
+    _highlight: boolean,
+    _level: 'primary' | 'secondary' | 'hover' = 'primary',
+  ): void {
     // Base implementation does nothing - override in subclass
   }
-  
+
   /**
    * Emit a selection change event.
    */
   protected emitChange(
     added: SelectableObject[],
     removed: SelectableObject[],
-    source: SelectionSource
+    source: SelectionSource,
   ): void {
     const event: SelectionChangeEvent = {
       selection: this.selection,
@@ -337,7 +372,7 @@ export class BaseSelectionManager implements SelectionAPI {
       removed,
       source,
     };
-    
+
     for (const listener of this.listeners) {
       try {
         listener(event);
@@ -346,16 +381,14 @@ export class BaseSelectionManager implements SelectionAPI {
       }
     }
   }
-  
+
   /**
    * Check if two SelectableObjects represent the same entity.
    */
   protected isSameEntity(a: SelectableObject, b: SelectableObject): boolean {
-    return a.floorId === b.floorId &&
-           a.entityType === b.entityType &&
-           a.entityId === b.entityId;
+    return a.floorId === b.floorId && a.entityType === b.entityType && a.entityId === b.entityId;
   }
-  
+
   /**
    * Check if an object is currently highlighted.
    */
@@ -368,4 +401,3 @@ export class BaseSelectionManager implements SelectionAPI {
     return false;
   }
 }
-

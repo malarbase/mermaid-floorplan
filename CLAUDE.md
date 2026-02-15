@@ -1,21 +1,3 @@
-<!-- OPENSPEC:START -->
-# OpenSpec Instructions
-
-These instructions are for AI assistants working in this project.
-
-Always open `@/openspec/AGENTS.md` when the request:
-- Mentions planning or proposals (words like proposal, spec, change, plan)
-- Introduces new capabilities, breaking changes, architecture shifts, or big performance/security work
-- Sounds ambiguous and you need the authoritative spec before coding
-
-Use `@/openspec/AGENTS.md` to learn:
-- How to create and apply change proposals
-- Spec format and conventions
-- Project structure and guidelines
-
-Keep this managed block so 'openspec update' can refresh the instructions.
-
-<!-- OPENSPEC:END -->
 
 ## Project Architecture
 
@@ -41,7 +23,70 @@ mcp-server/                         # floorplans-mcp-server (AI tools)
 
 src/                                # Web app (Monaco editor)
 └── renderer.ts                     # Imports from floorplan-language
+
+floorplan-app/                      # SolidStart full-stack app
+├── src/routes/                     # File-based routing
+├── src/components/                 # Solid.js UI components
+├── src/lib/                        # Auth, utilities
+└── convex/                         # Convex database schema and functions
 ```
+
+### SolidStart App (floorplan-app/)
+
+Full-stack application for authenticated floorplan design with cloud storage:
+
+| Feature | Technology |
+|---------|------------|
+| Framework | SolidStart with SSR |
+| Auth | Better Auth + Google OAuth |
+| Database | Convex (real-time) |
+| 3D Rendering | floorplan-viewer-core |
+| Styling | DaisyUI + Tailwind CSS v4 |
+
+#### Key Architecture
+
+- **GitHub-Inspired Versioning**: Projects → Versions (mutable) → Snapshots (immutable)
+- **URL Structure**: `/u/{username}/{project}/v/{version}` (mutable), `/u/{username}/{project}/s/{hash}` (permalink)
+- **Viewer-Core Embedding**: Uses `FloorplanEmbed` wrapper with `onMount`/`onCleanup` lifecycle
+
+#### Viewer-Core Integration
+
+```typescript
+// Proper embedding pattern for SolidStart
+import { onMount, onCleanup } from "solid-js";
+import { FloorplanAppCore } from "floorplan-viewer-core";
+
+function FloorplanEmbed(props: { dsl: string }) {
+  let container: HTMLDivElement;
+  let app: FloorplanAppCore;
+
+  onMount(async () => {
+    app = new FloorplanAppCore({
+      containerId: container.id,
+      initialTheme: 'dark',
+      initialDsl: props.dsl,
+    });
+  });
+
+  onCleanup(() => app?.dispose?.());
+
+  return <div ref={container!} id="floorplan-container" class="w-full h-full" />;
+}
+```
+
+#### Development
+
+```bash
+# From workspace root
+npm run --workspace floorplan-app dev    # Start dev server at localhost:3000
+npx convex dev                            # Start Convex dev (separate terminal)
+
+# From floorplan-app/
+npm run dev
+npm test                                  # Run Vitest tests
+```
+
+See `floorplan-app/README.md` for full setup instructions including Google OAuth and Convex configuration.
 
 ### Single Source of Truth
 

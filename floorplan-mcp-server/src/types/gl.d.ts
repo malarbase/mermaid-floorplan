@@ -18,7 +18,7 @@ declare module 'gl' {
   interface HeadlessWebGLContext {
     readonly RGBA: number;
     readonly UNSIGNED_BYTE: number;
-    
+
     /**
      * Read pixels from the framebuffer
      */
@@ -29,9 +29,9 @@ declare module 'gl' {
       height: number,
       format: number,
       type: number,
-      pixels: ArrayBufferView
+      pixels: ArrayBufferView,
     ): void;
-    
+
     /**
      * Get a WebGL extension
      */
@@ -47,7 +47,6 @@ declare module 'gl' {
    * Create a headless WebGL context
    */
   function createGL(width: number, height: number, options?: GLOptions): HeadlessWebGLContext;
-  
+
   export = createGL;
 }
-

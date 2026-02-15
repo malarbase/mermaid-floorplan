@@ -1,56 +1,75 @@
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { z } from "zod";
-import { parseFloorplan, extractAllRoomMetadata, validateFloorplan, type ValidationWarning } from "../utils/parser.js";
-import { generateSvg, svgToPng } from "../utils/renderer.js";
-import { render3DToPng, formatSceneBounds } from "../utils/renderer3d.js";
-import { convertFloorplanToJson, exportFloorplanToDxf, exportFloorToDxf, type FloorplanSummary, type FloorMetrics } from "floorplan-language";
+import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+  convertFloorplanToJson,
+  exportFloorplanToDxf,
+  exportFloorToDxf,
+  type FloorMetrics,
+  type FloorplanSummary,
+} from 'floorplan-language';
+import { z } from 'zod';
+import {
+  extractAllRoomMetadata,
+  parseFloorplan,
+  type ValidationWarning,
+  validateFloorplan,
+} from '../utils/parser.js';
+import { generateSvg, svgToPng } from '../utils/renderer.js';
+import { formatSceneBounds, render3DToPng } from '../utils/renderer3d.js';
 
 const RenderInputSchema = z.object({
-  dsl: z.string().describe("Floorplan DSL code to render"),
+  dsl: z.string().describe('Floorplan DSL code to render'),
   format: z
-    .enum(["png", "svg", "3d-png", "dxf"])
-    .default("png")
-    .describe("Output format: 'png' for 2D image (default), 'svg' for vector, '3d-png' for 3D perspective view, 'dxf' for AutoCAD/CAD format"),
-  width: z.number().default(800).describe("Output image width in pixels"),
-  height: z.number().default(600).describe("Output image height in pixels"),
+    .enum(['png', 'svg', '3d-png', 'dxf'])
+    .default('png')
+    .describe(
+      "Output format: 'png' for 2D image (default), 'svg' for vector, '3d-png' for 3D perspective view, 'dxf' for AutoCAD/CAD format",
+    ),
+  width: z.number().default(800).describe('Output image width in pixels'),
+  height: z.number().default(600).describe('Output image height in pixels'),
   floorIndex: z
     .number()
     .optional()
-    .describe("Index of the floor to render (0-based). Default: 0 (first floor)"),
+    .describe('Index of the floor to render (0-based). Default: 0 (first floor)'),
   renderAllFloors: z
     .boolean()
     .optional()
-    .describe("Render all floors in a single image. Default: false"),
+    .describe('Render all floors in a single image. Default: false'),
   multiFloorLayout: z
-    .enum(["stacked", "sideBySide"])
+    .enum(['stacked', 'sideBySide'])
     .optional()
-    .describe("Layout for multi-floor rendering: 'stacked' (vertical) or 'sideBySide' (horizontal). Default: 'sideBySide'"),
+    .describe(
+      "Layout for multi-floor rendering: 'stacked' (vertical) or 'sideBySide' (horizontal). Default: 'sideBySide'",
+    ),
   // Annotation options
   showArea: z
     .boolean()
     .optional()
-    .describe("Show room area labels inside each room. Default: false"),
+    .describe('Show room area labels inside each room. Default: false'),
   showDimensions: z
     .boolean()
     .optional()
-    .describe("Show dimension lines on room edges with measurements. Default: false"),
+    .describe('Show dimension lines on room edges with measurements. Default: false'),
   showFloorSummary: z
     .boolean()
     .optional()
-    .describe("Show floor summary panel with metrics (room count, net area, efficiency). Default: false"),
+    .describe(
+      'Show floor summary panel with metrics (room count, net area, efficiency). Default: false',
+    ),
   areaUnit: z
-    .enum(["sqft", "sqm"])
+    .enum(['sqft', 'sqm'])
     .optional()
     .describe("Unit for area display: 'sqft' (default) or 'sqm'"),
   lengthUnit: z
-    .enum(["m", "ft", "cm", "in", "mm"])
+    .enum(['m', 'ft', 'cm', 'in', 'mm'])
     .optional()
     .describe("Unit for dimension labels: 'ft' (default), 'm', 'cm', 'in', 'mm'"),
   // 3D rendering options
   projection: z
-    .enum(["isometric", "perspective"])
+    .enum(['isometric', 'perspective'])
     .optional()
-    .describe("3D camera projection mode: 'isometric' (default) for orthographic view, 'perspective' for realistic depth"),
+    .describe(
+      "3D camera projection mode: 'isometric' (default) for orthographic view, 'perspective' for realistic depth",
+    ),
   cameraPosition: z
     .object({
       x: z.number(),
@@ -58,7 +77,7 @@ const RenderInputSchema = z.object({
       z: z.number(),
     })
     .optional()
-    .describe("Camera position for perspective mode. Y is up."),
+    .describe('Camera position for perspective mode. Y is up.'),
   cameraTarget: z
     .object({
       x: z.number(),
@@ -66,25 +85,38 @@ const RenderInputSchema = z.object({
       z: z.number(),
     })
     .optional()
-    .describe("Camera look-at target for perspective mode"),
+    .describe('Camera look-at target for perspective mode'),
   fov: z
     .number()
     .min(10)
     .max(120)
     .optional()
-    .describe("Field of view in degrees for perspective mode (default: 50)"),
+    .describe('Field of view in degrees for perspective mode (default: 50)'),
 });
 
 export function registerRenderTool(server: McpServer): void {
   server.tool(
-    "render_floorplan",
-    "Parse floorplan DSL and render to PNG image that the LLM can visually analyze. Supports 2D top-down view (png/svg) and 3D perspective view (3d-png).",
+    'render_floorplan',
+    'Parse floorplan DSL and render to PNG image that the LLM can visually analyze. Supports 2D top-down view (png/svg) and 3D perspective view (3d-png).',
     RenderInputSchema.shape,
     async (args) => {
-      const { 
-        dsl, format, width, height, floorIndex, renderAllFloors, multiFloorLayout,
-        showArea, showDimensions, showFloorSummary, areaUnit, lengthUnit,
-        projection, cameraPosition, cameraTarget, fov
+      const {
+        dsl,
+        format,
+        width,
+        height,
+        floorIndex,
+        renderAllFloors,
+        multiFloorLayout,
+        showArea,
+        showDimensions,
+        showFloorSummary,
+        areaUnit,
+        lengthUnit,
+        projection,
+        cameraPosition,
+        cameraTarget,
+        fov,
       } = RenderInputSchema.parse(args);
 
       const parseResult = await parseFloorplan(dsl);
@@ -93,7 +125,7 @@ export function registerRenderTool(server: McpServer): void {
         return {
           content: [
             {
-              type: "text" as const,
+              type: 'text' as const,
               text: JSON.stringify({
                 success: false,
                 errors: parseResult.errors,
@@ -107,13 +139,13 @@ export function registerRenderTool(server: McpServer): void {
         // Run validation to get warnings (errors would have been caught by parseFloorplan)
         const validationResult = await validateFloorplan(dsl);
         const warnings: ValidationWarning[] = validationResult.warnings;
-        
+
         // Check for non-parse validation errors (circular deps, missing refs)
-        if (validationResult.errors.some(e => e.type !== 'parse')) {
+        if (validationResult.errors.some((e) => e.type !== 'parse')) {
           return {
             content: [
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: JSON.stringify({
                   success: false,
                   errors: validationResult.errors,
@@ -127,19 +159,21 @@ export function registerRenderTool(server: McpServer): void {
         // Get JSON data for all formats
         const jsonResult = convertFloorplanToJson(parseResult.document.parseResult.value);
         const summary: FloorplanSummary | undefined = jsonResult.data?.summary;
-        const floorMetrics: FloorMetrics[] | undefined = jsonResult.data?.floors.map(f => f.metrics!).filter(Boolean);
+        const floorMetrics: FloorMetrics[] | undefined = jsonResult.data?.floors
+          .map((f) => f.metrics!)
+          .filter(Boolean);
         const floorCount = parseResult.document.parseResult.value.floors.length;
 
         // Handle 3D PNG format
-        if (format === "3d-png") {
+        if (format === '3d-png') {
           if (!jsonResult.data) {
             return {
               content: [
                 {
-                  type: "text" as const,
+                  type: 'text' as const,
                   text: JSON.stringify({
                     success: false,
-                    errors: [{ message: "Failed to convert floorplan to JSON for 3D rendering" }],
+                    errors: [{ message: 'Failed to convert floorplan to JSON for 3D rendering' }],
                   }),
                 },
               ],
@@ -148,11 +182,11 @@ export function registerRenderTool(server: McpServer): void {
 
           try {
             // Convert camera position/target from objects to tuples for the renderer
-            const cameraPosTuple = cameraPosition 
-              ? [cameraPosition.x, cameraPosition.y, cameraPosition.z] as [number, number, number]
+            const cameraPosTuple = cameraPosition
+              ? ([cameraPosition.x, cameraPosition.y, cameraPosition.z] as [number, number, number])
               : undefined;
             const cameraTargetTuple = cameraTarget
-              ? [cameraTarget.x, cameraTarget.y, cameraTarget.z] as [number, number, number]
+              ? ([cameraTarget.x, cameraTarget.y, cameraTarget.z] as [number, number, number])
               : undefined;
 
             const result = await render3DToPng(jsonResult.data, {
@@ -169,15 +203,15 @@ export function registerRenderTool(server: McpServer): void {
             return {
               content: [
                 {
-                  type: "image" as const,
-                  data: result.pngBuffer.toString("base64"),
-                  mimeType: "image/png" as const,
+                  type: 'image' as const,
+                  data: result.pngBuffer.toString('base64'),
+                  mimeType: 'image/png' as const,
                 },
                 {
-                  type: "text" as const,
+                  type: 'text' as const,
                   text: JSON.stringify({
                     success: true,
-                    format: "3d-png",
+                    format: '3d-png',
                     projection: result.metadata.projection,
                     floorCount,
                     floorsRendered: result.metadata.floorsRendered,
@@ -194,22 +228,24 @@ export function registerRenderTool(server: McpServer): void {
             };
           } catch (error) {
             // Provide helpful error message for 3D rendering failures
-            const errorMessage = error instanceof Error ? error.message : "Unknown 3D rendering error";
-            const isGLError = errorMessage.includes("WebGL") || errorMessage.includes("headless");
+            const errorMessage =
+              error instanceof Error ? error.message : 'Unknown 3D rendering error';
+            const isGLError = errorMessage.includes('WebGL') || errorMessage.includes('headless');
 
             return {
               content: [
                 {
-                  type: "text" as const,
+                  type: 'text' as const,
                   text: JSON.stringify({
                     success: false,
                     errors: [
                       {
                         message: errorMessage,
                         ...(isGLError && {
-                          guidance: "3D rendering requires headless-gl. Install platform dependencies: " +
-                            "macOS (XCode CLI), Linux (libxi-dev, libglu1-mesa-dev, libglew-dev), " +
-                            "Windows (Visual Studio Build Tools).",
+                          guidance:
+                            '3D rendering requires headless-gl. Install platform dependencies: ' +
+                            'macOS (XCode CLI), Linux (libxi-dev, libglu1-mesa-dev, libglew-dev), ' +
+                            'Windows (Visual Studio Build Tools).',
                         }),
                       },
                     ],
@@ -219,17 +255,17 @@ export function registerRenderTool(server: McpServer): void {
             };
           }
         }
-        
+
         // Handle DXF format
-        if (format === "dxf") {
+        if (format === 'dxf') {
           if (!jsonResult.data) {
             return {
               content: [
                 {
-                  type: "text" as const,
+                  type: 'text' as const,
                   text: JSON.stringify({
                     success: false,
-                    errors: [{ message: "Failed to convert floorplan to JSON for DXF export" }],
+                    errors: [{ message: 'Failed to convert floorplan to JSON for DXF export' }],
                   }),
                 },
               ],
@@ -240,7 +276,7 @@ export function registerRenderTool(server: McpServer): void {
             includeLabels: true,
             includeDimensions: showDimensions ?? false,
             wallThickness: jsonResult.data.config?.wall_thickness ?? 0.5,
-            units: jsonResult.data.config?.default_unit ?? "ft",
+            units: jsonResult.data.config?.default_unit ?? 'ft',
           };
 
           // Export based on floor selection
@@ -251,7 +287,7 @@ export function registerRenderTool(server: McpServer): void {
               jsonResult.data.floors,
               jsonResult.data.connections,
               jsonResult.data.config,
-              dxfOptions
+              dxfOptions,
             );
           } else {
             // Export specific floor
@@ -260,17 +296,21 @@ export function registerRenderTool(server: McpServer): void {
               return {
                 content: [
                   {
-                    type: "text" as const,
+                    type: 'text' as const,
                     text: JSON.stringify({
                       success: false,
-                      errors: [{ message: `Floor index ${floorIndex} not found. Available: 0-${jsonResult.data.floors.length - 1}` }],
+                      errors: [
+                        {
+                          message: `Floor index ${floorIndex} not found. Available: 0-${jsonResult.data.floors.length - 1}`,
+                        },
+                      ],
                     }),
                   },
                 ],
               };
             }
-            const floorConnections = jsonResult.data.connections.filter(
-              (conn) => floor.rooms.some((r) => r.name === conn.fromRoom)
+            const floorConnections = jsonResult.data.connections.filter((conn) =>
+              floor.rooms.some((r) => r.name === conn.fromRoom),
             );
             dxfResult = exportFloorToDxf(floor, floorConnections, dxfOptions);
           }
@@ -278,18 +318,23 @@ export function registerRenderTool(server: McpServer): void {
           return {
             content: [
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: dxfResult.content,
               },
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: JSON.stringify({
                   success: true,
-                  format: "dxf",
+                  format: 'dxf',
                   floorCount,
                   roomCount: dxfResult.roomCount,
                   connectionCount: dxfResult.connectionCount,
-                  warnings: dxfResult.warnings.length > 0 ? dxfResult.warnings : (warnings.length > 0 ? warnings : undefined),
+                  warnings:
+                    dxfResult.warnings.length > 0
+                      ? dxfResult.warnings
+                      : warnings.length > 0
+                        ? warnings
+                        : undefined,
                 }),
               },
             ],
@@ -310,20 +355,20 @@ export function registerRenderTool(server: McpServer): void {
         const rooms = extractAllRoomMetadata(parseResult.document);
 
         // Return SVG format if requested
-        if (format === "svg") {
+        if (format === 'svg') {
           return {
             content: [
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: svg,
               },
               {
-                type: "text" as const,
+                type: 'text' as const,
                 text: JSON.stringify({
                   success: true,
-                  format: "svg",
+                  format: 'svg',
                   floorCount,
-                  renderedFloor: renderAllFloors ? "all" : (floorIndex ?? 0),
+                  renderedFloor: renderAllFloors ? 'all' : (floorIndex ?? 0),
                   rooms,
                   summary,
                   floorMetrics,
@@ -340,17 +385,17 @@ export function registerRenderTool(server: McpServer): void {
         return {
           content: [
             {
-              type: "image" as const,
-              data: pngBuffer.toString("base64"),
-              mimeType: "image/png" as const,
+              type: 'image' as const,
+              data: pngBuffer.toString('base64'),
+              mimeType: 'image/png' as const,
             },
             {
-              type: "text" as const,
+              type: 'text' as const,
               text: JSON.stringify({
                 success: true,
-                format: "png",
+                format: 'png',
                 floorCount,
-                renderedFloor: renderAllFloors ? "all" : (floorIndex ?? 0),
+                renderedFloor: renderAllFloors ? 'all' : (floorIndex ?? 0),
                 rooms,
                 summary,
                 floorMetrics,
@@ -363,15 +408,12 @@ export function registerRenderTool(server: McpServer): void {
         return {
           content: [
             {
-              type: "text" as const,
+              type: 'text' as const,
               text: JSON.stringify({
                 success: false,
                 errors: [
                   {
-                    message:
-                      error instanceof Error
-                        ? error.message
-                        : "Unknown rendering error",
+                    message: error instanceof Error ? error.message : 'Unknown rendering error',
                   },
                 ],
               }),
@@ -379,6 +421,6 @@ export function registerRenderTool(server: McpServer): void {
           ],
         };
       }
-    }
+    },
   );
 }

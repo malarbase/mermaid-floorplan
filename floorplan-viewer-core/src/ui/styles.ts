@@ -1,9 +1,87 @@
 /**
  * Shared CSS styles for viewer UI components
- * These styles support both light and dark themes via body.dark-theme selector
+ * These styles support both light and dark themes via CSS variables
+ * Compatible with [data-theme="dark"] and legacy body.dark-theme
  */
 
 export const SHARED_STYLES = `
+/* === CSS Variables === */
+:root,
+[data-theme="light"] {
+  /* Colors - Light Theme Default */
+  --fp-bg-primary: rgba(255, 255, 255, 0.95);
+  --fp-bg-secondary: #f8f8f8;
+  --fp-bg-tertiary: #f0f0f0;
+  --fp-bg-panel: #ffffff;
+  --fp-bg-input: #ffffff;
+  --fp-bg-hover: rgba(0, 0, 0, 0.05);
+  
+  --fp-text-primary: #333333;
+  --fp-text-secondary: #555555;
+  --fp-text-tertiary: #888888;
+  --fp-text-inverted: #ffffff;
+  
+  --fp-border-primary: #e0e0e0;
+  --fp-border-secondary: #dddddd;
+  
+  /* Brand Colors - Cyan Accent (OKLCH 75% 0.18 195) */
+  --fp-accent: oklch(75% 0.18 195);
+  --fp-accent-hover: oklch(70% 0.18 195);
+  
+  /* Status Colors */
+  --fp-success: #2d7d46;
+  --fp-error: #c42b1c;
+  
+  /* Warning Panel Colors */
+  --fp-warning-bg: #fff8e1;
+  --fp-warning-border: #ffd54f;
+  --fp-warning-text: #5d4037;
+  --fp-warning-accent: #f57c00;
+  --fp-warning-separator: #ffe082;
+  
+  /* UI Elements */
+  --fp-shadow-sm: 0 2px 10px rgba(0,0,0,0.1);
+  --fp-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.15);
+  --fp-btn-secondary-bg: #666666;
+  --fp-btn-secondary-hover: #555555;
+  --fp-resize-handle: rgba(0,0,0,0.2);
+  --fp-resize-handle-hover: rgba(0,0,0,0.4);
+}
+
+[data-theme="dark"],
+body.dark-theme {
+  /* Colors - Dark Theme */
+  --fp-bg-primary: rgba(40, 40, 40, 0.95);
+  --fp-bg-secondary: #333333;
+  --fp-bg-tertiary: #3a3a3a;
+  --fp-bg-panel: #2d2d2d;
+  --fp-bg-input: #333333;
+  --fp-bg-hover: rgba(255, 255, 255, 0.1);
+
+  --fp-text-primary: #e0e0e0;
+  --fp-text-secondary: #aaaaaa;
+  --fp-text-tertiary: #888888;
+  --fp-text-inverted: #ffffff;
+
+  --fp-border-primary: #444444;
+  --fp-border-secondary: #555555;
+  
+  /* Warning Panel Colors - Dark */
+  --fp-warning-bg: #3d3520;
+  --fp-warning-border: #6b5c2d;
+  --fp-warning-text: #e0d4b8;
+  --fp-warning-accent: #ffb74d;
+  --fp-warning-separator: #5a4a20;
+  
+  /* UI Elements - Dark */
+  --fp-shadow-sm: 0 2px 10px rgba(0,0,0,0.3);
+  --fp-shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+  --fp-btn-secondary-bg: #555555;
+  --fp-btn-secondary-hover: #666666;
+  --fp-resize-handle: rgba(255,255,255,0.2);
+  --fp-resize-handle-hover: rgba(255,255,255,0.4);
+}
+
 /* === Base Styles === */
 * {
   box-sizing: border-box;
@@ -14,32 +92,25 @@ export const SHARED_STYLES = `
   position: absolute;
   top: 10px;
   right: 10px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--fp-bg-primary);
   padding: 0;
   border-radius: 10px;
   width: 260px;
   max-height: calc(100vh - 20px);
   overflow-y: auto;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: var(--fp-shadow-md);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 13px;
-}
-
-body.dark-theme .fp-control-panel {
-  background: rgba(40, 40, 40, 0.95);
+  color: var(--fp-text-primary);
 }
 
 /* === Collapsible Sections === */
 .fp-control-section {
-  border-bottom: 1px solid #e0e0e0;
+  border-bottom: 1px solid var(--fp-border-primary);
 }
 
 .fp-control-section:last-child {
   border-bottom: none;
-}
-
-body.dark-theme .fp-control-section {
-  border-bottom-color: #444;
 }
 
 .fp-section-header {
@@ -49,15 +120,15 @@ body.dark-theme .fp-control-section {
   padding: 12px 16px;
   cursor: pointer;
   user-select: none;
-  background: #f8f8f8;
+  background: var(--fp-bg-secondary);
   font-weight: 600;
   font-size: 13px;
-  color: #333;
+  color: var(--fp-text-primary);
   transition: background 0.2s;
 }
 
 .fp-section-header:hover {
-  background: #f0f0f0;
+  background: var(--fp-bg-tertiary);
 }
 
 .fp-section-header::after {
@@ -68,15 +139,6 @@ body.dark-theme .fp-control-section {
 
 .fp-control-section.collapsed .fp-section-header::after {
   transform: rotate(-90deg);
-}
-
-body.dark-theme .fp-section-header {
-  background: #333;
-  color: #e0e0e0;
-}
-
-body.dark-theme .fp-section-header:hover {
-  background: #3a3a3a;
 }
 
 .fp-section-content {
@@ -107,23 +169,15 @@ body.dark-theme .fp-section-header:hover {
 .fp-label {
   font-size: 12px;
   font-weight: 500;
-  color: #555;
-}
-
-body.dark-theme .fp-label {
-  color: #aaa;
+  color: var(--fp-text-secondary);
 }
 
 /* === Slider Control === */
 .fp-slider-value {
   font-size: 11px;
-  color: #888;
+  color: var(--fp-text-tertiary);
   min-width: 35px;
   text-align: right;
-}
-
-body.dark-theme .fp-slider-value {
-  color: #888;
 }
 
 .fp-slider {
@@ -131,7 +185,7 @@ body.dark-theme .fp-slider-value {
   height: 4px;
   border-radius: 2px;
   -webkit-appearance: none;
-  background: #ddd;
+  background: var(--fp-border-secondary);
 }
 
 .fp-slider::-webkit-slider-thumb {
@@ -139,21 +193,17 @@ body.dark-theme .fp-slider-value {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #4a90d9;
+  background: var(--fp-accent);
   cursor: pointer;
   border: 2px solid white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-body.dark-theme .fp-slider {
-  background: #555;
-}
-
 /* === Buttons === */
 .fp-btn {
   padding: 8px 12px;
-  background: #4a90d9;
-  color: white;
+  background: var(--fp-accent);
+  color: var(--fp-text-inverted);
   border: none;
   border-radius: 6px;
   font-size: 12px;
@@ -163,31 +213,15 @@ body.dark-theme .fp-slider {
 }
 
 .fp-btn:hover {
-  background: #3a7fc8;
+  background: var(--fp-accent-hover);
 }
 
 .fp-btn-secondary {
-  background: #666;
+  background: var(--fp-btn-secondary-bg);
 }
 
 .fp-btn-secondary:hover {
-  background: #555;
-}
-
-body.dark-theme .fp-btn {
-  background: #4a90d9;
-}
-
-body.dark-theme .fp-btn:hover {
-  background: #5aa0e9;
-}
-
-body.dark-theme .fp-btn-secondary {
-  background: #555;
-}
-
-body.dark-theme .fp-btn-secondary:hover {
-  background: #666;
+  background: var(--fp-btn-secondary-hover);
 }
 
 .fp-btn-group {
@@ -216,27 +250,18 @@ body.dark-theme .fp-btn-secondary:hover {
   cursor: pointer;
   flex: 1;
   font-size: 12px;
-  color: #555;
-}
-
-body.dark-theme .fp-checkbox-row label {
-  color: #aaa;
+  color: var(--fp-text-secondary);
 }
 
 /* === Select === */
 .fp-select {
   padding: 6px 8px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--fp-border-secondary);
   border-radius: 4px;
   font-size: 12px;
-  background: white;
+  background: var(--fp-bg-input);
+  color: var(--fp-text-primary);
   cursor: pointer;
-}
-
-body.dark-theme .fp-select {
-  background: #333;
-  border-color: #555;
-  color: #e0e0e0;
 }
 
 /* === Floor List === */
@@ -263,11 +288,7 @@ body.dark-theme .fp-select {
   cursor: pointer;
   flex: 1;
   font-size: 12px;
-  color: #333;
-}
-
-body.dark-theme .fp-floor-item label {
-  color: #ccc;
+  color: var(--fp-text-primary);
 }
 
 .fp-floor-actions {
@@ -283,21 +304,22 @@ body.dark-theme .fp-floor-item label {
 }
 
 .fp-no-floors {
-  color: #888;
+  color: var(--fp-text-tertiary);
   font-size: 11px;
   font-style: italic;
 }
 
 /* === Annotation Labels (CSS2D) === */
 .area-label {
-  background: rgba(74, 144, 217, 0.9);
-  color: white;
+  background: var(--fp-accent);
+  color: var(--fp-text-inverted);
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  opacity: 0.9;
 }
 
 .dimension-label {
@@ -327,18 +349,15 @@ body.dark-theme .fp-floor-item label {
   position: absolute;
   bottom: 10px;
   left: 10px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--fp-bg-primary);
   border-radius: 8px;
   padding: 12px 16px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: var(--fp-shadow-sm);
   font-size: 12px;
   max-width: 300px;
   display: none;
+  pointer-events: auto;
   transition: left 0.3s ease;
-}
-
-body.dark-theme .fp-floor-summary-panel {
-  background: rgba(40, 40, 40, 0.95);
 }
 
 .fp-floor-summary-panel.visible {
@@ -349,20 +368,12 @@ body.dark-theme .fp-floor-summary-panel {
   font-weight: 600;
   font-size: 14px;
   margin-bottom: 10px;
-  color: #333;
-}
-
-body.dark-theme .floor-summary-title {
-  color: #e0e0e0;
+  color: var(--fp-text-primary);
 }
 
 .floor-summary-item {
   padding: 8px 0;
-  border-bottom: 1px solid #eee;
-}
-
-body.dark-theme .floor-summary-item {
-  border-bottom-color: #444;
+  border-bottom: 1px solid var(--fp-border-secondary);
 }
 
 .floor-summary-item:last-child {
@@ -371,18 +382,14 @@ body.dark-theme .floor-summary-item {
 
 .floor-name {
   font-weight: 500;
-  color: #4a90d9;
+  color: var(--fp-accent);
   margin-bottom: 4px;
 }
 
 .floor-stats {
   display: flex;
   gap: 12px;
-  color: #666;
-}
-
-body.dark-theme .floor-stats {
-  color: #999;
+  color: var(--fp-text-secondary);
 }
 
 /* === 2D Overlay === */
@@ -391,31 +398,29 @@ body.dark-theme .floor-stats {
   bottom: 10px;
   left: 10px;
   width: 280px;
-  height: 220px;
-  background: rgba(255, 255, 255, 0.95);
+  max-height: 60vh;
+  background: var(--fp-bg-primary);
   border-radius: 8px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+  box-shadow: var(--fp-shadow-md);
   overflow: hidden;
   z-index: 50;
+  pointer-events: auto;
   display: none;
   transition: left 0.3s ease, bottom 0.3s ease;
 }
 
 .fp-overlay-2d.visible {
-  display: block;
-}
-
-body.dark-theme .fp-overlay-2d {
-  background: rgba(40, 40, 40, 0.95);
+  display: flex;
+  flex-direction: column;
 }
 
 .fp-overlay-2d-header {
-  background: #f8f8f8;
+  background: var(--fp-bg-secondary);
   padding: 8px 12px;
   font-size: 12px;
   font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #e0e0e0;
+  color: var(--fp-text-primary);
+  border-bottom: 1px solid var(--fp-border-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -427,18 +432,12 @@ body.dark-theme .fp-overlay-2d {
   cursor: grabbing;
 }
 
-body.dark-theme .fp-overlay-2d-header {
-  background: #333;
-  color: #eee;
-  border-bottom-color: #444;
-}
-
 .fp-overlay-2d-close {
   background: none;
   border: none;
   font-size: 18px;
   line-height: 1;
-  color: #666;
+  color: var(--fp-text-secondary);
   cursor: pointer;
   padding: 0 4px;
   border-radius: 4px;
@@ -446,17 +445,8 @@ body.dark-theme .fp-overlay-2d-header {
 }
 
 .fp-overlay-2d-close:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #333;
-}
-
-body.dark-theme .fp-overlay-2d-close {
-  color: #999;
-}
-
-body.dark-theme .fp-overlay-2d-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--fp-bg-hover);
+  color: var(--fp-text-primary);
 }
 
 .fp-overlay-2d.dragging {
@@ -471,29 +461,23 @@ body.dark-theme .fp-overlay-2d-close:hover {
   width: 16px;
   height: 16px;
   cursor: nwse-resize;
-  background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.2) 50%);
+  background: linear-gradient(135deg, transparent 50%, var(--fp-resize-handle) 50%);
   border-radius: 0 0 8px 0;
 }
 
 .fp-overlay-2d-resize:hover {
-  background: linear-gradient(135deg, transparent 50%, rgba(0,0,0,0.4) 50%);
-}
-
-body.dark-theme .fp-overlay-2d-resize {
-  background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.2) 50%);
-}
-
-body.dark-theme .fp-overlay-2d-resize:hover {
-  background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.4) 50%);
+  background: linear-gradient(135deg, transparent 50%, var(--fp-resize-handle-hover) 50%);
 }
 
 .fp-overlay-2d-content {
   width: 100%;
-  height: calc(100% - 32px);
+  flex: 1;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 8px;
+  overflow: hidden;
 }
 
 .fp-overlay-2d-content svg {
@@ -504,7 +488,7 @@ body.dark-theme .fp-overlay-2d-resize:hover {
 }
 
 .fp-overlay-2d-empty {
-  color: #888;
+  color: var(--fp-text-tertiary);
   font-size: 11px;
   font-style: italic;
 }
@@ -529,7 +513,7 @@ body.dark-theme .fp-overlay-2d-resize:hover {
 }
 
 .fp-keyboard-help-panel {
-  background: rgba(255, 255, 255, 0.98);
+  background: var(--fp-bg-primary);
   border-radius: 12px;
   padding: 24px 32px;
   max-width: 600px;
@@ -537,30 +521,23 @@ body.dark-theme .fp-overlay-2d-resize:hover {
   overflow-y: auto;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
-}
-
-body.dark-theme .fp-keyboard-help-panel {
-  background: rgba(40, 40, 40, 0.98);
+  color: var(--fp-text-primary);
 }
 
 .fp-keyboard-help-panel h2 {
   margin: 0 0 20px 0;
   font-size: 20px;
-  color: #333;
+  color: var(--fp-text-primary);
   display: flex;
   align-items: center;
   justify-content: space-between;
-}
-
-body.dark-theme .fp-keyboard-help-panel h2 {
-  color: #e0e0e0;
 }
 
 .fp-keyboard-help-close {
   background: none;
   border: none;
   font-size: 24px;
-  color: #666;
+  color: var(--fp-text-secondary);
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
@@ -568,17 +545,8 @@ body.dark-theme .fp-keyboard-help-panel h2 {
 }
 
 .fp-keyboard-help-close:hover {
-  background: rgba(0, 0, 0, 0.1);
-  color: #333;
-}
-
-body.dark-theme .fp-keyboard-help-close {
-  color: #999;
-}
-
-body.dark-theme .fp-keyboard-help-close:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
+  background: var(--fp-bg-hover);
+  color: var(--fp-text-primary);
 }
 
 .fp-shortcut-section {
@@ -593,13 +561,9 @@ body.dark-theme .fp-keyboard-help-close:hover {
   margin: 0 0 10px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #4a90d9;
+  color: var(--fp-accent);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-}
-
-body.dark-theme .fp-shortcut-section h3 {
-  color: #6ab0ff;
 }
 
 .fp-shortcut-list {
@@ -626,41 +590,25 @@ body.dark-theme .fp-shortcut-section h3 {
   font-size: 11px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   line-height: 1.2;
-  color: #333;
-  background: #f7f7f7;
-  border: 1px solid #ccc;
+  color: var(--fp-text-primary);
+  background: var(--fp-bg-secondary);
+  border: 1px solid var(--fp-border-secondary);
   border-radius: 4px;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.8);
-}
-
-body.dark-theme .fp-kbd {
-  color: #e0e0e0;
-  background: #333;
-  border-color: #555;
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.1);
 }
 
 .fp-shortcut-desc {
   font-size: 13px;
-  color: #555;
-}
-
-body.dark-theme .fp-shortcut-desc {
-  color: #bbb;
+  color: var(--fp-text-secondary);
 }
 
 .fp-help-footer {
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--fp-border-secondary);
   font-size: 12px;
-  color: #888;
+  color: var(--fp-text-tertiary);
   text-align: center;
-}
-
-body.dark-theme .fp-help-footer {
-  border-top-color: #444;
-  color: #777;
 }
 
 /* === Selection Info === */
@@ -735,7 +683,7 @@ body.dark-theme .fp-help-footer {
 
 .fp-selection-mode-indicator.navigation {
   background: rgba(74, 144, 217, 0.3);
-  color: #4a90d9;
+  color: var(--fp-accent);
 }
 
 .fp-selection-mode-indicator.selection {
@@ -748,21 +696,16 @@ body.dark-theme .fp-help-footer {
   position: absolute;
   top: calc(var(--layout-header-offset, 0px) + 10px);  /* Aligned with header */
   left: calc(var(--layout-editor-width, 0px) + 10px);
-  background: #fff8e1;
-  border: 1px solid #ffd54f;
+  background: var(--fp-warning-bg);
+  border: 1px solid var(--fp-warning-border);
   border-radius: 8px;
   max-width: 400px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  box-shadow: var(--fp-shadow-sm);
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   font-size: 13px;
   z-index: 100;
   display: none;
   transition: left 0.3s ease, top 0.3s ease;
-}
-
-body.dark-theme .fp-warnings-panel {
-  background: #3d3520;
-  border-color: #6b5c2d;
 }
 
 .fp-warnings-header {
@@ -776,24 +719,16 @@ body.dark-theme .fp-warnings-panel {
 
 .fp-warnings-badge {
   font-weight: 600;
-  color: #f57c00;
-}
-
-body.dark-theme .fp-warnings-badge {
-  color: #ffb74d;
+  color: var(--fp-warning-accent);
 }
 
 .fp-warnings-toggle {
   background: none;
   border: none;
-  color: #f57c00;
+  color: var(--fp-warning-accent);
   cursor: pointer;
   padding: 2px 6px;
   font-size: 10px;
-}
-
-body.dark-theme .fp-warnings-toggle {
-  color: #ffb74d;
 }
 
 .fp-warnings-toggle:hover {
@@ -813,14 +748,9 @@ body.dark-theme .fp-warnings-toggle {
 
 .fp-warning-item {
   padding: 8px 0;
-  border-bottom: 1px solid #ffe082;
-  color: #5d4037;
+  border-bottom: 1px solid var(--fp-warning-separator);
+  color: var(--fp-warning-text);
   line-height: 1.4;
-}
-
-body.dark-theme .fp-warning-item {
-  border-bottom-color: #5a4a20;
-  color: #e0d4b8;
 }
 
 .fp-warning-item:last-child {
@@ -829,15 +759,11 @@ body.dark-theme .fp-warning-item {
 
 .fp-warning-line {
   font-weight: 600;
-  color: #f57c00;
-}
-
-body.dark-theme .fp-warning-line {
-  color: #ffb74d;
+  color: var(--fp-warning-accent);
 }
 
 .fp-no-warnings {
-  color: #888;
+  color: var(--fp-text-tertiary);
   font-style: italic;
 }
 
@@ -847,29 +773,17 @@ body.dark-theme .fp-warning-line {
 }
 
 .fp-control-panel::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: var(--fp-bg-tertiary);
   border-radius: 3px;
 }
 
 .fp-control-panel::-webkit-scrollbar-thumb {
-  background: #ccc;
+  background: var(--fp-border-secondary);
   border-radius: 3px;
 }
 
 .fp-control-panel::-webkit-scrollbar-thumb:hover {
-  background: #999;
-}
-
-body.dark-theme .fp-control-panel::-webkit-scrollbar-track {
-  background: #2a2a2a;
-}
-
-body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb {
-  background: #555;
-}
-
-body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
-  background: #666;
+  background: var(--fp-text-tertiary);
 }
 
 /* === Shortcut Info Panel === */
@@ -906,6 +820,94 @@ body.dark-theme .fp-control-panel::-webkit-scrollbar-thumb:hover {
 }
 
 /* Shortcut info panel is now at bottom-right, no need to shift when editor opens */
+
+/* ============================================================================
+ * CONTROL PANEL THEME OVERRIDES
+ * High-specificity overrides to ensure theme switching works correctly
+ * ============================================================================ */
+
+/* Dark theme (default) */
+.fp-control-panel {
+  background: rgba(40, 40, 40, 0.95) !important;
+  color: #e0e0e0 !important;
+}
+
+.fp-control-section {
+  background: transparent !important;
+}
+
+.fp-section-header,
+.fp-control-section .collapse-title {
+  color: #e0e0e0 !important;
+}
+
+.fp-label {
+  color: #aaaaaa !important;
+}
+
+/* Light theme overrides */
+[data-theme="light"] .fp-control-panel,
+body:not(.dark-theme) .fp-control-panel {
+  background: rgba(255, 255, 255, 0.95) !important;
+  color: #333333 !important;
+}
+
+[data-theme="light"] .fp-section-header,
+[data-theme="light"] .fp-control-section .collapse-title,
+body:not(.dark-theme) .fp-section-header,
+body:not(.dark-theme) .fp-control-section .collapse-title {
+  color: #333333 !important;
+}
+
+[data-theme="light"] .fp-label,
+body:not(.dark-theme) .fp-label {
+  color: #555555 !important;
+}
+
+/* Button overrides - dark theme */
+.fp-btn {
+  background: var(--fp-accent) !important;
+  color: var(--fp-text-inverted) !important;
+}
+
+.fp-btn-secondary {
+  background: #555555 !important;
+}
+
+.fp-btn-secondary:hover {
+  background: #666666 !important;
+}
+
+/* Button overrides - light theme */
+[data-theme="light"] .fp-btn-secondary,
+body:not(.dark-theme) .fp-btn-secondary {
+  background: #666666 !important;
+}
+
+[data-theme="light"] .fp-btn-secondary:hover,
+body:not(.dark-theme) .fp-btn-secondary:hover {
+  background: #555555 !important;
+}
+
+/* Input/slider overrides - dark theme */
+.fp-slider {
+  background: #3d3d3d !important;
+}
+
+.fp-slider::-webkit-slider-thumb {
+  background: #888888 !important;
+}
+
+/* Input/slider overrides - light theme */
+[data-theme="light"] .fp-slider,
+body:not(.dark-theme) .fp-slider {
+  background: #e0e0e0 !important;
+}
+
+[data-theme="light"] .fp-slider::-webkit-slider-thumb,
+body:not(.dark-theme) .fp-slider::-webkit-slider-thumb {
+  background: #666666 !important;
+}
 `;
 
 let stylesInjected = false;
@@ -916,13 +918,13 @@ let stylesInjected = false;
  */
 export function injectStyles(id = 'fp-shared-styles'): void {
   if (stylesInjected) return;
-  
+
   // Check if already injected
   if (document.getElementById(id)) {
     stylesInjected = true;
     return;
   }
-  
+
   const style = document.createElement('style');
   style.id = id;
   style.textContent = SHARED_STYLES;
@@ -936,4 +938,3 @@ export function injectStyles(id = 'fp-shared-styles'): void {
 export function areStylesInjected(): boolean {
   return stylesInjected;
 }
-

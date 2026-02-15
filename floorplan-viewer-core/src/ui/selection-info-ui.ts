@@ -1,8 +1,9 @@
 /**
  * Selection info display UI component
  */
-import { injectStyles } from './styles.js';
+
 import type { SelectableObject } from '../scene-context.js';
+import { injectStyles } from './styles.js';
 
 export interface SelectionInfoUIOptions {
   position?: 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
@@ -19,16 +20,16 @@ export interface SelectionInfoUI {
  */
 export function createSelectionInfoUI(options: SelectionInfoUIOptions = {}): SelectionInfoUI {
   injectStyles();
-  
+
   const { position = 'bottom-right' } = options;
-  
+
   const container = document.createElement('div');
   container.className = 'fp-selection-info';
   container.id = 'selection-info';
   container.setAttribute('role', 'status');
   container.setAttribute('aria-live', 'polite');
   container.setAttribute('aria-label', 'Selection status');
-  
+
   // Position based on option
   switch (position) {
     case 'bottom-left':
@@ -50,13 +51,13 @@ export function createSelectionInfoUI(options: SelectionInfoUIOptions = {}): Sel
     default: // bottom-right
       break;
   }
-  
+
   // Initial content
   container.innerHTML = '<div class="details">No selection</div>';
-  
+
   const update = (selection: ReadonlySet<SelectableObject>) => {
     const count = selection.size;
-    
+
     if (count === 0) {
       container.innerHTML = '<div class="details">No selection</div>';
       container.classList.remove('has-selection');
@@ -65,16 +66,18 @@ export function createSelectionInfoUI(options: SelectionInfoUIOptions = {}): Sel
       for (const obj of selection) {
         types.set(obj.entityType, (types.get(obj.entityType) || 0) + 1);
       }
-      
+
       const summary = Array.from(types.entries())
         .map(([type, cnt]) => `${cnt} ${type}${cnt > 1 ? 's' : ''}`)
         .join(', ');
-      
+
       let names = '';
       if (count <= 3) {
-        names = Array.from(selection).map(s => s.entityId).join(', ');
+        names = Array.from(selection)
+          .map((s) => s.entityId)
+          .join(', ');
       }
-      
+
       container.innerHTML = `
         <div class="count">${count}</div>
         <div class="details">${summary}</div>
@@ -83,16 +86,15 @@ export function createSelectionInfoUI(options: SelectionInfoUIOptions = {}): Sel
       container.classList.add('has-selection');
     }
   };
-  
+
   const clear = () => {
     container.innerHTML = '<div class="details">No selection</div>';
     container.classList.remove('has-selection');
   };
-  
+
   return {
     element: container,
     update,
     clear,
   };
 }
-

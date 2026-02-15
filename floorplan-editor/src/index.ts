@@ -1,61 +1,59 @@
 /**
  * floorplan-editor
- * 
+ *
  * Full-featured floorplan editor with:
  * - Click and marquee selection
  * - Editor-3D bidirectional sync
  * - Properties panel for editing
  * - DSL generation utilities
- * 
+ *
  * Uses InteractiveEditorCore from floorplan-viewer-core as the core class.
  */
 
-// Re-export InteractiveEditorCore from floorplan-viewer-core
-export { InteractiveEditorCore, createEditorUI } from 'floorplan-viewer-core';
+// Re-export floorplan-viewer-core types for convenience
+// Re-export EditorViewerSync and related types from viewer-core (canonical location)
+// EntityLocation is now the core's type from viewer-core
 export type {
-  InteractiveEditorCoreOptions,
-  InteractiveEditorCoreEvents,
+  DslEditorConfig,
+  DslEditorInstance,
   EditorUIAPI,
   EditorUIConfig,
-} from 'floorplan-viewer-core';
-
-// Re-export SelectionManager from floorplan-viewer-core
-export { SelectionManager } from 'floorplan-viewer-core';
-export type { MarqueeMode, SelectionManagerConfig } from 'floorplan-viewer-core';
-
-export { EditorViewerSync } from './editor-viewer-sync.js';
-export type {
   EditorViewerSyncConfig,
-  EntityLocation,
   EntityHierarchyContext,
+  EntityLocation,
   HierarchyExpansionResult,
-} from './editor-viewer-sync.js';
-
-// Re-export DSL editor from floorplan-viewer-core
-export { createDslEditor, monaco } from 'floorplan-viewer-core';
-export type { DslEditorConfig, DslEditorInstance } from 'floorplan-viewer-core';
-
-export { DslGenerator, dslGenerator } from './dsl-generator.js';
-export type {
-  RoomGeneratorOptions,
-  ConnectionGeneratorOptions,
-  FloorGeneratorOptions,
-} from './dsl-generator.js';
-
-export { PropertiesPanel } from './properties-panel.js';
-export type {
-  PropertyDef,
-  PropertyChangeEvent,
-  PropertiesPanelConfig,
-} from './properties-panel.js';
-
-// Re-export floorplan-viewer-core types for convenience
-export type {
+  InteractiveEditorCoreEvents,
+  InteractiveEditorCoreOptions,
+  MarqueeMode,
   SceneContext,
-  SelectableObject,
   SelectableEntityType,
-  SourceRange,
+  SelectableObject,
   SelectionAPI,
   SelectionChangeEvent,
+  SelectionManagerConfig,
   SelectionSource,
+  SourceRange,
 } from 'floorplan-viewer-core';
+// Re-export InteractiveEditorCore from floorplan-viewer-core
+// Re-export SelectionManager from floorplan-viewer-core
+// Re-export DSL editor from floorplan-viewer-core
+export {
+  createDslEditor,
+  createEditorUI,
+  EditorViewerSync,
+  InteractiveEditorCore,
+  monaco,
+  SelectionManager,
+} from 'floorplan-viewer-core';
+export type {
+  ConnectionGeneratorOptions,
+  FloorGeneratorOptions,
+  RoomGeneratorOptions,
+} from './dsl-generator.js';
+export { DslGenerator, dslGenerator } from './dsl-generator.js';
+export type {
+  PropertiesPanelConfig,
+  PropertyChangeEvent,
+  PropertyDef,
+} from './properties-panel.js';
+export { PropertiesPanel } from './properties-panel.js';

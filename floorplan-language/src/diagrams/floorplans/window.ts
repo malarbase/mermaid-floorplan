@@ -8,7 +8,7 @@ export function generateWindow(
   y: number,
   width: number,
   height: number,
-  wallDirection?: string
+  wallDirection?: string,
 ): string {
   const centerX = x + width / 2;
   const centerY = y + height / 2;
@@ -32,4 +32,3 @@ export function generateWindow(
   return `<rect x="${windowX}" y="${windowY}" width="${windowWidth}" height="${windowHeight}" 
     class="window" fill="white" stroke="black" stroke-width="0.01" data-type="window" data-direction="${wallDirection}" />`;
 }
-

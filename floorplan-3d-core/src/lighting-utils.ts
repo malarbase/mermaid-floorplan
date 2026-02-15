@@ -30,7 +30,7 @@ export interface LightingOptions {
 export function setupLighting(
   scene: THREE.Scene,
   sceneBounds: SceneBounds,
-  options: LightingOptions = {}
+  options: LightingOptions = {},
 ): void {
   const {
     ambientIntensity = 0.6,
@@ -58,7 +58,7 @@ export function setupLighting(
   directionalLight.position.set(
     center.x + lightDistance,
     center.y + lightDistance * 1.5,
-    center.z + lightDistance
+    center.z + lightDistance,
   );
   directionalLight.target.position.set(center.x, center.y, center.z);
 
@@ -66,7 +66,7 @@ export function setupLighting(
     directionalLight.castShadow = true;
     directionalLight.shadow.mapSize.width = shadowMapSize;
     directionalLight.shadow.mapSize.height = shadowMapSize;
-    
+
     // Configure shadow camera to cover the scene
     const shadowCameraSize = maxDim * 1.5;
     directionalLight.shadow.camera.left = -shadowCameraSize;
@@ -87,7 +87,7 @@ export function setupLighting(
   fillLight.position.set(
     center.x - lightDistance * 0.5,
     center.y + lightDistance * 0.8,
-    center.z - lightDistance * 0.5
+    center.z - lightDistance * 0.5,
   );
   scene.add(fillLight);
 }
@@ -99,8 +99,7 @@ export function setupLighting(
 export function createHemisphereLight(
   skyColor: number = 0x87ceeb,
   groundColor: number = 0x362907,
-  intensity: number = 0.5
+  intensity: number = 0.5,
 ): THREE.HemisphereLight {
   return new THREE.HemisphereLight(skyColor, groundColor, intensity);
 }
-

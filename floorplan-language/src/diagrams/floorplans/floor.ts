@@ -3,13 +3,16 @@
  * Following Mermaid diagram conventions
  */
 
-import type { Floor, Stair } from "../../generated/ast.js";
+import type { Floor, Stair } from '../../generated/ast.js';
 import {
-  isStraightStair, isLShapedStair, isUShapedStair, isSpiralStair
-} from "../../generated/ast.js";
-import type { ResolvedPosition } from "./position-resolver.js";
-import { getRoomSize } from "./variable-resolver.js";
-import { convertUnit, type LengthUnit } from "./unit-utils.js";
+  isLShapedStair,
+  isSpiralStair,
+  isStraightStair,
+  isUShapedStair,
+} from '../../generated/ast.js';
+import type { ResolvedPosition } from './position-resolver.js';
+import { convertUnit, type LengthUnit } from './unit-utils.js';
+import { getRoomSize } from './variable-resolver.js';
 
 export interface FloorBounds {
   minX: number;
@@ -26,9 +29,9 @@ export interface FloorBounds {
  */
 function getStairBoundingBox(
   stair: Stair,
-  defaultUnit: LengthUnit = 'ft'
+  defaultUnit: LengthUnit = 'ft',
 ): { width: number; height: number } {
-  const normalize = (val: { value: number, unit?: string } | undefined, fallback: number) => {
+  const normalize = (val: { value: number; unit?: string } | undefined, fallback: number) => {
     if (!val) return fallback;
     const unit = (val.unit as LengthUnit) ?? defaultUnit;
     return convertUnit(val.value, unit, defaultUnit);
@@ -53,7 +56,10 @@ function getStairBoundingBox(
       height = defaultWidth;
     }
   } else if (isLShapedStair(stair.shape)) {
-    const runs = stair.shape.runs.length > 0 ? stair.shape.runs : [Math.floor(stepCount / 2), Math.ceil(stepCount / 2)];
+    const runs =
+      stair.shape.runs.length > 0
+        ? stair.shape.runs
+        : [Math.floor(stepCount / 2), Math.ceil(stepCount / 2)];
     const run1 = runs[0] * tread;
     const run2 = runs[1] * tread;
     const landingW = normalize(stair.shape.landing?.width, defaultWidth);
@@ -68,7 +74,10 @@ function getStairBoundingBox(
       height = landingH + run2;
     }
   } else if (isUShapedStair(stair.shape)) {
-    const runs = stair.shape.runs.length > 0 ? stair.shape.runs : [Math.floor(stepCount / 2), Math.ceil(stepCount / 2)];
+    const runs =
+      stair.shape.runs.length > 0
+        ? stair.shape.runs
+        : [Math.floor(stepCount / 2), Math.ceil(stepCount / 2)];
     const run1 = runs[0] * tread;
     const landingW = normalize(stair.shape.landing?.width, defaultWidth * 2);
     const landingH = normalize(stair.shape.landing?.height, defaultWidth);
@@ -94,7 +103,7 @@ export function calculateFloorBounds(
   floor: Floor,
   resolvedPositions?: Map<string, ResolvedPosition>,
   variables?: Map<string, { width: number; height: number }>,
-  defaultUnit: LengthUnit = 'ft'
+  defaultUnit: LengthUnit = 'ft',
 ): FloorBounds {
   let minX = Infinity;
   let minY = Infinity;
@@ -105,7 +114,7 @@ export function calculateFloorBounds(
   for (const room of floor.rooms) {
     let x: number;
     let y: number;
-    
+
     const resolved = resolvedPositions?.get(room.name);
     if (resolved) {
       x = resolved.x;
@@ -116,7 +125,7 @@ export function calculateFloorBounds(
     } else {
       continue;
     }
-    
+
     const size = getRoomSize(room, variables);
     const width = size.width;
     const height = size.height;
@@ -130,11 +139,11 @@ export function calculateFloorBounds(
   // Include stairs in bounds calculation
   for (const stair of floor.stairs) {
     if (!stair.position) continue;
-    
+
     const x = stair.position.x.value;
     const y = stair.position.y.value;
     const bounds = getStairBoundingBox(stair, defaultUnit);
-    
+
     // Add extra space for label below stair (0.8 for label height)
     const labelSpace = stair.label ? 0.8 : 0;
 
@@ -147,12 +156,12 @@ export function calculateFloorBounds(
   // Include lifts in bounds calculation
   for (const lift of floor.lifts) {
     if (!lift.position) continue;
-    
+
     const x = lift.position.x.value;
     const y = lift.position.y.value;
     const width = lift.size.width.value;
     const height = lift.size.height.value;
-    
+
     // Add extra space for label below lift (0.8 for label height)
     const labelSpace = lift.label ? 0.8 : 0;
 
@@ -181,11 +190,10 @@ export function generateFloorRectangle(
   floor: Floor,
   resolvedPositions?: Map<string, ResolvedPosition>,
   variables?: Map<string, { width: number; height: number }>,
-  defaultUnit: LengthUnit = 'ft'
+  defaultUnit: LengthUnit = 'ft',
 ): string {
   const bounds = calculateFloorBounds(floor, resolvedPositions, variables, defaultUnit);
   return `<rect x="${bounds.minX}" y="${bounds.minY}" 
     width="${bounds.width}" height="${bounds.height}" 
     class="floor-background" fill="#eed" stroke="black" stroke-width="0.1" />`;
 }
-

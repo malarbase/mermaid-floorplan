@@ -3,9 +3,10 @@
  * Uses CST node positions for precise text editing
  */
 
-import type { LangiumDocument, CstNode, LeafCstNode } from "langium";
-import { isCompositeCstNode, isLeafCstNode } from "langium";
-import type { Floorplan, Room, Floor } from "floorplan-language";
+import type { Floor, Floorplan, Room } from 'floorplan-language';
+import { serializeRoom } from 'floorplan-language';
+import type { CstNode, LangiumDocument, LeafCstNode } from 'langium';
+import { isCompositeCstNode, isLeafCstNode } from 'langium';
 
 export interface TextEdit {
   offset: number;
@@ -35,7 +36,7 @@ export class FloorplanAstEditor {
 
   constructor(
     private document: LangiumDocument<Floorplan>,
-    private originalText: string
+    private originalText: string,
   ) {}
 
   /**
@@ -120,11 +121,11 @@ export class FloorplanAstEditor {
     // Find the insertion point (before the closing brace of the floor)
     const floorCst = floor.$cstNode;
     const leafNodes = this.flattenCst(floorCst);
-    
+
     // Find the closing brace
     let closingBraceOffset: number | undefined;
     for (let i = leafNodes.length - 1; i >= 0; i--) {
-      if (leafNodes[i].text === "}") {
+      if (leafNodes[i].text === '}') {
         closingBraceOffset = leafNodes[i].offset;
         break;
       }
@@ -134,12 +135,12 @@ export class FloorplanAstEditor {
 
     // Walk back from closing brace to find the newline (skip indentation before })
     let insertOffset = closingBraceOffset;
-    while (insertOffset > 0 && this.originalText[insertOffset - 1] !== "\n") {
+    while (insertOffset > 0 && this.originalText[insertOffset - 1] !== '\n') {
       insertOffset--;
     }
 
     // Detect indentation from existing rooms or use default
-    const indent = this.detectRoomIndentation(floor) || "    ";
+    const indent = this.detectRoomIndentation(floor) || '    ';
 
     // Build the room line
     const roomLine = this.buildRoomLine(params, indent);
@@ -147,7 +148,7 @@ export class FloorplanAstEditor {
     this.edits.push({
       offset: insertOffset,
       length: 0,
-      newText: roomLine + "\n",
+      newText: `${roomLine}\n`,
     });
 
     return true;
@@ -158,7 +159,7 @@ export class FloorplanAstEditor {
       const firstRoomOffset = floor.rooms[0].$cstNode.offset;
       // Walk backwards to find the start of the line
       let lineStart = firstRoomOffset;
-      while (lineStart > 0 && this.originalText[lineStart - 1] !== "\n") {
+      while (lineStart > 0 && this.originalText[lineStart - 1] !== '\n') {
         lineStart--;
       }
       // Extract just the whitespace (in case there's other content)
@@ -171,35 +172,17 @@ export class FloorplanAstEditor {
   }
 
   private buildRoomLine(params: RoomParams, indent: string): string {
-    const { name, position, size, walls, label, relativePosition } = params;
-
-    let line = `${indent}room ${name}`;
-
-    // Add explicit position if provided
-    if (position) {
-      line += ` at (${position.x},${position.y})`;
-    }
-
-    // Add size and walls
-    line += ` size (${size.width} x ${size.height}) walls [top: ${walls.top}, right: ${walls.right}, bottom: ${walls.bottom}, left: ${walls.left}]`;
-
-    // Add relative positioning if provided
-    if (relativePosition) {
-      line += ` ${relativePosition.direction} ${relativePosition.reference}`;
-      if (relativePosition.gap !== undefined) {
-        line += ` gap ${relativePosition.gap}`;
-      }
-      if (relativePosition.alignment) {
-        line += ` align ${relativePosition.alignment}`;
-      }
-    }
-
-    // Add label if provided
-    if (label) {
-      line += ` label "${label}"`;
-    }
-
-    return line;
+    return serializeRoom(
+      {
+        name: params.name,
+        position: params.position,
+        size: params.size,
+        walls: params.walls,
+        relativePosition: params.relativePosition,
+        label: params.label,
+      },
+      indent,
+    );
   }
 
   // ==================== REMOVE ROOM ====================
@@ -215,18 +198,18 @@ export class FloorplanAstEditor {
     const endOffset = roomCst.end;
 
     // Include the preceding newline and indentation
-    while (startOffset > 0 && this.originalText[startOffset - 1] !== "\n") {
+    while (startOffset > 0 && this.originalText[startOffset - 1] !== '\n') {
       startOffset--;
     }
     // Include the newline itself if present
-    if (startOffset > 0 && this.originalText[startOffset - 1] === "\n") {
+    if (startOffset > 0 && this.originalText[startOffset - 1] === '\n') {
       startOffset--;
     }
 
     this.edits.push({
       offset: startOffset,
       length: endOffset - startOffset,
-      newText: "",
+      newText: '',
     });
 
     return true;
@@ -247,7 +230,7 @@ export class FloorplanAstEditor {
     // The size CST contains "(WIDTH x HEIGHT)" - we need to replace just the numbers
     // Find the leaf nodes within the size CST
     const leafNodes = this.flattenCst(sizeCst);
-    
+
     // Find the first number (width) and second number (height)
     const numbers: LeafCstNode[] = [];
     for (const leaf of leafNodes) {
@@ -339,7 +322,7 @@ export class FloorplanAstEditor {
     // Find the room name (ID after "room" keyword)
     let nameEndOffset: number | undefined;
     for (let i = 0; i < leafNodes.length; i++) {
-      if (leafNodes[i].text === "room" && i + 1 < leafNodes.length) {
+      if (leafNodes[i].text === 'room' && i + 1 < leafNodes.length) {
         // Next non-hidden token should be the name
         for (let j = i + 1; j < leafNodes.length; j++) {
           if (!leafNodes[j].hidden) {
@@ -375,7 +358,7 @@ export class FloorplanAstEditor {
 
     // Find the room name (ID after "room" keyword)
     for (let i = 0; i < leafNodes.length; i++) {
-      if (leafNodes[i].text === "room") {
+      if (leafNodes[i].text === 'room') {
         // Next non-hidden token should be the name
         for (let j = i + 1; j < leafNodes.length; j++) {
           if (!leafNodes[j].hidden) {
@@ -401,20 +384,20 @@ export class FloorplanAstEditor {
    */
   updateWalls(
     room: Room,
-    walls: { top?: string; right?: string; bottom?: string; left?: string }
+    walls: { top?: string; right?: string; bottom?: string; left?: string },
   ): boolean {
     if (!room.walls.$cstNode) return false;
 
     // Update each wall that's specified
     for (const spec of room.walls.specifications) {
       const newType =
-        spec.direction === "top"
+        spec.direction === 'top'
           ? walls.top
-          : spec.direction === "right"
+          : spec.direction === 'right'
             ? walls.right
-            : spec.direction === "bottom"
+            : spec.direction === 'bottom'
               ? walls.bottom
-              : spec.direction === "left"
+              : spec.direction === 'left'
                 ? walls.left
                 : undefined;
 
@@ -422,7 +405,7 @@ export class FloorplanAstEditor {
         // Find the type token in this spec
         const specLeaves = this.flattenCst(spec.$cstNode);
         for (const leaf of specLeaves) {
-          if (["solid", "door", "window", "open"].includes(leaf.text)) {
+          if (['solid', 'door', 'window', 'open'].includes(leaf.text)) {
             this.edits.push({
               offset: leaf.offset,
               length: leaf.end - leaf.offset,
@@ -462,7 +445,7 @@ export class FloorplanAstEditor {
 
     // Find the "label" keyword and the following string
     for (let i = 0; i < leafNodes.length; i++) {
-      if (leafNodes[i].text === "label") {
+      if (leafNodes[i].text === 'label') {
         // Find the string token after "label"
         for (let j = i + 1; j < leafNodes.length; j++) {
           const leaf = leafNodes[j];
@@ -527,7 +510,7 @@ export class FloorplanAstEditor {
 
     for (let i = 0; i < leafNodes.length; i++) {
       const leaf = leafNodes[i];
-      if (isLeafCstNode(leaf) && leaf.text === "at") {
+      if (isLeafCstNode(leaf) && leaf.text === 'at') {
         // Found "at" keyword - now find the closing ")" of the coordinate
         // The coordinate structure is: "at" "(" NUMBER "," NUMBER ")"
         let closeParenEnd = leaf.end;
@@ -536,20 +519,17 @@ export class FloorplanAstEditor {
         for (let j = i + 1; j < leafNodes.length; j++) {
           const nextLeaf = leafNodes[j];
           if (isLeafCstNode(nextLeaf)) {
-            if (nextLeaf.text === ")") {
+            if (nextLeaf.text === ')') {
               closeParenEnd = nextLeaf.end;
               break;
             }
             // If we hit "size" keyword, we've gone too far
-            if (nextLeaf.text === "size") break;
+            if (nextLeaf.text === 'size') break;
           }
         }
 
         // Include any trailing whitespace
-        const trailingWhitespace = this.countTrailingWhitespace(
-          this.originalText,
-          closeParenEnd
-        );
+        const trailingWhitespace = this.countTrailingWhitespace(this.originalText, closeParenEnd);
 
         return {
           offset: leaf.offset,
@@ -597,7 +577,7 @@ export class FloorplanAstEditor {
     this.edits.push({
       offset: span.offset,
       length: span.length,
-      newText: "",
+      newText: '',
     });
     return true;
   }
@@ -610,7 +590,7 @@ export class FloorplanAstEditor {
     direction: string,
     reference: string,
     gap?: number,
-    alignment?: string
+    alignment?: string,
   ): boolean {
     const insertPoint = this.findRelativePositionInsertPoint(room);
     if (insertPoint === undefined) return false;
@@ -621,9 +601,8 @@ export class FloorplanAstEditor {
       clause += ` gap ${gap}`;
     }
     // Only add alignment if it's not the default
-    const isHorizontal =
-      direction.includes("right") || direction.includes("left");
-    const defaultAlignment = isHorizontal ? "top" : "left";
+    const isHorizontal = direction.includes('right') || direction.includes('left');
+    const defaultAlignment = isHorizontal ? 'top' : 'left';
     if (alignment && alignment !== defaultAlignment) {
       clause += ` align ${alignment}`;
     }
@@ -649,9 +628,7 @@ export class FloorplanAstEditor {
     let result = this.originalText;
     for (const edit of sorted) {
       result =
-        result.slice(0, edit.offset) +
-        edit.newText +
-        result.slice(edit.offset + edit.length);
+        result.slice(0, edit.offset) + edit.newText + result.slice(edit.offset + edit.length);
     }
     return result;
   }
@@ -698,7 +675,7 @@ export class FloorplanAstEditor {
     let count = 0;
     while (offset + count < text.length) {
       const char = text[offset + count];
-      if (char === " " || char === "\t") {
+      if (char === ' ' || char === '\t') {
         count++;
       } else {
         break;

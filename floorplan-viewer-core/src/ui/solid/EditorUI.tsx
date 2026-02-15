@@ -15,26 +15,18 @@
  * Works with InteractiveEditorCore for full editor experience.
  */
 
-import {
-  createSignal,
-  createEffect,
-  onMount,
-  onCleanup,
-  Show,
-  For,
-  type JSX,
-} from 'solid-js';
-import { render } from 'solid-js/web';
 import { getUIThemeMode, type ViewerTheme } from 'floorplan-3d-core';
-import type { InteractiveEditorCore, EntityLocation } from '../../interactive-editor-core.js';
+import { createEffect, createSignal, For, type JSX, onCleanup, onMount, Show } from 'solid-js';
+import type { InteractiveEditorCore } from '../../interactive-editor-core.js';
 import type { SelectableObject } from '../../scene-context.js';
 import { createDebugLogger } from '../../utils/debug.js';
+import { createFloorplanUI } from './FloorplanUI.jsx';
 import { HeaderBar } from './HeaderBar.jsx';
-import { createFloorplanUI, type FloorplanUIAPI } from './FloorplanUI.jsx';
 
-const log = createDebugLogger('[EditorUI]');
+const _log = createDebugLogger('[EditorUI]');
+
+import { type Command, CommandPalette } from './CommandPalette.jsx';
 import { FileDropdown, type FileOperation, type RecentFile } from './FileDropdown.jsx';
-import { CommandPalette, type Command } from './CommandPalette.jsx';
 import { PropertiesPanel, type PropertyDefinition } from './PropertiesPanel.jsx';
 
 // ============================================================================
@@ -61,7 +53,12 @@ export interface EditorUIProps {
   /** Recent files for file dropdown */
   recentFiles?: RecentFile[];
   /** Callback when a property changes */
-  onPropertyChange?: (entityType: string, entityId: string, property: string, value: string) => void;
+  onPropertyChange?: (
+    entityType: string,
+    entityId: string,
+    property: string,
+    value: string,
+  ) => void;
   /** Callback when delete is requested */
   onDelete?: (entityType: string, entityId: string) => void;
   /** Callback to get entity data for properties panel */
@@ -135,37 +132,39 @@ function AddRoomDialog(props: AddRoomDialogProps) {
 
   const validate = (): boolean => {
     const roomName = name().trim();
-    
+
     if (!roomName) {
       setError('Room name is required');
       return false;
     }
-    
+
     if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(roomName)) {
-      setError('Room name must start with a letter and contain only letters, numbers, and underscores');
+      setError(
+        'Room name must start with a letter and contain only letters, numbers, and underscores',
+      );
       return false;
     }
-    
+
     if (props.existingNames?.has(roomName)) {
       setError(`Room '${roomName}' already exists`);
       return false;
     }
-    
+
     const w = parseFloat(width()) || 4;
     const h = parseFloat(height()) || 4;
-    
+
     if (w < 0.5 || h < 0.5) {
       setError('Width and height must be at least 0.5');
       return false;
     }
-    
+
     setError('');
     return true;
   };
 
   const handleAdd = () => {
     if (!validate()) return;
-    
+
     props.onAdd({
       name: name().trim(),
       x: parseFloat(x()) || 0,
@@ -173,7 +172,7 @@ function AddRoomDialog(props: AddRoomDialogProps) {
       width: parseFloat(width()) || 4,
       height: parseFloat(height()) || 4,
     });
-    
+
     props.onClose();
   };
 
@@ -251,8 +250,12 @@ function AddRoomDialog(props: AddRoomDialogProps) {
             </Show>
           </div>
           <div class="fp-dialog-footer">
-            <button class="fp-dialog-btn" onClick={props.onClose}>Cancel</button>
-            <button class="fp-dialog-btn primary" onClick={handleAdd}>Add Room</button>
+            <button class="fp-dialog-btn" onClick={props.onClose}>
+              Cancel
+            </button>
+            <button class="fp-dialog-btn primary" onClick={handleAdd}>
+              Add Room
+            </button>
           </div>
         </div>
       </div>
@@ -296,16 +299,18 @@ function DeleteConfirmDialog(props: DeleteConfirmDialogProps) {
               <div class="fp-dialog-warning">
                 <strong>Warning:</strong> The following connections will also be deleted:
                 <ul class="fp-cascade-list">
-                  <For each={props.cascadeItems}>
-                    {(item) => <li>{item}</li>}
-                  </For>
+                  <For each={props.cascadeItems}>{(item) => <li>{item}</li>}</For>
                 </ul>
               </div>
             </Show>
           </div>
           <div class="fp-dialog-footer">
-            <button class="fp-dialog-btn" onClick={props.onClose}>Cancel</button>
-            <button class="fp-dialog-btn danger" onClick={props.onConfirm}>Delete</button>
+            <button class="fp-dialog-btn" onClick={props.onClose}>
+              Cancel
+            </button>
+            <button class="fp-dialog-btn danger" onClick={props.onConfirm}>
+              Delete
+            </button>
           </div>
         </div>
       </div>
@@ -354,21 +359,23 @@ function ExportMenu(props: ExportMenuProps) {
 
   return (
     <Show when={props.isOpen}>
-      <div
-        ref={menuRef}
-        class="fp-export-menu visible"
-        style={menuStyle()}
-      >
+      <div ref={menuRef} class="fp-export-menu visible" style={menuStyle()}>
         <div
           class="fp-export-menu-item"
-          onClick={() => { props.onExport('dsl'); props.onClose(); }}
+          onClick={() => {
+            props.onExport('dsl');
+            props.onClose();
+          }}
         >
           <span class="icon">📝</span>
           <span class="label">Export DSL (.floorplan)</span>
         </div>
         <div
           class="fp-export-menu-item"
-          onClick={() => { props.onExport('json'); props.onClose(); }}
+          onClick={() => {
+            props.onExport('json');
+            props.onClose();
+          }}
         >
           <span class="icon">📋</span>
           <span class="label">Export JSON</span>
@@ -376,14 +383,20 @@ function ExportMenu(props: ExportMenuProps) {
         <div class="fp-export-menu-divider" />
         <div
           class="fp-export-menu-item"
-          onClick={() => { props.onExport('glb'); props.onClose(); }}
+          onClick={() => {
+            props.onExport('glb');
+            props.onClose();
+          }}
         >
           <span class="icon">📦</span>
           <span class="label">Export GLB (Binary)</span>
         </div>
         <div
           class="fp-export-menu-item"
-          onClick={() => { props.onExport('gltf'); props.onClose(); }}
+          onClick={() => {
+            props.onExport('gltf');
+            props.onClose();
+          }}
         >
           <span class="icon">🗂️</span>
           <span class="label">Export GLTF (JSON)</span>
@@ -421,7 +434,11 @@ export function createEditorUIState(props: EditorUIProps) {
   const [parseErrorMessage, setParseErrorMessage] = createSignal<string | undefined>();
   const [selection, setSelection] = createSignal<ReadonlySet<SelectableObject>>(new Set());
   const [propertiesPanelVisible, setPropertiesPanelVisible] = createSignal(false);
-  const [selectedEntity, setSelectedEntity] = createSignal<{ type: string; id: string; floorId: string } | null>(null);
+  const [selectedEntity, setSelectedEntity] = createSignal<{
+    type: string;
+    id: string;
+    floorId: string;
+  } | null>(null);
   const [properties, setProperties] = createSignal<PropertyDefinition[]>([]);
 
   // Dialog state
@@ -443,40 +460,62 @@ export function createEditorUIState(props: EditorUIProps) {
 
   return {
     // Core state
-    filename, setFilename,
-    editorOpen, setEditorOpen,
-    isAuthenticated, setIsAuthenticated,
-    theme, setTheme,
+    filename,
+    setFilename,
+    editorOpen,
+    setEditorOpen,
+    isAuthenticated,
+    setIsAuthenticated,
+    theme,
+    setTheme,
 
     // UI visibility
-    headerVisible, setHeaderVisible,
-    dropdownOpen, setDropdownOpen,
-    commandPaletteOpen, setCommandPaletteOpen,
-    dropdownAnchor, setDropdownAnchor,
+    headerVisible,
+    setHeaderVisible,
+    dropdownOpen,
+    setDropdownOpen,
+    commandPaletteOpen,
+    setCommandPaletteOpen,
+    dropdownAnchor,
+    setDropdownAnchor,
 
     // Commands and files
-    commands, setCommands,
-    recentFiles, setRecentFiles,
+    commands,
+    setCommands,
+    recentFiles,
+    setRecentFiles,
 
     // Editor-specific
-    hasParseError, setHasParseError,
-    parseErrorMessage, setParseErrorMessage,
-    selection, setSelection,
-    propertiesPanelVisible, setPropertiesPanelVisible,
-    selectedEntity, setSelectedEntity,
-    properties, setProperties,
+    hasParseError,
+    setHasParseError,
+    parseErrorMessage,
+    setParseErrorMessage,
+    selection,
+    setSelection,
+    propertiesPanelVisible,
+    setPropertiesPanelVisible,
+    selectedEntity,
+    setSelectedEntity,
+    properties,
+    setProperties,
 
     // Dialogs
-    addRoomDialogOpen, setAddRoomDialogOpen,
-    deleteDialogOpen, setDeleteDialogOpen,
-    deleteTarget, setDeleteTarget,
+    addRoomDialogOpen,
+    setAddRoomDialogOpen,
+    deleteDialogOpen,
+    setDeleteDialogOpen,
+    deleteTarget,
+    setDeleteTarget,
 
     // Export menu
-    exportMenuOpen, setExportMenuOpen,
-    exportMenuAnchor, setExportMenuAnchor,
+    exportMenuOpen,
+    setExportMenuOpen,
+    exportMenuAnchor,
+    setExportMenuAnchor,
 
     // Validation
-    existingRoomNames, setExistingRoomNames,
+    existingRoomNames,
+    setExistingRoomNames,
   };
 }
 
@@ -556,7 +595,7 @@ export function EditorUI(props: EditorUIProps) {
       const modKey = isMac ? e.metaKey : e.ctrlKey;
       if (modKey && e.key.toLowerCase() === 'k') {
         e.preventDefault();
-        state.setCommandPaletteOpen(prev => !prev);
+        state.setCommandPaletteOpen((prev) => !prev);
       }
     };
 
@@ -591,24 +630,53 @@ export function EditorUI(props: EditorUIProps) {
   };
 
   // Build property definitions from entity data
-  const buildPropertyDefinitions = (entityType: string, data: Record<string, unknown>): PropertyDefinition[] => {
+  const buildPropertyDefinitions = (
+    entityType: string,
+    data: Record<string, unknown>,
+  ): PropertyDefinition[] => {
     const props: PropertyDefinition[] = [];
 
     if (entityType === 'room') {
       props.push({ name: 'name', label: 'Name', type: 'text', value: String(data.name ?? '') });
       props.push({ name: 'x', label: 'X', type: 'number', value: Number(data.x ?? 0), step: 0.5 });
       props.push({ name: 'y', label: 'Y', type: 'number', value: Number(data.y ?? 0), step: 0.5 });
-      props.push({ name: 'width', label: 'Width', type: 'number', value: Number(data.width ?? 4), min: 0.5, step: 0.5 });
-      props.push({ name: 'height', label: 'Height', type: 'number', value: Number(data.height ?? 4), min: 0.5, step: 0.5 });
+      props.push({
+        name: 'width',
+        label: 'Width',
+        type: 'number',
+        value: Number(data.width ?? 4),
+        min: 0.5,
+        step: 0.5,
+      });
+      props.push({
+        name: 'height',
+        label: 'Height',
+        type: 'number',
+        value: Number(data.height ?? 4),
+        min: 0.5,
+        step: 0.5,
+      });
       if (data.roomHeight) {
-        props.push({ name: 'roomHeight', label: 'Room Height', type: 'number', value: Number(data.roomHeight), min: 0.5, step: 0.1 });
+        props.push({
+          name: 'roomHeight',
+          label: 'Room Height',
+          type: 'number',
+          value: Number(data.roomHeight),
+          min: 0.5,
+          step: 0.1,
+        });
       }
       if (data.style) {
         props.push({ name: 'style', label: 'Style', type: 'text', value: String(data.style) });
       }
     } else if (entityType === 'wall') {
       props.push({ name: 'room', label: 'Room', type: 'readonly', value: String(data.room ?? '') });
-      props.push({ name: 'direction', label: 'Direction', type: 'readonly', value: String(data.direction ?? '') });
+      props.push({
+        name: 'direction',
+        label: 'Direction',
+        type: 'readonly',
+        value: String(data.direction ?? ''),
+      });
       props.push({
         name: 'type',
         label: 'Type',
@@ -621,8 +689,18 @@ export function EditorUI(props: EditorUIProps) {
         ],
       });
     } else if (entityType === 'connection') {
-      props.push({ name: 'fromRoom', label: 'From Room', type: 'readonly', value: String(data.fromRoom ?? '') });
-      props.push({ name: 'toRoom', label: 'To Room', type: 'readonly', value: String(data.toRoom ?? '') });
+      props.push({
+        name: 'fromRoom',
+        label: 'From Room',
+        type: 'readonly',
+        value: String(data.fromRoom ?? ''),
+      });
+      props.push({
+        name: 'toRoom',
+        label: 'To Room',
+        type: 'readonly',
+        value: String(data.toRoom ?? ''),
+      });
       props.push({
         name: 'type',
         label: 'Type',
@@ -634,7 +712,14 @@ export function EditorUI(props: EditorUIProps) {
           { value: 'opening', label: 'Opening' },
         ],
       });
-      props.push({ name: 'position', label: 'Position %', type: 'number', value: Number(data.position ?? 50), min: 0, max: 100 });
+      props.push({
+        name: 'position',
+        label: 'Position %',
+        type: 'number',
+        value: Number(data.position ?? 50),
+        min: 0,
+        max: 100,
+      });
     }
 
     return props;
@@ -666,7 +751,7 @@ export function EditorUI(props: EditorUIProps) {
   const handleCommandExecute = (cmd: Command) => {
     // Close command palette
     state.setCommandPaletteOpen(false);
-    
+
     // Execute via callback if provided
     if (props.onCommandExecute) {
       props.onCommandExecute(cmd.id);
@@ -688,9 +773,10 @@ export function EditorUI(props: EditorUIProps) {
     state.setDeleteTarget({
       entityType: entity.type,
       entityId: entity.id,
-      message: entity.type === 'wall'
-        ? `This will change the wall to "open" (removing the wall). Continue?`
-        : `Are you sure you want to delete ${entity.type} "${entity.id}"?`,
+      message:
+        entity.type === 'wall'
+          ? `This will change the wall to "open" (removing the wall). Continue?`
+          : `Are you sure you want to delete ${entity.type} "${entity.id}"?`,
       cascadeItems: [], // Would be populated with affected connections
     });
     state.setDeleteDialogOpen(true);
@@ -706,7 +792,13 @@ export function EditorUI(props: EditorUIProps) {
     state.setPropertiesPanelVisible(false);
   };
 
-  const handleAddRoom = (room: { name: string; x: number; y: number; width: number; height: number }) => {
+  const handleAddRoom = (room: {
+    name: string;
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  }) => {
     // This would be handled by a callback prop that generates DSL
     console.log('Add room:', room);
   };
@@ -771,9 +863,7 @@ export function EditorUI(props: EditorUIProps) {
 
       {/* Parse Error Banner */}
       <Show when={state.hasParseError()}>
-        <div class="fp-error-banner visible">
-          {state.parseErrorMessage() ?? 'Parse error'}
-        </div>
+        <div class="fp-error-banner visible">{state.parseErrorMessage() ?? 'Parse error'}</div>
       </Show>
 
       {/* Add Room Dialog */}
@@ -791,7 +881,10 @@ export function EditorUI(props: EditorUIProps) {
         entityId={state.deleteTarget()?.entityId}
         message={state.deleteTarget()?.message}
         cascadeItems={state.deleteTarget()?.cascadeItems}
-        onClose={() => { state.setDeleteDialogOpen(false); state.setDeleteTarget(null); }}
+        onClose={() => {
+          state.setDeleteDialogOpen(false);
+          state.setDeleteTarget(null);
+        }}
         onConfirm={handleDeleteConfirm}
       />
 
@@ -812,19 +905,19 @@ export function EditorUI(props: EditorUIProps) {
 
 /**
  * Create EditorUI with vanilla-compatible API.
- * 
+ *
  * @deprecated Use `createFloorplanUI(core, { mode: 'editor', ... })` instead.
  * This function is maintained for backward compatibility and will be removed in a future version.
  */
 export function createEditorUI(
   editorCore: InteractiveEditorCore,
-  config: EditorUIConfig = {}
+  config: EditorUIConfig = {},
 ): EditorUIAPI {
   // Log deprecation warning
   console.warn(
-    '[EditorUI] createEditorUI is deprecated. Use createFloorplanUI(core, { mode: "editor", ... }) instead.'
+    '[EditorUI] createEditorUI is deprecated. Use createFloorplanUI(core, { mode: "editor", ... }) instead.',
   );
-  
+
   // Delegate to the unified factory
   const unifiedUI = createFloorplanUI(editorCore, {
     mode: 'editor',
@@ -840,7 +933,7 @@ export function createEditorUI(
     onDelete: config.onDelete,
     getEntityData: config.getEntityData,
   });
-  
+
   // Return compatible API
   return {
     element: unifiedUI.element,

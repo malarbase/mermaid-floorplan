@@ -1,0 +1,131 @@
+services:
+  # Generates an admin key from INSTANCE_SECRET for Convex CLI operations.
+  # Runs once before the app starts, writes key to shared volume.
+  convex-keygen:
+    image: ghcr.io/get-convex/convex-backend:latest
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Generating Convex admin key..." >&2
+        ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n' > /shared/admin_key.txt
+        echo "Admin key written to /shared/admin_key.txt" >&2
+    environment:
+      - INSTANCE_NAME=local-dev
+      - INSTANCE_SECRET=${CONVEX_INSTANCE_SECRET:-f09103996388e6f03d94e555c01ad0cd2deae9bab89023ff9b9f4ce11c988e0a}
+    volumes:
+      - convex-shared:/shared
+
+  # SolidStart Application (floorplan-app)
+  app:
+    build:
+      context: .
+      dockerfile: floorplan-app/Dockerfile.dev
+    env_file:
+      - floorplan-app/.env.development  # Development defaults
+      - floorplan-app/.env.local        # Optional local overrides (gitignored)
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source for hot-reload
+      - ./floorplan-app/src:/app/floorplan-app/src
+      - ./floorplan-app/convex:/app/floorplan-app/convex
+      - ./floorplan-app/app.config.ts:/app/floorplan-app/app.config.ts
+      - ./floorplan-app/package.json:/app/floorplan-app/package.json
+      # Dev auth keys + key generation script (shared between host and container)
+      - ./floorplan-app/dev-keys:/app/floorplan-app/dev-keys
+      - ./floorplan-app/scripts:/app/floorplan-app/scripts
+      # Mount shared packages for development
+      - ./floorplan-viewer-core/src:/app/floorplan-viewer-core/src
+      - ./floorplan-3d-core/src:/app/floorplan-3d-core/src
+      - ./floorplan-common:/app/floorplan-common
+      # Preserve node_modules
+      - app-node-modules:/app/node_modules
+      - app-floorplan-app-node-modules:/app/floorplan-app/node_modules
+      # Shared volume for auto-generated admin key
+      - convex-shared:/shared:ro
+    command: npm run --workspace floorplan-app dev
+    networks:
+      - floorplan-network
+    depends_on:
+      convex:
+        condition: service_healthy
+      convex-keygen:
+        condition: service_completed_successfully
+    stdin_open: true
+    tty: true
+
+  # Self-hosted Convex Backend
+  convex:
+    image: ghcr.io/get-convex/convex-backend:latest
+    ports:
+      - "3210:3210"  # Backend port
+      - "3211:3211"  # Site proxy port
+    environment:
+      - CONVEX_CLOUD_ORIGIN=http://localhost:3210
+      - CONVEX_SITE_ORIGIN=http://localhost:3211
+      - CONVEX_DEPLOYMENT=dev:local  # Used by devAuth.ts to detect dev mode
+      - RUST_LOG=info
+      - DISABLE_BEACON=true
+      - DO_NOT_REQUIRE_SSL=true
+      - INSTANCE_NAME=local-dev
+      # INSTANCE_SECRET must be a 64-character hex string (32 bytes)
+      # Generate a new one with: openssl rand -hex 32
+      - INSTANCE_SECRET=${CONVEX_INSTANCE_SECRET:-f09103996388e6f03d94e555c01ad0cd2deae9bab89023ff9b9f4ce11c988e0a}
+    volumes:
+      - convex-data:/convex/data
+    networks:
+      - floorplan-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3210/version"]
+      interval: 5s
+      start_period: 10s
+      retries: 5
+    stop_signal: SIGINT
+    stop_grace_period: 10s
+
+  # Convex Dashboard (optional, for visual database management)
+  convex-dashboard:
+    image: ghcr.io/get-convex/convex-dashboard:latest
+    ports:
+      - "6791:6791"
+    environment:
+      - NEXT_PUBLIC_DEPLOYMENT_URL=http://localhost:3210
+      - NEXT_PUBLIC_LOAD_MONACO_INTERNALLY=true
+    networks:
+      - floorplan-network
+    depends_on:
+      convex:
+        condition: service_healthy
+    stop_signal: SIGINT
+    stop_grace_period: 10s
+    profiles:
+      - dashboard  # Only start if explicitly requested
+
+  # Optional: PostgreSQL for future local auth testing
+  # (Currently Better Auth uses Convex, but this is here for flexibility)
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=floorplan_dev
+      - POSTGRES_USER=floorplan
+      - POSTGRES_PASSWORD=floorplan_dev_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - floorplan-network
+    profiles:
+      - postgres  # Only start if explicitly requested
+
+volumes:
+  app-node-modules:
+  app-floorplan-app-node-modules:
+  convex-data:
+  convex-shared:
+  postgres-data:
+
+networks:
+  floorplan-network:
+    driver: bridge

@@ -1,8 +1,14 @@
-import { beforeAll, describe, expect, test } from "vitest";
-import { EmptyFileSystem, type LangiumDocument } from "langium";
-import { parseHelper } from "langium/test";
-import type { Floorplan } from "floorplan-language";
-import { createFloorplansServices, resolveFloorPositions, resolveVariables, validateSizeReferences, getRoomSize } from "floorplan-language";
+import type { Floorplan } from 'floorplan-language';
+import {
+  createFloorplansServices,
+  getRoomSize,
+  resolveFloorPositions,
+  resolveVariables,
+  validateSizeReferences,
+} from 'floorplan-language';
+import { EmptyFileSystem, type LangiumDocument } from 'langium';
+import { parseHelper } from 'langium/test';
+import { beforeAll, describe, expect, test } from 'vitest';
 
 let services: ReturnType<typeof createFloorplansServices>;
 let parse: ReturnType<typeof parseHelper<Floorplan>>;
@@ -22,8 +28,8 @@ beforeAll(async () => {
   // activate the following if your linking test requires elements from a built-in library, for example
   // await services.shared.workspace.WorkspaceManager.initializeWorkspace([]);
 });
-describe("Floorplan Langium Parser Tests", () => {
-  test("should parse basic floorplan structure", async () => {
+describe('Floorplan Langium Parser Tests', () => {
+  test('should parse basic floorplan structure', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -36,11 +42,11 @@ describe("Floorplan Langium Parser Tests", () => {
 
     const model = document.parseResult.value;
     expect(model.floors).toHaveLength(1);
-    expect(model.floors[0]?.id).toBe("f1");
+    expect(model.floors[0]?.id).toBe('f1');
     expect(model.floors[0]?.rooms).toHaveLength(1);
 
     const room = model.floors[0]?.rooms[0];
-    expect(room?.name).toBe("TestRoom");
+    expect(room?.name).toBe('TestRoom');
     expect(room?.position?.x?.value).toBe(1);
     expect(room?.position?.y?.value).toBe(2);
     expect(room?.size?.width?.value).toBe(10);
@@ -48,7 +54,7 @@ describe("Floorplan Langium Parser Tests", () => {
     expect(room?.walls?.specifications).toHaveLength(4);
   });
 
-  test("should parse room with multiple wall types", async () => {
+  test('should parse room with multiple wall types', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -69,13 +75,13 @@ describe("Floorplan Langium Parser Tests", () => {
     const walls = room?.walls?.specifications;
 
     expect(walls).toHaveLength(4);
-    expect(walls?.find((w) => w.direction === "top")?.type).toBe("solid");
-    expect(walls?.find((w) => w.direction === "right")?.type).toBe("window");
-    expect(walls?.find((w) => w.direction === "bottom")?.type).toBe("door");
-    expect(walls?.find((w) => w.direction === "left")?.type).toBe("open");
+    expect(walls?.find((w) => w.direction === 'top')?.type).toBe('solid');
+    expect(walls?.find((w) => w.direction === 'right')?.type).toBe('window');
+    expect(walls?.find((w) => w.direction === 'bottom')?.type).toBe('door');
+    expect(walls?.find((w) => w.direction === 'left')?.type).toBe('open');
   });
 
-  test("should parse connections with different options", async () => {
+  test('should parse connections with different options', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -90,11 +96,11 @@ describe("Floorplan Langium Parser Tests", () => {
 
     const connection = document.parseResult.value.connections[0];
     expect(connection?.position).toBe(50);
-    expect(connection?.opensInto?.name).toBe("RoomA");
-    expect(connection?.swing).toBe("left");
+    expect(connection?.opensInto?.name).toBe('RoomA');
+    expect(connection?.swing).toBe('left');
   });
 
-  test("should parse complex nested room structure", async () => {
+  test('should parse complex nested room structure', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -115,19 +121,19 @@ describe("Floorplan Langium Parser Tests", () => {
 
     expect(mainRoom?.subRooms).toHaveLength(2);
 
-    const closet = mainRoom?.subRooms?.find((r) => r.name === "Closet");
+    const closet = mainRoom?.subRooms?.find((r) => r.name === 'Closet');
     expect(closet?.size?.width?.value).toBe(5);
     expect(closet?.size?.height?.value).toBe(5);
 
-    const bathroom = mainRoom?.subRooms?.find((r) => r.name === "Bathroom");
+    const bathroom = mainRoom?.subRooms?.find((r) => r.name === 'Bathroom');
     expect(bathroom?.subRooms).toHaveLength(1);
 
     const toilet = bathroom?.subRooms?.[0];
-    expect(toilet?.name).toBe("Toilet");
+    expect(toilet?.name).toBe('Toilet');
     expect(toilet?.size?.width?.value).toBe(3);
   });
 
-  test("should parse sub-room type explicitly", async () => {
+  test('should parse sub-room type explicitly', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -139,11 +145,11 @@ describe("Floorplan Langium Parser Tests", () => {
     expectNoErrors(document);
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
-    expect(room?.type).toBe("sub-room");
-    expect(room?.name).toBe("SubRoom");
+    expect(room?.type).toBe('sub-room');
+    expect(room?.name).toBe('SubRoom');
   });
 
-  test("should parse wall references with and without wall direction", async () => {
+  test('should parse wall references with and without wall direction', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -158,13 +164,13 @@ describe("Floorplan Langium Parser Tests", () => {
     expectNoErrors(document);
 
     const connections = document.parseResult.value.connections;
-    expect(connections[0]?.from?.wall).toBe("right");
-    expect(connections[0]?.to?.wall).toBe("left");
+    expect(connections[0]?.from?.wall).toBe('right');
+    expect(connections[0]?.to?.wall).toBe('left');
     expect(connections[1]?.from?.wall).toBeUndefined();
     expect(connections[1]?.to?.wall).toBeUndefined();
   });
 
-  test("should parse connections with all optional properties", async () => {
+  test('should parse connections with all optional properties', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -178,13 +184,13 @@ describe("Floorplan Langium Parser Tests", () => {
     expectNoErrors(document);
 
     const connection = document.parseResult.value.connections[0];
-    expect(connection?.doorType).toBe("double-door");
+    expect(connection?.doorType).toBe('double-door');
     expect(connection?.position).toBe(75);
-    expect(connection?.opensInto?.name).toBe("RoomB");
-    expect(connection?.swing).toBe("right");
+    expect(connection?.opensInto?.name).toBe('RoomB');
+    expect(connection?.swing).toBe('right');
   });
 
-  test("should parse empty floor", async () => {
+  test('should parse empty floor', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -198,7 +204,7 @@ describe("Floorplan Langium Parser Tests", () => {
     expect(floor?.rooms).toHaveLength(0);
   });
 
-  test("should parse floorplan with no floors or connections", async () => {
+  test('should parse floorplan with no floors or connections', async () => {
     const input = `floorplan`;
 
     const document = await parse(input);
@@ -209,7 +215,7 @@ describe("Floorplan Langium Parser Tests", () => {
     expect(model.connections).toHaveLength(0);
   });
 
-  test("should parse multiple floors and connections", async () => {
+  test('should parse multiple floors and connections', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -228,11 +234,11 @@ describe("Floorplan Langium Parser Tests", () => {
     const model = document.parseResult.value;
     expect(model.floors).toHaveLength(2);
     expect(model.connections).toHaveLength(2);
-    expect(model.floors[0]?.id).toBe("f1");
-    expect(model.floors[1]?.id).toBe("f2");
+    expect(model.floors[0]?.id).toBe('f1');
+    expect(model.floors[1]?.id).toBe('f2');
   });
 
-  test("should parse comments", async () => {
+  test('should parse comments', async () => {
     const input = `
       /* This is a multi-line comment */
       floorplan
@@ -252,7 +258,7 @@ describe("Floorplan Langium Parser Tests", () => {
     expect(model.connections).toHaveLength(1);
   });
 
-  test("should parse decimal numbers", async () => {
+  test('should parse decimal numbers', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -270,7 +276,7 @@ describe("Floorplan Langium Parser Tests", () => {
     expect(room?.size?.height?.value).toBe(12.25);
   });
 
-  test("should parse room with label", async () => {
+  test('should parse room with label', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -282,10 +288,10 @@ describe("Floorplan Langium Parser Tests", () => {
     expectNoErrors(document);
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
-    expect(room?.label).toBe("Test Room Label");
+    expect(room?.label).toBe('Test Room Label');
   });
 
-  test("should parse room without label", async () => {
+  test('should parse room without label', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -301,8 +307,8 @@ describe("Floorplan Langium Parser Tests", () => {
   });
 });
 
-describe("Relative Positioning Parser Tests", () => {
-  test("should parse basic right-of positioning", async () => {
+describe('Relative Positioning Parser Tests', () => {
+  test('should parse basic right-of positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -316,13 +322,13 @@ describe("Relative Positioning Parser Tests", () => {
 
     const model = document.parseResult.value;
     const roomB = model.floors[0]?.rooms[1];
-    expect(roomB?.name).toBe("RoomB");
+    expect(roomB?.name).toBe('RoomB');
     expect(roomB?.position).toBeUndefined();
-    expect(roomB?.relativePosition?.direction).toBe("right-of");
-    expect(roomB?.relativePosition?.reference).toBe("RoomA");
+    expect(roomB?.relativePosition?.direction).toBe('right-of');
+    expect(roomB?.relativePosition?.reference).toBe('RoomA');
   });
 
-  test("should parse left-of positioning", async () => {
+  test('should parse left-of positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -335,11 +341,11 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
-    expect(roomB?.relativePosition?.direction).toBe("left-of");
-    expect(roomB?.relativePosition?.reference).toBe("RoomA");
+    expect(roomB?.relativePosition?.direction).toBe('left-of');
+    expect(roomB?.relativePosition?.reference).toBe('RoomA');
   });
 
-  test("should parse below positioning", async () => {
+  test('should parse below positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -352,11 +358,11 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
-    expect(roomB?.relativePosition?.direction).toBe("below");
-    expect(roomB?.relativePosition?.reference).toBe("RoomA");
+    expect(roomB?.relativePosition?.direction).toBe('below');
+    expect(roomB?.relativePosition?.reference).toBe('RoomA');
   });
 
-  test("should parse above positioning", async () => {
+  test('should parse above positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -369,11 +375,11 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
-    expect(roomB?.relativePosition?.direction).toBe("above");
-    expect(roomB?.relativePosition?.reference).toBe("RoomA");
+    expect(roomB?.relativePosition?.direction).toBe('above');
+    expect(roomB?.relativePosition?.reference).toBe('RoomA');
   });
 
-  test("should parse diagonal positioning (below-right-of)", async () => {
+  test('should parse diagonal positioning (below-right-of)', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -386,10 +392,10 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
-    expect(roomB?.relativePosition?.direction).toBe("below-right-of");
+    expect(roomB?.relativePosition?.direction).toBe('below-right-of');
   });
 
-  test("should parse relative positioning with gap", async () => {
+  test('should parse relative positioning with gap', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -402,11 +408,11 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
-    expect(roomB?.relativePosition?.direction).toBe("right-of");
+    expect(roomB?.relativePosition?.direction).toBe('right-of');
     expect(roomB?.relativePosition?.gap?.value).toBe(2);
   });
 
-  test("should parse relative positioning with alignment", async () => {
+  test('should parse relative positioning with alignment', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -419,11 +425,11 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
-    expect(roomB?.relativePosition?.direction).toBe("right-of");
-    expect(roomB?.relativePosition?.alignment).toBe("bottom");
+    expect(roomB?.relativePosition?.direction).toBe('right-of');
+    expect(roomB?.relativePosition?.alignment).toBe('bottom');
   });
 
-  test("should parse relative positioning with gap and alignment", async () => {
+  test('should parse relative positioning with gap and alignment', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -436,12 +442,12 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
-    expect(roomB?.relativePosition?.direction).toBe("right-of");
+    expect(roomB?.relativePosition?.direction).toBe('right-of');
     expect(roomB?.relativePosition?.gap?.value).toBe(3);
-    expect(roomB?.relativePosition?.alignment).toBe("center");
+    expect(roomB?.relativePosition?.alignment).toBe('center');
   });
 
-  test("should parse room with both explicit position and relative position", async () => {
+  test('should parse room with both explicit position and relative position', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -457,10 +463,10 @@ describe("Relative Positioning Parser Tests", () => {
     // Both explicit and relative positions should be parsed
     expect(roomB?.position?.x?.value).toBe(10);
     expect(roomB?.position?.y?.value).toBe(10);
-    expect(roomB?.relativePosition?.direction).toBe("right-of");
+    expect(roomB?.relativePosition?.direction).toBe('right-of');
   });
 
-  test("should parse relative positioning with label", async () => {
+  test('should parse relative positioning with label', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -473,11 +479,11 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
-    expect(roomB?.relativePosition?.direction).toBe("right-of");
-    expect(roomB?.label).toBe("Room B Label");
+    expect(roomB?.relativePosition?.direction).toBe('right-of');
+    expect(roomB?.label).toBe('Room B Label');
   });
 
-  test("should parse chain of relative positions", async () => {
+  test('should parse chain of relative positions', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -491,13 +497,13 @@ describe("Relative Positioning Parser Tests", () => {
     expectNoErrors(document);
 
     const model = document.parseResult.value;
-    expect(model.floors[0]?.rooms[1]?.relativePosition?.reference).toBe("RoomA");
-    expect(model.floors[0]?.rooms[2]?.relativePosition?.reference).toBe("RoomB");
+    expect(model.floors[0]?.rooms[1]?.relativePosition?.reference).toBe('RoomA');
+    expect(model.floors[0]?.rooms[2]?.relativePosition?.reference).toBe('RoomB');
   });
 });
 
-describe("Position Resolution Tests", () => {
-  test("should resolve right-of positioning", async () => {
+describe('Position Resolution Tests', () => {
+  test('should resolve right-of positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -511,13 +517,13 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
-    expect(result.positions.get("RoomA")).toEqual({ x: 0, y: 0 });
-    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 0 });
+    expect(result.positions.get('RoomA')).toEqual({ x: 0, y: 0 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 5, y: 0 });
   });
 
-  test("should resolve left-of positioning", async () => {
+  test('should resolve left-of positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -531,12 +537,12 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
-    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 0 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 5, y: 0 });
   });
 
-  test("should resolve below positioning", async () => {
+  test('should resolve below positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -550,12 +556,12 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
-    expect(result.positions.get("RoomB")).toEqual({ x: 0, y: 5 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 0, y: 5 });
   });
 
-  test("should resolve above positioning", async () => {
+  test('should resolve above positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -569,12 +575,12 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
-    expect(result.positions.get("RoomB")).toEqual({ x: 0, y: 5 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 0, y: 5 });
   });
 
-  test("should resolve positioning with gap", async () => {
+  test('should resolve positioning with gap', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -588,12 +594,12 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
-    expect(result.positions.get("RoomB")).toEqual({ x: 7, y: 0 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 7, y: 0 });
   });
 
-  test("should resolve positioning with bottom alignment", async () => {
+  test('should resolve positioning with bottom alignment', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -607,15 +613,15 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
     // RoomB should align its bottom with RoomA's bottom
     // RoomA: height=10, starts at y=0, bottom at y=10
     // RoomB: height=5, bottom should be at y=10, so top at y=5
-    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 5 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 5, y: 5 });
   });
 
-  test("should resolve positioning with center alignment", async () => {
+  test('should resolve positioning with center alignment', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -629,13 +635,13 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
     // RoomA center y = 5, RoomB height = 4, so RoomB y = 5 - 2 = 3
-    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 3 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 5, y: 3 });
   });
 
-  test("should resolve chained positioning", async () => {
+  test('should resolve chained positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -650,14 +656,14 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
-    expect(result.positions.get("RoomA")).toEqual({ x: 0, y: 0 });
-    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 0 });
-    expect(result.positions.get("RoomC")).toEqual({ x: 10, y: 0 });
+    expect(result.positions.get('RoomA')).toEqual({ x: 0, y: 0 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 5, y: 0 });
+    expect(result.positions.get('RoomC')).toEqual({ x: 10, y: 0 });
   });
 
-  test("should detect circular dependency", async () => {
+  test('should detect circular dependency', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -671,12 +677,12 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some(e => e.type === "circular_dependency")).toBe(true);
+    expect(result.errors.some((e) => e.type === 'circular_dependency')).toBe(true);
   });
 
-  test("should detect missing reference", async () => {
+  test('should detect missing reference', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -689,12 +695,12 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some(e => e.type === "missing_reference")).toBe(true);
+    expect(result.errors.some((e) => e.type === 'missing_reference')).toBe(true);
   });
 
-  test("should detect room with no position", async () => {
+  test('should detect room with no position', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -707,12 +713,12 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors.some(e => e.type === "no_position")).toBe(true);
+    expect(result.errors.some((e) => e.type === 'no_position')).toBe(true);
   });
 
-  test("should detect overlapping rooms", async () => {
+  test('should detect overlapping rooms', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -726,14 +732,14 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
     expect(result.warnings.length).toBeGreaterThan(0);
     expect(result.warnings[0]?.room1).toBeDefined();
     expect(result.warnings[0]?.room2).toBeDefined();
   });
 
-  test("should resolve diagonal positioning", async () => {
+  test('should resolve diagonal positioning', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -747,15 +753,15 @@ describe("Position Resolution Tests", () => {
 
     const floor = document.parseResult.value.floors[0]!;
     const result = resolveFloorPositions(floor);
-    
+
     expect(result.errors).toHaveLength(0);
     // below-right-of with gap 1: x = 0 + 5 + 1 = 6, y = 0 + 5 + 1 = 6
-    expect(result.positions.get("RoomB")).toEqual({ x: 6, y: 6 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 6, y: 6 });
   });
 });
 
-describe("Connection Overlap Validation Tests", () => {
-  test("should detect bidirectional connection overlap", async () => {
+describe('Connection Overlap Validation Tests', () => {
+  test('should detect bidirectional connection overlap', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -768,19 +774,23 @@ describe("Connection Overlap Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     // Verify both connections are parsed
     expect(document.parseResult.value.connections).toHaveLength(2);
-    
+
     // Run validation
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics.some(d => d.message.includes("bidirectional") || d.message.includes("Overlapping"))).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) => d.message.includes('bidirectional') || d.message.includes('Overlapping'),
+      ),
+    ).toBe(true);
   });
 
-  test("should detect multiple connections at same position", async () => {
+  test('should detect multiple connections at same position', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -794,15 +804,15 @@ describe("Connection Overlap Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics.some(d => d.message.includes("Overlapping"))).toBe(true);
+    expect(diagnostics.some((d) => d.message.includes('Overlapping'))).toBe(true);
   });
 
-  test("should allow separate connections on same wall with different positions", async () => {
+  test('should allow separate connections on same wall with different positions', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -815,15 +825,15 @@ describe("Connection Overlap Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have no errors - positions are far apart (25% and 75%)
-    expect(diagnostics.filter(d => d.severity === 1).length).toBe(0);
+    expect(diagnostics.filter((d) => d.severity === 1).length).toBe(0);
   });
 
-  test("should allow connections on different walls", async () => {
+  test('should allow connections on different walls', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -837,15 +847,15 @@ describe("Connection Overlap Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have no errors - different walls
-    expect(diagnostics.filter(d => d.severity === 1).length).toBe(0);
+    expect(diagnostics.filter((d) => d.severity === 1).length).toBe(0);
   });
 
-  test("should warn when connection references non-solid wall", async () => {
+  test('should warn when connection references non-solid wall', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -857,17 +867,19 @@ describe("Connection Overlap Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have warnings about non-solid wall
-    const warnings = diagnostics.filter(d => d.severity === 2); // severity 2 = warning
+    const warnings = diagnostics.filter((d) => d.severity === 2); // severity 2 = warning
     expect(warnings.length).toBeGreaterThan(0);
-    expect(warnings.some(d => d.message.includes("window") && d.message.includes("not 'solid'"))).toBe(true);
+    expect(
+      warnings.some((d) => d.message.includes('window') && d.message.includes("not 'solid'")),
+    ).toBe(true);
   });
 
-  test("should warn about mismatched wall types", async () => {
+  test('should warn about mismatched wall types', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -879,19 +891,21 @@ describe("Connection Overlap Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have warnings about mismatched wall types
-    const warnings = diagnostics.filter(d => d.severity === 2);
+    const warnings = diagnostics.filter((d) => d.severity === 2);
     expect(warnings.length).toBeGreaterThan(0);
-    expect(warnings.some(d => d.message.includes("mismatch") || d.message.includes("window"))).toBe(true);
+    expect(
+      warnings.some((d) => d.message.includes('mismatch') || d.message.includes('window')),
+    ).toBe(true);
   });
 });
 
-describe("Variables and Defaults Tests", () => {
-  test("should parse define statement for dimension variable", async () => {
+describe('Variables and Defaults Tests', () => {
+  test('should parse define statement for dimension variable', async () => {
     const input = `
       floorplan
           define standard_bed (12 x 12)
@@ -905,16 +919,16 @@ describe("Variables and Defaults Tests", () => {
 
     const model = document.parseResult.value;
     expect(model.defines).toHaveLength(1);
-    expect(model.defines[0]?.name).toBe("standard_bed");
+    expect(model.defines[0]?.name).toBe('standard_bed');
     expect(model.defines[0]?.value.width?.value).toBe(12);
     expect(model.defines[0]?.value.height?.value).toBe(12);
-    
+
     const room = model.floors[0]?.rooms[0];
     expect(room?.size).toBeUndefined();
-    expect(room?.sizeRef).toBe("standard_bed");
+    expect(room?.sizeRef).toBe('standard_bed');
   });
 
-  test("should parse multiple define statements", async () => {
+  test('should parse multiple define statements', async () => {
     const input = `
       floorplan
           define small (5 x 5)
@@ -931,10 +945,10 @@ describe("Variables and Defaults Tests", () => {
 
     const model = document.parseResult.value;
     expect(model.defines).toHaveLength(3);
-    expect(model.defines.map(d => d.name)).toEqual(["small", "medium", "large"]);
+    expect(model.defines.map((d) => d.name)).toEqual(['small', 'medium', 'large']);
   });
 
-  test("should parse config block with wall_thickness", async () => {
+  test('should parse config block with wall_thickness', async () => {
     const input = `
       floorplan
           config { wall_thickness: 0.5 }
@@ -949,11 +963,11 @@ describe("Variables and Defaults Tests", () => {
     const model = document.parseResult.value;
     expect(model.config).toBeDefined();
     expect(model.config?.properties).toHaveLength(1);
-    expect(model.config?.properties[0]?.name).toBe("wall_thickness");
+    expect(model.config?.properties[0]?.name).toBe('wall_thickness');
     expect(model.config?.properties[0]?.value).toBe(0.5);
   });
 
-  test("should parse config block with multiple properties", async () => {
+  test('should parse config block with multiple properties', async () => {
     const input = `
       floorplan
           config { wall_thickness: 0.3, door_width: 1.0, window_width: 1.5, default_height: 3.0 }
@@ -969,7 +983,7 @@ describe("Variables and Defaults Tests", () => {
     expect(model.config?.properties).toHaveLength(4);
   });
 
-  test("should parse define and config together", async () => {
+  test('should parse define and config together', async () => {
     const input = `
       floorplan
           define master_bed (15 x 12)
@@ -988,7 +1002,7 @@ describe("Variables and Defaults Tests", () => {
     expect(model.config?.properties).toHaveLength(1);
   });
 
-  test("should resolve variables correctly", async () => {
+  test('should resolve variables correctly', async () => {
     const input = `
       floorplan
           define standard_room (10 x 8)
@@ -1002,13 +1016,13 @@ describe("Variables and Defaults Tests", () => {
 
     const model = document.parseResult.value;
     const resolution = resolveVariables(model);
-    
+
     expect(resolution.errors).toHaveLength(0);
-    expect(resolution.variables.has("standard_room")).toBe(true);
-    expect(resolution.variables.get("standard_room")).toEqual({ width: 10, height: 8 });
+    expect(resolution.variables.has('standard_room')).toBe(true);
+    expect(resolution.variables.get('standard_room')).toEqual({ width: 10, height: 8 });
   });
 
-  test("should detect undefined variable reference", async () => {
+  test('should detect undefined variable reference', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1022,13 +1036,13 @@ describe("Variables and Defaults Tests", () => {
     const model = document.parseResult.value;
     const resolution = resolveVariables(model);
     const sizeRefErrors = validateSizeReferences(model, resolution.variables);
-    
+
     expect(sizeRefErrors).toHaveLength(1);
-    expect(sizeRefErrors[0]?.type).toBe("undefined_variable");
-    expect(sizeRefErrors[0]?.variableName).toBe("undefined_var");
+    expect(sizeRefErrors[0]?.type).toBe('undefined_variable');
+    expect(sizeRefErrors[0]?.variableName).toBe('undefined_var');
   });
 
-  test("should get resolved room size from variable", async () => {
+  test('should get resolved room size from variable', async () => {
     const input = `
       floorplan
           define compact (6 x 6)
@@ -1043,12 +1057,12 @@ describe("Variables and Defaults Tests", () => {
     const model = document.parseResult.value;
     const resolution = resolveVariables(model);
     const room = model.floors[0]?.rooms[0]!;
-    
+
     const size = getRoomSize(room, resolution.variables);
     expect(size).toEqual({ width: 6, height: 6 });
   });
 
-  test("should resolve floor positions with variables", async () => {
+  test('should resolve floor positions with variables', async () => {
     const input = `
       floorplan
           define room_size (5 x 5)
@@ -1065,13 +1079,13 @@ describe("Variables and Defaults Tests", () => {
     const variables = resolveVariables(model).variables;
     const floor = model.floors[0]!;
     const result = resolveFloorPositions(floor, variables);
-    
+
     expect(result.errors).toHaveLength(0);
-    expect(result.positions.get("RoomA")).toEqual({ x: 0, y: 0 });
-    expect(result.positions.get("RoomB")).toEqual({ x: 5, y: 0 });
+    expect(result.positions.get('RoomA')).toEqual({ x: 0, y: 0 });
+    expect(result.positions.get('RoomB')).toEqual({ x: 5, y: 0 });
   });
 
-  test("should mix inline sizes and variable references", async () => {
+  test('should mix inline sizes and variable references', async () => {
     const input = `
       floorplan
           define bathroom_size (4 x 4)
@@ -1087,16 +1101,16 @@ describe("Variables and Defaults Tests", () => {
     const model = document.parseResult.value;
     const bedroom = model.floors[0]?.rooms[0];
     const bathroom = model.floors[0]?.rooms[1];
-    
+
     expect(bedroom?.size).toBeDefined();
     expect(bedroom?.sizeRef).toBeUndefined();
     expect(bathroom?.size).toBeUndefined();
-    expect(bathroom?.sizeRef).toBe("bathroom_size");
+    expect(bathroom?.sizeRef).toBe('bathroom_size');
   });
 });
 
-describe("Dimension Units Tests", () => {
-  test("should parse dimension with meters unit", async () => {
+describe('Dimension Units Tests', () => {
+  test('should parse dimension with meters unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1109,12 +1123,12 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.size?.width?.value).toBe(4);
-    expect(room?.size?.width?.unit).toBe("m");
+    expect(room?.size?.width?.unit).toBe('m');
     expect(room?.size?.height?.value).toBe(3);
-    expect(room?.size?.height?.unit).toBe("m");
+    expect(room?.size?.height?.unit).toBe('m');
   });
 
-  test("should parse dimension with feet unit", async () => {
+  test('should parse dimension with feet unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1127,12 +1141,12 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.size?.width?.value).toBe(12);
-    expect(room?.size?.width?.unit).toBe("ft");
+    expect(room?.size?.width?.unit).toBe('ft');
     expect(room?.size?.height?.value).toBe(10);
-    expect(room?.size?.height?.unit).toBe("ft");
+    expect(room?.size?.height?.unit).toBe('ft');
   });
 
-  test("should parse dimension with centimeters unit", async () => {
+  test('should parse dimension with centimeters unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1145,12 +1159,12 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.size?.width?.value).toBe(150);
-    expect(room?.size?.width?.unit).toBe("cm");
+    expect(room?.size?.width?.unit).toBe('cm');
     expect(room?.size?.height?.value).toBe(200);
-    expect(room?.size?.height?.unit).toBe("cm");
+    expect(room?.size?.height?.unit).toBe('cm');
   });
 
-  test("should parse dimension with inches unit", async () => {
+  test('should parse dimension with inches unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1163,12 +1177,12 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.size?.width?.value).toBe(36);
-    expect(room?.size?.width?.unit).toBe("in");
+    expect(room?.size?.width?.unit).toBe('in');
     expect(room?.size?.height?.value).toBe(24);
-    expect(room?.size?.height?.unit).toBe("in");
+    expect(room?.size?.height?.unit).toBe('in');
   });
 
-  test("should parse dimension with millimeters unit", async () => {
+  test('should parse dimension with millimeters unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1181,12 +1195,12 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.size?.width?.value).toBe(500);
-    expect(room?.size?.width?.unit).toBe("mm");
+    expect(room?.size?.width?.unit).toBe('mm');
     expect(room?.size?.height?.value).toBe(300);
-    expect(room?.size?.height?.unit).toBe("mm");
+    expect(room?.size?.height?.unit).toBe('mm');
   });
 
-  test("should parse coordinate with units", async () => {
+  test('should parse coordinate with units', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1199,12 +1213,12 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.position?.x?.value).toBe(5);
-    expect(room?.position?.x?.unit).toBe("m");
+    expect(room?.position?.x?.unit).toBe('m');
     expect(room?.position?.y?.value).toBe(10);
-    expect(room?.position?.y?.unit).toBe("m");
+    expect(room?.position?.y?.unit).toBe('m');
   });
 
-  test("should parse gap with unit", async () => {
+  test('should parse gap with unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1218,10 +1232,10 @@ describe("Dimension Units Tests", () => {
 
     const roomB = document.parseResult.value.floors[0]?.rooms[1];
     expect(roomB?.relativePosition?.gap?.value).toBe(0.5);
-    expect(roomB?.relativePosition?.gap?.unit).toBe("m");
+    expect(roomB?.relativePosition?.gap?.unit).toBe('m');
   });
 
-  test("should parse room height with unit", async () => {
+  test('should parse room height with unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1234,10 +1248,10 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.height?.value).toBe(2.8);
-    expect(room?.height?.unit).toBe("m");
+    expect(room?.height?.unit).toBe('m');
   });
 
-  test("should parse room elevation with unit", async () => {
+  test('should parse room elevation with unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1250,11 +1264,11 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.elevation?.value).toBe(8);
-    expect(room?.elevation?.unit).toBe("ft");
+    expect(room?.elevation?.unit).toBe('ft');
     expect(room?.elevation?.negative).toBe(false);
   });
 
-  test("should parse negative elevation with unit", async () => {
+  test('should parse negative elevation with unit', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1267,11 +1281,11 @@ describe("Dimension Units Tests", () => {
 
     const room = document.parseResult.value.floors[0]?.rooms[0];
     expect(room?.elevation?.value).toBe(2.5);
-    expect(room?.elevation?.unit).toBe("m");
+    expect(room?.elevation?.unit).toBe('m');
     expect(room?.elevation?.negative).toBe(true);
   });
 
-  test("should parse dimension without unit (backward compatibility)", async () => {
+  test('should parse dimension without unit (backward compatibility)', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1289,7 +1303,7 @@ describe("Dimension Units Tests", () => {
     expect(room?.size?.height?.unit).toBeUndefined();
   });
 
-  test("should parse mixed units and unit-less in same floorplan", async () => {
+  test('should parse mixed units and unit-less in same floorplan', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1307,12 +1321,12 @@ describe("Dimension Units Tests", () => {
 
     // RoomA - no units
     expect(roomA?.size?.width?.unit).toBeUndefined();
-    
+
     // RoomB - has units
-    expect(roomB?.size?.width?.unit).toBe("m");
+    expect(roomB?.size?.width?.unit).toBe('m');
   });
 
-  test("should parse default_unit config", async () => {
+  test('should parse default_unit config', async () => {
     const input = `
       floorplan
           config { default_unit: ft }
@@ -1326,12 +1340,12 @@ describe("Dimension Units Tests", () => {
 
     const model = document.parseResult.value;
     expect(model.config).toBeDefined();
-    
-    const defaultUnitProp = model.config?.properties.find(p => p.name === 'default_unit');
+
+    const defaultUnitProp = model.config?.properties.find((p) => p.name === 'default_unit');
     expect(defaultUnitProp?.unitRef).toBe('ft');
   });
 
-  test("should parse define statement with units", async () => {
+  test('should parse define statement with units', async () => {
     const input = `
       floorplan
           define master_bed (15ft x 12ft)
@@ -1345,12 +1359,12 @@ describe("Dimension Units Tests", () => {
 
     const model = document.parseResult.value;
     expect(model.defines[0]?.value.width?.value).toBe(15);
-    expect(model.defines[0]?.value.width?.unit).toBe("ft");
+    expect(model.defines[0]?.value.width?.unit).toBe('ft');
     expect(model.defines[0]?.value.height?.value).toBe(12);
-    expect(model.defines[0]?.value.height?.unit).toBe("ft");
+    expect(model.defines[0]?.value.height?.unit).toBe('ft');
   });
 
-  test("should parse floor height with unit", async () => {
+  test('should parse floor height with unit', async () => {
     const input = `
       floorplan
           floor Ground height 3.5m {
@@ -1363,12 +1377,12 @@ describe("Dimension Units Tests", () => {
 
     const floor = document.parseResult.value.floors[0];
     expect(floor?.height?.value).toBe(3.5);
-    expect(floor?.height?.unit).toBe("m");
+    expect(floor?.height?.unit).toBe('m');
   });
 });
 
-describe("Room Height Exceeds Floor Validation Tests", () => {
-  test("should warn when room height exceeds floor height", async () => {
+describe('Room Height Exceeds Floor Validation Tests', () => {
+  test('should warn when room height exceeds floor height', async () => {
     const input = `
       floorplan
           floor SecondFloor height 12 {
@@ -1378,22 +1392,25 @@ describe("Room Height Exceeds Floor Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     // Run validation
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have a warning about room height exceeding floor height
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics.some(d => 
-      d.message.includes("exceeds") && 
-      d.message.includes("HomeTheatre") && 
-      d.message.includes("14") && 
-      d.message.includes("12")
-    )).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) =>
+          d.message.includes('exceeds') &&
+          d.message.includes('HomeTheatre') &&
+          d.message.includes('14') &&
+          d.message.includes('12'),
+      ),
+    ).toBe(true);
   });
 
-  test("should not warn when room height equals floor height", async () => {
+  test('should not warn when room height equals floor height', async () => {
     const input = `
       floorplan
           floor SecondFloor height 12 {
@@ -1403,15 +1420,15 @@ describe("Room Height Exceeds Floor Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have no warnings about room height exceeding floor height
-    expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
+    expect(diagnostics.filter((d) => d.message.includes('exceeds')).length).toBe(0);
   });
 
-  test("should not warn when room height is less than floor height", async () => {
+  test('should not warn when room height is less than floor height', async () => {
     const input = `
       floorplan
           floor SecondFloor height 12 {
@@ -1421,15 +1438,15 @@ describe("Room Height Exceeds Floor Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have no warnings about room height exceeding floor height
-    expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
+    expect(diagnostics.filter((d) => d.message.includes('exceeds')).length).toBe(0);
   });
 
-  test("should use default height when room has no explicit height", async () => {
+  test('should use default height when room has no explicit height', async () => {
     const input = `
       floorplan
           config { default_height: 10 }
@@ -1440,17 +1457,17 @@ describe("Room Height Exceeds Floor Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Room uses default height (10) which is less than floor height (12), no warning
-    expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
+    expect(diagnostics.filter((d) => d.message.includes('exceeds')).length).toBe(0);
   });
 });
 
-describe("Connection Size Tests", () => {
-  test("should parse connection with explicit size", async () => {
+describe('Connection Size Tests', () => {
+  test('should parse connection with explicit size', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1462,17 +1479,17 @@ describe("Connection Size Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     const connection = document.parseResult.value.connections[0];
     expect(connection.size).toBeDefined();
     expect(connection.size?.width.value).toBe(3);
-    expect(connection.size?.width.unit).toBe("ft");
+    expect(connection.size?.width.unit).toBe('ft');
     expect(connection.size?.height?.value).toBe(7);
-    expect(connection.size?.height?.unit).toBe("ft");
+    expect(connection.size?.height?.unit).toBe('ft');
     expect(connection.size?.fullHeight).toBeFalsy();
   });
 
-  test("should parse connection with full height", async () => {
+  test('should parse connection with full height', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1484,16 +1501,16 @@ describe("Connection Size Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     const connection = document.parseResult.value.connections[0];
     expect(connection.size).toBeDefined();
     expect(connection.size?.width.value).toBe(4);
-    expect(connection.size?.width.unit).toBe("m");
+    expect(connection.size?.width.unit).toBe('m');
     expect(connection.size?.fullHeight).toBe(true);
     expect(connection.size?.height).toBeUndefined();
   });
 
-  test("should parse connection without size (uses defaults)", async () => {
+  test('should parse connection without size (uses defaults)', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1505,12 +1522,12 @@ describe("Connection Size Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     const connection = document.parseResult.value.connections[0];
     expect(connection.size).toBeUndefined();
   });
 
-  test("should parse door_size in config", async () => {
+  test('should parse door_size in config', async () => {
     const input = `
       floorplan
           config { door_size: (3 x 7), default_unit: ft }
@@ -1521,15 +1538,15 @@ describe("Connection Size Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     const config = document.parseResult.value.config;
-    const doorSizeProp = config?.properties.find(p => p.name === "door_size");
+    const doorSizeProp = config?.properties.find((p) => p.name === 'door_size');
     expect(doorSizeProp).toBeDefined();
     expect(doorSizeProp?.dimension?.width.value).toBe(3);
     expect(doorSizeProp?.dimension?.height.value).toBe(7);
   });
 
-  test("should parse window_size in config", async () => {
+  test('should parse window_size in config', async () => {
     const input = `
       floorplan
           config { window_size: (4 x 3), default_unit: m }
@@ -1540,15 +1557,15 @@ describe("Connection Size Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     const config = document.parseResult.value.config;
-    const windowSizeProp = config?.properties.find(p => p.name === "window_size");
+    const windowSizeProp = config?.properties.find((p) => p.name === 'window_size');
     expect(windowSizeProp).toBeDefined();
     expect(windowSizeProp?.dimension?.width.value).toBe(4);
     expect(windowSizeProp?.dimension?.height.value).toBe(3);
   });
 
-  test("should parse connection with size and swing direction", async () => {
+  test('should parse connection with size and swing direction', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1560,16 +1577,16 @@ describe("Connection Size Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     const connection = document.parseResult.value.connections[0];
     expect(connection.size).toBeDefined();
     expect(connection.size?.width.value).toBe(2.5);
-    expect(connection.swing).toBe("left");
+    expect(connection.swing).toBe('left');
   });
 });
 
-describe("Connection Size Validation Tests", () => {
-  test("should warn when connection width exceeds shared wall length", async () => {
+describe('Connection Size Validation Tests', () => {
+  test('should warn when connection width exceeds shared wall length', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1581,20 +1598,21 @@ describe("Connection Size Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have a warning about connection width exceeding wall length
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics.some(d => 
-      d.message.includes("width") && 
-      d.message.includes("exceeds") &&
-      d.message.includes("15")
-    )).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) =>
+          d.message.includes('width') && d.message.includes('exceeds') && d.message.includes('15'),
+      ),
+    ).toBe(true);
   });
 
-  test("should warn when connection height exceeds room height", async () => {
+  test('should warn when connection height exceeds room height', async () => {
     const input = `
       floorplan
           config { default_height: 8 }
@@ -1607,20 +1625,21 @@ describe("Connection Size Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have a warning about connection height exceeding room height
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics.some(d => 
-      d.message.includes("height") && 
-      d.message.includes("exceeds") &&
-      d.message.includes("10")
-    )).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) =>
+          d.message.includes('height') && d.message.includes('exceeds') && d.message.includes('10'),
+      ),
+    ).toBe(true);
   });
 
-  test("should not warn when connection uses fullHeight", async () => {
+  test('should not warn when connection uses fullHeight', async () => {
     const input = `
       floorplan
           config { default_height: 8 }
@@ -1633,15 +1652,18 @@ describe("Connection Size Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should not warn about height when fullHeight is used
-    expect(diagnostics.filter(d => d.message.includes("height") && d.message.includes("exceeds")).length).toBe(0);
+    expect(
+      diagnostics.filter((d) => d.message.includes('height') && d.message.includes('exceeds'))
+        .length,
+    ).toBe(0);
   });
 
-  test("should not warn when connection dimensions are within limits", async () => {
+  test('should not warn when connection dimensions are within limits', async () => {
     const input = `
       floorplan
           config { default_height: 10 }
@@ -1654,15 +1676,15 @@ describe("Connection Size Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have no warnings about size constraints
-    expect(diagnostics.filter(d => d.message.includes("exceeds")).length).toBe(0);
+    expect(diagnostics.filter((d) => d.message.includes('exceeds')).length).toBe(0);
   });
 
-  test("should warn when connection width exceeds partial shared wall", async () => {
+  test('should warn when connection width exceeds partial shared wall', async () => {
     const input = `
       floorplan
           floor f1 {
@@ -1674,20 +1696,19 @@ describe("Connection Size Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Shared wall is only 5 units (overlap from z=5 to z=10), connection width of 8 exceeds it
-    expect(diagnostics.some(d => 
-      d.message.includes("width") && 
-      d.message.includes("exceeds")
-    )).toBe(true);
+    expect(
+      diagnostics.some((d) => d.message.includes('width') && d.message.includes('exceeds')),
+    ).toBe(true);
   });
 });
 
-describe("Conflicting Door Size Config Validation Tests", () => {
-  test("should warn when both door_size and door_width/door_height are specified", async () => {
+describe('Conflicting Door Size Config Validation Tests', () => {
+  test('should warn when both door_size and door_width/door_height are specified', async () => {
     const input = `
       floorplan
           config { 
@@ -1702,20 +1723,23 @@ describe("Conflicting Door Size Config Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have a warning about conflicting door size config
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics.some(d => 
-      d.message.includes("door_size") && 
-      d.message.includes("door_width") &&
-      d.message.includes("door_height")
-    )).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) =>
+          d.message.includes('door_size') &&
+          d.message.includes('door_width') &&
+          d.message.includes('door_height'),
+      ),
+    ).toBe(true);
   });
 
-  test("should warn when both window_size and window_width/window_height are specified", async () => {
+  test('should warn when both window_size and window_width/window_height are specified', async () => {
     const input = `
       floorplan
           config { 
@@ -1730,20 +1754,23 @@ describe("Conflicting Door Size Config Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have a warning about conflicting window size config
     expect(diagnostics.length).toBeGreaterThan(0);
-    expect(diagnostics.some(d => 
-      d.message.includes("window_size") && 
-      d.message.includes("window_width") &&
-      d.message.includes("window_height")
-    )).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) =>
+          d.message.includes('window_size') &&
+          d.message.includes('window_width') &&
+          d.message.includes('window_height'),
+      ),
+    ).toBe(true);
   });
 
-  test("should not warn when only door_size is specified", async () => {
+  test('should not warn when only door_size is specified', async () => {
     const input = `
       floorplan
           config { door_size: (3 x 7) }
@@ -1754,15 +1781,18 @@ describe("Conflicting Door Size Config Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have no warnings about conflicting config
-    expect(diagnostics.filter(d => d.message.includes("door_size") && d.message.includes("redundant")).length).toBe(0);
+    expect(
+      diagnostics.filter((d) => d.message.includes('door_size') && d.message.includes('redundant'))
+        .length,
+    ).toBe(0);
   });
 
-  test("should not warn when only door_width and door_height are specified", async () => {
+  test('should not warn when only door_width and door_height are specified', async () => {
     const input = `
       floorplan
           config { 
@@ -1776,15 +1806,15 @@ describe("Conflicting Door Size Config Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should have no warnings about conflicting config
-    expect(diagnostics.filter(d => d.message.includes("door_size")).length).toBe(0);
+    expect(diagnostics.filter((d) => d.message.includes('door_size')).length).toBe(0);
   });
 
-  test("should warn when door_size conflicts with only door_width", async () => {
+  test('should warn when door_size conflicts with only door_width', async () => {
     const input = `
       floorplan
           config { 
@@ -1798,16 +1828,19 @@ describe("Conflicting Door Size Config Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
     const diagnostics = document.diagnostics ?? [];
-    
+
     // Should warn about door_width being redundant
-    expect(diagnostics.some(d => 
-      d.message.includes("door_size") && 
-      d.message.includes("door_width") &&
-      d.message.includes("redundant")
-    )).toBe(true);
+    expect(
+      diagnostics.some(
+        (d) =>
+          d.message.includes('door_size') &&
+          d.message.includes('door_width') &&
+          d.message.includes('redundant'),
+      ),
+    ).toBe(true);
   });
 });
 
@@ -1815,8 +1848,8 @@ describe("Conflicting Door Size Config Validation Tests", () => {
 // Stair and Lift Parser Tests
 // ============================================================================
 
-describe("Stair Parser Tests", () => {
-  test("should parse straight stair", async () => {
+describe('Stair Parser Tests', () => {
+  test('should parse straight stair', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1831,16 +1864,16 @@ describe("Stair Parser Tests", () => {
     const model = document.parseResult.value;
     const floor = model.floors[0];
     expect(floor?.stairs).toHaveLength(1);
-    
+
     const stair = floor?.stairs[0];
-    expect(stair?.name).toBe("MainStair");
+    expect(stair?.name).toBe('MainStair');
     expect(stair?.rise?.value).toBe(10);
-    expect(stair?.rise?.unit).toBe("ft");
+    expect(stair?.rise?.unit).toBe('ft');
     expect(stair?.width?.value).toBe(3.5);
-    expect(stair?.shape?.shapeType).toBe("straight");
+    expect(stair?.shape?.shapeType).toBe('straight');
   });
 
-  test("should parse L-shaped stair with runs", async () => {
+  test('should parse L-shaped stair with runs', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1853,13 +1886,13 @@ describe("Stair Parser Tests", () => {
 
     const model = document.parseResult.value;
     const stair = model.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe("L-shaped");
-    expect(stair?.shape?.entry).toBe("bottom");
-    expect(stair?.shape?.turn).toBe("left");
+    expect(stair?.shape?.shapeType).toBe('L-shaped');
+    expect(stair?.shape?.entry).toBe('bottom');
+    expect(stair?.shape?.turn).toBe('left');
     expect(stair?.shape?.runs).toEqual([6, 6]);
   });
 
-  test("should parse U-shaped stair", async () => {
+  test('should parse U-shaped stair', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1871,12 +1904,12 @@ describe("Stair Parser Tests", () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe("U-shaped");
-    expect(stair?.shape?.entry).toBe("right");
-    expect(stair?.shape?.turn).toBe("right");
+    expect(stair?.shape?.shapeType).toBe('U-shaped');
+    expect(stair?.shape?.entry).toBe('right');
+    expect(stair?.shape?.turn).toBe('right');
   });
 
-  test("should parse double-L stair (three flights)", async () => {
+  test('should parse double-L stair (three flights)', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1888,11 +1921,11 @@ describe("Stair Parser Tests", () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe("double-L");
+    expect(stair?.shape?.shapeType).toBe('double-L');
     expect(stair?.shape?.runs).toEqual([5, 6, 5]);
   });
 
-  test("should parse spiral stair", async () => {
+  test('should parse spiral stair', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1904,12 +1937,12 @@ describe("Stair Parser Tests", () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe("spiral");
-    expect(stair?.shape?.rotation).toBe("clockwise");
+    expect(stair?.shape?.shapeType).toBe('spiral');
+    expect(stair?.shape?.rotation).toBe('clockwise');
     expect(stair?.shape?.outerRadius?.value).toBe(4);
   });
 
-  test("should parse winder stair", async () => {
+  test('should parse winder stair', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1921,12 +1954,12 @@ describe("Stair Parser Tests", () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe("winder");
+    expect(stair?.shape?.shapeType).toBe('winder');
     expect(stair?.shape?.winders).toBe(3);
     expect(stair?.shape?.runs).toEqual([4, 5]);
   });
 
-  test("should parse custom segmented stair", async () => {
+  test('should parse custom segmented stair', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1944,11 +1977,11 @@ describe("Stair Parser Tests", () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe("custom");
+    expect(stair?.shape?.shapeType).toBe('custom');
     expect(stair?.shape?.segments).toHaveLength(5);
   });
 
-  test("should parse stair with all optional properties", async () => {
+  test('should parse stair with all optional properties', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1974,12 +2007,12 @@ describe("Stair Parser Tests", () => {
     expect(stair?.tread?.value).toBe(11);
     expect(stair?.nosing?.value).toBe(1.25);
     expect(stair?.headroom?.value).toBe(84);
-    expect(stair?.handrail).toBe("both");
-    expect(stair?.stringers).toBe("closed");
-    expect(stair?.label).toBe("Main Staircase");
+    expect(stair?.handrail).toBe('both');
+    expect(stair?.stringers).toBe('closed');
+    expect(stair?.label).toBe('Main Staircase');
   });
 
-  test("should parse stair with per-segment width overrides", async () => {
+  test('should parse stair with per-segment width overrides', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -1996,12 +2029,12 @@ describe("Stair Parser Tests", () => {
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
     const segments = stair?.shape?.segments ?? [];
-    expect(segments[0]?.segmentType).toBe("flight");
+    expect(segments[0]?.segmentType).toBe('flight');
     expect(segments[0]?.width?.value).toBe(6);
     expect(segments[2]?.width?.value).toBe(4);
   });
 
-  test("should parse stair with wall alignment", async () => {
+  test('should parse stair with wall alignment', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2019,12 +2052,12 @@ describe("Stair Parser Tests", () => {
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
     const flight = stair?.shape?.segments?.[0];
-    expect(flight?.segmentType).toBe("flight");
-    expect(flight?.wallRef?.room).toBe("StairWell");
-    expect(flight?.wallRef?.wall).toBe("bottom");
+    expect(flight?.segmentType).toBe('flight');
+    expect(flight?.wallRef?.room).toBe('StairWell');
+    expect(flight?.wallRef?.wall).toBe('bottom');
   });
 
-  test("should parse stair with material specification", async () => {
+  test('should parse stair with material specification', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2040,11 +2073,11 @@ describe("Stair Parser Tests", () => {
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
     expect(stair?.material?.properties).toHaveLength(2);
-    expect(stair?.material?.properties[0]?.name).toBe("tread");
-    expect(stair?.material?.properties[0]?.value).toBe("oak");
+    expect(stair?.material?.properties[0]?.name).toBe('tread');
+    expect(stair?.material?.properties[0]?.value).toBe('oak');
   });
 
-  test("should parse stair with stringer styles", async () => {
+  test('should parse stair with stringer styles', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2057,13 +2090,13 @@ describe("Stair Parser Tests", () => {
     expectNoErrors(document);
 
     const floor = document.parseResult.value.floors[0];
-    expect(floor?.stairs[0]?.stringers).toBe("open");
-    expect(floor?.stairs[1]?.stringers).toBe("glass");
+    expect(floor?.stairs[0]?.stringers).toBe('open');
+    expect(floor?.stairs[1]?.stringers).toBe('glass');
   });
 });
 
-describe("Lift Parser Tests", () => {
-  test("should parse basic lift", async () => {
+describe('Lift Parser Tests', () => {
+  test('should parse basic lift', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2075,14 +2108,14 @@ describe("Lift Parser Tests", () => {
     expectNoErrors(document);
 
     const lift = document.parseResult.value.floors[0]?.lifts[0];
-    expect(lift?.name).toBe("MainLift");
+    expect(lift?.name).toBe('MainLift');
     expect(lift?.position?.x?.value).toBe(20);
     expect(lift?.position?.y?.value).toBe(25);
     expect(lift?.size?.width?.value).toBe(5);
     expect(lift?.size?.height?.value).toBe(5);
   });
 
-  test("should parse lift with door specification", async () => {
+  test('should parse lift with door specification', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2094,10 +2127,10 @@ describe("Lift Parser Tests", () => {
     expectNoErrors(document);
 
     const lift = document.parseResult.value.floors[0]?.lifts[0];
-    expect(lift?.doors).toEqual(["top", "bottom"]);
+    expect(lift?.doors).toEqual(['top', 'bottom']);
   });
 
-  test("should parse lift with label and style", async () => {
+  test('should parse lift with label and style', async () => {
     const input = `
       floorplan
           style Circulation { floor_color: "#E0E0E0" }
@@ -2110,13 +2143,13 @@ describe("Lift Parser Tests", () => {
     expectNoErrors(document);
 
     const lift = document.parseResult.value.floors[0]?.lifts[0];
-    expect(lift?.label).toBe("Main Elevator");
-    expect(lift?.styleRef).toBe("Circulation");
+    expect(lift?.label).toBe('Main Elevator');
+    expect(lift?.styleRef).toBe('Circulation');
   });
 });
 
-describe("Vertical Connection Parser Tests", () => {
-  test("should parse two-floor stair connection", async () => {
+describe('Vertical Connection Parser Tests', () => {
+  test('should parse two-floor stair connection', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2133,13 +2166,13 @@ describe("Vertical Connection Parser Tests", () => {
 
     const vc = document.parseResult.value.verticalConnections[0];
     expect(vc?.links).toHaveLength(2);
-    expect(vc?.links[0]?.floor).toBe("GroundFloor");
-    expect(vc?.links[0]?.element).toBe("MainStair");
-    expect(vc?.links[1]?.floor).toBe("FirstFloor");
-    expect(vc?.links[1]?.element).toBe("MainStair");
+    expect(vc?.links[0]?.floor).toBe('GroundFloor');
+    expect(vc?.links[0]?.element).toBe('MainStair');
+    expect(vc?.links[1]?.floor).toBe('FirstFloor');
+    expect(vc?.links[1]?.element).toBe('MainStair');
   });
 
-  test("should parse multi-floor lift connection", async () => {
+  test('should parse multi-floor lift connection', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2162,8 +2195,8 @@ describe("Vertical Connection Parser Tests", () => {
   });
 });
 
-describe("Stair Building Code Config Tests", () => {
-  test("should parse stair_code config property", async () => {
+describe('Stair Building Code Config Tests', () => {
+  test('should parse stair_code config property', async () => {
     const input = `
       floorplan
           config { stair_code: residential }
@@ -2176,12 +2209,12 @@ describe("Stair Building Code Config Tests", () => {
     expectNoErrors(document);
 
     const config = document.parseResult.value.config;
-    const stairCodeProp = config?.properties.find(p => p.name === "stair_code");
-    expect(stairCodeProp?.stairCodeRef).toBe("residential");
+    const stairCodeProp = config?.properties.find((p) => p.name === 'stair_code');
+    expect(stairCodeProp?.stairCodeRef).toBe('residential');
   });
 
-  test("should parse all stair_code options", async () => {
-    for (const code of ["residential", "commercial", "ada", "none"]) {
+  test('should parse all stair_code options', async () => {
+    for (const code of ['residential', 'commercial', 'ada', 'none']) {
       const input = `
         floorplan
             config { stair_code: ${code} }
@@ -2192,15 +2225,17 @@ describe("Stair Building Code Config Tests", () => {
 
       const document = await parse(input);
       expectNoErrors(document);
-      
-      const stairCodeProp = document.parseResult.value.config?.properties.find(p => p.name === "stair_code");
+
+      const stairCodeProp = document.parseResult.value.config?.properties.find(
+        (p) => p.name === 'stair_code',
+      );
       expect(stairCodeProp?.stairCodeRef).toBe(code);
     }
   });
 });
 
-describe("Stair Dimensional Validation Tests", () => {
-  test("should accept compliant riser height", async () => {
+describe('Stair Dimensional Validation Tests', () => {
+  test('should accept compliant riser height', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2210,17 +2245,16 @@ describe("Stair Dimensional Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // 7in riser is compliant (< 7.75in maximum)
-    const riserWarnings = document.diagnostics?.filter(d =>
-      d.message.toLowerCase().includes("riser")
-    ) || [];
+    const riserWarnings =
+      document.diagnostics?.filter((d) => d.message.toLowerCase().includes('riser')) || [];
     expect(riserWarnings.length).toBe(0);
   });
 
-  test("should warn for excessive riser height", async () => {
+  test('should warn for excessive riser height', async () => {
     const input = `
       floorplan
           config { stair_code: residential }
@@ -2231,17 +2265,16 @@ describe("Stair Dimensional Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // 8in riser exceeds both general max of 7.75in and residential max of 7.75in
-    const riserWarnings = document.diagnostics?.filter(d =>
-      d.message.toLowerCase().includes("riser")
-    ) || [];
+    const riserWarnings =
+      document.diagnostics?.filter((d) => d.message.toLowerCase().includes('riser')) || [];
     expect(riserWarnings.length).toBeGreaterThan(0);
   });
 
-  test("should warn for insufficient tread depth", async () => {
+  test('should warn for insufficient tread depth', async () => {
     const input = `
       floorplan
           config { stair_code: commercial }
@@ -2252,17 +2285,16 @@ describe("Stair Dimensional Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // 9in tread is less than commercial min of 11in
-    const treadWarnings = document.diagnostics?.filter(d =>
-      d.message.toLowerCase().includes("tread")
-    ) || [];
+    const treadWarnings =
+      document.diagnostics?.filter((d) => d.message.toLowerCase().includes('tread')) || [];
     expect(treadWarnings.length).toBeGreaterThan(0);
   });
 
-  test("should warn for insufficient headroom with building code", async () => {
+  test('should warn for insufficient headroom with building code', async () => {
     const input = `
       floorplan
           config { stair_code: residential }
@@ -2273,19 +2305,18 @@ describe("Stair Dimensional Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // 72in headroom is less than residential minimum 80in
-    const headroomWarnings = document.diagnostics?.filter(d =>
-      d.message.toLowerCase().includes("headroom")
-    ) || [];
+    const headroomWarnings =
+      document.diagnostics?.filter((d) => d.message.toLowerCase().includes('headroom')) || [];
     expect(headroomWarnings.length).toBeGreaterThan(0);
   });
 });
 
-describe("Stair Wall Alignment Validation Tests", () => {
-  test("should accept valid wall alignment reference", async () => {
+describe('Stair Wall Alignment Validation Tests', () => {
+  test('should accept valid wall alignment reference', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2300,17 +2331,18 @@ describe("Stair Wall Alignment Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // StairWell exists on same floor, so no alignment error
-    const alignmentErrors = document.diagnostics?.filter(d =>
-      d.message.includes("non-existent room") || d.message.includes("wall alignment")
-    ) || [];
+    const alignmentErrors =
+      document.diagnostics?.filter(
+        (d) => d.message.includes('non-existent room') || d.message.includes('wall alignment'),
+      ) || [];
     expect(alignmentErrors.length).toBe(0);
   });
 
-  test("should error for invalid wall alignment room reference", async () => {
+  test('should error for invalid wall alignment room reference', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2324,19 +2356,20 @@ describe("Stair Wall Alignment Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // NonExistent room doesn't exist - should produce error
-    const alignmentErrors = document.diagnostics?.filter(d =>
-      d.message.includes("non-existent room") || d.message.includes("wall alignment")
-    ) || [];
+    const alignmentErrors =
+      document.diagnostics?.filter(
+        (d) => d.message.includes('non-existent room') || d.message.includes('wall alignment'),
+      ) || [];
     expect(alignmentErrors.length).toBeGreaterThan(0);
   });
 });
 
-describe("Building Code Compliance Validation Tests", () => {
-  test("should warn for non-compliant width under commercial code", async () => {
+describe('Building Code Compliance Validation Tests', () => {
+  test('should warn for non-compliant width under commercial code', async () => {
     const input = `
       floorplan
           config { stair_code: commercial }
@@ -2347,17 +2380,16 @@ describe("Building Code Compliance Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // 3ft (36in) width is less than commercial minimum of 44in
-    const widthWarnings = document.diagnostics?.filter(d =>
-      d.message.toLowerCase().includes("width")
-    ) || [];
+    const widthWarnings =
+      document.diagnostics?.filter((d) => d.message.toLowerCase().includes('width')) || [];
     expect(widthWarnings.length).toBeGreaterThan(0);
   });
 
-  test("should warn for non-compliant width under ADA code", async () => {
+  test('should warn for non-compliant width under ADA code', async () => {
     const input = `
       floorplan
           config { stair_code: ada }
@@ -2368,17 +2400,16 @@ describe("Building Code Compliance Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // 3.5ft (42in) width is less than ADA minimum of 48in
-    const widthWarnings = document.diagnostics?.filter(d =>
-      d.message.toLowerCase().includes("width")
-    ) || [];
+    const widthWarnings =
+      document.diagnostics?.filter((d) => d.message.toLowerCase().includes('width')) || [];
     expect(widthWarnings.length).toBeGreaterThan(0);
   });
 
-  test("should not warn when stair_code is none", async () => {
+  test('should not warn when stair_code is none', async () => {
     const input = `
       floorplan
           config { stair_code: none }
@@ -2389,17 +2420,21 @@ describe("Building Code Compliance Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // With stair_code: none and compliant general dimensions, no code-specific warnings
-    const codeWarnings = document.diagnostics?.filter(d =>
-      d.message.includes("[RESIDENTIAL]") || d.message.includes("[COMMERCIAL]") || d.message.includes("[ADA]")
-    ) || [];
+    const codeWarnings =
+      document.diagnostics?.filter(
+        (d) =>
+          d.message.includes('[RESIDENTIAL]') ||
+          d.message.includes('[COMMERCIAL]') ||
+          d.message.includes('[ADA]'),
+      ) || [];
     expect(codeWarnings.length).toBe(0);
   });
 
-  test("should accept compliant stair under residential code", async () => {
+  test('should accept compliant stair under residential code', async () => {
     const input = `
       floorplan
           config { stair_code: residential }
@@ -2410,19 +2445,18 @@ describe("Building Code Compliance Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // All dimensions meet residential requirements exactly at the limits
-    const codeWarnings = document.diagnostics?.filter(d =>
-      d.message.includes("[RESIDENTIAL]")
-    ) || [];
+    const codeWarnings =
+      document.diagnostics?.filter((d) => d.message.includes('[RESIDENTIAL]')) || [];
     expect(codeWarnings.length).toBe(0);
   });
 });
 
-describe("Vertical Connection Validation Tests", () => {
-  test("should warn for misaligned vertical connection positions", async () => {
+describe('Vertical Connection Validation Tests', () => {
+  test('should warn for misaligned vertical connection positions', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2436,17 +2470,19 @@ describe("Vertical Connection Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // Position mismatch: (0, 0) vs (5, 0) - message says "Position mismatch:"
-    const positionWarnings = document.diagnostics?.filter(d =>
-      d.message.includes("Position mismatch") || d.message.toLowerCase().includes("position")
-    ) || [];
+    const positionWarnings =
+      document.diagnostics?.filter(
+        (d) =>
+          d.message.includes('Position mismatch') || d.message.toLowerCase().includes('position'),
+      ) || [];
     expect(positionWarnings.length).toBeGreaterThan(0);
   });
 
-  test("should accept aligned vertical connection", async () => {
+  test('should accept aligned vertical connection', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2460,17 +2496,16 @@ describe("Vertical Connection Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // Positions match: both at (10, 20)
-    const positionWarnings = document.diagnostics?.filter(d =>
-      d.message.includes("Position mismatch")
-    ) || [];
+    const positionWarnings =
+      document.diagnostics?.filter((d) => d.message.includes('Position mismatch')) || [];
     expect(positionWarnings.length).toBe(0);
   });
 
-  test("should warn for skipped floors in vertical connection", async () => {
+  test('should warn for skipped floors in vertical connection', async () => {
     const input = `
       floorplan
           floor GroundFloor {
@@ -2487,13 +2522,14 @@ describe("Vertical Connection Validation Tests", () => {
 
     const document = await parse(input);
     expectNoErrors(document);
-    
+
     await services.shared.workspace.DocumentBuilder.build([document], { validation: true });
-    
+
     // FirstFloor is skipped - message says "Vertical connection skips"
-    const skippedWarnings = document.diagnostics?.filter(d =>
-      d.message.includes("skips") || d.message.toLowerCase().includes("skip")
-    ) || [];
+    const skippedWarnings =
+      document.diagnostics?.filter(
+        (d) => d.message.includes('skips') || d.message.toLowerCase().includes('skip'),
+      ) || [];
     expect(skippedWarnings.length).toBeGreaterThan(0);
   });
 });

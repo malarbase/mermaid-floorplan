@@ -1,22 +1,25 @@
 /**
  * Tests for Mermaid-aligned configuration features
  */
-import { describe, it, expect, beforeAll } from 'vitest';
+
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
-import { createFloorplansServices } from '../src/floorplans-module.js';
-import type { Floorplan } from '../src/generated/ast.js';
-import { 
-  resolveConfig, 
-  resolveThemeOptions, 
+import { beforeAll, describe, expect, it } from 'vitest';
+import {
   getEffectiveThemeName,
-  normalizeConfigKey,
   getThemeByName,
-  isValidTheme,
-  parseFrontmatter,
   hasFrontmatter,
+  isValidTheme,
+  normalizeConfigKey,
+  parseFrontmatter,
+  preprocessDsl,
+  render,
+  resolveConfig,
+  resolveThemeOptions,
   stripFrontmatter,
 } from '../src/diagrams/floorplans/index.js';
+import { createFloorplansServices } from '../src/floorplans-module.js';
+import type { Floorplan } from '../src/generated/ast.js';
 
 describe('Config Key Normalization', () => {
   it('normalizes snake_case to camelCase', () => {
@@ -85,7 +88,7 @@ describe('Config Parsing', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     expect(config.theme).toBe('dark');
   });
@@ -98,7 +101,7 @@ describe('Config Parsing', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     expect(config.darkMode).toBe(true);
   });
@@ -111,7 +114,7 @@ describe('Config Parsing', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     expect(config.fontFamily).toBe('Roboto, sans-serif');
     expect(config.fontSize).toBe(14);
@@ -125,7 +128,7 @@ describe('Config Parsing', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     expect(config.fontFamily).toBe('Arial');
     expect(config.fontSize).toBe(12);
@@ -139,7 +142,7 @@ describe('Config Parsing', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     expect(config.showLabels).toBe(false);
   });
@@ -152,7 +155,7 @@ describe('Config Parsing', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     expect(config.showDimensions).toBe(true);
   });
@@ -165,7 +168,7 @@ describe('Config Parsing', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     expect(config.theme).toBe('blueprint');
     expect(config.wallThickness).toBe(0.3);
@@ -189,11 +192,11 @@ describe('Theme Resolution', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     const themeName = getEffectiveThemeName(config);
     expect(themeName).toBe('dark');
-    
+
     const themeOptions = resolveThemeOptions(config);
     expect(themeOptions.floorBackground).toBe('#2d2d2d');
   });
@@ -206,7 +209,7 @@ describe('Theme Resolution', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     const themeName = getEffectiveThemeName(config);
     expect(themeName).toBe('dark');
@@ -220,7 +223,7 @@ describe('Theme Resolution', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     const themeName = getEffectiveThemeName(config);
     expect(themeName).toBe('blueprint');
@@ -234,7 +237,7 @@ describe('Theme Resolution', () => {
           room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
         }
     `);
-    
+
     const config = resolveConfig(doc.parseResult.value);
     const themeOptions = resolveThemeOptions(config);
     expect(themeOptions.fontFamily).toBe('Roboto');
@@ -249,14 +252,14 @@ title: Test
 ---
 floorplan
   floor f1 {}`;
-    
+
     expect(hasFrontmatter(input)).toBe(true);
   });
 
   it('detects no frontmatter', () => {
     const input = `floorplan
   floor f1 {}`;
-    
+
     expect(hasFrontmatter(input)).toBe(false);
   });
 
@@ -266,7 +269,7 @@ title: Villa Layout
 ---
 floorplan
   floor f1 {}`;
-    
+
     const result = parseFrontmatter(input);
     expect(result.hasFrontmatter).toBe(true);
     expect(result.title).toBe('Villa Layout');
@@ -280,7 +283,7 @@ config:
 ---
 floorplan
   floor f1 {}`;
-    
+
     const result = parseFrontmatter(input);
     expect(result.hasFrontmatter).toBe(true);
     expect(result.config.theme).toBe('dark');
@@ -294,7 +297,7 @@ config:
   font_family: Roboto
 ---
 floorplan`;
-    
+
     const result = parseFrontmatter(input);
     expect(result.config.wallThickness).toBe(0.3);
     expect(result.config.fontFamily).toBe('Roboto');
@@ -306,7 +309,7 @@ title: Test
 ---
 floorplan
   floor f1 {}`;
-    
+
     const result = parseFrontmatter(input);
     expect(result.content.trim()).toBe(`floorplan
   floor f1 {}`);
@@ -315,7 +318,7 @@ floorplan
   it('returns original content when no frontmatter', () => {
     const input = `floorplan
   floor f1 {}`;
-    
+
     const result = parseFrontmatter(input);
     expect(result.hasFrontmatter).toBe(false);
     expect(result.content).toBe(input);
@@ -327,9 +330,184 @@ floorplan
 title: Test
 ---
 floorplan`;
-    
+
     const content = stripFrontmatter(input);
     expect(content.trim()).toBe('floorplan');
   });
+
+  it('parses version from frontmatter', () => {
+    const input = `---
+version: "1.0"
+title: Test
+---
+floorplan`;
+
+    const result = parseFrontmatter(input);
+    expect(result.version).toBe('1.0');
+  });
+
+  it('handles frontmatter with leading comments', () => {
+    const input = `# This is a comment
+# Another comment
+
+---
+title: Test
+config:
+  theme: dark
+---
+floorplan`;
+
+    const result = parseFrontmatter(input);
+    expect(result.hasFrontmatter).toBe(true);
+    expect(result.title).toBe('Test');
+    expect(result.config.theme).toBe('dark');
+  });
 });
 
+describe('preprocessDsl()', () => {
+  it('extracts config and returns clean DSL', () => {
+    const input = `---
+version: "1.0"
+title: Modern Apartment
+config:
+  theme: blueprint
+  fontFamily: "Roboto, sans-serif"
+  wallThickness: 0.3
+---
+floorplan
+  floor f1 {}`;
+
+    const result = preprocessDsl(input);
+    expect(result.hasFrontmatter).toBe(true);
+    expect(result.title).toBe('Modern Apartment');
+    expect(result.version).toBe('1.0');
+    expect(result.frontmatterConfig.theme).toBe('blueprint');
+    expect(result.frontmatterConfig.fontFamily).toBe('Roboto, sans-serif');
+    expect(result.frontmatterConfig.wallThickness).toBe(0.3);
+    expect(result.content.trim().startsWith('floorplan')).toBe(true);
+  });
+
+  it('returns empty config when no frontmatter', () => {
+    const input = `floorplan
+  floor f1 {}`;
+
+    const result = preprocessDsl(input);
+    expect(result.hasFrontmatter).toBe(false);
+    expect(result.frontmatterConfig).toEqual({});
+  });
+});
+
+describe('Frontmatter + Langium Integration', () => {
+  let parse: ReturnType<typeof parseHelper<Floorplan>>;
+
+  beforeAll(() => {
+    const services = createFloorplansServices(EmptyFileSystem);
+    parse = parseHelper<Floorplan>(services.Floorplans);
+  });
+
+  it('preprocessDsl content parses without errors', async () => {
+    const input = `---
+version: "1.0"
+title: Modern Apartment
+config:
+  theme: blueprint
+  fontFamily: "Roboto, sans-serif"
+  wallThickness: 0.3
+---
+floorplan
+  floor f1 {
+    room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }`;
+
+    const { content, frontmatterConfig } = preprocessDsl(input);
+    const doc = await parse(content);
+
+    // Langium parses the stripped content without errors
+    expect(doc.parseResult.parserErrors).toHaveLength(0);
+
+    // Frontmatter config merges into resolveConfig
+    const config = resolveConfig(doc.parseResult.value, frontmatterConfig);
+    expect(config.theme).toBe('blueprint');
+    expect(config.fontFamily).toBe('Roboto, sans-serif');
+    expect(config.wallThickness).toBe(0.3);
+  });
+
+  it('inline config takes precedence over frontmatter config', async () => {
+    const input = `---
+config:
+  theme: blueprint
+  wallThickness: 0.3
+---
+floorplan
+  config { theme: dark, wallThickness: 0.5 }
+  floor f1 {
+    room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }`;
+
+    const { content, frontmatterConfig } = preprocessDsl(input);
+    const doc = await parse(content);
+
+    expect(doc.parseResult.parserErrors).toHaveLength(0);
+
+    const config = resolveConfig(doc.parseResult.value, frontmatterConfig);
+    // Inline config overrides frontmatter
+    expect(config.theme).toBe('dark');
+    expect(config.wallThickness).toBe(0.5);
+  });
+
+  it('renders SVG with frontmatter config', async () => {
+    const input = `---
+config:
+  theme: blueprint
+---
+floorplan
+  floor f1 {
+    room A at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+  }`;
+
+    const { content, frontmatterConfig } = preprocessDsl(input);
+    const doc = await parse(content);
+
+    expect(doc.parseResult.parserErrors).toHaveLength(0);
+
+    const svg = render(doc, { frontmatterConfig });
+    expect(svg).toContain('<svg');
+    // Blueprint theme has distinct background color
+    expect(svg).toContain('#1a365d');
+  });
+
+  it('handles FrontmatterExample.floorplan pattern with leading comments', async () => {
+    const input = `# Example: YAML Frontmatter
+# Comments before the frontmatter block
+
+---
+version: "1.0"
+title: Modern Apartment
+config:
+  theme: blueprint
+  fontFamily: "Roboto, sans-serif"
+  wallThickness: 0.3
+---
+floorplan
+
+define living (15 x 12)
+
+floor Main {
+  room Living at (0, 0) size living
+    walls [top: solid, right: solid, bottom: solid, left: solid]
+    label "Living Room"
+}`;
+
+    const { content, frontmatterConfig, title, version } = preprocessDsl(input);
+    const doc = await parse(content);
+
+    expect(doc.parseResult.parserErrors).toHaveLength(0);
+    expect(title).toBe('Modern Apartment');
+    expect(version).toBe('1.0');
+
+    const config = resolveConfig(doc.parseResult.value, frontmatterConfig);
+    expect(config.theme).toBe('blueprint');
+    expect(config.fontFamily).toBe('Roboto, sans-serif');
+    expect(config.wallThickness).toBe(0.3);
+  });
+});

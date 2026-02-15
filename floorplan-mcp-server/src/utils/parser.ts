@@ -1,15 +1,15 @@
-import { EmptyFileSystem, type LangiumDocument } from "langium";
-import { parseHelper } from "langium/test";
 import {
   createFloorplansServices,
   type Floorplan,
+  getRoomSize,
+  type ResolvedPosition,
   type Room,
   resolveFloorPositions,
   resolveVariables,
   validateSizeReferences,
-  getRoomSize,
-  type ResolvedPosition,
-} from "floorplan-language";
+} from 'floorplan-language';
+import { EmptyFileSystem, type LangiumDocument } from 'langium';
+import { parseHelper } from 'langium/test';
 
 const services = createFloorplansServices(EmptyFileSystem);
 const parse = parseHelper<Floorplan>(services.Floorplans);
@@ -26,7 +26,14 @@ export interface ParseResult {
 }
 
 export interface ValidationError {
-  type: 'parse' | 'circular_dependency' | 'missing_reference' | 'no_position' | 'connection' | 'undefined_variable' | 'duplicate_definition';
+  type:
+    | 'parse'
+    | 'circular_dependency'
+    | 'missing_reference'
+    | 'no_position'
+    | 'connection'
+    | 'undefined_variable'
+    | 'duplicate_definition';
   message: string;
   roomName?: string;
   variableName?: string;
@@ -98,13 +105,17 @@ export async function validateFloorplan(dsl: string): Promise<ValidationResult> 
   }
 
   // Run Langium validation framework (includes connection overlap and wall type checks)
-  await services.shared.workspace.DocumentBuilder.build([parseResult.document], { validation: true });
+  await services.shared.workspace.DocumentBuilder.build([parseResult.document], {
+    validation: true,
+  });
   const diagnostics = parseResult.document.diagnostics ?? [];
-  
+
   for (const diagnostic of diagnostics) {
     const line = diagnostic.range?.start?.line ? diagnostic.range.start.line + 1 : undefined;
-    const column = diagnostic.range?.start?.character ? diagnostic.range.start.character + 1 : undefined;
-    
+    const column = diagnostic.range?.start?.character
+      ? diagnostic.range.start.character + 1
+      : undefined;
+
     if (diagnostic.severity === 1) {
       // Error
       errors.push({
@@ -125,7 +136,7 @@ export async function validateFloorplan(dsl: string): Promise<ValidationResult> 
   // Run variable resolution
   const floorplan = parseResult.document.parseResult.value;
   const variableResolution = resolveVariables(floorplan);
-  
+
   // Convert variable resolution errors
   for (const err of variableResolution.errors) {
     errors.push({
@@ -135,7 +146,7 @@ export async function validateFloorplan(dsl: string): Promise<ValidationResult> 
       roomName: err.roomName,
     });
   }
-  
+
   // Validate size references
   const sizeRefErrors = validateSizeReferences(floorplan, variableResolution.variables);
   for (const err of sizeRefErrors) {
@@ -206,14 +217,12 @@ export interface RoomMetadata {
 export function extractRoomMetadata(
   room: Room,
   resolvedPositions?: Map<string, ResolvedPosition>,
-  variables?: Map<string, { width: number; height: number }>
+  variables?: Map<string, { width: number; height: number }>,
 ): RoomMetadata {
   // Extract wall types from specifications array
   const getWallType = (direction: string): string => {
-    const spec = room.walls.specifications.find(
-      (s) => s.direction === direction
-    );
-    return spec?.type || "solid";
+    const spec = room.walls.specifications.find((s) => s.direction === direction);
+    return spec?.type || 'solid';
   };
 
   // Get room size (either inline or from variable)
@@ -226,10 +235,10 @@ export function extractRoomMetadata(
       height: size.height,
     },
     walls: {
-      top: getWallType("top"),
-      right: getWallType("right"),
-      bottom: getWallType("bottom"),
-      left: getWallType("left"),
+      top: getWallType('top'),
+      right: getWallType('right'),
+      bottom: getWallType('bottom'),
+      left: getWallType('left'),
     },
   };
 
@@ -274,15 +283,15 @@ export function extractRoomMetadata(
   }
 
   if (room.subRooms && room.subRooms.length > 0) {
-    metadata.subRooms = room.subRooms.map(r => extractRoomMetadata(r, resolvedPositions, variables));
+    metadata.subRooms = room.subRooms.map((r) =>
+      extractRoomMetadata(r, resolvedPositions, variables),
+    );
   }
 
   return metadata;
 }
 
-export function extractAllRoomMetadata(
-  document: LangiumDocument<Floorplan>
-): RoomMetadata[] {
+export function extractAllRoomMetadata(document: LangiumDocument<Floorplan>): RoomMetadata[] {
   const floorplan = document.parseResult.value;
   const rooms: RoomMetadata[] = [];
 
@@ -294,7 +303,7 @@ export function extractAllRoomMetadata(
     // Resolve positions for this floor
     const resolution = resolveFloorPositions(floor, variables);
     const resolvedPositions = resolution.positions;
-    
+
     for (const room of floor.rooms) {
       rooms.push(extractRoomMetadata(room, resolvedPositions, variables));
     }
@@ -302,4 +311,3 @@ export function extractAllRoomMetadata(
 
   return rooms;
 }
-

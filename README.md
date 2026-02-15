@@ -257,6 +257,20 @@ room MainBedroom at (0,0) size (20 x 15) walls [...] composed of [
    comment */
 ```
 
+## Examples
+
+The `examples/` directory contains sample floorplans demonstrating various features:
+
+- **`StairsAndLifts.floorplan`** - Multi-floor building with stairs and elevator connections
+- **`RelativePositioning.floorplan`** - Demonstrates relative room positioning (right-of, below, etc.)
+- **`StyledApartment.floorplan`** - Room styling and custom colors
+- **`DarkTheme.floorplan`** / **`BlueprintTheme.floorplan`** - Theme examples
+- **`FrontmatterExample.floorplan`** - YAML frontmatter configuration
+
+Each example also includes exported DXF files (`.dxf`) compatible with AutoCAD and LibreCAD.
+
+[Browse examples →](examples/)
+
 ## Development
 
 Rebuild parser etc. from grammar file: `npm run langium:generate`

@@ -3,11 +3,11 @@
  * Following Mermaid diagram conventions
  */
 
-import type { Room } from "../../generated/ast.js";
-import type { ResolvedPosition } from "./position-resolver.js";
-import { getRoomSize } from "./variable-resolver.js";
-import { wallRectangle } from "./wall.js";
-import { type StyleContext, resolveRoomStyle, DEFAULT_STYLE } from "./style-resolver.js";
+import type { Room } from '../../generated/ast.js';
+import type { ResolvedPosition } from './position-resolver.js';
+import { DEFAULT_STYLE, resolveRoomStyle, type StyleContext } from './style-resolver.js';
+import { getRoomSize } from './variable-resolver.js';
+import { wallRectangle } from './wall.js';
 
 /** Area unit for display */
 export type AreaUnit = 'sqft' | 'sqm';
@@ -35,7 +35,7 @@ export function generateRoomText(
   centerX: number,
   centerY: number,
   variables?: Map<string, { width: number; height: number }>,
-  options?: RoomRenderOptions
+  options?: RoomRenderOptions,
 ): string {
   // If showLabels is explicitly false, don't render any text
   if (options?.showLabels === false) {
@@ -50,7 +50,7 @@ export function generateRoomText(
   // Calculate vertical offsets based on what we're showing
   const lineSpacing = 1;
   let currentY = centerY - (showArea ? 1.5 : 1);
-  
+
   let textElements = `<text x="${centerX}" y="${currentY}" text-anchor="middle" dominant-baseline="middle" 
     class="room-name" font-size="0.8" fill="black">${room.name}</text>`;
   currentY += lineSpacing;
@@ -82,12 +82,12 @@ export function generateRoomSvg(
   resolvedPositions?: Map<string, ResolvedPosition>,
   variables?: Map<string, { width: number; height: number }>,
   styleContext?: StyleContext,
-  renderOptions?: RoomRenderOptions
+  renderOptions?: RoomRenderOptions,
 ): string {
   // Get position from resolved map or explicit position
   let baseX: number;
   let baseY: number;
-  
+
   const resolved = resolvedPositions?.get(room.name);
   if (resolved) {
     baseX = resolved.x;
@@ -99,7 +99,7 @@ export function generateRoomSvg(
     // Cannot render room without position
     return `<!-- Room ${room.name} has no resolved position -->`;
   }
-  
+
   const x = baseX + parentOffsetX;
   const y = baseY + parentOffsetY;
   const size = getRoomSize(room, variables);
@@ -107,34 +107,62 @@ export function generateRoomSvg(
   const height = size.height;
 
   const wallThickness = 0.2;
-  
+
   // Resolve style for this room
-  const style = styleContext 
-    ? resolveRoomStyle(room, styleContext) 
-    : DEFAULT_STYLE;
-  
+  const style = styleContext ? resolveRoomStyle(room, styleContext) : DEFAULT_STYLE;
+
   // Room background with floor_color
   const roomBackground = `<rect x="${x}" y="${y}" width="${width}" height="${height}" 
     class="room-background" fill="${style.floor_color}" stroke="none" />`;
 
   const getWallType = (direction: string): string => {
-    const wallSpec = room.walls.specifications.find(
-      (spec) => spec.direction === direction
-    );
-    return wallSpec?.type || "solid";
+    const wallSpec = room.walls.specifications.find((spec) => spec.direction === direction);
+    return wallSpec?.type || 'solid';
   };
 
   // Pass wall color to wall rectangles
   const wallColor = style.wall_color;
-  const topWall = wallRectangle(x, y, width, wallThickness, getWallType("top"), "top", wallColor);
-  const rightWall = wallRectangle(x + width - wallThickness, y, wallThickness, height, getWallType("right"), "right", wallColor);
-  const bottomWall = wallRectangle(x, y + height - wallThickness, width, wallThickness, getWallType("bottom"), "bottom", wallColor);
-  const leftWall = wallRectangle(x, y, wallThickness, height, getWallType("left"), "left", wallColor);
+  const topWall = wallRectangle(x, y, width, wallThickness, getWallType('top'), 'top', wallColor);
+  const rightWall = wallRectangle(
+    x + width - wallThickness,
+    y,
+    wallThickness,
+    height,
+    getWallType('right'),
+    'right',
+    wallColor,
+  );
+  const bottomWall = wallRectangle(
+    x,
+    y + height - wallThickness,
+    width,
+    wallThickness,
+    getWallType('bottom'),
+    'bottom',
+    wallColor,
+  );
+  const leftWall = wallRectangle(
+    x,
+    y,
+    wallThickness,
+    height,
+    getWallType('left'),
+    'left',
+    wallColor,
+  );
 
-  let subRoomSvg = "";
+  let subRoomSvg = '';
   if (room.subRooms && room.subRooms.length > 0) {
     for (const subRoom of room.subRooms) {
-      subRoomSvg += generateRoomSvg(subRoom, x, y, resolvedPositions, variables, styleContext, renderOptions);
+      subRoomSvg += generateRoomSvg(
+        subRoom,
+        x,
+        y,
+        resolvedPositions,
+        variables,
+        styleContext,
+        renderOptions,
+      );
     }
   }
 
@@ -151,15 +179,15 @@ export function generateRoomLabels(
   parentOffsetY: number = 0,
   resolvedPositions?: Map<string, ResolvedPosition>,
   variables?: Map<string, { width: number; height: number }>,
-  renderOptions?: RoomRenderOptions
+  renderOptions?: RoomRenderOptions,
 ): string {
   let svg = `<g class="room-labels" aria-label="Room labels">`;
-  
+
   for (const room of rooms) {
     // Get position from resolved map or explicit position
     let baseX: number;
     let baseY: number;
-    
+
     const resolved = resolvedPositions?.get(room.name);
     if (resolved) {
       baseX = resolved.x;
@@ -170,7 +198,7 @@ export function generateRoomLabels(
     } else {
       continue;
     }
-    
+
     const x = baseX + parentOffsetX;
     const y = baseY + parentOffsetY;
     const size = getRoomSize(room, variables);
@@ -178,16 +206,15 @@ export function generateRoomLabels(
     const height = size.height;
     const centerX = x + width / 2;
     const centerY = y + height / 2;
-    
+
     svg += generateRoomText(room, centerX, centerY, variables, renderOptions);
-    
+
     // Handle sub-rooms recursively
     if (room.subRooms && room.subRooms.length > 0) {
       svg += generateRoomLabels(room.subRooms, x, y, resolvedPositions, variables, renderOptions);
     }
   }
-  
+
   svg += `</g>`;
   return svg;
 }
-

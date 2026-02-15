@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
-  calculateWallOverlap,
   calculatePositionOnOverlap,
   calculatePositionWithFallback,
+  calculateWallOverlap,
   type RoomBounds,
 } from '../src/geometry.js';
 
@@ -128,4 +128,3 @@ describe('Geometry Utils', () => {
     });
   });
 });
-
