@@ -688,7 +688,7 @@ export default function ProjectSettings() {
                               <td>
                                 <div class="flex items-center gap-3">
                                   <div class="avatar placeholder">
-                                    <div class="bg-neutral text-neutral-content rounded-full w-10">
+                                    <div class="bg-neutral text-neutral-content rounded-full w-10 flex items-center justify-center">
                                       <Show
                                         when={collab.avatarUrl}
                                         fallback={

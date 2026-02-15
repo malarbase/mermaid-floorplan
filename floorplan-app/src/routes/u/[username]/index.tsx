@@ -51,7 +51,7 @@ function UserRenamed(props: {
 
             <div class="flex items-center justify-center gap-3 mb-4">
               <div class="avatar placeholder">
-                <div class="bg-neutral text-neutral-content rounded-full w-12">
+                <div class="bg-neutral text-neutral-content rounded-full w-12 flex items-center justify-center">
                   <span class="text-lg">
                     {(props.displayName || props.newUsername)?.charAt(0).toUpperCase()}
                   </span>
@@ -193,7 +193,7 @@ export default function UserProfile() {
                   when={profileAvatarUrl()}
                   fallback={
                     <div class="avatar placeholder">
-                      <div class="bg-neutral text-neutral-content rounded-full w-16">
+                      <div class="bg-neutral text-neutral-content rounded-full w-16 flex items-center justify-center">
                         <span class="text-2xl">
                           {(userData().displayName || username())?.charAt(0).toUpperCase()}
                         </span>

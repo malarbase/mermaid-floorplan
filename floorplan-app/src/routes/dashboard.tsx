@@ -229,32 +229,33 @@ export default function Dashboard() {
         {/* Temp Username Nudge */}
         <TempUsernameNudge onSetUsername={() => setShowUsernameModal(true)} />
 
-        {/* Page Header */}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6 animate-fade-in">
-          <div>
-            <h1 class="text-xl sm:text-2xl md:text-3xl font-bold text-base-content">My Projects</h1>
-            <p class="text-sm sm:text-base text-base-content/60 mt-1">
-              Create and manage your floorplan designs
-            </p>
+        {/* Hero Header */}
+        <div class="animate-fade-in">
+          <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-6">
+            <div>
+              <h1 class="dashboard-hero-title">My Projects</h1>
+              <p class="dashboard-hero-subtitle">Create and manage your floorplan designs</p>
+            </div>
+            <A href="/new" class="btn btn-primary gap-2 shadow-lg glow-accent w-full sm:w-auto">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 4v16m8-8H4"
+                />
+              </svg>
+              New Project
+            </A>
           </div>
-          <A href="/new" class="btn btn-primary gap-2 shadow-md w-full sm:w-auto">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 4v16m8-8H4"
-              />
-            </svg>
-            New Project
-          </A>
+          <div class="dashboard-divider" />
         </div>
 
-        {/* Stats Section */}
+        {/* Stats Strip */}
         <Show when={!isLoading()}>
           <div class="stats-grid animate-slide-up">
             <button
-              class="stat-card stat-card-hero bg-base-200 border border-neutral shadow-sm hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
+              class="stat-card bg-base-200 border border-neutral shadow-sm hover:border-primary/40 hover:shadow-md focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2"
               classList={{
                 'stat-card-active !border-primary !bg-primary/12 !shadow-[0_2px_8px] !shadow-primary/20':
                   filter() === 'all',
@@ -263,7 +264,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon primary">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -274,7 +275,7 @@ export default function Dashboard() {
               </div>
               <div class="stat-card-content">
                 <div class="stat-card-value">{totalProjects()}</div>
-                <div class="stat-card-label">Total Projects</div>
+                <div class="stat-card-label">Total</div>
               </div>
             </button>
 
@@ -288,7 +289,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon secondary">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -313,7 +314,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon accent">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -338,7 +339,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon warning">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -363,7 +364,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon info">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -392,8 +393,17 @@ export default function Dashboard() {
           </div>
         </Show>
 
+        {/* Section Divider */}
+        <Show when={!isLoading()}>
+          <div class="dashboard-section-divider animate-slide-up-delay-1">
+            <span class="dashboard-section-tag">Projects</span>
+            <span class="dashboard-section-count">{totalProjects() + sharedCount()}</span>
+            <div class="dashboard-section-line" />
+          </div>
+        </Show>
+
         {/* Projects Grid */}
-        <div class="animate-slide-up-delay-1">
+        <div class="animate-slide-up-delay-2">
           <Show
             when={!isLoading()}
             fallback={

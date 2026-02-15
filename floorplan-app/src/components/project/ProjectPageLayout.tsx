@@ -81,19 +81,23 @@ interface ForkedFromBadgeProps {
 }
 
 /**
- * "Forked from" attribution badge
+ * "Forked from" attribution badge.
+ * Compact: tiny (10px) fork icon + owner/slug link, muted colour.
  */
 export function ForkedFromBadge(props: ForkedFromBadgeProps) {
   return (
-    <div class="text-xs sm:text-sm text-base-content/60 flex items-center gap-1">
-      <ForkIcon />
-      <span class={props.compact ? 'sm:hidden' : 'hidden sm:inline'}>forked from</span>
-      <Show when={props.compact}>
-        <span class="sm:hidden">from</span>
-      </Show>
+    <div class="text-[0.625rem] leading-tight text-base-content/40 flex items-center gap-0.5 truncate">
+      <svg class="w-2.5 h-2.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M6 3v6m0 0a3 3 0 106 0M6 9a3 3 0 006 0m0 0V3m-3 15a3 3 0 100-6 3 3 0 000 6z"
+        />
+      </svg>
       <A
         href={`/u/${props.forkedFrom.owner.username}/${props.forkedFrom.project.slug}`}
-        class="link link-hover font-medium truncate"
+        class="link link-hover truncate"
       >
         {props.forkedFrom.owner.username}/{props.forkedFrom.project.slug}
       </A>
@@ -124,6 +128,11 @@ interface ProjectBreadcrumbsProps {
 export function ProjectBreadcrumbs(props: ProjectBreadcrumbsProps) {
   return (
     <div class="min-w-0 overflow-hidden">
+      {/* Forked-from badge (above breadcrumbs, tiny) */}
+      <Show when={props.forkedFrom}>
+        <ForkedFromBadge forkedFrom={props.forkedFrom!} compact={props.compact} />
+      </Show>
+
       <div class="flex items-center gap-2 overflow-hidden">
         {/* Breadcrumb trail */}
         <div class="text-xs sm:text-sm breadcrumbs flex-shrink min-w-0">
@@ -149,11 +158,6 @@ export function ProjectBreadcrumbs(props: ProjectBreadcrumbsProps) {
           </h1>
         </Show>
       </div>
-
-      {/* Forked-from badge (below, compact) */}
-      <Show when={props.forkedFrom}>
-        <ForkedFromBadge forkedFrom={props.forkedFrom!} compact={props.compact} />
-      </Show>
     </div>
   );
 }

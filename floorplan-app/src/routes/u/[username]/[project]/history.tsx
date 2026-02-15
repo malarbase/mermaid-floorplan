@@ -764,7 +764,7 @@ export default function ProjectHistory() {
                           {(event) => (
                             <div class="flex items-start gap-3 py-2 border-b border-base-200 last:border-0">
                               <div class="avatar placeholder flex-shrink-0">
-                                <div class="w-7 h-7 rounded-full bg-base-300 text-base-content/70">
+                                <div class="w-7 h-7 rounded-full bg-base-300 text-base-content/70 flex items-center justify-center">
                                   <span class="text-xs">
                                     {(event.user?.displayName ?? event.user?.username ?? '?')
                                       .charAt(0)

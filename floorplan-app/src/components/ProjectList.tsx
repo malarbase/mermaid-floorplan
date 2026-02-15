@@ -124,6 +124,13 @@ export function ProjectList(props: ProjectListProps) {
     }
   };
 
+  /** Get the CSS class for card accent bar based on project type */
+  const getCardClass = (isPublic: boolean, isShared?: boolean) => {
+    if (isShared) return 'card-shared';
+    if (!isPublic) return 'card-private';
+    return ''; // default cyan accent for public
+  };
+
   return (
     <div class="w-full">
       {/* Loading State */}
@@ -153,25 +160,27 @@ export function ProjectList(props: ProjectListProps) {
         </div>
       </Show>
 
-      {/* Empty State - no projects at all */}
+      {/* Empty State - Blueprint Drawing Effect */}
       <Show when={!isLoading() && !hasError() && !hasAnyProjects()}>
         <div class="empty-state">
-          <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path
-              stroke-linecap="round"
-              stroke-linejoin="round"
-              stroke-width="1.5"
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-            />
+          {/* Stylized floorplan blueprint icon */}
+          <svg class="empty-state-icon" fill="none" stroke="currentColor" viewBox="0 0 48 48">
+            <rect x="4" y="4" width="40" height="40" rx="2" stroke-width="1.5" />
+            <line x1="4" y1="20" x2="44" y2="20" stroke-width="1" />
+            <line x1="20" y1="4" x2="20" y2="44" stroke-width="1" />
+            <line x1="32" y1="20" x2="32" y2="44" stroke-width="1" />
+            {/* Door arcs */}
+            <path d="M20 20 Q20 26 26 26" stroke-width="1" fill="none" />
+            <path d="M32 44 Q32 38 38 38" stroke-width="1" fill="none" />
           </svg>
-          <h2 class="empty-state-title">No projects yet</h2>
+          <h2 class="empty-state-title">No Projects Yet</h2>
           <p class="empty-state-description">
-            Get started by creating your first floorplan project. Use our simple DSL to design
-            beautiful spaces.
+            Design your first floorplan. Write a few lines of DSL and watch it transform into a
+            beautiful 3D visualization.
           </p>
           <Show when={props.onCreateNew}>
             <button
-              class="btn btn-primary btn-lg gap-2 shadow-md"
+              class="btn btn-primary btn-lg gap-2 shadow-lg glow-accent"
               onClick={() => props.onCreateNew?.()}
             >
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -186,7 +195,7 @@ export function ProjectList(props: ProjectListProps) {
             </button>
           </Show>
           <Show when={!props.onCreateNew}>
-            <A href="/new" class="btn btn-primary btn-lg gap-2 shadow-md">
+            <A href="/new" class="btn btn-primary btn-lg gap-2 shadow-lg glow-accent">
               <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   stroke-linecap="round"
@@ -205,9 +214,9 @@ export function ProjectList(props: ProjectListProps) {
       <Show
         when={!isLoading() && !hasError() && hasAnyProjects() && displayedProjects().length === 0}
       >
-        <div class="flex flex-col items-center justify-center py-12 text-base-content/60">
+        <div class="flex flex-col items-center justify-center py-12 text-base-content/50">
           <svg
-            class="w-12 h-12 mb-3 opacity-40"
+            class="w-10 h-10 mb-3 opacity-30"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -219,7 +228,10 @@ export function ProjectList(props: ProjectListProps) {
               d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
             />
           </svg>
-          <p class="text-sm">
+          <p
+            class="text-sm"
+            style={{ 'font-family': "'Bebas Neue', sans-serif", 'letter-spacing': '0.06em' }}
+          >
             No{' '}
             {props.filter === 'public'
               ? 'public'
@@ -228,7 +240,7 @@ export function ProjectList(props: ProjectListProps) {
                 : props.filter === 'shared-by-me'
                   ? 'shared by me'
                   : 'shared'}{' '}
-            projects
+            projects found
           </p>
         </div>
       </Show>
@@ -243,7 +255,7 @@ export function ProjectList(props: ProjectListProps) {
                 fallback={(() => {
                   const shared = (item as { kind: 'shared'; data: SharedProjectInfo }).data;
                   return (
-                    <div class="project-card group">
+                    <div class={`project-card card-shared group`}>
                       <A
                         href={`/u/${shared.owner.username}/${shared.project.slug}`}
                         class="absolute inset-0 z-0"
@@ -262,32 +274,43 @@ export function ProjectList(props: ProjectListProps) {
                             class="project-card-thumbnail-icon"
                             fill="none"
                             stroke="currentColor"
-                            viewBox="0 0 24 24"
+                            viewBox="0 0 48 48"
                           >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="1.5"
-                              d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"
+                            <rect x="6" y="6" width="36" height="36" rx="1" stroke-width="1.5" />
+                            <line
+                              x1="6"
+                              y1="22"
+                              x2="42"
+                              y2="22"
+                              stroke-width="0.75"
+                              opacity="0.5"
+                            />
+                            <line
+                              x1="22"
+                              y1="6"
+                              x2="22"
+                              y2="42"
+                              stroke-width="0.75"
+                              opacity="0.5"
                             />
                             <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="1.5"
-                              d="M7 10h10M7 14h6"
+                              d="M22 22 Q22 28 28 28"
+                              stroke-width="0.75"
+                              fill="none"
+                              opacity="0.4"
                             />
                           </svg>
                         </Show>
                       </div>
                       <div class="project-card-body">
-                        <div class="flex items-start justify-between gap-2 mb-2">
+                        <div class="flex items-start justify-between gap-2 mb-1">
                           <div class="flex-1 min-w-0">
                             <h2 class="project-card-title truncate">
                               {shared.project.displayName}
                             </h2>
-                            <p class="text-sm text-base-content/60 truncate flex items-center gap-1">
+                            <p class="text-xs text-base-content/45 truncate flex items-center gap-1 mt-0.5">
                               <svg
-                                class="w-3.5 h-3.5 inline flex-shrink-0"
+                                class="w-3 h-3 inline flex-shrink-0"
                                 fill="none"
                                 stroke="currentColor"
                                 viewBox="0 0 24 24"
@@ -314,9 +337,7 @@ export function ProjectList(props: ProjectListProps) {
                           <p class="project-card-description">{shared.project.description}</p>
                         </Show>
                         <div class="project-card-footer">
-                          <span class="project-card-meta">
-                            Shared {formatDate(shared.sharedAt)}
-                          </span>
+                          <span class="project-card-meta">{formatDate(shared.sharedAt)}</span>
                           <div class="project-card-actions">
                             <LeaveProjectButton
                               projectId={shared.project._id as Id<'projects'>}
@@ -333,7 +354,9 @@ export function ProjectList(props: ProjectListProps) {
                 {(() => {
                   const project = (item as { kind: 'own'; data: Project }).data;
                   return (
-                    <div class="project-card group">
+                    <div
+                      class={`project-card group ${getCardClass(project.isPublic, project.isShared)}`}
+                    >
                       <A
                         href={`/u/${props.username ?? 'me'}/${project.slug}`}
                         class="absolute inset-0 z-0"
@@ -352,19 +375,30 @@ export function ProjectList(props: ProjectListProps) {
                             class="project-card-thumbnail-icon"
                             fill="none"
                             stroke="currentColor"
-                            viewBox="0 0 24 24"
+                            viewBox="0 0 48 48"
                           >
-                            <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="1.5"
-                              d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z"
+                            <rect x="6" y="6" width="36" height="36" rx="1" stroke-width="1.5" />
+                            <line
+                              x1="6"
+                              y1="22"
+                              x2="42"
+                              y2="22"
+                              stroke-width="0.75"
+                              opacity="0.5"
+                            />
+                            <line
+                              x1="22"
+                              y1="6"
+                              x2="22"
+                              y2="42"
+                              stroke-width="0.75"
+                              opacity="0.5"
                             />
                             <path
-                              stroke-linecap="round"
-                              stroke-linejoin="round"
-                              stroke-width="1.5"
-                              d="M7 10h10M7 14h6"
+                              d="M22 22 Q22 28 28 28"
+                              stroke-width="0.75"
+                              fill="none"
+                              opacity="0.4"
                             />
                           </svg>
                         </Show>
@@ -379,11 +413,11 @@ export function ProjectList(props: ProjectListProps) {
                             <span class="project-card-meta">{formatDate(project.updatedAt)}</span>
                             <Show when={project.isShared}>
                               <span
-                                class="inline-flex items-center gap-1 text-xs text-base-content/50"
+                                class="inline-flex items-center gap-1 text-xs text-base-content/40"
                                 title="Shared with collaborators"
                               >
                                 <svg
-                                  class="w-3.5 h-3.5"
+                                  class="w-3 h-3"
                                   fill="none"
                                   stroke="currentColor"
                                   viewBox="0 0 24 24"
@@ -395,7 +429,6 @@ export function ProjectList(props: ProjectListProps) {
                                     d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
                                   />
                                 </svg>
-                                Shared
                               </span>
                             </Show>
                           </div>

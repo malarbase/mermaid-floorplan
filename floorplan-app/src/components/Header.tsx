@@ -94,9 +94,9 @@ export const Header: Component<HeaderProps> = (props) => {
     <header
       class={`relative z-50 px-3 sm:px-4 py-2 sm:py-3 ${getVariantClasses()} ${props.class ?? ''}`}
     >
-      <div class="flex items-center gap-2 sm:gap-4 px-1">
-        {/* Left side - Logo/Brand and Back button */}
-        <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+      <div class="header-grid px-1">
+        {/* Logo / Back button */}
+        <div class="header-logo flex items-center gap-2 sm:gap-4">
           <Show when={props.backHref}>
             <A href={props.backHref!} class="btn btn-ghost btn-sm gap-2">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -123,7 +123,7 @@ export const Header: Component<HeaderProps> = (props) => {
         </div>
 
         {/* Center - Custom content or default nav links */}
-        <div class="flex-1 min-w-0">
+        <div class="header-center">
           <Show
             when={props.centerContent}
             fallback={
@@ -150,13 +150,15 @@ export const Header: Component<HeaderProps> = (props) => {
           </Show>
         </div>
 
-        {/* Right side - Actions + Theme toggle + User menu */}
-        <div class="flex items-center gap-1 sm:gap-2 flex-shrink-0">
-          {/* Page-specific actions */}
-          <Show when={props.actions}>
-            <div class="flex flex-wrap items-center gap-1 sm:gap-2">{props.actions}</div>
-          </Show>
+        {/* Page-specific actions - row 2 below lg, inline on lg+ */}
+        <Show when={props.actions}>
+          <div class="header-actions flex flex-wrap items-center gap-1 sm:gap-2">
+            {props.actions}
+          </div>
+        </Show>
 
+        {/* Controls - Theme toggle + User menu (always top-right) */}
+        <div class="header-controls flex items-center gap-1 sm:gap-2">
           {/* Viewer controls (mode badge + command palette) */}
           <Show when={props.showViewerControls}>
             <div class="flex items-center gap-2">

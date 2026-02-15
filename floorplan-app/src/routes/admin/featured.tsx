@@ -193,7 +193,7 @@ export default function FeaturedProjects() {
                     <td>
                       <div class="flex items-center gap-2">
                         <div class="avatar placeholder">
-                          <div class="bg-neutral text-neutral-content rounded-full w-6">
+                          <div class="bg-neutral text-neutral-content rounded-full w-6 flex items-center justify-center">
                             <span class="text-xs">{project.ownerUsername[0]?.toUpperCase()}</span>
                           </div>
                         </div>
