@@ -63,7 +63,8 @@ export const getCollaborators = optionalAuthQuery({
     const project = await ctx.db.get(args.projectId);
     if (!project) return [];
 
-    if (project.userId !== ctx.user._id) {
+    const callerAccess = await resolveAccess(ctx, project);
+    if (!callerAccess.granted || !callerAccess.canManage) {
       return [];
     }
 
@@ -101,7 +102,8 @@ export const getShareLinks = optionalAuthQuery({
     const project = await ctx.db.get(args.projectId);
     if (!project) return [];
 
-    if (project.userId !== ctx.user._id) {
+    const callerAccess = await resolveAccess(ctx, project);
+    if (!callerAccess.granted || !callerAccess.canManage) {
       return [];
     }
 
@@ -125,14 +127,20 @@ export const inviteByUsername = authenticatedMutation({
   args: {
     projectId: v.id('projects'),
     username: v.string(),
-    role: v.union(v.literal('viewer'), v.literal('editor')),
+    role: v.union(v.literal('viewer'), v.literal('editor'), v.literal('admin')),
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
 
-    if (project.userId !== ctx.user._id) {
-      throw new Error('Only project owner can invite collaborators');
+    const access = await resolveAccess(ctx, project);
+    if (!access.granted || !access.canManage) {
+      throw new Error('Not authorized');
+    }
+
+    // Only the project owner can assign the admin role
+    if (access.role !== 'owner' && args.role === 'admin') {
+      throw new Error('Only the project owner can assign admin role');
     }
 
     const invitee = await ctx.db
@@ -202,8 +210,21 @@ export const removeCollaborator = authenticatedMutation({
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
 
-    if (project.userId !== ctx.user._id) {
-      throw new Error('Only project owner can remove collaborators');
+    const callerAccess = await resolveAccess(ctx, project);
+    if (!callerAccess.granted || !callerAccess.canManage) {
+      throw new Error('Not authorized');
+    }
+
+    // Prevent admins from removing other admins
+    if (callerAccess.role !== 'owner') {
+      const targetAccess = await ctx.db
+        .query('projectAccess')
+        .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+        .filter((q) => q.eq(q.field('userId'), args.userId))
+        .first();
+      if (targetAccess?.role === 'admin') {
+        throw new Error('Only the project owner can remove admin collaborators');
+      }
     }
 
     const access = await ctx.db
@@ -234,14 +255,20 @@ export const updateCollaboratorRole = authenticatedMutation({
   args: {
     projectId: v.id('projects'),
     userId: v.id('users'),
-    role: v.union(v.literal('viewer'), v.literal('editor')),
+    role: v.union(v.literal('viewer'), v.literal('editor'), v.literal('admin')),
   },
   handler: async (ctx, args) => {
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
 
-    if (project.userId !== ctx.user._id) {
-      throw new Error('Only project owner can update collaborator roles');
+    const callerAccess = await resolveAccess(ctx, project);
+    if (!callerAccess.granted || !callerAccess.canManage) {
+      throw new Error('Not authorized');
+    }
+
+    // Only the project owner can assign the admin role
+    if (callerAccess.role !== 'owner' && args.role === 'admin') {
+      throw new Error('Only the project owner can assign admin role');
     }
 
     const access = await ctx.db
@@ -278,8 +305,9 @@ export const createShareLink = authenticatedMutation({
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
 
-    if (project.userId !== ctx.user._id) {
-      throw new Error('Only project owner can create share links');
+    const access = await resolveAccess(ctx, project);
+    if (!access.granted || !access.canManage) {
+      throw new Error('Not authorized');
     }
 
     const token = await generateShareToken();
@@ -314,8 +342,9 @@ export const revokeShareLink = authenticatedMutation({
     const project = await ctx.db.get(link.projectId);
     if (!project) throw new Error('Project not found');
 
-    if (project.userId !== ctx.user._id) {
-      throw new Error('Only project owner can revoke share links');
+    const access = await resolveAccess(ctx, project);
+    if (!access.granted || !access.canManage) {
+      throw new Error('Not authorized');
     }
 
     await ctx.db.delete(args.linkId);

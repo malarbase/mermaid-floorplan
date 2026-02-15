@@ -25,8 +25,16 @@ export default function VersionView() {
   const shareToken = useShareToken();
 
   // Project data
-  const { project, forkedFrom, projectData, isOwner, canEdit, isProjectLoading, projectNotFound } =
-    useProjectData(username, projectSlug, shareToken);
+  const {
+    project,
+    forkedFrom,
+    projectData,
+    isOwner,
+    canEdit,
+    canManage,
+    isProjectLoading,
+    projectNotFound,
+  } = useProjectData(username, projectSlug, shareToken);
 
   // Version data
   const { content, currentHash, versionExists, isVersionLoading } = useVersionData(
@@ -49,6 +57,7 @@ export default function VersionView() {
       projectData={projectData}
       isOwner={isOwner}
       canEdit={canEdit}
+      canManage={canManage}
       isProjectLoading={isProjectLoading}
       projectNotFound={projectNotFound}
       content={content}

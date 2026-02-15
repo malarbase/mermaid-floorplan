@@ -1,7 +1,7 @@
 import { Title } from '@solidjs/meta';
 import { A, useNavigate } from '@solidjs/router';
-import { useQuery } from 'convex-solidjs';
-import { createMemo, createSignal, Show } from 'solid-js';
+import { useMutation, useQuery } from 'convex-solidjs';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 import { Header } from '~/components/Header';
 import { ProjectList } from '~/components/ProjectList';
 import { SharedProjectList } from '~/components/SharedProjectList';
@@ -9,6 +9,157 @@ import { TempUsernameNudge } from '~/components/TempUsernameNudge';
 import { UsernameSelectionModal } from '~/components/UsernameSelectionModal';
 import { useAuthRedirect } from '~/hooks/useAuthRedirect';
 import { api } from '../../convex/_generated/api';
+import type { Id } from '../../convex/_generated/dataModel';
+
+/** Card for a single pending transfer request. */
+function TransferRequestCard(props: {
+  transfer: {
+    _id: string;
+    projectName: string;
+    projectSlug: string;
+    senderUsername: string;
+    senderDisplayName?: string;
+    expiresAt: number;
+    createdAt: number;
+  };
+}) {
+  const [isAccepting, setIsAccepting] = createSignal(false);
+  const [isDeclining, setIsDeclining] = createSignal(false);
+  const [slugCollision, setSlugCollision] = createSignal(false);
+  const [customSlug, setCustomSlug] = createSignal('');
+  const [error, setError] = createSignal('');
+
+  const acceptMutation = useMutation(api.projects.acceptTransfer);
+  const cancelMutation = useMutation(api.projects.cancelTransfer);
+
+  const daysLeft = () => {
+    const ms = props.transfer.expiresAt - Date.now();
+    return Math.max(0, Math.ceil(ms / 86400000));
+  };
+
+  const senderLabel = () => props.transfer.senderDisplayName || props.transfer.senderUsername;
+
+  const handleAccept = async (targetSlug?: string) => {
+    setIsAccepting(true);
+    setError('');
+    try {
+      const result = await acceptMutation.mutate({
+        requestId: props.transfer._id as Id<'transferRequests'>,
+        targetSlug,
+      });
+      if (
+        result &&
+        typeof result === 'object' &&
+        'slugCollision' in result &&
+        result.slugCollision
+      ) {
+        setSlugCollision(true);
+        setCustomSlug(
+          (result as { suggestedSlug?: string }).suggestedSlug || props.transfer.projectSlug + '-1',
+        );
+      } else if (result && typeof result === 'object' && 'success' in result && result.success) {
+        window.location.reload();
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to accept transfer');
+    } finally {
+      setIsAccepting(false);
+    }
+  };
+
+  const handleDecline = async () => {
+    setIsDeclining(true);
+    setError('');
+    try {
+      await cancelMutation.mutate({
+        requestId: props.transfer._id as Id<'transferRequests'>,
+      });
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to decline transfer');
+    } finally {
+      setIsDeclining(false);
+    }
+  };
+
+  return (
+    <div class="card card-border bg-base-100 shadow-sm">
+      <div class="card-body p-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          {/* Info */}
+          <div class="flex-1 min-w-0">
+            <p class="text-sm sm:text-base text-base-content">
+              <span class="font-semibold">{senderLabel()}</span> wants to transfer{' '}
+              <span class="font-bold">{props.transfer.projectName}</span> to you
+            </p>
+            <p class="text-xs text-base-content/50 mt-1">
+              Expires in {daysLeft()} day{daysLeft() !== 1 ? 's' : ''}
+            </p>
+          </div>
+
+          {/* Actions */}
+          <Show when={!slugCollision()}>
+            <div class="flex gap-2 shrink-0">
+              <button
+                class="btn btn-success btn-sm"
+                disabled={isAccepting() || isDeclining()}
+                onClick={() => handleAccept()}
+              >
+                <Show when={isAccepting()} fallback="Accept">
+                  <span class="loading loading-spinner loading-xs" />
+                </Show>
+              </button>
+              <button
+                class="btn btn-ghost btn-sm text-error"
+                disabled={isAccepting() || isDeclining()}
+                onClick={handleDecline}
+              >
+                <Show when={isDeclining()} fallback="Decline">
+                  <span class="loading loading-spinner loading-xs" />
+                </Show>
+              </button>
+            </div>
+          </Show>
+        </div>
+
+        {/* Slug collision resolution */}
+        <Show when={slugCollision()}>
+          <div class="mt-3 p-3 bg-warning/10 rounded-lg">
+            <p class="text-sm text-warning-content mb-2">
+              You already have a project with the slug "{props.transfer.projectSlug}". Choose a
+              different slug:
+            </p>
+            <div class="flex gap-2">
+              <input
+                type="text"
+                class="input input-bordered input-sm flex-1"
+                value={customSlug()}
+                onInput={(e) => setCustomSlug(e.currentTarget.value)}
+                placeholder="new-slug"
+              />
+              <button
+                class="btn btn-success btn-sm"
+                disabled={isAccepting() || !customSlug().trim()}
+                onClick={() => handleAccept(customSlug().trim())}
+              >
+                <Show when={isAccepting()} fallback="Confirm">
+                  <span class="loading loading-spinner loading-xs" />
+                </Show>
+              </button>
+              <button class="btn btn-ghost btn-sm" onClick={() => setSlugCollision(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </Show>
+
+        {/* Error message */}
+        <Show when={error()}>
+          <p class="text-xs text-error mt-2">{error()}</p>
+        </Show>
+      </div>
+    </div>
+  );
+}
 
 /**
  * User dashboard - shows user's projects (protected route).
@@ -26,6 +177,7 @@ export default function Dashboard() {
   // Queries for stats using standard Convex hooks
   const projectsQuery = useQuery(api.projects.list, {});
   const sharedQuery = useQuery(api.sharing.getSharedWithMe, {});
+  const pendingTransfers = useQuery(api.projects.getPendingTransfers, {});
 
   // Stats computed values
   const totalProjects = createMemo(() => {
@@ -159,6 +311,18 @@ export default function Dashboard() {
                 <div class="stat-card-value">{sharedCount()}</div>
                 <div class="stat-card-label">Shared with me</div>
               </div>
+            </div>
+          </div>
+        </Show>
+
+        {/* Pending Transfer Requests */}
+        <Show when={pendingTransfers.data()?.length}>
+          <div class="animate-slide-up mb-6">
+            <h3 class="text-lg font-semibold mb-3">Pending Transfer Requests</h3>
+            <div class="space-y-3">
+              <For each={pendingTransfers.data()}>
+                {(transfer) => <TransferRequestCard transfer={transfer} />}
+              </For>
             </div>
           </div>
         </Show>

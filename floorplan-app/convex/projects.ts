@@ -64,11 +64,22 @@ export const list = query({
     const user = await getCurrentUser(ctx);
     if (!user) return [];
 
-    return ctx.db
+    const projects = await ctx.db
       .query('projects')
       .withIndex('by_user', (q) => q.eq('userId', user._id))
       .order('desc')
       .collect();
+
+    // Enrich with sharing indicator (single indexed .first() per project — O(1) each)
+    return Promise.all(
+      projects.map(async (p) => {
+        const hasCollab = await ctx.db
+          .query('projectAccess')
+          .withIndex('by_project', (q) => q.eq('projectId', p._id))
+          .first();
+        return { ...p, isShared: !!hasCollab };
+      }),
+    );
   },
 });
 
@@ -656,7 +667,8 @@ export const update = mutation({
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
 
-    if (project.userId !== user._id) {
+    const access = await resolveAccess(ctx, project);
+    if (!access.granted || !access.canManage) {
       throw new Error('Not authorized');
     }
 
@@ -968,17 +980,43 @@ export const resolveSlug = query({
       .filter((q) => q.eq(q.field('fromSlug'), args.slug))
       .first();
 
-    if (!redirect) return null;
+    if (redirect) {
+      const targetProject = await ctx.db
+        .query('projects')
+        .withIndex('by_user_slug', (q) => q.eq('userId', user._id).eq('slug', redirect.toSlug))
+        .first();
 
-    const targetProject = await ctx.db
-      .query('projects')
-      .withIndex('by_user_slug', (q) => q.eq('userId', user._id).eq('slug', redirect.toSlug))
+      if (targetProject && (await canAccessProject(ctx, targetProject, args.shareToken))) {
+        return { projectId: targetProject._id, currentSlug: redirect.toSlug, wasRedirected: true };
+      }
+    }
+
+    // Check cross-user redirects (ownership transfers)
+    const crossRedirect = await ctx.db
+      .query('crossUserRedirects')
+      .withIndex('by_from', (q) => q.eq('fromUserId', user._id).eq('fromSlug', args.slug))
       .first();
 
-    if (!targetProject) return null;
-    if (!(await canAccessProject(ctx, targetProject, args.shareToken))) return null;
+    if (crossRedirect) {
+      const targetProject = await ctx.db
+        .query('projects')
+        .withIndex('by_user_slug', (q) =>
+          q.eq('userId', crossRedirect.toUserId).eq('slug', crossRedirect.toSlug),
+        )
+        .first();
 
-    return { projectId: targetProject._id, currentSlug: redirect.toSlug, wasRedirected: true };
+      if (targetProject && (await canAccessProject(ctx, targetProject, args.shareToken))) {
+        const newOwner = await ctx.db.get(crossRedirect.toUserId);
+        return {
+          projectId: targetProject._id,
+          currentSlug: crossRedirect.toSlug,
+          wasRedirected: true,
+          newOwnerUsername: newOwner?.username,
+        };
+      }
+    }
+
+    return null;
   },
 });
 
@@ -1011,5 +1049,286 @@ export const backfillSnapshotHashes = internalMutation({
     }
 
     return { processed, total: snapshots.length, done: true };
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Ownership transfer mutations
+// ---------------------------------------------------------------------------
+
+/**
+ * Request ownership transfer of a project to an existing collaborator.
+ * Only the project owner can initiate this.
+ */
+export const requestTransfer = mutation({
+  args: {
+    projectId: v.id('projects'),
+    toUserId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const project = await ctx.db.get(args.projectId);
+    if (!project) throw new Error('Project not found');
+
+    // Validate caller is owner
+    if (project.userId !== user._id) {
+      throw new Error('Only the project owner can request a transfer');
+    }
+
+    // Validate recipient exists
+    const recipient = await ctx.db.get(args.toUserId);
+    if (!recipient) throw new Error('Recipient user not found');
+
+    // Validate recipient is an existing collaborator
+    const collaboratorAccess = await ctx.db
+      .query('projectAccess')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .filter((q) => q.eq(q.field('userId'), args.toUserId))
+      .first();
+
+    if (!collaboratorAccess) {
+      throw new Error('Recipient must be an existing collaborator on the project');
+    }
+
+    // Check no pending transfer already exists for this project
+    const existingTransfer = await ctx.db
+      .query('transferRequests')
+      .withIndex('by_project', (q) => q.eq('projectId', args.projectId))
+      .filter((q) => q.eq(q.field('status'), 'pending'))
+      .first();
+
+    if (existingTransfer) {
+      throw new Error('A pending transfer request already exists for this project');
+    }
+
+    const now = Date.now();
+    const requestId = await ctx.db.insert('transferRequests', {
+      projectId: args.projectId,
+      fromUserId: user._id,
+      toUserId: args.toUserId,
+      status: 'pending',
+      createdAt: now,
+      expiresAt: now + 7 * 86400000,
+    });
+
+    await ctx.db.insert('projectEvents', {
+      projectId: args.projectId,
+      action: 'ownership.transferRequested',
+      userId: user._id,
+      metadata: { toUserId: args.toUserId, requestId },
+      createdAt: now,
+    });
+
+    return requestId;
+  },
+});
+
+/**
+ * Accept a pending ownership transfer.
+ * Caller must be the intended recipient (toUserId).
+ */
+export const acceptTransfer = mutation({
+  args: {
+    requestId: v.id('transferRequests'),
+    targetSlug: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error('Transfer request not found');
+
+    // Validate caller is the recipient
+    if (request.toUserId !== user._id) {
+      throw new Error('Only the intended recipient can accept this transfer');
+    }
+
+    // Validate request is pending and not expired
+    if (request.status !== 'pending') {
+      throw new Error('Transfer request is no longer pending');
+    }
+
+    if (request.expiresAt <= Date.now()) {
+      throw new Error('Transfer request has expired');
+    }
+
+    const project = await ctx.db.get(request.projectId);
+    if (!project) throw new Error('Project not found');
+
+    const originalSlug = project.slug;
+    const finalSlug = args.targetSlug ?? originalSlug;
+
+    // Check slug collision in recipient's namespace
+    const existingProject = await ctx.db
+      .query('projects')
+      .withIndex('by_user_slug', (q) => q.eq('userId', user._id).eq('slug', finalSlug))
+      .first();
+
+    if (existingProject) {
+      return { success: false as const, slugCollision: true, suggestedSlug: finalSlug + '-1' };
+    }
+
+    const now = Date.now();
+    const oldOwnerId = project.userId;
+
+    // Patch project ownership to recipient
+    const updates: Record<string, unknown> = { userId: user._id, updatedAt: now };
+    if (finalSlug !== originalSlug) {
+      updates.slug = finalSlug;
+      // Insert same-user slugRedirect for the new owner's slug history
+      await ctx.db.insert('slugRedirects', {
+        fromSlug: originalSlug,
+        toSlug: finalSlug,
+        userId: user._id,
+        createdAt: now,
+      });
+    }
+    await ctx.db.patch(request.projectId, updates);
+
+    // Insert cross-user redirect
+    await ctx.db.insert('crossUserRedirects', {
+      fromUserId: oldOwnerId,
+      fromSlug: originalSlug,
+      toUserId: user._id,
+      toSlug: finalSlug,
+      createdAt: now,
+    });
+
+    // Delete recipient's projectAccess record (they're the owner now)
+    const recipientAccess = await ctx.db
+      .query('projectAccess')
+      .withIndex('by_project', (q) => q.eq('projectId', request.projectId))
+      .filter((q) => q.eq(q.field('userId'), user._id))
+      .first();
+
+    if (recipientAccess) {
+      await ctx.db.delete(recipientAccess._id);
+    }
+
+    // Insert old owner as editor collaborator
+    await ctx.db.insert('projectAccess', {
+      projectId: request.projectId,
+      userId: oldOwnerId,
+      role: 'editor',
+      invitedBy: user._id,
+      createdAt: now,
+    });
+
+    // Update request status
+    await ctx.db.patch(args.requestId, {
+      status: 'accepted' as const,
+      respondedAt: now,
+    });
+
+    // Log event
+    await ctx.db.insert('projectEvents', {
+      projectId: request.projectId,
+      action: 'ownership.transferAccepted',
+      userId: user._id,
+      metadata: {
+        fromUserId: oldOwnerId,
+        toUserId: user._id,
+        originalSlug,
+        newSlug: finalSlug,
+      },
+      createdAt: now,
+    });
+
+    return { success: true as const, newSlug: finalSlug };
+  },
+});
+
+/**
+ * Cancel a pending ownership transfer.
+ * Either the sender or recipient can cancel.
+ */
+export const cancelTransfer = mutation({
+  args: {
+    requestId: v.id('transferRequests'),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error('Transfer request not found');
+
+    // Validate caller is either sender or recipient
+    if (request.fromUserId !== user._id && request.toUserId !== user._id) {
+      throw new Error('Only the sender or recipient can cancel this transfer');
+    }
+
+    // Validate request is still pending
+    if (request.status !== 'pending') {
+      throw new Error('Transfer request is no longer pending');
+    }
+
+    await ctx.db.patch(args.requestId, {
+      status: 'cancelled' as const,
+      respondedAt: Date.now(),
+    });
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Pending transfer query
+// ---------------------------------------------------------------------------
+
+/**
+ * Get pending transfer requests for the current user (as recipient).
+ * Filters out expired requests.
+ */
+export const getPendingTransfers = query({
+  handler: async (ctx) => {
+    const user = await getCurrentUser(ctx);
+    if (!user) return [];
+
+    const pending = await ctx.db
+      .query('transferRequests')
+      .withIndex('by_recipient', (q) => q.eq('toUserId', user._id).eq('status', 'pending'))
+      .collect();
+
+    const now = Date.now();
+    const active = pending.filter((r) => r.expiresAt > now);
+
+    return Promise.all(
+      active.map(async (req) => {
+        const project = await ctx.db.get(req.projectId);
+        const sender = await ctx.db.get(req.fromUserId);
+        return {
+          _id: req._id,
+          projectName: project?.displayName ?? 'Unknown',
+          projectSlug: project?.slug ?? '',
+          senderUsername: sender?.username ?? 'unknown',
+          senderDisplayName: sender?.displayName,
+          expiresAt: req.expiresAt,
+          createdAt: req.createdAt,
+        };
+      }),
+    );
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Transfer expiration (cron target)
+// ---------------------------------------------------------------------------
+
+/**
+ * Expire pending transfer requests that have passed their expiresAt.
+ * Called by the daily cron job.
+ */
+export const expireTransfers = internalMutation({
+  handler: async (ctx) => {
+    const now = Date.now();
+    const expired = await ctx.db
+      .query('transferRequests')
+      .withIndex('by_status', (q) => q.eq('status', 'pending'))
+      .filter((q) => q.lt(q.field('expiresAt'), now))
+      .collect();
+
+    for (const req of expired) {
+      await ctx.db.patch(req._id, { status: 'expired', respondedAt: now });
+    }
+    return { expired: expired.length };
   },
 });

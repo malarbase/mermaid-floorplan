@@ -109,7 +109,7 @@ export default defineSchema({
   projectAccess: defineTable({
     projectId: v.id('projects'),
     userId: v.id('users'),
-    role: v.union(v.literal('viewer'), v.literal('editor')),
+    role: v.union(v.literal('viewer'), v.literal('editor'), v.literal('admin')),
     invitedBy: v.id('users'),
     createdAt: v.number(),
   })
@@ -166,6 +166,34 @@ export default defineSchema({
     metadata: v.optional(v.any()), // Action-specific data (snapshotId, versionName, etc.)
     createdAt: v.number(),
   }).index('by_project', ['projectId', 'createdAt']),
+
+  // Ownership transfer requests (two-phase handshake)
+  transferRequests: defineTable({
+    projectId: v.id('projects'),
+    fromUserId: v.id('users'),
+    toUserId: v.id('users'),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('accepted'),
+      v.literal('cancelled'),
+      v.literal('expired'),
+    ),
+    createdAt: v.number(),
+    expiresAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index('by_project', ['projectId'])
+    .index('by_recipient', ['toUserId', 'status'])
+    .index('by_status', ['status', 'expiresAt']),
+
+  // Cross-user redirects (after ownership transfers)
+  crossUserRedirects: defineTable({
+    fromUserId: v.id('users'),
+    fromSlug: v.string(),
+    toUserId: v.id('users'),
+    toSlug: v.string(),
+    createdAt: v.number(),
+  }).index('by_from', ['fromUserId', 'fromSlug']),
 
   // Slug redirects (for URL migration history)
   slugRedirects: defineTable({

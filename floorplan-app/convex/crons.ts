@@ -27,4 +27,14 @@ crons.interval(
   internal.trending.calculateTrendingScores,
 );
 
+/**
+ * Expire pending ownership transfer requests daily.
+ * Transfers expire 7 days after creation.
+ */
+crons.daily(
+  'expire-transfer-requests',
+  { hourUTC: 4, minuteUTC: 0 }, // Run at 4:00 AM UTC daily
+  internal.projects.expireTransfers,
+);
+
 export default crons;

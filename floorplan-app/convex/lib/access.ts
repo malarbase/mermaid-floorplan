@@ -13,7 +13,7 @@ import { getCurrentUser } from './auth';
 // Types
 // ---------------------------------------------------------------------------
 
-export type AccessRole = 'owner' | 'editor' | 'viewer';
+export type AccessRole = 'owner' | 'admin' | 'editor' | 'viewer';
 
 /** Returned when access is granted. */
 export interface AccessGranted {
@@ -83,7 +83,7 @@ export async function resolveAccess(
   }
 
   // --- Collaborator check ---
-  let collaboratorRole: 'viewer' | 'editor' | null = null;
+  let collaboratorRole: 'viewer' | 'editor' | 'admin' | null = null;
   if (currentUser) {
     const access = await ctx.db
       .query('projectAccess')
@@ -109,8 +109,8 @@ export async function resolveAccess(
     return {
       granted: true,
       role: effectiveRole,
-      canEdit: effectiveRole === 'editor',
-      canManage: false,
+      canEdit: effectiveRole === 'editor' || effectiveRole === 'admin',
+      canManage: effectiveRole === 'admin',
     };
   }
 
@@ -120,8 +120,8 @@ export async function resolveAccess(
     return {
       granted: true,
       role: effectiveRole,
-      canEdit: effectiveRole === 'editor',
-      canManage: false,
+      canEdit: effectiveRole === 'editor' || effectiveRole === 'admin',
+      canManage: effectiveRole === 'admin',
     };
   }
 
@@ -132,7 +132,7 @@ export async function resolveAccess(
 // Helpers
 // ---------------------------------------------------------------------------
 
-const ROLE_RANK: Record<AccessRole, number> = { owner: 3, editor: 2, viewer: 1 };
+const ROLE_RANK: Record<AccessRole, number> = { owner: 4, admin: 3, editor: 2, viewer: 1 };
 
 /** Pick the highest-privilege role from up to three nullable candidates. */
 function pickHighestRole(...roles: (AccessRole | null | undefined)[]): AccessRole | null {

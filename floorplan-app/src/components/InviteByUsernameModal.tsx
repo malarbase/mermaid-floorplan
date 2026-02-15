@@ -11,8 +11,10 @@ interface InviteByUsernameModalProps {
   onClose: () => void;
   /** Project ID to invite to */
   projectId: Id<'projects'>;
+  /** Whether the current user is the project owner (enables admin role option) */
+  isOwner?: boolean;
   /** Callback when invitation is successful */
-  onSuccess?: (username: string, role: 'viewer' | 'editor') => void;
+  onSuccess?: (username: string, role: 'viewer' | 'editor' | 'admin') => void;
 }
 
 /**
@@ -21,7 +23,7 @@ interface InviteByUsernameModalProps {
  */
 export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
   const [username, setUsername] = createSignal('');
-  const [role, setRole] = createSignal<'viewer' | 'editor'>('viewer');
+  const [role, setRole] = createSignal<'viewer' | 'editor' | 'admin'>('viewer');
   const [error, setError] = createSignal('');
   const [success, setSuccess] = createSignal('');
   const [isSubmitting, setIsSubmitting] = createSignal(false);
@@ -161,12 +163,12 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
           <label class="label">
             <span class="label-text">Role</span>
           </label>
-          <div class="flex gap-4">
-            <label class="label cursor-pointer justify-start gap-2">
+          <div class="flex flex-col gap-1">
+            <label class="label cursor-pointer justify-start gap-3 py-1.5">
               <input
                 type="radio"
                 name="role"
-                class="radio radio-primary"
+                class="radio radio-primary radio-sm"
                 checked={role() === 'viewer'}
                 onChange={() => setRole('viewer')}
               />
@@ -175,11 +177,11 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
                 <span class="text-xs text-base-content/60">Can view the project but not edit</span>
               </span>
             </label>
-            <label class="label cursor-pointer justify-start gap-2">
+            <label class="label cursor-pointer justify-start gap-3 py-1.5">
               <input
                 type="radio"
                 name="role"
-                class="radio radio-primary"
+                class="radio radio-primary radio-sm"
                 checked={role() === 'editor'}
                 onChange={() => setRole('editor')}
               />
@@ -188,6 +190,23 @@ export function InviteByUsernameModal(props: InviteByUsernameModalProps) {
                 <span class="text-xs text-base-content/60">Can view and edit the project</span>
               </span>
             </label>
+            <Show when={props.isOwner}>
+              <label class="label cursor-pointer justify-start gap-3 py-1.5">
+                <input
+                  type="radio"
+                  name="role"
+                  class="radio radio-primary radio-sm"
+                  checked={role() === 'admin'}
+                  onChange={() => setRole('admin')}
+                />
+                <span class="label-text flex flex-col">
+                  <span class="font-medium">Admin</span>
+                  <span class="text-xs text-base-content/60">
+                    Can view, edit, and manage project settings
+                  </span>
+                </span>
+              </label>
+            </Show>
           </div>
         </div>
 

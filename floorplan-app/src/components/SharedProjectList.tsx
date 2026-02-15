@@ -18,7 +18,7 @@ interface SharedProject {
     username: string;
     displayName?: string;
   };
-  role: 'viewer' | 'editor';
+  role: 'viewer' | 'editor' | 'admin';
   sharedAt: number;
 }
 
@@ -170,7 +170,11 @@ export function SharedProjectList(props: SharedProjectListProps) {
                       </p>
                     </div>
                     <span class={`role-badge ${shared.role}`}>
-                      {shared.role === 'editor' ? 'Can edit' : 'View only'}
+                      {shared.role === 'admin'
+                        ? 'Can manage'
+                        : shared.role === 'editor'
+                          ? 'Can edit'
+                          : 'View only'}
                     </span>
                   </div>
                   <Show when={shared.project.description}>

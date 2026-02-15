@@ -17,7 +17,7 @@ interface Collaborator {
   username: string;
   displayName?: string;
   avatarUrl?: string;
-  role: 'viewer' | 'editor';
+  role: 'viewer' | 'editor' | 'admin';
   invitedBy: string;
   createdAt: number;
 }
@@ -55,12 +55,35 @@ export default function ProjectSettings() {
   const [debouncedSlug, setDebouncedSlug] = createSignal('');
   const [slugSaveError, setSlugSaveError] = createSignal('');
 
+  // Transfer ownership state
+  const [transferTarget, setTransferTarget] = createSignal('');
+  const [transferConfirmName, setTransferConfirmName] = createSignal('');
+  const [isTransferring, setIsTransferring] = createSignal(false);
+  const [transferError, setTransferError] = createSignal('');
+  const [transferPending, setTransferPending] = createSignal(false);
+  const [transferPendingRecipient, setTransferPendingRecipient] = createSignal('');
+  const [transferRequestId, setTransferRequestId] = createSignal<string | null>(null);
+  // Confirmation modals (replace native confirm())
+  const [confirmRemoveCollab, setConfirmRemoveCollab] = createSignal<{
+    userId: string;
+    username: string;
+  } | null>(null);
+  const [confirmRevokeLink, setConfirmRevokeLink] = createSignal<string | null>(null);
+
   const username = createMemo(() => params.username);
   const projectSlug = createMemo(() => params.project);
 
   // Project data from shared hook
-  const { project, owner, forkedFrom, projectData, isOwner, isProjectLoading, currentUser } =
-    useProjectData(username, projectSlug);
+  const {
+    project,
+    owner,
+    forkedFrom,
+    projectData,
+    isOwner,
+    canManage,
+    isProjectLoading,
+    currentUser,
+  } = useProjectData(username, projectSlug);
 
   // Initialize form values when project loads
   createEffect(() => {
@@ -97,6 +120,8 @@ export default function ProjectSettings() {
   const removeCollaborator = useMutation(api.sharing.removeCollaborator);
   const updateCollaboratorRole = useMutation(api.sharing.updateCollaboratorRole);
   const revokeShareLink = useMutation(api.sharing.revokeShareLink);
+  const requestTransfer = useMutation(api.projects.requestTransfer);
+  const cancelTransfer = useMutation(api.projects.cancelTransfer);
 
   // Loading state
   const isLoading = createMemo(
@@ -183,12 +208,10 @@ export default function ProjectSettings() {
     setSlugSaveError('');
   };
 
-  // Handle remove collaborator
-  const handleRemoveCollaborator = async (userId: string, username: string) => {
+  // Handle remove collaborator (confirmed via modal)
+  const handleRemoveCollaborator = async (userId: string) => {
     const proj = project();
     if (!proj) return;
-
-    if (!confirm(`Remove @${username} from this project?`)) return;
 
     try {
       await removeCollaborator.mutate({
@@ -197,11 +220,13 @@ export default function ProjectSettings() {
       });
     } catch (err) {
       console.error('Failed to remove collaborator:', err);
+    } finally {
+      setConfirmRemoveCollab(null);
     }
   };
 
   // Handle update collaborator role
-  const handleUpdateRole = async (userId: string, newRole: 'viewer' | 'editor') => {
+  const handleUpdateRole = async (userId: string, newRole: 'viewer' | 'editor' | 'admin') => {
     const proj = project();
     if (!proj) return;
 
@@ -216,14 +241,14 @@ export default function ProjectSettings() {
     }
   };
 
-  // Handle revoke share link
+  // Handle revoke share link (confirmed via modal)
   const handleRevokeShareLink = async (linkId: string) => {
-    if (!confirm('Revoke this share link? Anyone using it will lose access.')) return;
-
     try {
       await revokeShareLink.mutate({ linkId: asId<'shareLinks'>(linkId) });
     } catch (err) {
       console.error('Failed to revoke share link:', err);
+    } finally {
+      setConfirmRevokeLink(null);
     }
   };
 
@@ -242,6 +267,55 @@ export default function ProjectSettings() {
   // Handle project deletion
   const handleProjectDeleted = () => {
     navigate('/dashboard');
+  };
+
+  // Handle transfer ownership request
+  const handleRequestTransfer = async () => {
+    const proj = project();
+    if (!proj || !transferTarget()) return;
+
+    setIsTransferring(true);
+    setTransferError('');
+
+    try {
+      const reqId = await requestTransfer.mutate({
+        projectId: proj._id,
+        toUserId: asId<'users'>(transferTarget()),
+      });
+      // Find the recipient username for the pending state display
+      const recipient = collaborators().find((c) => c.userId === transferTarget());
+      setTransferRequestId(reqId as unknown as string);
+      setTransferPending(true);
+      setTransferPendingRecipient(recipient?.username ?? 'user');
+      setTransferTarget('');
+      setTransferConfirmName('');
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : 'Failed to request transfer');
+    } finally {
+      setIsTransferring(false);
+    }
+  };
+
+  // Handle cancel transfer
+  const handleCancelTransfer = async () => {
+    const reqId = transferRequestId();
+    if (!reqId) return;
+
+    setIsTransferring(true);
+    setTransferError('');
+
+    try {
+      await cancelTransfer.mutate({
+        requestId: asId<'transferRequests'>(reqId),
+      });
+      setTransferPending(false);
+      setTransferPendingRecipient('');
+      setTransferRequestId(null);
+    } catch (err) {
+      setTransferError(err instanceof Error ? err.message : 'Failed to cancel transfer');
+    } finally {
+      setIsTransferring(false);
+    }
   };
 
   // Format date
@@ -266,13 +340,13 @@ export default function ProjectSettings() {
         }
       >
         <Show
-          when={projectData() && isOwner()}
+          when={projectData() && canManage()}
           fallback={
             <div class="flex justify-center items-center h-screen">
               <div class="card bg-base-100 shadow-xl">
                 <div class="card-body text-center">
                   <h2 class="card-title">Access Denied</h2>
-                  <p>Only the project owner can access settings.</p>
+                  <p>You don't have permission to manage this project.</p>
                   <A href={`/u/${username()}/${projectSlug()}`} class="btn btn-primary mt-4">
                     Back to Project
                   </A>
@@ -413,129 +487,133 @@ export default function ProjectSettings() {
               </div>
             </section>
 
-            <section class="card bg-base-100 shadow">
-              <div class="card-body">
-                <h2 class="card-title">Change URL Slug</h2>
+            <Show when={isOwner()}>
+              <section class="card bg-base-100 shadow">
+                <div class="card-body">
+                  <h2 class="card-title">Change URL Slug</h2>
 
-                <Show
-                  when={!isEditingSlug()}
-                  fallback={
-                    <div class="space-y-4">
-                      <div class="alert alert-warning text-sm">
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          class="stroke-current shrink-0 h-6 w-6"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-                          />
-                        </svg>
-                        <div>
-                          <h3 class="font-bold">Warning</h3>
-                          <div class="text-xs">
-                            Changing the slug will change the URL of your project. Old URLs will
-                            automatically redirect to the new one.
+                  <Show
+                    when={!isEditingSlug()}
+                    fallback={
+                      <div class="space-y-4">
+                        <div class="alert alert-warning text-sm">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            class="stroke-current shrink-0 h-6 w-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                              stroke-width="2"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                          <div>
+                            <h3 class="font-bold">Warning</h3>
+                            <div class="text-xs">
+                              Changing the slug will change the URL of your project. Old URLs will
+                              automatically redirect to the new one.
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div class="form-control w-full">
-                        <label class="label">
-                          <span class="label-text">New Slug</span>
-                        </label>
-                        <div class="flex flex-col gap-2">
-                          <input
-                            type="text"
-                            class={`input input-bordered w-full font-mono ${
-                              !isSlugValidFormat() || isSlugTaken()
-                                ? 'input-error'
-                                : newSlug() !== projectSlug() && debouncedSlug() === newSlug()
-                                  ? 'input-success'
-                                  : ''
-                            }`}
-                            value={newSlug()}
-                            onInput={(e) => {
-                              const val = e.currentTarget.value
-                                .toLowerCase()
-                                .replace(/[^a-z0-9-]/g, '');
-                              setNewSlug(val);
-                            }}
-                            placeholder="my-project-slug"
-                            disabled={isSaving()}
-                          />
-                          <div class="flex items-center justify-between text-xs min-h-[1.25rem]">
-                            <span class="text-base-content/60">
-                              {window.location.origin}/u/{username()}/{newSlug() || '...'}
-                            </span>
+                        <div class="form-control w-full">
+                          <label class="label">
+                            <span class="label-text">New Slug</span>
+                          </label>
+                          <div class="flex flex-col gap-2">
+                            <input
+                              type="text"
+                              class={`input input-bordered w-full font-mono ${
+                                !isSlugValidFormat() || isSlugTaken()
+                                  ? 'input-error'
+                                  : newSlug() !== projectSlug() && debouncedSlug() === newSlug()
+                                    ? 'input-success'
+                                    : ''
+                              }`}
+                              value={newSlug()}
+                              onInput={(e) => {
+                                const val = e.currentTarget.value
+                                  .toLowerCase()
+                                  .replace(/[^a-z0-9-]/g, '');
+                                setNewSlug(val);
+                              }}
+                              placeholder="my-project-slug"
+                              disabled={isSaving()}
+                            />
+                            <div class="flex items-center justify-between text-xs min-h-[1.25rem]">
+                              <span class="text-base-content/60">
+                                {window.location.origin}/u/{username()}/{newSlug() || '...'}
+                              </span>
 
-                            <Show when={newSlug() && newSlug() !== projectSlug()}>
-                              <Show
-                                when={!slugCheckQuery.isLoading()}
-                                fallback={<span class="loading loading-spinner loading-xs"></span>}
-                              >
-                                <Show when={isSlugTaken()}>
-                                  <span class="text-error font-medium flex items-center gap-1">
-                                    <span>✗</span> Slug already taken
-                                  </span>
-                                </Show>
-                                <Show when={!isSlugTaken() && isSlugValidFormat()}>
-                                  <span class="text-success font-medium flex items-center gap-1">
-                                    <span>✓</span> Available
-                                  </span>
+                              <Show when={newSlug() && newSlug() !== projectSlug()}>
+                                <Show
+                                  when={!slugCheckQuery.isLoading()}
+                                  fallback={
+                                    <span class="loading loading-spinner loading-xs"></span>
+                                  }
+                                >
+                                  <Show when={isSlugTaken()}>
+                                    <span class="text-error font-medium flex items-center gap-1">
+                                      <span>✗</span> Slug already taken
+                                    </span>
+                                  </Show>
+                                  <Show when={!isSlugTaken() && isSlugValidFormat()}>
+                                    <span class="text-success font-medium flex items-center gap-1">
+                                      <span>✓</span> Available
+                                    </span>
+                                  </Show>
                                 </Show>
                               </Show>
-                            </Show>
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div class="flex items-center gap-2">
-                        <button
-                          class="btn btn-primary"
-                          onClick={handleSaveSlug}
-                          disabled={isSaving() || !canSaveSlug()}
-                        >
-                          <Show when={isSaving()} fallback="Save Slug">
-                            <span class="loading loading-spinner loading-sm"></span>
-                            Saving...
+                        <div class="flex items-center gap-2">
+                          <button
+                            class="btn btn-primary"
+                            onClick={handleSaveSlug}
+                            disabled={isSaving() || !canSaveSlug()}
+                          >
+                            <Show when={isSaving()} fallback="Save Slug">
+                              <span class="loading loading-spinner loading-sm"></span>
+                              Saving...
+                            </Show>
+                          </button>
+                          <button
+                            class="btn btn-ghost"
+                            onClick={cancelEditingSlug}
+                            disabled={isSaving()}
+                          >
+                            Cancel
+                          </button>
+
+                          <Show when={slugSaveError()}>
+                            <span class="text-error text-sm">{slugSaveError()}</span>
                           </Show>
+                        </div>
+                      </div>
+                    }
+                  >
+                    <div>
+                      <p class="text-sm text-base-content/60 mb-4">
+                        The URL slug determines the address of your project.
+                      </p>
+                      <div class="flex items-center gap-4 p-4 bg-base-200 rounded-lg">
+                        <code class="flex-1 font-mono text-sm">
+                          {window.location.origin}/u/{username()}/{projectSlug()}
+                        </code>
+                        <button class="btn btn-sm btn-outline" onClick={startEditingSlug}>
+                          Change Slug
                         </button>
-                        <button
-                          class="btn btn-ghost"
-                          onClick={cancelEditingSlug}
-                          disabled={isSaving()}
-                        >
-                          Cancel
-                        </button>
-
-                        <Show when={slugSaveError()}>
-                          <span class="text-error text-sm">{slugSaveError()}</span>
-                        </Show>
                       </div>
                     </div>
-                  }
-                >
-                  <div>
-                    <p class="text-sm text-base-content/60 mb-4">
-                      The URL slug determines the address of your project.
-                    </p>
-                    <div class="flex items-center gap-4 p-4 bg-base-200 rounded-lg">
-                      <code class="flex-1 font-mono text-sm">
-                        {window.location.origin}/u/{username()}/{projectSlug()}
-                      </code>
-                      <button class="btn btn-sm btn-outline" onClick={startEditingSlug}>
-                        Change Slug
-                      </button>
-                    </div>
-                  </div>
-                </Show>
-              </div>
-            </section>
+                  </Show>
+                </div>
+              </section>
+            </Show>
 
             {/* Collaborators */}
             <section class="card bg-base-100 shadow">
@@ -640,12 +718,15 @@ export default function ProjectSettings() {
                                   onChange={(e) =>
                                     handleUpdateRole(
                                       collab.userId,
-                                      e.currentTarget.value as 'viewer' | 'editor',
+                                      e.currentTarget.value as 'viewer' | 'editor' | 'admin',
                                     )
                                   }
                                 >
                                   <option value="viewer">Viewer</option>
                                   <option value="editor">Editor</option>
+                                  <Show when={isOwner()}>
+                                    <option value="admin">Admin</option>
+                                  </Show>
                                 </select>
                               </td>
                               <td class="text-sm text-base-content/60">
@@ -656,7 +737,10 @@ export default function ProjectSettings() {
                                   type="button"
                                   class="btn btn-ghost btn-sm text-error"
                                   onClick={() =>
-                                    handleRemoveCollaborator(collab.userId, collab.username)
+                                    setConfirmRemoveCollab({
+                                      userId: collab.userId,
+                                      username: collab.username,
+                                    })
                                   }
                                   title="Remove collaborator"
                                 >
@@ -827,7 +911,7 @@ export default function ProjectSettings() {
                                 <button
                                   type="button"
                                   class="btn btn-ghost btn-sm text-error"
-                                  onClick={() => handleRevokeShareLink(link._id)}
+                                  onClick={() => setConfirmRevokeLink(link._id)}
                                   title="Revoke link"
                                 >
                                   <svg
@@ -855,28 +939,135 @@ export default function ProjectSettings() {
               </div>
             </section>
 
-            {/* Danger Zone */}
-            <section class="card bg-base-100 shadow border-2 border-error/20">
-              <div class="card-body p-4 sm:p-6">
-                <h2 class="card-title text-error text-lg sm:text-xl">Danger Zone</h2>
+            {/* Danger Zone (owner only) */}
+            <Show when={isOwner()}>
+              <section class="card bg-base-100 shadow border-2 border-error/20">
+                <div class="card-body p-4 sm:p-6">
+                  <h2 class="card-title text-error text-lg sm:text-xl">Danger Zone</h2>
 
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 border-t border-base-300 mt-2">
-                  <div>
-                    <p class="font-medium text-sm sm:text-base">Delete this project</p>
-                    <p class="text-xs sm:text-sm text-base-content/60">
-                      Once deleted, this project cannot be recovered.
-                    </p>
+                  {/* Transfer Ownership */}
+                  <div class="py-4 border-t border-base-300 mt-2">
+                    <div class="flex flex-col gap-3">
+                      <div>
+                        <p class="font-medium text-sm sm:text-base">Transfer Ownership</p>
+                        <p class="text-xs sm:text-sm text-base-content/60">
+                          Transfer this project to an existing collaborator. They must accept the
+                          transfer.
+                        </p>
+                      </div>
+
+                      <Show
+                        when={!transferPending()}
+                        fallback={
+                          <div class="flex flex-col sm:flex-row sm:items-center gap-3 p-4 bg-warning/10 rounded-lg">
+                            <div class="flex-1">
+                              <p class="text-sm font-medium text-warning">
+                                Transfer pending — waiting for @{transferPendingRecipient()} to
+                                accept
+                              </p>
+                            </div>
+                            <button
+                              class="btn btn-outline btn-warning btn-sm"
+                              onClick={handleCancelTransfer}
+                              disabled={isTransferring()}
+                            >
+                              <Show when={isTransferring()}>
+                                <span class="loading loading-spinner loading-sm"></span>
+                              </Show>
+                              Cancel Transfer
+                            </button>
+                          </div>
+                        }
+                      >
+                        <Show
+                          when={collaborators().length > 0}
+                          fallback={
+                            <p class="text-sm text-base-content/50 italic">
+                              No collaborators to transfer to. Invite a collaborator first.
+                            </p>
+                          }
+                        >
+                          <div class="flex flex-col gap-3">
+                            <div class="form-control w-full">
+                              <label class="label">
+                                <span class="label-text">Transfer to</span>
+                              </label>
+                              <select
+                                class="select select-bordered w-full"
+                                value={transferTarget()}
+                                onChange={(e) => setTransferTarget(e.currentTarget.value)}
+                              >
+                                <option value="">Select a collaborator...</option>
+                                <For each={collaborators()}>
+                                  {(collab) => (
+                                    <option value={collab.userId}>@{collab.username}</option>
+                                  )}
+                                </For>
+                              </select>
+                            </div>
+
+                            <div class="form-control w-full">
+                              <label class="label">
+                                <span class="label-text">
+                                  Type{' '}
+                                  <code class="font-mono text-error">{project()?.displayName}</code>{' '}
+                                  to confirm
+                                </span>
+                              </label>
+                              <input
+                                type="text"
+                                class="input input-bordered w-full"
+                                value={transferConfirmName()}
+                                onInput={(e) => setTransferConfirmName(e.currentTarget.value)}
+                                placeholder={project()?.displayName ?? ''}
+                              />
+                            </div>
+
+                            <Show when={transferError()}>
+                              <p class="text-error text-sm">{transferError()}</p>
+                            </Show>
+
+                            <div>
+                              <button
+                                class="btn btn-error btn-outline"
+                                onClick={handleRequestTransfer}
+                                disabled={
+                                  isTransferring() ||
+                                  !transferTarget() ||
+                                  transferConfirmName() !== project()?.displayName
+                                }
+                              >
+                                <Show when={isTransferring()}>
+                                  <span class="loading loading-spinner loading-sm"></span>
+                                </Show>
+                                Request Transfer
+                              </button>
+                            </div>
+                          </div>
+                        </Show>
+                      </Show>
+                    </div>
                   </div>
-                  <Show when={project()}>
-                    <DeleteProjectButton
-                      projectId={project()!._id}
-                      projectName={project()!.displayName}
-                      onDeleted={handleProjectDeleted}
-                    />
-                  </Show>
+
+                  {/* Delete Project */}
+                  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 py-4 border-t border-base-300">
+                    <div>
+                      <p class="font-medium text-sm sm:text-base">Delete this project</p>
+                      <p class="text-xs sm:text-sm text-base-content/60">
+                        Once deleted, this project cannot be recovered.
+                      </p>
+                    </div>
+                    <Show when={project()}>
+                      <DeleteProjectButton
+                        projectId={project()!._id}
+                        projectName={project()!.displayName}
+                        onDeleted={handleProjectDeleted}
+                      />
+                    </Show>
+                  </div>
                 </div>
-              </div>
-            </section>
+              </section>
+            </Show>
           </div>
         </Show>
       </Show>
@@ -887,6 +1078,7 @@ export default function ProjectSettings() {
           isOpen={showInviteModal()}
           onClose={() => setShowInviteModal(false)}
           projectId={project()!._id}
+          isOwner={isOwner()}
           onSuccess={(username, role) => {
             console.log(`Invited ${username} as ${role}`);
           }}
@@ -904,6 +1096,62 @@ export default function ProjectSettings() {
           }}
         />
       </Show>
+
+      {/* Remove Collaborator Confirmation Modal */}
+      <dialog class={`modal ${confirmRemoveCollab() ? 'modal-open' : ''}`}>
+        <div class="modal-box">
+          <h3 class="font-bold text-lg">Remove Collaborator</h3>
+          <p class="py-4">
+            Are you sure you want to remove <strong>@{confirmRemoveCollab()?.username}</strong> from
+            this project? They will lose access immediately.
+          </p>
+          <div class="modal-action">
+            <button class="btn btn-ghost" onClick={() => setConfirmRemoveCollab(null)}>
+              Cancel
+            </button>
+            <button
+              class="btn btn-error"
+              onClick={() => {
+                const collab = confirmRemoveCollab();
+                if (collab) handleRemoveCollaborator(collab.userId);
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+          <button onClick={() => setConfirmRemoveCollab(null)}>close</button>
+        </form>
+      </dialog>
+
+      {/* Revoke Share Link Confirmation Modal */}
+      <dialog class={`modal ${confirmRevokeLink() ? 'modal-open' : ''}`}>
+        <div class="modal-box">
+          <h3 class="font-bold text-lg">Revoke Share Link</h3>
+          <p class="py-4">
+            Are you sure you want to revoke this share link? Anyone using it will lose access
+            immediately.
+          </p>
+          <div class="modal-action">
+            <button class="btn btn-ghost" onClick={() => setConfirmRevokeLink(null)}>
+              Cancel
+            </button>
+            <button
+              class="btn btn-error"
+              onClick={() => {
+                const linkId = confirmRevokeLink();
+                if (linkId) handleRevokeShareLink(linkId);
+              }}
+            >
+              Revoke
+            </button>
+          </div>
+        </div>
+        <form method="dialog" class="modal-backdrop">
+          <button onClick={() => setConfirmRevokeLink(null)}>close</button>
+        </form>
+      </dialog>
     </main>
   );
 }

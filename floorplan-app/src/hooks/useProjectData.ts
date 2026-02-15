@@ -91,6 +91,15 @@ export function useProjectData(
     return access?.canEdit ?? false;
   });
 
+  const canManage = createMemo(() => {
+    if (isOwner()) return true;
+    const access = accessQuery.data() as
+      | { role: string; canEdit: boolean; canManage: boolean }
+      | null
+      | undefined;
+    return access?.canManage ?? false;
+  });
+
   const isProjectLoading = createMemo(() => {
     return projectQuery.isLoading() || projectQuery.data() === undefined;
   });
@@ -121,6 +130,7 @@ export function useProjectData(
     projectData,
     isOwner,
     canEdit,
+    canManage,
     isProjectLoading,
     projectNotFound,
     currentUser,

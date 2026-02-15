@@ -48,6 +48,7 @@ export default function ProjectView() {
     projectData,
     isOwner,
     canEdit,
+    canManage,
     isProjectLoading,
     projectNotFound,
   } = useProjectData(username, projectSlug, shareToken);
@@ -69,6 +70,7 @@ export default function ProjectView() {
       projectData={projectData}
       isOwner={isOwner}
       canEdit={canEdit}
+      canManage={canManage}
       isProjectLoading={isProjectLoading}
       projectNotFound={projectNotFound}
       content={content}

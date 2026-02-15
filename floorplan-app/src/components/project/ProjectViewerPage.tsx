@@ -48,6 +48,7 @@ export interface ProjectViewerPageProps {
   projectData: Accessor<unknown>;
   isOwner: Accessor<boolean>;
   canEdit: Accessor<boolean>;
+  canManage: Accessor<boolean>;
   isProjectLoading: Accessor<boolean>;
   projectNotFound: Accessor<boolean>;
 
@@ -92,6 +93,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
   const project = props.project;
   const isOwner = props.isOwner;
   const canEdit = props.canEdit;
+  const canManage = props.canManage;
   const content = props.content;
   const currentHash = props.currentHash;
 
@@ -202,9 +204,9 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
         History
       </A>
 
-      {/* Visibility toggle for owners, static badge for others */}
+      {/* Visibility toggle for managers (owners + admin collaborators), static badge for others */}
       <Show
-        when={isOwner()}
+        when={canManage()}
         fallback={
           <Show when={project()?.isPublic}>
             <span class="badge badge-success badge-outline">Public</span>
@@ -214,7 +216,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
         <VisibilityToggle projectId={project()!._id} isPublic={project()?.isPublic ?? false} />
       </Show>
 
-      <Show when={isOwner()}>
+      <Show when={canManage()}>
         <CapturePreviewButton
           onCapture={() => thumbnail.capture()}
           isCapturing={thumbnail.isCapturing}

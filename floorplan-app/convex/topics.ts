@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation } from './_generated/server';
+import { resolveAccess } from './lib/access';
 import { requireUser } from './lib/auth';
 
 export const assignToProject = mutation({
@@ -13,9 +14,8 @@ export const assignToProject = mutation({
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
 
-    const isOwner = project.userId === user._id;
-    const isAdmin = user.isAdmin ?? false;
-    if (!isOwner && !isAdmin) {
+    const access = await resolveAccess(ctx, project);
+    if (!(access.granted && access.canManage) && !(user.isAdmin ?? false)) {
       throw new Error('Only project owner or admin can assign topics');
     }
 
@@ -66,9 +66,8 @@ export const removeFromProject = mutation({
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
 
-    const isOwner = project.userId === user._id;
-    const isAdmin = user.isAdmin ?? false;
-    if (!isOwner && !isAdmin) {
+    const access = await resolveAccess(ctx, project);
+    if (!(access.granted && access.canManage) && !(user.isAdmin ?? false)) {
       throw new Error('Only project owner or admin can remove topics');
     }
 

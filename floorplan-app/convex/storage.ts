@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation } from './_generated/server';
+import { resolveAccess } from './lib/access';
 import { requireUser } from './lib/auth';
 
 /**
@@ -39,8 +40,8 @@ export const saveThumbnail = mutation({
     const project = await ctx.db.get(args.projectId);
     if (!project) throw new Error('Project not found');
 
-    // Only the owner can update the thumbnail
-    if (project.userId !== user._id) {
+    const access = await resolveAccess(ctx, project);
+    if (!access.granted || !access.canManage) {
       throw new Error('Not authorized');
     }
 
