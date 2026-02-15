@@ -16,13 +16,14 @@ import { convexBetterAuthSolidStart } from 'convex-better-auth-solid-start';
  * - GET /api/auth/session - Get current session
  * - GET /api/auth/convex/token - Get Convex JWT
  */
-// In Vite/Vinxi, process.env does NOT contain VITE_ vars on the server.
-// Use import.meta.env which Vite injects for both client and SSR.
+// Server-side proxy: prefer CONVEX_SITE_URL (Docker-internal hostname like
+// convex:3211) over VITE_CONVEX_SITE_URL (browser-facing localhost:3211).
+// This runs inside the app container, so it needs the Docker network hostname.
 const convexSiteUrl =
-  import.meta.env.VITE_CONVEX_SITE_URL ?? process.env.CONVEX_SITE_URL ?? 'http://localhost:3211';
+  process.env.CONVEX_SITE_URL ?? import.meta.env.VITE_CONVEX_SITE_URL ?? 'http://localhost:3211';
 
 const { handler } = convexBetterAuthSolidStart({
-  convexUrl: import.meta.env.VITE_CONVEX_URL ?? process.env.CONVEX_URL ?? 'http://localhost:3210',
+  convexUrl: process.env.CONVEX_URL ?? import.meta.env.VITE_CONVEX_URL ?? 'http://localhost:3210',
   convexSiteUrl,
 });
 

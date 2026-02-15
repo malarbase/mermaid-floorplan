@@ -57,7 +57,9 @@ npx convex dev
 ```
 
 3. Select "Create a new project" when prompted
-4. Note the **deployment URL** (e.g., `https://happy-animal-123.convex.cloud`)
+4. Note two URLs from the Convex Dashboard:
+   - **Deployment URL** (e.g., `https://happy-animal-123.convex.cloud`) — for the WebSocket API
+   - **Site URL** (e.g., `https://happy-animal-123.convex.site`) — for HTTP actions (auth proxy)
 5. **Generate a Production Deploy Key**:
    - Convex Dashboard > Your Project > Settings > Deploy Keys
    - Click "Generate Production Deploy Key"
@@ -83,18 +85,19 @@ The build command is key — it deploys Convex functions first, then builds the 
 
 ### 3b. Add Environment Variables
 
-In Vercel Dashboard > Project Settings > Environment Variables, add these **6 secrets**:
+In Vercel Dashboard > Project Settings > Environment Variables, add these **7 variables**:
 
-| Variable | Value | Environments |
-|---|---|---|
-| `CONVEX_DEPLOY_KEY` | `prod:your-project\|eyJ...` (from Step 2) | Production |
-| `VITE_CONVEX_URL` | `https://happy-animal-123.convex.cloud` (from Step 2) | All |
-| `BETTER_AUTH_SECRET` | Generate with `openssl rand -base64 32` | All |
-| `BETTER_AUTH_URL` | `https://your-app.vercel.app` (your Vercel domain) | Production |
-| `GOOGLE_CLIENT_ID` | From Step 1 | All |
-| `GOOGLE_CLIENT_SECRET` | From Step 1 | All |
+| Variable | Value | Environments | Used by |
+|---|---|---|---|
+| `CONVEX_DEPLOY_KEY` | `prod:your-project\|eyJ...` (from Step 2) | Production | Convex CLI |
+| `VITE_CONVEX_URL` | `https://happy-animal-123.convex.cloud` (from Step 2) | All | Browser Convex client |
+| `VITE_CONVEX_SITE_URL` | `https://happy-animal-123.convex.site` (from Step 2) | All | SolidStart auth proxy |
+| `VITE_BETTER_AUTH_URL` | `https://your-app.vercel.app` (your Vercel domain) | Production | Browser auth client |
+| `BETTER_AUTH_SECRET` | Generate with `openssl rand -base64 32` | All | SolidStart server |
+| `GOOGLE_CLIENT_ID` | From Step 1 | All | SolidStart server |
+| `GOOGLE_CLIENT_SECRET` | From Step 1 | All | SolidStart server |
 
-> **Note:** On the first deploy you won't know the exact domain yet. Deploy once, note the domain Vercel assigns (e.g., `https://floorplan-app-xyz.vercel.app`), then update `BETTER_AUTH_URL` and redeploy.
+> **Note:** On the first deploy you won't know the exact domain yet. Deploy once, note the domain Vercel assigns (e.g., `https://floorplan-app-xyz.vercel.app`), then update `VITE_BETTER_AUTH_URL` and redeploy.
 
 ### 3c. Deploy
 
@@ -119,22 +122,32 @@ Now that you have your Vercel URL:
 
 ---
 
-## Step 5: Configure Convex Auth for Production
+## Step 5: Set Convex Server Environment Variables
 
-The current `convex/auth.config.ts` uses a dev-only custom JWT provider. For production with Better Auth, you'll need to add a production provider alongside the dev one.
-
-The `@convex-dev/better-auth` package in your dependencies handles this bridge — see its docs for the exact provider config to add.
-
----
-
-## Step 6 (Optional): Set Convex Server Env Variables
-
-Some features need server-side env vars in Convex itself (not Vercel):
+Convex functions run in the Convex cloud, not on Vercel — they need their own environment variables. These are **required** for auth to work.
 
 ```bash
-# Set super admin email in Convex
+# Required: Auth configuration
+npx convex env set SITE_URL "https://your-app.vercel.app"
+npx convex env set CONVEX_SITE_URL "https://happy-animal-123.convex.site"
+npx convex env set BETTER_AUTH_SECRET "same-secret-as-vercel"
+npx convex env set GOOGLE_CLIENT_ID "your-client-id.apps.googleusercontent.com"
+npx convex env set GOOGLE_CLIENT_SECRET "GOCSPX-your-client-secret"
+
+# Optional: Admin features
 npx convex env set SUPER_ADMIN_EMAIL "your@email.com"
 ```
+
+| Variable | Purpose | Source file |
+|---|---|---|
+| `SITE_URL` | Better Auth base URL for cookie/redirect handling | `convex/auth.ts`, `convex/http.ts` |
+| `CONVEX_SITE_URL` | OIDC discovery endpoint redirect | `convex/http.ts` |
+| `BETTER_AUTH_SECRET` | Session encryption (must match Vercel's value) | `convex/auth.ts` |
+| `GOOGLE_CLIENT_ID` | Google OAuth provider | `convex/auth.ts` |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth provider | `convex/auth.ts` |
+| `SUPER_ADMIN_EMAIL` | (Optional) Grants super admin to this email | `convex/lib/auth.ts` |
+
+> **Important:** `BETTER_AUTH_SECRET` must be the **same value** in both Vercel and Convex.
 
 ---
 
@@ -143,8 +156,8 @@ npx convex env set SUPER_ADMIN_EMAIL "your@email.com"
 | Service | What to configure | How |
 |---|---|---|
 | **GitHub** | Nothing needed | Vercel connects to your repo directly |
-| **Vercel** | 6 env vars + build settings | Dashboard > Project Settings |
-| **Convex** | Deploy key + env vars | Dashboard > Settings |
+| **Vercel** | 7 env vars + build settings | Dashboard > Project Settings |
+| **Convex** | Deploy key + 5 server env vars | Dashboard > Settings + `npx convex env set` |
 | **Google Cloud** | OAuth client + redirect URIs | Cloud Console > Credentials |
 
 > **Note:** GitHub Secrets are not needed. Vercel manages its own secrets. The only reason to add GitHub secrets is if you run `convex deploy` from a GitHub Actions CI job independently of Vercel.
@@ -157,7 +170,8 @@ npx convex env set SUPER_ADMIN_EMAIL "your@email.com"
 - [ ] Click "Sign in with Google" — should redirect through OAuth flow
 - [ ] After sign-in, confirm you land on `/dashboard`
 - [ ] Check Convex Dashboard > Data — confirm user was created
-- [ ] (Optional) Set up a custom domain in Vercel > Domains, then update `BETTER_AUTH_URL` and Google OAuth URIs
+- [ ] Go to Settings > Sessions — verify current session shows with "Current" badge
+- [ ] (Optional) Set up a custom domain in Vercel > Domains, then update `VITE_BETTER_AUTH_URL`, `SITE_URL`, and Google OAuth URIs
 
 ---
 
@@ -186,8 +200,14 @@ For preview deployments (one Convex backend per PR):
 
 ### Session Not Persisting
 
-- Ensure `BETTER_AUTH_SECRET` is set and consistent across deploys
-- Ensure `BETTER_AUTH_URL` matches your actual Vercel domain
+- Ensure `BETTER_AUTH_SECRET` is set and **identical** in both Vercel and Convex
+- Ensure `SITE_URL` in Convex matches your actual Vercel domain
+- Ensure `VITE_BETTER_AUTH_URL` in Vercel matches your actual domain
+
+### Auth Proxy Returning 503
+
+- Verify `VITE_CONVEX_SITE_URL` is set in Vercel (the `.convex.site` URL, not `.convex.cloud`)
+- Check that `SITE_URL` and `CONVEX_SITE_URL` are set in Convex server env vars
 
 ### Convex Connection Issues
 

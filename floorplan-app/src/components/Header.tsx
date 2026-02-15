@@ -75,19 +75,46 @@ export const Header: Component<HeaderProps> = (props) => {
     return convexUser?.username ?? user()?.username ?? user()?.name ?? '';
   });
 
-  // Theme toggle button (reused in both standalone and viewer controls)
+  // Theme toggle — DaisyUI swap component with rotate animation
   const ThemeToggleButton = () => (
-    <button
-      class={`btn btn-sm btn-circle shadow-sm transition-colors ${
-        theme() === 'light'
-          ? 'bg-neutral text-neutral-content hover:bg-neutral-focus'
-          : 'bg-base-300 text-base-content hover:bg-base-200'
-      }`}
-      onClick={toggleTheme}
-      title={`Switch to ${theme() === 'light' ? 'dark' : 'light'} theme`}
-    >
-      {theme() === 'light' ? '🌙' : '☀️'}
-    </button>
+    <label class="btn btn-sm btn-circle btn-ghost swap swap-rotate">
+      <input
+        type="checkbox"
+        checked={theme() === 'dark'}
+        onChange={toggleTheme}
+        aria-label={`Switch to ${theme() === 'light' ? 'dark' : 'light'} theme`}
+      />
+      {/* Sun — visible when swap is ON (dark mode active) */}
+      <svg
+        aria-hidden="true"
+        class="swap-on w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+        />
+      </svg>
+      {/* Moon — visible when swap is OFF (light mode active) */}
+      <svg
+        aria-hidden="true"
+        class="swap-off w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+        />
+      </svg>
+    </label>
   );
 
   return (
@@ -99,7 +126,13 @@ export const Header: Component<HeaderProps> = (props) => {
         <div class="header-logo flex items-center gap-2 sm:gap-4">
           <Show when={props.backHref}>
             <A href={props.backHref!} class="btn btn-ghost btn-sm gap-2">
-              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                aria-hidden="true"
+                class="w-4 h-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -170,6 +203,7 @@ export const Header: Component<HeaderProps> = (props) => {
                     : '👁️ Basic'}
               </div>
               <button
+                type="button"
                 class="btn btn-ghost btn-sm"
                 onClick={props.onCommandPalette}
                 title="Command palette (Cmd+K)"

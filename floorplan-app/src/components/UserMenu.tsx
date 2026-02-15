@@ -47,7 +47,12 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
         }
       >
         <div class="dropdown dropdown-end">
-          <div tabIndex={0} role="button" class="btn btn-ghost btn-circle avatar">
+          <button
+            type="button"
+            tabIndex={0}
+            class="btn btn-ghost btn-circle avatar"
+            classList={{ 'btn-sm': props.size === 'sm' }}
+          >
             <div class={`${avatarSize()} rounded-full`}>
               <Show
                 when={user()?.image}
@@ -64,7 +69,7 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
                 />
               </Show>
             </div>
-          </div>
+          </button>
           <ul class="menu menu-sm dropdown-content mt-3 z-[100] p-2 shadow-xl bg-base-100 rounded-box w-52 border border-base-content/15 ring-1 ring-base-content/10">
             <li class="menu-title px-2 py-1">
               <span class="text-base-content font-medium">{user()?.name}</span>
@@ -75,7 +80,13 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
             <div class="divider my-1" />
             <li>
               <A href="/dashboard" class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  aria-hidden="true"
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -89,7 +100,13 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
             <Show when={username()}>
               <li>
                 <A href={`/u/${username()}`} class="flex items-center gap-2">
-                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    aria-hidden="true"
+                    class="w-4 h-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path
                       stroke-linecap="round"
                       stroke-linejoin="round"
@@ -103,7 +120,13 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
             </Show>
             <li>
               <A href="/new" class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  aria-hidden="true"
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -117,7 +140,13 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
             <div class="divider my-1" />
             <li>
               <A href="/settings" class="flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  aria-hidden="true"
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"

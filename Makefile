@@ -230,6 +230,11 @@ docker-dev: ## Start development with Docker (interactive logs)
 docker-restart: ## Restart Docker services
 	docker compose restart
 
+docker-reset-deps: ## Reset Docker node_modules volumes (use when dependencies change)
+	docker compose down
+	docker volume rm mermaid-floorplan_app-node-modules mermaid-floorplan_app-floorplan-app-node-modules 2>/dev/null || true
+	@echo "Node_modules volumes removed. Run 'make docker-up' to reinstall."
+
 docker-convex-deploy: ## Deploy Convex functions to self-hosted backend (Docker)
 	@echo "Generating admin key and deploying Convex functions..."
 	@ADMIN_KEY="$$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n')" && \

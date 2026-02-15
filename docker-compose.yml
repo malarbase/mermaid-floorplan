@@ -24,6 +24,11 @@ services:
     env_file:
       - floorplan-app/.env.development  # Development defaults
       - floorplan-app/.env.local        # Optional local overrides (gitignored)
+    environment:
+      # Docker-internal URLs for server-side code (overrides env_file values).
+      # Browser-facing VITE_* URLs (localhost) come from env_file and are correct.
+      - CONVEX_SITE_URL=http://convex:3211
+      - CONVEX_URL=http://convex:3210
     ports:
       - "3000:3000"
     volumes:
@@ -32,6 +37,8 @@ services:
       - ./floorplan-app/convex:/app/floorplan-app/convex
       - ./floorplan-app/app.config.ts:/app/floorplan-app/app.config.ts
       - ./floorplan-app/package.json:/app/floorplan-app/package.json
+      # Lockfile for automatic dependency reinstall on change
+      - ./package-lock.json:/app/package-lock.json:ro
       # Dev auth keys + key generation script (shared between host and container)
       - ./floorplan-app/dev-keys:/app/floorplan-app/dev-keys
       - ./floorplan-app/scripts:/app/floorplan-app/scripts

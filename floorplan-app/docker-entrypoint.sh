@@ -1,6 +1,29 @@
 #!/bin/sh
 set -e
 
+# ---------------------------------------------------------------------------
+# Auto-reinstall dependencies when package-lock.json changes.
+# Named Docker volumes for node_modules persist across rebuilds, so they can
+# become stale when dependencies are added/removed on the host.
+# ---------------------------------------------------------------------------
+LOCK_HASH=$(md5sum /app/package-lock.json 2>/dev/null | cut -d' ' -f1)
+STAMP_FILE=/app/node_modules/.lockfile-hash
+
+if [ -z "$LOCK_HASH" ]; then
+  echo "Warning: package-lock.json not found, skipping dependency check"
+elif [ ! -f "$STAMP_FILE" ] || [ "$(cat "$STAMP_FILE" 2>/dev/null)" != "$LOCK_HASH" ]; then
+  echo "=== Dependencies changed, running npm ci... ==="
+  cd /app && npm ci
+  echo "$LOCK_HASH" > "$STAMP_FILE"
+  # Rebuild shared workspace packages after reinstall
+  npm run build --workspace floorplan-common 2>&1 || true
+  npm run build --workspace floorplan-3d-core 2>&1 || true
+  npm run build --workspace floorplan-viewer-core 2>&1 || true
+  echo "=== Dependencies updated ==="
+else
+  echo "Dependencies up to date"
+fi
+
 echo "=== Convex Function Deployment ==="
 
 # Resolve admin key: prefer auto-generated key from shared volume,
