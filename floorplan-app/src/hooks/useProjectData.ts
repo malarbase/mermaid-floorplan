@@ -68,6 +68,29 @@ export function useProjectData(
     return (user.username ?? user.name) === own.username;
   });
 
+  // Query access level for the current user (owner, editor, viewer, or public).
+  // This resolves collaborator access so the UI can show editor / save controls
+  // for invited editors, not just the project owner.
+  const accessQuery = useQuery(
+    api.sharing.checkAccess,
+    () => ({
+      projectId: (project()?._id ?? '') as Id<'projects'>,
+      token: shareToken?.(),
+    }),
+    () => ({ enabled: !!project()?._id }),
+  );
+
+  const canEdit = createMemo(() => {
+    // Owner can always edit
+    if (isOwner()) return true;
+    // Check collaborator / share-link edit access from the server
+    const access = accessQuery.data() as
+      | { role: string; canEdit: boolean; canManage: boolean }
+      | null
+      | undefined;
+    return access?.canEdit ?? false;
+  });
+
   const isProjectLoading = createMemo(() => {
     return projectQuery.isLoading() || projectQuery.data() === undefined;
   });
@@ -97,6 +120,7 @@ export function useProjectData(
     forkedFrom,
     projectData,
     isOwner,
+    canEdit,
     isProjectLoading,
     projectNotFound,
     currentUser,

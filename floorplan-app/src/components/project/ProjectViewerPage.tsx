@@ -47,6 +47,7 @@ export interface ProjectViewerPageProps {
   forkedFrom: Accessor<ForkedFrom | null | undefined>;
   projectData: Accessor<unknown>;
   isOwner: Accessor<boolean>;
+  canEdit: Accessor<boolean>;
   isProjectLoading: Accessor<boolean>;
   projectNotFound: Accessor<boolean>;
 
@@ -90,6 +91,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
   const projectSlug = props.projectSlug;
   const project = props.project;
   const isOwner = props.isOwner;
+  const canEdit = props.canEdit;
   const content = props.content;
   const currentHash = props.currentHash;
 
@@ -114,7 +116,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
     if (modeParam && ['basic', 'advanced', 'editor'].includes(modeParam)) {
       return modeParam as ViewerMode;
     }
-    return isOwner() ? 'editor' : 'advanced';
+    return canEdit() ? 'editor' : 'advanced';
   });
 
   // --- Core instance (for thumbnail capture) ---
@@ -125,7 +127,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
 
   // --- Save functionality (shared hook) ---
   // Auto-capture a preview thumbnail after each save (throttled to every 30s)
-  const save = useProjectSave(content, () => project()?._id, props.versionName, isOwner, {
+  const save = useProjectSave(content, () => project()?._id, props.versionName, canEdit, {
     onSaveSuccess: () => thumbnail.capture(),
   });
 
@@ -170,7 +172,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
           projectSlug={projectSlug()!}
           defaultVersion={project()?.defaultVersion}
           currentVersion={props.versionName() ?? 'main'}
-          canCreateVersion={isOwner()}
+          canCreateVersion={canEdit()}
           onCreateNew={() => setShowCreateVersionModal(true)}
           size="sm"
         />
@@ -227,7 +229,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
         </A>
       </Show>
 
-      <Show when={isOwner()}>
+      <Show when={canEdit()}>
         <SaveIndicator
           hasUnsavedChanges={save.hasUnsavedChanges}
           isSaving={save.isSaving}
@@ -318,7 +320,7 @@ export function ProjectViewerPage(props: ProjectViewerPageProps) {
       </div>
 
       {/* Create Version Modal */}
-      <Show when={isOwner() && project() && username() && projectSlug()}>
+      <Show when={canEdit() && project() && username() && projectSlug()}>
         <CreateVersionModal
           isOpen={showCreateVersionModal()}
           onClose={() => setShowCreateVersionModal(false)}

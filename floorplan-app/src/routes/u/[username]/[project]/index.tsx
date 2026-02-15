@@ -41,8 +41,16 @@ export default function ProjectView() {
   });
 
   // Project data
-  const { project, owner, forkedFrom, projectData, isOwner, isProjectLoading, projectNotFound } =
-    useProjectData(username, projectSlug, shareToken);
+  const {
+    project,
+    owner,
+    forkedFrom,
+    projectData,
+    isOwner,
+    canEdit,
+    isProjectLoading,
+    projectNotFound,
+  } = useProjectData(username, projectSlug, shareToken);
 
   // Version data (default version)
   const defaultVersion = createMemo(() => project()?.defaultVersion ?? 'main');
@@ -60,6 +68,7 @@ export default function ProjectView() {
       forkedFrom={forkedFrom}
       projectData={projectData}
       isOwner={isOwner}
+      canEdit={canEdit}
       isProjectLoading={isProjectLoading}
       projectNotFound={projectNotFound}
       content={content}

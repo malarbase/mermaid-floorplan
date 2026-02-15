@@ -153,7 +153,7 @@ function VersionCard(props: {
   username: string;
   projectSlug: string;
   projectId: Id<'projects'>;
-  isOwner: boolean;
+  canEdit: boolean;
   copiedHash: () => string | null;
   onCopied: (hash: string) => void;
 }) {
@@ -253,7 +253,7 @@ function VersionCard(props: {
               <span class="badge badge-primary badge-xs sm:badge-sm">default</span>
             </Show>
             {/* Delete button for non-default versions */}
-            <Show when={props.isOwner && !props.isDefault}>
+            <Show when={props.canEdit && !props.isDefault}>
               <button
                 type="button"
                 class="btn btn-ghost btn-xs text-error/60 hover:text-error"
@@ -396,7 +396,7 @@ function VersionCard(props: {
                             />
                             {/* Restore button for non-HEAD snapshots (owner/editor only) */}
                             <Show
-                              when={!snapshot.headOf.includes(props.version.name) && props.isOwner}
+                              when={!snapshot.headOf.includes(props.version.name) && props.canEdit}
                             >
                               <button
                                 class="btn btn-warning btn-xs"
@@ -508,11 +508,8 @@ export default function ProjectHistory() {
   const shareToken = useShareToken();
 
   // Project data from shared hook
-  const { project, owner, forkedFrom, projectData, isOwner, isProjectLoading } = useProjectData(
-    username,
-    projectSlug,
-    shareToken,
-  );
+  const { project, owner, forkedFrom, projectData, isOwner, canEdit, isProjectLoading } =
+    useProjectData(username, projectSlug, shareToken);
 
   // Query versions
   const versionsQuery = useQuery(
@@ -678,7 +675,7 @@ export default function ProjectHistory() {
                   </svg>
                   Versions ({versions().length})
                 </h2>
-                <Show when={isOwner()}>
+                <Show when={canEdit()}>
                   <button
                     class="btn btn-primary btn-sm"
                     onClick={() => setShowCreateVersionModal(true)}
@@ -721,7 +718,7 @@ export default function ProjectHistory() {
                         username={username()!}
                         projectSlug={projectSlug()!}
                         projectId={project()!._id}
-                        isOwner={isOwner()}
+                        canEdit={canEdit()}
                         copiedHash={copiedHash}
                         onCopied={handleCopied}
                       />
@@ -800,7 +797,7 @@ export default function ProjectHistory() {
           </div>
 
           {/* Create Version Modal */}
-          <Show when={isOwner() && project() && username() && projectSlug()}>
+          <Show when={canEdit() && project() && username() && projectSlug()}>
             <CreateVersionModal
               isOpen={showCreateVersionModal()}
               onClose={() => setShowCreateVersionModal(false)}

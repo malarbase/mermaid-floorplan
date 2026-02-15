@@ -11,6 +11,7 @@
 import { useNavigate, useSearchParams } from '@solidjs/router';
 import { useMutation } from 'convex-solidjs';
 import { createSignal, For, onMount, Show } from 'solid-js';
+import { useActiveSessions } from '~/hooks/useActiveSessions';
 import { clearDevLogin, getDevUserId, isDevLoggedIn, setDevUser } from '~/lib/mock-auth';
 import { api } from '../../convex/_generated/api';
 
@@ -53,6 +54,8 @@ export default function DevLogin() {
   const [isLoggingIn, setIsLoggingIn] = createSignal<string | null>(null);
   const [loginError, setLoginError] = createSignal<string | null>(null);
   const ensureDevUser = useMutation(api.dev.ensureDevUser);
+  const { sessions } = useActiveSessions();
+  const sessionCount = () => sessions()?.length ?? 0;
 
   // Only allow in development
   if (import.meta.env.PROD) {
@@ -189,7 +192,7 @@ export default function DevLogin() {
                   {/* Avatar placeholder */}
                   <div class="avatar placeholder">
                     <div
-                      class="w-12 rounded-full"
+                      class="w-12 rounded-full flex items-center justify-center"
                       classList={{
                         'bg-primary text-primary-content': !persona.isAdmin,
                         'bg-warning text-warning-content': persona.isAdmin,
@@ -217,7 +220,16 @@ export default function DevLogin() {
                   {/* Action */}
                   <Show
                     when={currentUser() !== persona.authId}
-                    fallback={<span class="badge badge-primary badge-outline">Active</span>}
+                    fallback={
+                      <div class="flex items-center gap-1.5">
+                        <span class="badge badge-primary badge-outline">Active</span>
+                        <Show when={sessionCount() > 0}>
+                          <span class="badge badge-ghost badge-sm text-xs">
+                            {sessionCount()} {sessionCount() === 1 ? 'session' : 'sessions'}
+                          </span>
+                        </Show>
+                      </div>
+                    }
                   >
                     <button
                       type="button"

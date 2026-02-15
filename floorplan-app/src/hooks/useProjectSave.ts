@@ -23,14 +23,14 @@ interface UseProjectSaveOptions {
  * @param content - Accessor to the server-side (last-saved) DSL content
  * @param projectId - Accessor to the current project ID
  * @param versionName - Accessor to the version name to save to (e.g. "main" or a named version)
- * @param isOwner - Accessor indicating whether the current user owns the project
+ * @param canSave - Accessor indicating whether the current user can save (owner or editor collaborator)
  * @param options - Optional callbacks (e.g. auto-capture preview on save)
  */
 export function useProjectSave(
   content: Accessor<string | undefined>,
   projectId: Accessor<Id<'projects'> | undefined>,
   versionName: Accessor<string | undefined>,
-  isOwner: Accessor<boolean>,
+  canSave: Accessor<boolean>,
   options?: UseProjectSaveOptions,
 ) {
   const saveMutation = useMutation(api.projects.save);
@@ -71,7 +71,7 @@ export function useProjectSave(
   const handleSave = async (message?: string) => {
     const pid = projectId();
     const ver = versionName();
-    if (!isOwner() || !pid || !ver || !hasUnsavedChanges() || isSaving()) return;
+    if (!canSave() || !pid || !ver || !hasUnsavedChanges() || isSaving()) return;
 
     setIsSaving(true);
     setSaveError(null);
@@ -106,7 +106,7 @@ export function useProjectSave(
 
   // Keyboard shortcut (Ctrl+S / Cmd+S)
   createEffect(() => {
-    if (!isOwner()) return;
+    if (!canSave()) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault();

@@ -3,6 +3,7 @@ import { useMutation, useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, Show } from 'solid-js';
 import { Header } from '~/components/Header';
 import { LogoutButton } from '~/components/LogoutButton';
+import { SessionsSection } from '~/components/SessionsSection';
 import { UsernameChangeModal, useUsernameChangeModal } from '~/components/UsernameChangeModal';
 import { useAuthRedirect } from '~/hooks/useAuthRedirect';
 import { api } from '../../convex/_generated/api';
@@ -112,20 +113,24 @@ export default function Settings() {
 
                 {/* Avatar and Name */}
                 <div class="flex items-center gap-4 mb-6">
-                  <div class="avatar">
-                    <div class="w-16 rounded-full">
-                      <Show
-                        when={userProfile()?.avatarUrl}
-                        fallback={
-                          <div class="bg-neutral text-neutral-content w-full h-full flex items-center justify-center text-2xl">
+                  <Show
+                    when={userProfile()?.avatarUrl}
+                    fallback={
+                      <div class="avatar placeholder">
+                        <div class="bg-neutral text-neutral-content w-16 rounded-full flex items-center justify-center">
+                          <span class="text-2xl">
                             {userProfile()?.displayName?.charAt(0).toUpperCase() ?? '?'}
-                          </div>
-                        }
-                      >
+                          </span>
+                        </div>
+                      </div>
+                    }
+                  >
+                    <div class="avatar">
+                      <div class="w-16 rounded-full">
                         <img alt="User avatar" src={userProfile()?.avatarUrl ?? ''} />
-                      </Show>
+                      </div>
                     </div>
-                  </div>
+                  </Show>
                   <div class="flex-1 min-w-0">
                     {/* Click-to-edit display name */}
                     <Show
@@ -250,6 +255,9 @@ export default function Settings() {
                 </Show>
               </div>
             </div>
+
+            {/* Sessions Section */}
+            <SessionsSection />
 
             {/* Account Section */}
             <div class="card bg-base-100 shadow-xl">

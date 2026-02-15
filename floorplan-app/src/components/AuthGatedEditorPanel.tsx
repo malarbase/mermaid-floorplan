@@ -45,6 +45,10 @@ export interface AuthGatedEditorPanelProps {
    * Called when content is modified (even if not saved)
    */
   onContentChange?: (content: string) => void;
+
+  /** Whether the current user can edit (owner or editor collaborator).
+   *  When true, this panel is not needed — the normal editor handles saving. */
+  canEdit?: boolean;
 }
 
 /**
@@ -57,6 +61,20 @@ export function AuthGatedEditorPanel(props: AuthGatedEditorPanelProps) {
   const navigate = useNavigate();
   const session = useSession();
   const isLoggedIn = createMemo(() => !!session().data?.user);
+
+  // Collaborator editors use the normal editor flow with save — this panel is not needed
+  if (props.canEdit) {
+    return (
+      <div class="relative w-full h-full">
+        <FloorplanEditor
+          initialContent={props.initialContent}
+          editable={true}
+          theme={props.theme}
+          onContentChange={props.onContentChange}
+        />
+      </div>
+    );
+  }
 
   const handleLogin = () => {
     const returnUrl = encodeURIComponent(`${window.location.pathname}?fork=true`);
