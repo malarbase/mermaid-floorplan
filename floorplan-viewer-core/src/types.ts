@@ -125,9 +125,30 @@ export interface ViewerPublicApi {
 
   // -- Selection Manager --
 
-  /** Get the selection manager for subscribing to selection changes. */
+  /** Get the selection manager for selection control and change subscription. */
   getSelectionManager?(): {
-    onSelectionChange(cb: (event: { selection: ReadonlySet<SelectionEntity> }) => void): () => void;
+    select(entity: SelectionEntity, isAdditive: boolean, silent?: boolean): void;
+    selectMultiple(
+      entities: SelectionEntity[],
+      isAdditive: boolean,
+      options?: {
+        primaryEntities?: SelectionEntity[];
+        isHierarchical?: boolean;
+        silent?: boolean;
+      },
+    ): void;
+    deselect(entity?: SelectionEntity): void;
+    highlight(entity: SelectionEntity): void;
+    clearHighlight(): void;
+    getSelection(): SelectionEntity[];
+    onSelectionChange(
+      cb: (event: {
+        selection: ReadonlySet<SelectionEntity>;
+        added: SelectionEntity[];
+        removed: SelectionEntity[];
+        source: string;
+      }) => void,
+    ): () => void;
   } | null;
 
   // -- File Operations --
