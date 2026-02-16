@@ -1,0 +1,6 @@
+#!/bin/sh
+# Context freshness audit after merge/pull
+SCRIPTS_DIR="$(git rev-parse --show-toplevel)/scripts"
+if command -v python3 >/dev/null 2>&1 && [ -f "$SCRIPTS_DIR/context_audit.py" ]; then
+  python3 "$SCRIPTS_DIR/context_audit.py" 2>/dev/null
+fi

@@ -1,0 +1,6 @@
+#!/bin/sh
+# Context freshness check — warns if committed files affect context
+SCRIPTS_DIR="$(git rev-parse --show-toplevel)/scripts"
+if command -v python3 >/dev/null 2>&1 && [ -f "$SCRIPTS_DIR/context_check_watches.py" ]; then
+  git diff-tree --no-commit-id --name-only -r HEAD | xargs python3 "$SCRIPTS_DIR/context_check_watches.py" 2>/dev/null
+fi
