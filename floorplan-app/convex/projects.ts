@@ -3,7 +3,8 @@ import type { Doc } from './_generated/dataModel';
 import type { QueryCtx } from './_generated/server';
 import { internalMutation, mutation, query } from './_generated/server';
 import { resolveAccess } from './lib/access';
-import { getCurrentUser, requireUser } from './lib/auth';
+import { getCurrentUser, isUserBanned, requireUser } from './lib/auth';
+import { createNotification } from './notifications';
 
 /**
  * Check if the current user can access a project.
@@ -92,6 +93,7 @@ export const listPublicByUsername = query({
       .first();
 
     if (!user) return [];
+    if (isUserBanned(user)) return [];
 
     return ctx.db
       .query('projects')
@@ -1028,7 +1030,6 @@ export const resolveSlug = query({
 export const backfillSnapshotHashes = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const batchSize = 100;
     let processed = 0;
 
     // Scan all snapshots and patch any missing snapshotHash
@@ -1118,6 +1119,13 @@ export const requestTransfer = mutation({
       userId: user._id,
       metadata: { toUserId: args.toUserId, requestId },
       createdAt: now,
+    });
+
+    await createNotification(ctx, {
+      userId: args.toUserId,
+      type: 'transfer.requested',
+      title: `${user.displayName ?? user.username} wants to transfer "${project.displayName}" to you`,
+      metadata: { projectId: args.projectId, requestId, fromUserId: user._id },
     });
 
     return requestId;
@@ -1235,6 +1243,13 @@ export const acceptTransfer = mutation({
       createdAt: now,
     });
 
+    await createNotification(ctx, {
+      userId: oldOwnerId,
+      type: 'transfer.accepted',
+      title: `${user.displayName ?? user.username} accepted ownership of "${project.displayName}"`,
+      metadata: { projectId: request.projectId, requestId: args.requestId },
+    });
+
     return { success: true as const, newSlug: finalSlug };
   },
 });
@@ -1266,6 +1281,18 @@ export const cancelTransfer = mutation({
     await ctx.db.patch(args.requestId, {
       status: 'cancelled' as const,
       respondedAt: Date.now(),
+    });
+
+    // Notify the other party
+    const otherUserId = request.fromUserId === user._id ? request.toUserId : request.fromUserId;
+    const project = await ctx.db.get(request.projectId);
+    const projectName = project?.displayName ?? 'a project';
+    await createNotification(ctx, {
+      userId: otherUserId,
+      type: 'transfer.cancelled',
+      title: `Transfer of "${projectName}" was cancelled`,
+      message: `${user.displayName ?? user.username} cancelled the transfer`,
+      metadata: { projectId: request.projectId, requestId: args.requestId },
     });
   },
 });

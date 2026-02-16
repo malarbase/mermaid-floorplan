@@ -33,7 +33,9 @@ async function getUserByIdentity(
 export async function getCurrentUser(ctx: QueryCtx): Promise<Doc<'users'> | null> {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity) return null;
-  return getUserByIdentity(ctx, identity);
+  const user = await getUserByIdentity(ctx, identity);
+  if (user && isUserBanned(user)) return null;
+  return user;
 }
 
 /**
@@ -53,7 +55,10 @@ export async function requireUser(ctx: MutationCtx): Promise<Doc<'users'>> {
 
   if (identity) {
     const user = await getUserByIdentity(ctx, identity);
-    if (user) return user;
+    if (user) {
+      if (isUserBanned(user)) throw new Error('Account suspended');
+      return user;
+    }
   }
 
   throw new Error('Unauthenticated');
@@ -79,6 +84,14 @@ export const optionalAuthQuery = customQuery(
     user: await getCurrentUser(ctx),
   })),
 );
+
+/**
+ * Check if a user is currently banned (timed or permanent).
+ * Uses bannedUntil timestamp: undefined = not banned, MAX_SAFE_INTEGER = permanent.
+ */
+export function isUserBanned(user: Doc<'users'>): boolean {
+  return !!user.bannedUntil && user.bannedUntil > Date.now();
+}
 
 export function isSuperAdmin(user: Doc<'users'>): boolean {
   const superAdminEmail = process.env.SUPER_ADMIN_EMAIL;

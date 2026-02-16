@@ -8,8 +8,8 @@ import { ProjectList } from '~/components/ProjectList';
 import { TempUsernameNudge } from '~/components/TempUsernameNudge';
 import { UsernameSelectionModal } from '~/components/UsernameSelectionModal';
 import { useAuthRedirect } from '~/hooks/useAuthRedirect';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { api } from '../../../convex/_generated/api';
+import type { Id } from '../../../convex/_generated/dataModel';
 
 /** Card for a single pending transfer request. */
 function TransferRequestCard(props: {
@@ -100,6 +100,7 @@ function TransferRequestCard(props: {
           <Show when={!slugCollision()}>
             <div class="flex gap-2 shrink-0">
               <button
+                type="button"
                 class="btn btn-success btn-sm"
                 disabled={isAccepting() || isDeclining()}
                 onClick={() => handleAccept()}
@@ -109,6 +110,7 @@ function TransferRequestCard(props: {
                 </Show>
               </button>
               <button
+                type="button"
                 class="btn btn-ghost btn-sm text-error"
                 disabled={isAccepting() || isDeclining()}
                 onClick={handleDecline}
@@ -137,6 +139,7 @@ function TransferRequestCard(props: {
                 placeholder="new-slug"
               />
               <button
+                type="button"
                 class="btn btn-success btn-sm"
                 disabled={isAccepting() || !customSlug().trim()}
                 onClick={() => handleAccept(customSlug().trim())}
@@ -145,7 +148,11 @@ function TransferRequestCard(props: {
                   <span class="loading loading-spinner loading-xs" />
                 </Show>
               </button>
-              <button class="btn btn-ghost btn-sm" onClick={() => setSlugCollision(false)}>
+              <button
+                type="button"
+                class="btn btn-ghost btn-sm"
+                onClick={() => setSlugCollision(false)}
+              >
                 Cancel
               </button>
             </div>
@@ -237,7 +244,13 @@ export default function Dashboard() {
               <p class="dashboard-hero-subtitle">Create and manage your floorplan designs</p>
             </div>
             <A href="/new" class="btn btn-primary gap-2 shadow-lg glow-accent w-full sm:w-auto">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                aria-hidden="true"
+              >
                 <path
                   stroke-linecap="round"
                   stroke-linejoin="round"
@@ -264,7 +277,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon primary">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -289,7 +302,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon secondary">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -314,7 +327,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon accent">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -339,7 +352,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon warning">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -364,7 +377,7 @@ export default function Dashboard() {
               type="button"
             >
               <div class="stat-card-icon info">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -415,7 +428,10 @@ export default function Dashboard() {
             <ProjectList
               username={username()}
               onCreateNew={() => navigate('/new')}
-              sharedProjects={sharedQuery.data() as any}
+              sharedProjects={
+                // biome-ignore lint/suspicious/noExplicitAny: Convex query type mismatch with component prop
+                sharedQuery.data() as any
+              }
               filter={filter()}
             />
           </Show>

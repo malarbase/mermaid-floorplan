@@ -6,7 +6,7 @@ import { LogoutButton } from '~/components/LogoutButton';
 import { SessionsSection } from '~/components/SessionsSection';
 import { UsernameChangeModal, useUsernameChangeModal } from '~/components/UsernameChangeModal';
 import { useAuthRedirect } from '~/hooks/useAuthRedirect';
-import { api } from '../../convex/_generated/api';
+import { api } from '../../../convex/_generated/api';
 
 /**
  * User settings page - allows users to manage their account.
@@ -148,6 +148,7 @@ export default function Settings() {
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
+                            aria-hidden="true"
                           >
                             <path
                               stroke-linecap="round"
@@ -191,12 +192,15 @@ export default function Settings() {
 
                 {/* Username */}
                 <div class="form-control">
-                  <label class="label">
+                  <label for="username-display" class="label">
                     <span class="label-text font-medium">Username</span>
                   </label>
                   <div class="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
                     <div class="flex-1">
-                      <div class="input input-bordered flex items-center gap-2 bg-base-200 text-sm sm:text-base">
+                      <div
+                        id="username-display"
+                        class="input input-bordered flex items-center gap-2 bg-base-200 text-sm sm:text-base"
+                      >
                         <span class="text-base-content/50">@</span>
                         <span class={`truncate ${isTempUsername() ? 'text-warning' : ''}`}>
                           {userProfile()?.username}
@@ -214,11 +218,11 @@ export default function Settings() {
                       Change
                     </button>
                   </div>
-                  <label class="label">
+                  <div class="label">
                     <span class="label-text-alt text-base-content/50">
                       Your profile URL: floorplan.app/u/{userProfile()?.username}
                     </span>
-                  </label>
+                  </div>
                 </div>
 
                 {/* Temporary username notice */}
@@ -229,6 +233,7 @@ export default function Settings() {
                       class="stroke-current shrink-0 h-6 w-6"
                       fill="none"
                       viewBox="0 0 24 24"
+                      aria-hidden="true"
                     >
                       <path
                         stroke-linecap="round"
@@ -269,7 +274,12 @@ export default function Settings() {
                   <div>
                     <div class="text-sm font-medium mb-2">Connected Account</div>
                     <div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg">
-                      <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                      <svg
+                        class="w-6 h-6"
+                        viewBox="0 0 24 24"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
                         <path
                           d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                           fill="#4285F4"

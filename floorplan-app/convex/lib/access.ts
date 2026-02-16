@@ -7,7 +7,7 @@
 
 import type { Doc, Id } from '../_generated/dataModel';
 import type { QueryCtx } from '../_generated/server';
-import { getCurrentUser } from './auth';
+import { getCurrentUser, isUserBanned } from './auth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -81,6 +81,10 @@ export async function resolveAccess(
   if (currentUser && currentUser._id === project.userId) {
     return { granted: true, role: 'owner', canEdit: true, canManage: true };
   }
+
+  // Deny access if project owner is banned (even for public projects)
+  const owner = await ctx.db.get(project.userId);
+  if (owner && isUserBanned(owner)) return DENIED;
 
   // --- Collaborator check ---
   let collaboratorRole: 'viewer' | 'editor' | 'admin' | null = null;

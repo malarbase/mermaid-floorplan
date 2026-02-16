@@ -4,6 +4,7 @@ import { type Component, createMemo, type JSX, Show } from 'solid-js';
 import { useSession } from '~/lib/auth-client';
 import { useAppTheme } from '~/lib/theme';
 import { api } from '../../convex/_generated/api';
+import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
 
 /**
@@ -211,6 +212,11 @@ export const Header: Component<HeaderProps> = (props) => {
                 ⌘K
               </button>
             </div>
+          </Show>
+
+          {/* Notification bell (authenticated users only) */}
+          <Show when={user()}>
+            <NotificationBell />
           </Show>
 
           {/* Theme toggle (always visible) */}

@@ -7,6 +7,7 @@ import SessionGuard from '~/components/SessionGuard';
 import { PageErrorBoundary } from '~/components/ui/ErrorBoundary';
 import { Loading } from '~/components/ui/Loading';
 import { ToastProvider } from '~/components/ui/Toast';
+import WarningBanner from '~/components/WarningBanner';
 import { ThemeProvider } from '~/lib/theme';
 import './app.css';
 
@@ -31,6 +32,7 @@ export default function App() {
               <ThemeProvider>
                 <ToastProvider position="top-right" defaultDuration={4000}>
                   <SessionGuard />
+                  <WarningBanner />
                   <Suspense
                     fallback={
                       <div class="min-h-screen flex items-center justify-center bg-base-200">

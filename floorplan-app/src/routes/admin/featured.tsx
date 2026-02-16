@@ -1,5 +1,6 @@
 import { useMutation, useQuery } from 'convex-solidjs';
 import { createMemo, createSignal, For, Show } from 'solid-js';
+import { ConfirmationModal } from '~/components/ui/ConfirmationModal';
 import { useToast } from '~/components/ui/Toast';
 import { api } from '../../../convex/_generated/api';
 import type { Id } from '../../../convex/_generated/dataModel';
@@ -19,7 +20,9 @@ interface Project {
 
 export default function FeaturedProjects() {
   const [search, setSearch] = createSignal('');
-  const [filter, setFilter] = createSignal<'all' | 'featured' | 'not-featured'>('all');
+  const [filter, setFilter] = createSignal<
+    'all' | 'featured' | 'not-featured' | 'public' | 'private'
+  >('all');
   const [limit, setLimit] = createSignal(50);
   const toast = useToast();
 
@@ -34,6 +37,18 @@ export default function FeaturedProjects() {
   const adminStatus = useQuery(api.admin.getCurrentUserAdminStatus, {});
   const isSuperAdmin = () => adminStatus.data()?.isSuperAdmin ?? false;
 
+  // Modal state for featuring a private project
+  const [featureWarning, setFeatureWarning] = createSignal<{
+    projectId: Id<'projects'>;
+    projectName: string;
+  } | null>(null);
+
+  // Modal state for delete confirmation
+  const [deleteTarget, setDeleteTarget] = createSignal<{
+    projectId: Id<'projects'>;
+    projectName: string;
+  } | null>(null);
+
   const filteredProjects = createMemo(() => {
     const allProjects = projects.data() as Project[] | undefined;
     if (!allProjects) return [];
@@ -42,6 +57,8 @@ export default function FeaturedProjects() {
     if (currentFilter === 'all') return allProjects;
     if (currentFilter === 'featured') return allProjects.filter((p) => p.isFeatured);
     if (currentFilter === 'not-featured') return allProjects.filter((p) => !p.isFeatured);
+    if (currentFilter === 'public') return allProjects.filter((p) => p.isPublic);
+    if (currentFilter === 'private') return allProjects.filter((p) => !p.isPublic);
     return allProjects;
   });
 
@@ -49,11 +66,26 @@ export default function FeaturedProjects() {
     projectId: Id<'projects'>,
     currentFeatured: boolean,
     projectName: string,
+    isPublic: boolean,
+  ) => {
+    // Warn when featuring a private project — show modal instead of proceeding
+    if (!currentFeatured && !isPublic) {
+      setFeatureWarning({ projectId, projectName });
+      return;
+    }
+
+    await doSetFeatured(projectId, !currentFeatured, projectName);
+  };
+
+  const doSetFeatured = async (
+    projectId: Id<'projects'>,
+    isFeatured: boolean,
+    projectName: string,
   ) => {
     try {
-      await setFeatured.mutate({ projectId, isFeatured: !currentFeatured });
+      await setFeatured.mutate({ projectId, isFeatured });
       toast.success(
-        !currentFeatured
+        isFeatured
           ? `Added "${projectName}" to featured`
           : `Removed "${projectName}" from featured`,
       );
@@ -63,30 +95,18 @@ export default function FeaturedProjects() {
     }
   };
 
-  const handleDelete = async (projectId: Id<'projects'>, projectName: string) => {
-    const confirmed = confirm(
-      `⚠️ DANGER: Delete "${projectName}"?\n\n` +
-        `This will permanently delete:\n` +
-        `• The project\n` +
-        `• All versions\n` +
-        `• All snapshots\n` +
-        `• All access permissions\n` +
-        `• All share links\n\n` +
-        `This action CANNOT be undone!\n\n` +
-        `Type the project name to confirm: "${projectName}"`,
-    );
+  const handleDelete = (projectId: Id<'projects'>, projectName: string) => {
+    setDeleteTarget({ projectId, projectName });
+  };
 
-    if (!confirmed) return;
-
-    const userTyped = prompt(`Type "${projectName}" to confirm deletion:`);
-    if (userTyped !== projectName) {
-      toast.error('Project name did not match. Deletion cancelled.');
-      return;
-    }
+  const confirmDelete = async () => {
+    const target = deleteTarget();
+    if (!target) return;
 
     try {
-      await deleteProject.mutate({ projectId });
-      toast.success(`Project "${projectName}" deleted`);
+      await deleteProject.mutate({ projectId: target.projectId });
+      toast.success(`Project "${target.projectName}" deleted`);
+      setDeleteTarget(null);
     } catch (err) {
       console.error(err);
       toast.error('Failed to delete project');
@@ -118,12 +138,16 @@ export default function FeaturedProjects() {
             class="select select-bordered w-full sm:w-auto"
             value={filter()}
             onChange={(e) =>
-              setFilter(e.currentTarget.value as 'all' | 'featured' | 'not-featured')
+              setFilter(
+                e.currentTarget.value as 'all' | 'featured' | 'not-featured' | 'public' | 'private',
+              )
             }
           >
             <option value="all">All Projects</option>
             <option value="featured">Featured Only</option>
             <option value="not-featured">Not Featured</option>
+            <option value="public">Public Only</option>
+            <option value="private">Private Only</option>
           </select>
         </div>
       </div>
@@ -185,7 +209,15 @@ export default function FeaturedProjects() {
                       </Show>
                     </td>
                     <td>
-                      <div class="font-bold">{project.displayName || 'Untitled Project'}</div>
+                      <div class="flex items-center gap-2">
+                        <span class="font-bold">{project.displayName || 'Untitled Project'}</span>
+                        <span
+                          class={`badge badge-xs ${project.isPublic ? 'badge-success' : 'badge-ghost text-base-content/40'}`}
+                          title={project.isPublic ? 'Public' : 'Private'}
+                        >
+                          {project.isPublic ? 'Public' : 'Private'}
+                        </span>
+                      </div>
                       <div class="text-xs text-base-content/60 font-mono mt-0.5">
                         {project.slug}
                       </div>
@@ -204,6 +236,7 @@ export default function FeaturedProjects() {
                       <div class="flex justify-end gap-4 text-xs font-medium text-base-content/70">
                         <span class="flex items-center gap-1" title="Views">
                           <svg
+                            aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             class="h-4 w-4"
                             fill="none"
@@ -227,6 +260,7 @@ export default function FeaturedProjects() {
                         </span>
                         <span class="flex items-center gap-1" title="Forks">
                           <svg
+                            aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             class="h-4 w-4"
                             fill="none"
@@ -247,6 +281,7 @@ export default function FeaturedProjects() {
                     <td class="text-right">
                       <div class="flex justify-end gap-2">
                         <button
+                          type="button"
                           class={`btn btn-sm w-28 ${
                             project.isFeatured
                               ? 'btn-warning btn-outline hover:btn-error hover:text-white hover:border-error'
@@ -257,6 +292,7 @@ export default function FeaturedProjects() {
                               project._id,
                               project.isFeatured,
                               project.displayName || 'Untitled',
+                              project.isPublic,
                             )
                           }
                         >
@@ -272,6 +308,7 @@ export default function FeaturedProjects() {
 
                         <Show when={isSuperAdmin()}>
                           <button
+                            type="button"
                             class="btn btn-sm btn-error btn-outline"
                             onClick={() =>
                               handleDelete(project._id, project.displayName || 'Untitled')
@@ -293,6 +330,7 @@ export default function FeaturedProjects() {
         <Show when={projects.data()?.length === limit()}>
           <div class="p-4 border-t border-base-200 flex justify-center bg-base-50">
             <button
+              type="button"
               class="btn btn-sm btn-ghost"
               onClick={() => setLimit((l) => l + 50)}
               disabled={projects.isLoading()}
@@ -302,6 +340,42 @@ export default function FeaturedProjects() {
           </div>
         </Show>
       </div>
+
+      {/* Feature private project warning modal */}
+      <ConfirmationModal
+        isOpen={featureWarning() !== null}
+        onClose={() => setFeatureWarning(null)}
+        title="Feature a private project?"
+        description={`"${featureWarning()?.projectName}" is a private project. It will appear on the explore page, but other users won't be able to open or view it.`}
+        confirmLabel="Feature Anyway"
+        confirmClass="btn-warning"
+        onConfirm={async () => {
+          const w = featureWarning();
+          if (w) {
+            await doSetFeatured(w.projectId, true, w.projectName);
+          }
+          setFeatureWarning(null);
+        }}
+      />
+
+      {/* Delete project confirmation modal */}
+      <ConfirmationModal
+        isOpen={deleteTarget() !== null}
+        onClose={() => setDeleteTarget(null)}
+        title="Delete project permanently?"
+        confirmLabel="Delete Project"
+        confirmClass="btn-error"
+        typedConfirmation={deleteTarget()?.projectName}
+        onConfirm={confirmDelete}
+      >
+        <div class="space-y-2">
+          <p class="text-base-content/70">
+            This will permanently delete <strong>{deleteTarget()?.projectName}</strong> along with
+            all its versions, snapshots, access permissions, share links, and topics.
+          </p>
+          <p class="text-error font-medium text-sm">This action cannot be undone.</p>
+        </div>
+      </ConfirmationModal>
     </div>
   );
 }

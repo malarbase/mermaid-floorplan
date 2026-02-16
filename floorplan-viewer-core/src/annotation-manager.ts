@@ -8,7 +8,7 @@ import type * as THREE from 'three';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
 // Area unit type
-export type AreaUnit = 'sqft' | 'sqm';
+export type AreaUnit = 'sqft' | 'sqm' | 'cent';
 
 // Annotation state
 export interface AnnotationState {
@@ -90,8 +90,8 @@ export class AnnotationManager {
    * Initialize unit settings from config
    */
   public initFromConfig(config: JsonConfig): void {
-    if (config.area_unit === 'sqm') {
-      this.state.areaUnit = 'sqm';
+    if (config.area_unit === 'sqm' || config.area_unit === 'cent') {
+      this.state.areaUnit = config.area_unit as AreaUnit;
       const areaUnitSelect = document.getElementById('area-unit') as HTMLSelectElement;
       if (areaUnitSelect) areaUnitSelect.value = 'sqm';
     }
@@ -208,6 +208,9 @@ export class AnnotationManager {
   public formatArea(areaInMeters: number): string {
     if (this.state.areaUnit === 'sqm') {
       return `${areaInMeters.toFixed(1)} sqm`;
+    } else if (this.state.areaUnit === 'cent') {
+      const cents = areaInMeters / 40.4686;
+      return `${cents.toFixed(2)} cent`;
     } else {
       // Convert to square feet
       const sqft = areaInMeters * 10.7639;

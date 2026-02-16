@@ -31,6 +31,20 @@ export default defineSchema({
       ),
     ),
     lastUsernameChangeAt: v.optional(v.number()), // Timestamp of most recent change
+    // Moderation fields
+    bannedUntil: v.optional(v.number()), // Timestamp; MAX_SAFE_INTEGER = permanent; undefined = not banned
+    bannedAt: v.optional(v.number()), // When the current ban was applied
+    moderationHistory: v.optional(
+      v.array(
+        v.object({
+          action: v.union(v.literal('warn'), v.literal('ban'), v.literal('unban')),
+          reason: v.optional(v.string()),
+          duration: v.optional(v.string()), // "1d", "7d", "30d", "permanent"
+          actorId: v.id('users'), // Admin who took the action
+          timestamp: v.number(),
+        }),
+      ),
+    ),
     createdAt: v.number(),
     updatedAt: v.number(),
   })
@@ -194,6 +208,19 @@ export default defineSchema({
     toSlug: v.string(),
     createdAt: v.number(),
   }).index('by_from', ['fromUserId', 'fromSlug']),
+
+  // User notifications (bell icon + warning banner)
+  notifications: defineTable({
+    userId: v.id('users'),
+    type: v.string(), // "warning" | "ban" | "ban_lifted" | "collaborator.invite" | ...
+    title: v.string(),
+    message: v.optional(v.string()),
+    metadata: v.optional(v.any()), // Type-specific data (projectId, role, etc.)
+    readAt: v.optional(v.number()),
+    createdAt: v.number(),
+  })
+    .index('by_user_unread', ['userId', 'readAt'])
+    .index('by_user', ['userId', 'createdAt']),
 
   // Slug redirects (for URL migration history)
   slugRedirects: defineTable({

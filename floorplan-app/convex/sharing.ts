@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { query } from './_generated/server';
 import { resolveAccess } from './lib/access';
 import { authenticatedMutation, optionalAuthQuery } from './lib/auth';
+import { createNotification } from './notifications';
 
 async function generateShareToken(): Promise<string> {
   const array = new Uint8Array(24);
@@ -176,6 +177,13 @@ export const inviteByUsername = authenticatedMutation({
           },
           createdAt: Date.now(),
         });
+        await createNotification(ctx, {
+          userId: invitee._id,
+          type: 'collaborator.roleChange',
+          title: `Your role on "${project.displayName}" changed to ${args.role}`,
+          message: `${ctx.user.displayName ?? ctx.user.username} updated your role`,
+          metadata: { projectId: args.projectId, oldRole: existingAccess.role, newRole: args.role },
+        });
         return { success: true, action: 'updated', accessId: existingAccess._id };
       }
       return { success: true, action: 'exists', accessId: existingAccess._id };
@@ -195,6 +203,14 @@ export const inviteByUsername = authenticatedMutation({
       userId: ctx.user._id,
       metadata: { inviteeUsername: args.username, role: args.role },
       createdAt: Date.now(),
+    });
+
+    await createNotification(ctx, {
+      userId: invitee._id,
+      type: 'collaborator.invite',
+      title: `You were added to "${project.displayName}" as ${args.role}`,
+      message: `${ctx.user.displayName ?? ctx.user.username} invited you`,
+      metadata: { projectId: args.projectId, role: args.role, invitedBy: ctx.user._id },
     });
 
     return { success: true, action: 'created', accessId };
@@ -247,6 +263,14 @@ export const removeCollaborator = authenticatedMutation({
       createdAt: Date.now(),
     });
 
+    await createNotification(ctx, {
+      userId: args.userId,
+      type: 'collaborator.remove',
+      title: `You were removed from "${project.displayName}"`,
+      message: `${ctx.user.displayName ?? ctx.user.username} removed you from the project`,
+      metadata: { projectId: args.projectId },
+    });
+
     return { success: true };
   },
 });
@@ -289,6 +313,14 @@ export const updateCollaboratorRole = authenticatedMutation({
       userId: ctx.user._id,
       metadata: { targetUserId: args.userId, oldRole: access.role, newRole: args.role },
       createdAt: Date.now(),
+    });
+
+    await createNotification(ctx, {
+      userId: args.userId,
+      type: 'collaborator.roleChange',
+      title: `Your role on "${project.displayName}" changed to ${args.role}`,
+      message: `${ctx.user.displayName ?? ctx.user.username} updated your role`,
+      metadata: { projectId: args.projectId, oldRole: access.role, newRole: args.role },
     });
 
     return { success: true };
@@ -534,6 +566,16 @@ export const forkProject = authenticatedMutation({
       metadata: { sourceProjectId: args.projectId },
       createdAt: now,
     });
+
+    // Notify source project owner (skip if forking own project)
+    if (sourceProject.userId !== ctx.user._id) {
+      await createNotification(ctx, {
+        userId: sourceProject.userId,
+        type: 'project.forked',
+        title: `${ctx.user.displayName ?? ctx.user.username} forked your project "${sourceProject.displayName}"`,
+        metadata: { sourceProjectId: args.projectId, forkedProjectId: newProjectId },
+      });
+    }
 
     return { success: true, projectId: newProjectId };
   },

@@ -10,7 +10,7 @@ import { getRoomSize } from './variable-resolver.js';
 import { wallRectangle } from './wall.js';
 
 /** Area unit for display */
-export type AreaUnit = 'sqft' | 'sqm';
+export type AreaUnit = 'sqft' | 'sqm' | 'cent';
 
 /** Options for room rendering */
 export interface RoomRenderOptions {

@@ -1,5 +1,7 @@
 // UI Components - Loading, Error, and Notification utilities
 
+// Confirmation modal
+export { ConfirmationModal, type ConfirmationModalProps } from './ConfirmationModal';
 // Error components
 export {
   AccessDeniedError,
@@ -13,6 +15,8 @@ export {
   ErrorBoundary,
   PageErrorBoundary,
 } from './ErrorBoundary';
+// Inline edit
+export { InlineEdit, type InlineEditProps } from './InlineEdit';
 // Loading components
 export {
   ButtonLoading,
@@ -25,7 +29,8 @@ export {
   type LoadingVariant,
   PageLoading,
 } from './Loading';
-
+// Timeline
+export { Timeline, type TimelineEntry, type TimelineProps } from './Timeline';
 // Toast/notification components
 export {
   setGlobalToastHandler,
