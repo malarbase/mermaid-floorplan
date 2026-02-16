@@ -20,7 +20,7 @@ import { clearDevLogin, isDevLoggedIn } from '~/lib/mock-auth';
 import { api } from '../../convex/_generated/api';
 
 /** Pages where we should NOT redirect (would cause loops) */
-const SKIP_PATHS = ['/login', '/dev-login', '/register'];
+const SKIP_PATHS = ['/login', '/dev-login', '/register', '/banned'];
 
 const SessionGuard: Component = () => {
   const navigate = useNavigate();

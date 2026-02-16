@@ -13,7 +13,7 @@ export function FeaturedProjectViewer() {
   });
 
   return (
-    <div class="relative w-full h-[600px] rounded-xl overflow-hidden shadow-2xl border border-base-content/10 bg-base-100">
+    <div class="relative w-full h-full rounded-xl overflow-hidden shadow-2xl border border-base-content/10 bg-base-100">
       <Show
         when={!featured.isLoading()}
         fallback={
@@ -33,7 +33,7 @@ export function FeaturedProjectViewer() {
         >
           {(p) => (
             <>
-              <FloorplanEmbed dsl={p().content} withUI={true} editable={false} />
+              <FloorplanEmbed dsl={p().content} editable={false} />
 
               {/* Overlay CTA */}
               <div class="absolute bottom-6 right-6 z-10 pointer-events-none">

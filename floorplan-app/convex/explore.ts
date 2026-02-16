@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { query } from './_generated/server';
+import { isUserBanned } from './lib/auth';
 
 export const listTrending = query({
   args: {
@@ -13,9 +14,16 @@ export const listTrending = query({
       .withIndex('by_trending')
       .order('desc')
       .filter((q) => q.eq(q.field('isPublic'), true))
-      .take(limit);
+      .take(limit * 2);
 
-    return { projects };
+    const filtered = [];
+    for (const p of projects) {
+      const owner = await ctx.db.get(p.userId);
+      if (owner && isUserBanned(owner)) continue;
+      filtered.push(p);
+    }
+
+    return { projects: filtered.slice(0, limit) };
   },
 });
 
@@ -54,7 +62,14 @@ export const listByTopic = query({
       NonNullable<(typeof projects)[0]>
     >;
 
-    return { projects: publicProjects };
+    const filtered = [];
+    for (const p of publicProjects) {
+      const owner = await ctx.db.get(p.userId);
+      if (owner && isUserBanned(owner)) continue;
+      filtered.push(p);
+    }
+
+    return { projects: filtered };
   },
 });
 
@@ -75,6 +90,8 @@ export const listFeatured = query({
     const enrichedProjects = await Promise.all(
       projects.map(async (p) => {
         const owner = await ctx.db.get(p.userId);
+
+        if (owner && isUserBanned(owner)) return null;
 
         // Get default version to find content
         const version = await ctx.db
@@ -98,7 +115,7 @@ export const listFeatured = query({
       }),
     );
 
-    return { projects: enrichedProjects };
+    return { projects: enrichedProjects.filter((p) => p !== null) };
   },
 });
 
@@ -127,9 +144,16 @@ export const getCollection = query({
       NonNullable<(typeof projects)[0]>
     >;
 
+    const filtered = [];
+    for (const p of existingProjects) {
+      const owner = await ctx.db.get(p.userId);
+      if (owner && isUserBanned(owner)) continue;
+      filtered.push(p);
+    }
+
     return {
       collection,
-      projects: existingProjects,
+      projects: filtered,
     };
   },
 });

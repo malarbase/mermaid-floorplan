@@ -3,6 +3,7 @@ import { customCtx, customMutation } from 'convex-helpers/server/customFunctions
 import { query, mutation as rawMutation } from './_generated/server';
 import { adminAuditLog, triggers } from './lib/auditLog';
 import { isSuperAdmin, requireAdmin, requireSuperAdmin } from './lib/auth';
+import { createNotification } from './notifications';
 
 const mutation = customMutation(rawMutation, customCtx(triggers.wrapDB));
 
@@ -22,6 +23,15 @@ export const setFeatured = mutation({
     await ctx.db.patch(args.projectId, {
       isFeatured: args.isFeatured,
     });
+
+    if (args.isFeatured) {
+      await createNotification(ctx, {
+        userId: project.userId,
+        type: 'project.featured',
+        title: `Your project "${project.displayName}" was featured!`,
+        metadata: { projectId: args.projectId },
+      });
+    }
 
     return { success: true };
   },
@@ -45,6 +55,12 @@ export const promoteToAdmin = mutation({
 
     await ctx.db.patch(args.userId, {
       isAdmin: true,
+    });
+
+    await createNotification(ctx, {
+      userId: args.userId,
+      type: 'admin.promoted',
+      title: 'You have been promoted to admin',
     });
 
     return { success: true };
@@ -173,6 +189,7 @@ export const listAllUsers = query({
       email: isSuper ? (u as any).email : undefined, // Only super admin sees emails
       isAdmin: u.isAdmin ?? false,
       isSuperAdmin: isSuperAdmin(u),
+      bannedUntil: u.bannedUntil,
       createdAt: u.createdAt,
     }));
   },
@@ -279,6 +296,258 @@ export const deleteProject = mutation({
     await ctx.db.delete(args.projectId);
 
     return { success: true };
+  },
+});
+
+/**
+ * Warn a user (admin moderation action)
+ */
+export const warnUser = mutation({
+  args: {
+    userId: v.id('users'),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error('User not found');
+    }
+
+    if (targetUser._id === admin._id) {
+      throw new Error('Cannot warn yourself');
+    }
+
+    if (isSuperAdmin(targetUser)) {
+      throw new Error('Cannot warn a super admin');
+    }
+
+    const history = targetUser.moderationHistory ?? [];
+    history.push({
+      action: 'warn' as const,
+      reason: args.reason,
+      actorId: admin._id,
+      timestamp: Date.now(),
+    });
+
+    await ctx.db.patch(args.userId, { moderationHistory: history });
+
+    await createNotification(ctx, {
+      userId: args.userId,
+      type: 'warning',
+      title: 'You received a warning from an administrator',
+      message: args.reason,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Ban a user (admin moderation action)
+ */
+export const banUser = mutation({
+  args: {
+    userId: v.id('users'),
+    reason: v.string(),
+    duration: v.union(v.literal('1d'), v.literal('7d'), v.literal('30d'), v.literal('permanent')),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error('User not found');
+    }
+
+    if (targetUser._id === admin._id) {
+      throw new Error('Cannot ban yourself');
+    }
+
+    if (isSuperAdmin(targetUser)) {
+      throw new Error('Cannot ban a super admin');
+    }
+
+    const durationMs: Record<string, number> = {
+      '1d': 86400000,
+      '7d': 604800000,
+      '30d': 2592000000,
+      permanent: Number.MAX_SAFE_INTEGER,
+    };
+
+    const bannedUntil =
+      args.duration === 'permanent'
+        ? Number.MAX_SAFE_INTEGER
+        : Date.now() + durationMs[args.duration];
+
+    const history = targetUser.moderationHistory ?? [];
+    history.push({
+      action: 'ban' as const,
+      reason: args.reason,
+      duration: args.duration,
+      actorId: admin._id,
+      timestamp: Date.now(),
+    });
+
+    await ctx.db.patch(args.userId, {
+      bannedUntil,
+      bannedAt: Date.now(),
+      moderationHistory: history,
+    });
+
+    const durationLabel =
+      args.duration === 'permanent'
+        ? 'permanently'
+        : `for ${args.duration.replace('d', ' day(s)')}`;
+    await createNotification(ctx, {
+      userId: args.userId,
+      type: 'ban',
+      title: `Your account has been suspended ${durationLabel}`,
+      message: args.reason,
+      metadata: { duration: args.duration },
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Unban a user (admin moderation action)
+ */
+export const unbanUser = mutation({
+  args: {
+    userId: v.id('users'),
+    reason: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const admin = await requireAdmin(ctx);
+
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error('User not found');
+    }
+
+    const history = targetUser.moderationHistory ?? [];
+    history.push({
+      action: 'unban' as const,
+      reason: args.reason,
+      actorId: admin._id,
+      timestamp: Date.now(),
+    });
+
+    await ctx.db.patch(args.userId, {
+      bannedUntil: undefined,
+      bannedAt: undefined,
+      moderationHistory: history,
+    });
+
+    await createNotification(ctx, {
+      userId: args.userId,
+      type: 'ban_lifted',
+      title: 'Your account suspension has been lifted',
+      message: args.reason,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Admin: Update a user's display name
+ */
+export const updateUserDisplayName = mutation({
+  args: {
+    userId: v.id('users'),
+    displayName: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const trimmed = args.displayName.trim();
+    if (!trimmed) {
+      throw new Error('Display name cannot be empty');
+    }
+
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error('User not found');
+    }
+
+    await ctx.db.patch(args.userId, {
+      displayName: trimmed,
+      updatedAt: Date.now(),
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * List all projects belonging to a specific user
+ */
+export const listUserProjects = query({
+  args: {
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const projects = await ctx.db
+      .query('projects')
+      .withIndex('by_user', (q) => q.eq('userId', args.userId))
+      .collect();
+
+    return projects.map((p) => ({
+      _id: p._id,
+      displayName: p.displayName,
+      slug: p.slug,
+      isPublic: p.isPublic,
+      isFeatured: p.isFeatured ?? false,
+      viewCount: p.viewCount ?? 0,
+      forkCount: p.forkCount ?? 0,
+      createdAt: p.createdAt,
+      updatedAt: p.updatedAt,
+    }));
+  },
+});
+
+/**
+ * Get moderation history for a user, enriched with actor usernames
+ */
+export const getUserModerationHistory = query({
+  args: {
+    userId: v.id('users'),
+  },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+
+    const targetUser = await ctx.db.get(args.userId);
+    if (!targetUser) {
+      throw new Error('User not found');
+    }
+
+    const history = targetUser.moderationHistory ?? [];
+
+    const enrichedHistory = await Promise.all(
+      history.map(async (entry) => {
+        const actor = await ctx.db.get(entry.actorId);
+        return {
+          ...entry,
+          actorUsername: actor?.username ?? 'Unknown',
+        };
+      }),
+    );
+
+    const isBanned = !!targetUser.bannedUntil && targetUser.bannedUntil > Date.now();
+
+    return {
+      history: enrichedHistory,
+      banStatus: {
+        isBanned,
+        bannedUntil: isBanned ? targetUser.bannedUntil : undefined,
+      },
+    };
   },
 });
 
