@@ -195,7 +195,7 @@
       opacity 0.3s ease;
   }
 
-  /* 2D Overlay panel */
+  /* 2D Overlay panel - hidden by default, shown via .visible class */
   .fp-overlay-2d {
     position: absolute;
     left: calc(var(--layout-editor-width) + 16px);
@@ -203,14 +203,18 @@
     min-width: 280px;
     max-width: 50vw;
     max-height: 60vh;
-    display: flex;
-    flex-direction: column;
+    display: none;
     overflow: hidden;
     transition: left 0.3s ease;
     background: oklch(var(--color-base-100));
     border-radius: var(--rounded-box, 1rem);
     box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);
     pointer-events: auto; /* Override parent fp-overlay-layer's pointer-events: none */
+  }
+
+  .fp-overlay-2d.visible {
+    display: flex;
+    flex-direction: column;
   }
 
   /* Floor summary panel */

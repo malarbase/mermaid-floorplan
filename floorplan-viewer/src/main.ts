@@ -548,6 +548,48 @@ if (overlay2DContent) {
 }
 controlPanel.appendChild(overlay2DSection);
 
+// Render 2D SVG content into the overlay when a floorplan is loaded
+const renderOverlay2D = async () => {
+  const doc = viewer.currentLangiumDocument;
+  if (!doc) {
+    overlay2D.setContent(null);
+    return;
+  }
+  try {
+    const { render: render2D } = await import('floorplan-language');
+    const currentTheme = viewer.theme;
+    const visibleFloorIds = viewer.floorManager.getVisibleFloorIds();
+    const svg = render2D(doc, {
+      visibleFloors: visibleFloorIds,
+      includeStyles: true,
+      theme:
+        currentTheme === 'dark'
+          ? {
+              floorBackground: '#2d2d2d',
+              floorBorder: '#888',
+              wallColor: '#ccc',
+              textColor: '#eee',
+            }
+          : undefined,
+    });
+    const parser = new DOMParser();
+    const svgEl = parser.parseFromString(svg, 'image/svg+xml').querySelector('svg');
+    if (svgEl) {
+      svgEl.setAttribute('width', '100%');
+      svgEl.removeAttribute('height');
+      svgEl.style.display = 'block';
+    }
+    overlay2D.setContent(svgEl);
+  } catch (err) {
+    console.error('Failed to render 2D overlay:', err);
+    overlay2D.setContent(null);
+  }
+};
+
+// Re-render overlay on floorplan load and theme change
+viewer.on('floorplanLoaded', () => renderOverlay2D());
+viewer.on('themeChange', () => renderOverlay2D());
+
 // Add annotation controls
 const annotationControls = createAnnotationControlsUI({
   onShowAreaChange: (show) => {

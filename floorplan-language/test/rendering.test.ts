@@ -372,6 +372,20 @@ describe('SVG Area Annotations Tests', () => {
     expect(svg).toContain('[120 sqm]');
   });
 
+  test('should use cent area unit', async () => {
+    const input = `
+      floorplan
+          floor f1 {
+              room Kitchen at (0,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid]
+          }
+    `;
+
+    const document = await parse(input);
+    const svg = render(document, { showArea: true, areaUnit: 'cent' });
+
+    expect(svg).toContain('[120 cent]');
+  });
+
   test('should not show area when showArea is false', async () => {
     const input = `
       floorplan

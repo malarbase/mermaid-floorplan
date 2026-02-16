@@ -8,7 +8,7 @@ import { cls } from './class-names.js';
 import { createControlPanelSection, getSectionContent } from './control-panel-section.js';
 import { injectStyles } from './styles.js';
 
-export type AreaUnit = 'sqft' | 'sqm';
+export type AreaUnit = 'sqft' | 'sqm' | 'cent';
 export type LengthUnit = 'm' | 'ft' | 'cm' | 'in' | 'mm';
 
 export interface AnnotationControlsUIOptions {
@@ -140,6 +140,7 @@ export function createAnnotationControlsUI(
   areaUnitSelect.innerHTML = `
     <option value="sqft">sq ft</option>
     <option value="sqm">sq m</option>
+    <option value="cent">cent</option>
   `;
   areaUnitSelect.value = initialAreaUnit;
   areaUnitSelect.addEventListener('change', () => {

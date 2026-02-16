@@ -92,8 +92,8 @@ export function createEditorPanel(config: EditorPanelConfig = {}): EditorPanel {
   // Create root panel element
   const panel = document.createElement('div');
   panel.className = 'fp-editor-panel';
-  panel.style.width = `${width}px`;
-  // Set CSS variable for collapsed state positioning
+  panel.style.width = isOpen ? `${width}px` : '0';
+  // Set CSS variable for collapsed state positioning (preserves width for re-expand)
   panel.style.setProperty('--fp-editor-width', `${width}px`);
   if (!isOpen) {
     panel.classList.add('fp-editor-panel--collapsed');
@@ -222,6 +222,7 @@ export function createEditorPanel(config: EditorPanelConfig = {}): EditorPanel {
   function togglePanel(): void {
     isOpen = !isOpen;
     panel.classList.toggle('fp-editor-panel--collapsed', !isOpen);
+    panel.style.width = isOpen ? `${currentWidth}px` : '0';
     collapseBtn.innerHTML = isOpen ? '◀' : '▶';
     collapseBtn.title = isOpen ? 'Collapse panel' : 'Expand panel';
     onToggle?.(isOpen);
@@ -248,6 +249,7 @@ export function createEditorPanel(config: EditorPanelConfig = {}): EditorPanel {
       if (!isOpen) {
         isOpen = true;
         panel.classList.remove('fp-editor-panel--collapsed');
+        panel.style.width = `${currentWidth}px`;
         collapseBtn.innerHTML = '◀';
         collapseBtn.title = 'Collapse panel';
         onToggle?.(true);
@@ -258,6 +260,7 @@ export function createEditorPanel(config: EditorPanelConfig = {}): EditorPanel {
       if (isOpen) {
         isOpen = false;
         panel.classList.add('fp-editor-panel--collapsed');
+        panel.style.width = '0';
         collapseBtn.innerHTML = '▶';
         collapseBtn.title = 'Expand panel';
         onToggle?.(false);

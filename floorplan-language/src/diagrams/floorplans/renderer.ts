@@ -74,7 +74,7 @@ function generateFloorSummaryPanel(
 }
 
 /** Area unit for display */
-export type AreaUnit = 'sqft' | 'sqm';
+export type AreaUnit = 'sqft' | 'sqm' | 'cent';
 
 export interface RenderOptions {
   /** Include XML declaration in output */

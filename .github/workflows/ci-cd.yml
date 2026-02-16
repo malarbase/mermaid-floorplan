@@ -7,9 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -19,24 +18,55 @@ jobs:
         with:
           cache: "npm"
 
-      - name: Install Chromium dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2t64
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build all workspaces
+        run: npm run build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          retention-days: 1
+          path: |
+            floorplan-language/src/generated/
+            floorplan-common/dist/
+            floorplan-language/dist/
+            floorplan-3d-core/dist/
+            floorplan-viewer-core/dist/
+            floorplan-mcp-server/dist/
+            floorplan-viewer/dist/
+            floorplan-editor/dist/
+            floorplan-app/.output/
+            floorplan-app/.vinxi/
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          cache: "npm"
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Build app
-        run: npm run build
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
 
       - name: Run tests
         run: npm test
 
   e2e:
     runs-on: ubuntu-latest
-    needs: test
-
+    needs: build
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,8 +83,10 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: floorplan-app
 
-      - name: Build app
-        run: npm run build
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
 
       - name: Run E2E tests
         run: npx playwright test --project=chromium
@@ -78,8 +110,8 @@ jobs:
           path: floorplan-app/test-results/
           retention-days: 7
 
-  build-and-deploy:
-    needs: test
+  deploy:
+    needs: [test, e2e]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
 
@@ -89,19 +121,10 @@ jobs:
       id-token: write
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          cache: "npm"
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Build all workspaces
-        run: npm run build
+          name: build-output
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

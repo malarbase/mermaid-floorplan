@@ -291,7 +291,7 @@ export function LightControls(props: LightControlsProps) {
 // Annotation Controls
 // ============================================================================
 
-export type AreaUnit = 'sqft' | 'sqm';
+export type AreaUnit = 'sqft' | 'sqm' | 'cent';
 export type LengthUnit = 'm' | 'ft' | 'cm' | 'in' | 'mm';
 
 export interface AnnotationControlsProps {
@@ -321,6 +321,7 @@ export function AnnotationControls(props: AnnotationControlsProps) {
   const areaUnitOptions: SelectOption[] = [
     { value: 'sqft', label: 'sq ft' },
     { value: 'sqm', label: 'sq m' },
+    { value: 'cent', label: 'cent' },
   ];
 
   const lengthUnitOptions: SelectOption[] = [
