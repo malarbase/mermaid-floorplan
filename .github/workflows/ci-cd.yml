@@ -31,11 +31,11 @@ jobs:
           retention-days: 1
           path: |
             floorplan-language/src/generated/
-            floorplan-common/dist/
-            floorplan-language/dist/
-            floorplan-3d-core/dist/
-            floorplan-viewer-core/dist/
-            floorplan-mcp-server/dist/
+            floorplan-common/out/
+            floorplan-language/out/
+            floorplan-3d-core/out/
+            floorplan-viewer-core/out/
+            floorplan-mcp-server/out/
             floorplan-viewer/dist/
             floorplan-editor/dist/
             floorplan-app/.output/
