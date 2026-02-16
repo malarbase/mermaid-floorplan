@@ -127,6 +127,7 @@ export function InlineEdit(props: InlineEditProps) {
                 viewBox="0 0 24 24"
                 stroke="currentColor"
                 stroke-width="2"
+                aria-hidden="true"
               >
                 <path
                   stroke-linecap="round"

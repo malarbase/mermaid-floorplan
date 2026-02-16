@@ -32,6 +32,7 @@ const WarningBanner: Component = () => {
   const handleDismiss = async () => {
     const w = warning();
     if (w) {
+      // biome-ignore lint/suspicious/noExplicitAny: Convex Id type cast
       await dismissWarning.mutate({ notificationId: w._id as any });
     }
   };
@@ -50,6 +51,7 @@ const WarningBanner: Component = () => {
             class="stroke-current shrink-0 h-6 w-6"
             fill="none"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <path
               stroke-linecap="round"

@@ -64,7 +64,7 @@ function toActiveSessions(page: Record<string, unknown>[]) {
  *
  * Returns null if no BA user exists yet (pre-login).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// biome-ignore lint/suspicious/noExplicitAny: Complex Convex ctx type for dev auth
 async function resolveDevBaUserId(ctx: any, subject: string): Promise<string | null> {
   const email = `${subject}@dev.local`;
   const userResult = await ctx.runQuery(components.betterAuth.adapter.findOne, {

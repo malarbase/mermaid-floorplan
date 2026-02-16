@@ -91,12 +91,13 @@ export function ConfirmationModal(props: ConfirmationModalProps) {
 
       <Show when={props.typedConfirmation}>
         <div class="form-control w-full mt-4">
-          <label class="label">
+          <label class="label" for="typed-confirmation-input">
             <span class="label-text">
               Type <code class="font-mono font-bold">{props.typedConfirmation}</code> to confirm
             </span>
           </label>
           <input
+            id="typed-confirmation-input"
             type="text"
             class="input input-bordered w-full"
             placeholder={props.typedConfirmation}
@@ -108,10 +109,11 @@ export function ConfirmationModal(props: ConfirmationModalProps) {
       </Show>
 
       <div class="modal-action">
-        <button class="btn" onClick={() => props.onClose()} disabled={isLoading()}>
+        <button type="button" class="btn" onClick={() => props.onClose()} disabled={isLoading()}>
           Cancel
         </button>
         <button
+          type="button"
           class={`btn ${props.confirmClass ?? 'btn-primary'}`}
           onClick={handleConfirm}
           disabled={isConfirmDisabled()}

@@ -48,7 +48,13 @@ const AdminLayout: ParentComponent = (props) => {
               </div>
 
               <A href="/admin" class={linkClass('/admin')}>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  aria-hidden="true"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -64,7 +70,13 @@ const AdminLayout: ParentComponent = (props) => {
               </div>
 
               <A href="/admin/featured" class={linkClass('/admin/featured')}>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  aria-hidden="true"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -80,7 +92,13 @@ const AdminLayout: ParentComponent = (props) => {
               </div>
 
               <A href="/admin/users" class={linkClass('/admin/users')}>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  aria-hidden="true"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -96,7 +114,13 @@ const AdminLayout: ParentComponent = (props) => {
                 </Show>
               </A>
               <A href="/admin/audit" class={linkClass('/admin/audit')}>
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg
+                  aria-hidden="true"
+                  class="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
                   <path
                     stroke-linecap="round"
                     stroke-linejoin="round"
@@ -114,6 +138,7 @@ const AdminLayout: ParentComponent = (props) => {
                 class="flex items-center gap-3 px-4 py-3 text-sm font-medium text-base-content/70 hover:bg-base-300 hover:text-base-content rounded-md transition-colors w-full group"
               >
                 <svg
+                  aria-hidden="true"
                   class="w-5 h-5 group-hover:-translate-x-1 transition-transform"
                   fill="none"
                   stroke="currentColor"

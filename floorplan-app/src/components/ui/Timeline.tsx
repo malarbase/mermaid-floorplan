@@ -63,7 +63,11 @@ export function Timeline(props: TimelineProps) {
                 {new Date(item.timestamp).toLocaleString()}
               </div>
               <div class="timeline-middle">
-                <svg class="w-4 h-4 fill-current text-base-content/40" viewBox="0 0 20 20">
+                <svg
+                  class="w-4 h-4 fill-current text-base-content/40"
+                  viewBox="0 0 20 20"
+                  aria-hidden="true"
+                >
                   <circle cx="10" cy="10" r="5" />
                 </svg>
               </div>

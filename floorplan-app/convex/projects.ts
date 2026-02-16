@@ -1030,7 +1030,6 @@ export const resolveSlug = query({
 export const backfillSnapshotHashes = internalMutation({
   args: {},
   handler: async (ctx) => {
-    const batchSize = 100;
     let processed = 0;
 
     // Scan all snapshots and patch any missing snapshotHash

@@ -142,7 +142,7 @@ export default function UserManagement() {
     try {
       await unbanUser.mutate({
         userId: target.userId,
-        reason: unbanReason().trim() || (undefined as any),
+        reason: unbanReason().trim() || undefined,
       });
       toast.success(`${target.username} has been unbanned`);
       setUnbanTarget(null);
@@ -328,6 +328,7 @@ export default function UserManagement() {
                           {/* Warn / Ban / Unban — not for super admins or self */}
                           <Show when={!user.isSuperAdmin && !isSelf(user._id)}>
                             <button
+                              type="button"
                               class="btn btn-xs btn-outline btn-warning"
                               onClick={() => {
                                 setModerationReason('');
@@ -344,6 +345,7 @@ export default function UserManagement() {
                               when={!isBanned(user)}
                               fallback={
                                 <button
+                                  type="button"
                                   class="btn btn-xs btn-outline btn-success"
                                   onClick={() => {
                                     setUnbanReason('');
@@ -355,6 +357,7 @@ export default function UserManagement() {
                               }
                             >
                               <button
+                                type="button"
                                 class="btn btn-xs btn-outline btn-error"
                                 onClick={() => {
                                   setModerationReason('');
@@ -373,6 +376,7 @@ export default function UserManagement() {
 
                           {/* View Projects */}
                           <button
+                            type="button"
                             class="btn btn-xs btn-ghost"
                             title="View projects"
                             onClick={() =>
@@ -380,6 +384,7 @@ export default function UserManagement() {
                             }
                           >
                             <svg
+                              aria-hidden="true"
                               class="w-4 h-4"
                               fill="none"
                               viewBox="0 0 24 24"
@@ -396,6 +401,7 @@ export default function UserManagement() {
 
                           {/* History */}
                           <button
+                            type="button"
                             class="btn btn-xs btn-ghost"
                             title="Moderation history"
                             onClick={() =>
@@ -403,6 +409,7 @@ export default function UserManagement() {
                             }
                           >
                             <svg
+                              aria-hidden="true"
                               class="w-4 h-4"
                               fill="none"
                               viewBox="0 0 24 24"
@@ -425,6 +432,7 @@ export default function UserManagement() {
                           <div class="flex justify-end gap-2">
                             <Show when={!user.isAdmin}>
                               <button
+                                type="button"
                                 class="btn btn-xs btn-outline btn-secondary"
                                 onClick={() =>
                                   setPromoteTarget({
@@ -439,6 +447,7 @@ export default function UserManagement() {
                             </Show>
                             <Show when={user.isAdmin && !isSelf(user._id) && !user.isSuperAdmin}>
                               <button
+                                type="button"
                                 class="btn btn-xs btn-outline btn-error"
                                 onClick={() =>
                                   setPromoteTarget({
@@ -479,10 +488,11 @@ export default function UserManagement() {
         confirmClass={moderationTarget()?.action === 'warn' ? 'btn-warning' : 'btn-error'}
       >
         <div class="form-control w-full mt-2">
-          <label class="label">
+          <label class="label" for="moderation-reason">
             <span class="label-text">Reason</span>
           </label>
           <textarea
+            id="moderation-reason"
             class="textarea textarea-bordered w-full"
             rows={3}
             placeholder="Reason for this action..."
@@ -493,9 +503,7 @@ export default function UserManagement() {
 
         <Show when={moderationTarget()?.action === 'ban'}>
           <div class="form-control w-full mt-4">
-            <label class="label">
-              <span class="label-text">Ban duration</span>
-            </label>
+            <span class="label-text mb-2 block">Ban duration</span>
             <div class="flex flex-col gap-2">
               <For
                 each={[
@@ -506,8 +514,12 @@ export default function UserManagement() {
                 ]}
               >
                 {(opt) => (
-                  <label class="flex items-center gap-2 cursor-pointer">
+                  <label
+                    class="flex items-center gap-2 cursor-pointer"
+                    for={`ban-duration-${opt.value}`}
+                  >
                     <input
+                      id={`ban-duration-${opt.value}`}
                       type="radio"
                       name="ban-duration"
                       class="radio radio-sm"
@@ -534,10 +546,11 @@ export default function UserManagement() {
         confirmClass="btn-success"
       >
         <div class="form-control w-full mt-2">
-          <label class="label">
+          <label class="label" for="unban-reason">
             <span class="label-text">Reason (optional)</span>
           </label>
           <textarea
+            id="unban-reason"
             class="textarea textarea-bordered w-full"
             rows={2}
             placeholder="Reason for unbanning..."
@@ -624,7 +637,7 @@ export default function UserManagement() {
         </Show>
 
         <div class="modal-action">
-          <button class="btn" onClick={() => setProjectsTarget(null)}>
+          <button type="button" class="btn" onClick={() => setProjectsTarget(null)}>
             Close
           </button>
         </div>
@@ -651,7 +664,7 @@ export default function UserManagement() {
         </Show>
 
         <div class="modal-action">
-          <button class="btn" onClick={() => setHistoryTarget(null)}>
+          <button type="button" class="btn" onClick={() => setHistoryTarget(null)}>
             Close
           </button>
         </div>

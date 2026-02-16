@@ -23,6 +23,7 @@ export default function BannedPage() {
         <div class="card-body text-center">
           <div class="flex justify-center mb-4">
             <svg
+              aria-hidden="true"
               class="w-16 h-16 text-error"
               fill="none"
               viewBox="0 0 24 24"

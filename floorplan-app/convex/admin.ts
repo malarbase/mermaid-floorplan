@@ -186,7 +186,7 @@ export const listAllUsers = query({
       _id: u._id,
       username: u.username,
       displayName: u.displayName,
-      email: isSuper ? (u as any).email : undefined, // Only super admin sees emails
+      email: isSuper ? (u as Record<string, unknown>).email : undefined, // Only super admin sees emails
       isAdmin: u.isAdmin ?? false,
       isSuperAdmin: isSuperAdmin(u),
       bannedUntil: u.bannedUntil,
@@ -608,13 +608,14 @@ export const getAuditLog = query({
   },
 });
 
-function formatActor(attribution: any): string {
+function formatActor(attribution: Record<string, unknown> | string | null | undefined): string {
   if (!attribution) return 'System';
   if (typeof attribution === 'object') {
-    if (attribution.name) return attribution.name;
-    if (attribution.email) return attribution.email;
-    if (attribution.tokenIdentifier) {
-      return attribution.tokenIdentifier.split('|').pop() || 'Unknown';
+    if (attribution.name) return String(attribution.name);
+    if (attribution.email) return String(attribution.email);
+    const tokenId = attribution.tokenIdentifier;
+    if (typeof tokenId === 'string') {
+      return tokenId.split('|').pop() || 'Unknown';
     }
   }
   return String(attribution);

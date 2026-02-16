@@ -22,6 +22,7 @@ export async function createNotification(
   },
 ) {
   await ctx.db.insert('notifications', {
+    // biome-ignore lint/suspicious/noExplicitAny: Convex Id type cast
     userId: args.userId as any,
     type: args.type,
     title: args.title,

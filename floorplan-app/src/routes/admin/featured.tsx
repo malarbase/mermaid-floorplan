@@ -236,6 +236,7 @@ export default function FeaturedProjects() {
                       <div class="flex justify-end gap-4 text-xs font-medium text-base-content/70">
                         <span class="flex items-center gap-1" title="Views">
                           <svg
+                            aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             class="h-4 w-4"
                             fill="none"
@@ -259,6 +260,7 @@ export default function FeaturedProjects() {
                         </span>
                         <span class="flex items-center gap-1" title="Forks">
                           <svg
+                            aria-hidden="true"
                             xmlns="http://www.w3.org/2000/svg"
                             class="h-4 w-4"
                             fill="none"
@@ -279,6 +281,7 @@ export default function FeaturedProjects() {
                     <td class="text-right">
                       <div class="flex justify-end gap-2">
                         <button
+                          type="button"
                           class={`btn btn-sm w-28 ${
                             project.isFeatured
                               ? 'btn-warning btn-outline hover:btn-error hover:text-white hover:border-error'
@@ -305,6 +308,7 @@ export default function FeaturedProjects() {
 
                         <Show when={isSuperAdmin()}>
                           <button
+                            type="button"
                             class="btn btn-sm btn-error btn-outline"
                             onClick={() =>
                               handleDelete(project._id, project.displayName || 'Untitled')
@@ -326,6 +330,7 @@ export default function FeaturedProjects() {
         <Show when={projects.data()?.length === limit()}>
           <div class="p-4 border-t border-base-200 flex justify-center bg-base-50">
             <button
+              type="button"
               class="btn btn-sm btn-ghost"
               onClick={() => setLimit((l) => l + 50)}
               disabled={projects.isLoading()}

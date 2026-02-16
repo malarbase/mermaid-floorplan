@@ -99,6 +99,7 @@ const NotificationList: Component = () => {
   const hasReadNotifications = createMemo(() => notifications()?.some((n) => n.readAt) ?? false);
 
   const handleNotificationClick = async (notifId: string) => {
+    // biome-ignore lint/suspicious/noExplicitAny: Convex Id type cast
     await markAsRead.mutate({ notificationId: notifId as any });
   };
 
