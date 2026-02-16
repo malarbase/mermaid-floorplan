@@ -8,8 +8,8 @@ import { ProjectList } from '~/components/ProjectList';
 import { TempUsernameNudge } from '~/components/TempUsernameNudge';
 import { UsernameSelectionModal } from '~/components/UsernameSelectionModal';
 import { useAuthRedirect } from '~/hooks/useAuthRedirect';
-import { api } from '../../convex/_generated/api';
-import type { Id } from '../../convex/_generated/dataModel';
+import { api } from '../../../convex/_generated/api';
+import type { Id } from '../../../convex/_generated/dataModel';
 
 /** Card for a single pending transfer request. */
 function TransferRequestCard(props: {

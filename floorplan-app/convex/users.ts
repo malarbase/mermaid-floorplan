@@ -134,6 +134,36 @@ export const getCurrentUser = query({
 });
 
 /**
+ * Get the ban status of the current authenticated user.
+ *
+ * Unlike getCurrentUser (which returns null for banned users),
+ * this query bypasses the ban filter to read bannedUntil directly.
+ * Used by the frontend BanGuard to detect and display ban status.
+ *
+ * Returns null if not authenticated.
+ */
+export const getBanStatus = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_auth_id', (q) => q.eq('authId', identity.subject))
+      .first();
+
+    if (!user) return null;
+
+    const isBanned = !!user.bannedUntil && user.bannedUntil > Date.now();
+    return {
+      isBanned,
+      bannedUntil: isBanned ? user.bannedUntil : undefined,
+    };
+  },
+});
+
+/**
  * Get user profile by username.
  * Returns null if user doesn't exist.
  */

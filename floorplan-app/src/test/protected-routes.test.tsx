@@ -52,7 +52,7 @@ vi.mock('~/components/ProjectList', () => ({
   ProjectList: () => <div data-testid="project-list">Projects</div>,
 }));
 
-import Dashboard from '~/routes/dashboard';
+import Dashboard from '~/routes/(protected)/dashboard';
 
 describe('Protected Routes', () => {
   beforeEach(() => {

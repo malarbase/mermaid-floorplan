@@ -121,7 +121,7 @@ const NotificationList: Component = () => {
               </div>
             }
           >
-            <ul class="menu menu-sm p-1">
+            <ul class="flex flex-col gap-0.5 p-1">
               <For each={items()}>
                 {(notif) => {
                   const config = getNotificationConfig(notif.type);
@@ -129,7 +129,7 @@ const NotificationList: Component = () => {
                     <li>
                       <button
                         type="button"
-                        class="flex items-start gap-3 px-3 py-2.5 rounded-lg w-full text-left"
+                        class="flex items-start gap-2 px-2.5 py-2 rounded-lg w-full text-left hover:bg-base-200 transition-colors"
                         classList={{ 'bg-primary/5': !notif.readAt }}
                         onClick={() => handleNotificationClick(notif._id)}
                       >
@@ -150,9 +150,7 @@ const NotificationList: Component = () => {
                           </svg>
                         </div>
                         <div class="flex-1 min-w-0">
-                          <p class="text-sm font-medium text-base-content truncate">
-                            {notif.title}
-                          </p>
+                          <p class="text-sm font-medium text-base-content">{notif.title}</p>
                           <Show when={notif.message}>
                             <p class="text-xs text-base-content/60 mt-0.5 line-clamp-2">
                               {notif.message}
@@ -234,7 +232,7 @@ export const NotificationBell: Component = () => {
         </div>
       </summary>
 
-      <div class="dropdown-content mt-3 z-[100] shadow-xl bg-base-100 rounded-box w-80 border border-base-content/15 ring-1 ring-base-content/10">
+      <div class="dropdown-content mt-3 z-[100] shadow-xl bg-base-100 rounded-box w-96 border border-base-content/15 ring-1 ring-base-content/10">
         {/* Header */}
         <div class="flex items-center justify-between px-4 py-3 border-b border-base-content/10">
           <span class="font-semibold text-sm">Notifications</span>

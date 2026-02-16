@@ -6,7 +6,7 @@ import { LogoutButton } from '~/components/LogoutButton';
 import { SessionsSection } from '~/components/SessionsSection';
 import { UsernameChangeModal, useUsernameChangeModal } from '~/components/UsernameChangeModal';
 import { useAuthRedirect } from '~/hooks/useAuthRedirect';
-import { api } from '../../convex/_generated/api';
+import { api } from '../../../convex/_generated/api';
 
 /**
  * User settings page - allows users to manage their account.
