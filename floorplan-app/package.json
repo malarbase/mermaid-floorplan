@@ -6,7 +6,7 @@
   "scripts": {
     "predev": "test -f dev-keys/private.pem || npm run generate-dev-keys",
     "dev": "vinxi dev",
-    "prebuild": "test -n \"$CONVEX_DEPLOYMENT\" && npx convex codegen || true",
+    "prebuild": "npm run --prefix ../floorplan-language langium:generate && (test -n \"$CONVEX_DEPLOYMENT\" && npx convex codegen || true)",
     "build": "vinxi build",
     "start": "vinxi start",
     "version": "vinxi version",
@@ -44,7 +44,9 @@
   "devDependencies": {
     "@playwright/test": "^1.58.1",
     "@solidjs/testing-library": "^0.8.10",
+    "@tailwindcss/vite": "^4.2.0",
     "@testing-library/dom": "^10.4.1",
+    "daisyui": "^5.5.19",
     "happy-dom": "^20.4.0",
     "jose": "^6.1.3",
     "jsdom": "^27.4.0",
