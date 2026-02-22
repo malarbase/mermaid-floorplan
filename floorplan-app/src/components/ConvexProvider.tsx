@@ -3,8 +3,8 @@ import { ConvexProvider } from 'convex-solidjs';
 import { createSignal, type JSX, onMount, Show } from 'solid-js';
 import { createMockConvexClient, isMockMode } from '~/lib/mock-convex';
 
-// Get Convex URL from environment
-const convexUrl = import.meta.env.VITE_CONVEX_URL as string;
+// Get Convex URL from environment and remove trailing slash
+const convexUrl = (import.meta.env.VITE_CONVEX_URL as string)?.replace(/\/$/, '');
 
 interface ConvexClientProviderProps {
   children: JSX.Element;
@@ -73,7 +73,7 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
             if (e.key === 'dev-auth-token') {
               convexClient.setAuth(
                 async () => getDevToken(),
-                () => {},
+                () => { },
               );
             }
           });

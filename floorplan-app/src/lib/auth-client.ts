@@ -28,8 +28,15 @@ import { isDevLoggedIn } from './mock-auth';
  * authClient.signOut();
  * ```
  */
+const getAuthBaseUrl = () => {
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return import.meta.env.VITE_BETTER_AUTH_URL ?? 'http://localhost:3000';
+};
+
 export const authClient = createAuthClient({
-  baseURL: import.meta.env.VITE_BETTER_AUTH_URL ?? 'http://localhost:3000',
+  baseURL: getAuthBaseUrl(),
   plugins: [convexClient()],
 });
 
@@ -108,13 +115,13 @@ export function useSession(): Accessor<SessionData> {
 
       const user = convexUser.data() as
         | {
-            _id: string;
-            authId: string;
-            username: string;
-            displayName?: string;
-            avatarUrl?: string | null;
-            isAdmin?: boolean;
-          }
+          _id: string;
+          authId: string;
+          username: string;
+          displayName?: string;
+          avatarUrl?: string | null;
+          isAdmin?: boolean;
+        }
         | null
         | undefined;
 

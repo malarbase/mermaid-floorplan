@@ -19,11 +19,14 @@ import { convexBetterAuthSolidStart } from 'convex-better-auth-solid-start';
 // Server-side proxy: prefer CONVEX_SITE_URL (Docker-internal hostname like
 // convex:3211) over VITE_CONVEX_SITE_URL (browser-facing localhost:3211).
 // This runs inside the app container, so it needs the Docker network hostname.
-const convexSiteUrl =
-  process.env.CONVEX_SITE_URL ?? import.meta.env.VITE_CONVEX_SITE_URL ?? 'http://localhost:3211';
+const convexSiteUrl = (
+  process.env.CONVEX_SITE_URL ?? 
+  import.meta.env.VITE_CONVEX_SITE_URL ?? 
+  'http://localhost:3211'
+).replace(/\/$/, '');
 
 const { handler } = convexBetterAuthSolidStart({
-  convexUrl: process.env.CONVEX_URL ?? import.meta.env.VITE_CONVEX_URL ?? 'http://localhost:3210',
+  convexUrl: (process.env.CONVEX_URL ?? import.meta.env.VITE_CONVEX_URL ?? 'http://localhost:3210').replace(/\/$/, ''),
   convexSiteUrl,
 });
 
