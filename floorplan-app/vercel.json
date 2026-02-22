@@ -2,7 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
   "outputDirectory": ".output",
-  "regions": ["iad1"],
+  "regions": [
+    "iad1"
+  ],
   "headers": [
     {
       "source": "/(.*)",
@@ -25,6 +27,5 @@
         }
       ]
     }
-  ],
-  "ignoreCommand": "git diff HEAD^ HEAD --quiet ./floorplan-app ../floorplan-viewer-core ../floorplan-language ../floorplan-3d-core ../floorplan-common"
+  ]
 }
