@@ -15,7 +15,7 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "prepare": "husky"
+    "prepare": "if [ -z \"$VERCEL\" ]; then husky; fi"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
