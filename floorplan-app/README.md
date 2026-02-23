@@ -403,4 +403,4 @@ npm run dev -- --port 3001
 
 ## License
 
-GPL-3.0-or-later
+Licensed under BSL 1.1, converting to AGPL-3.0-or-later on 2030-02-23. See LICENSE.
