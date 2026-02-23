@@ -2,6 +2,17 @@
 
 This project uses multiple licenses for different components:
 
+## SaaS Application (Dual-Phase Licensing)
+The following module implements a dual-phase licensing model:
+- **floorplan-app/** - SolidStart full-stack application
+
+- **Phase 1 (BSL 1.1):** 4 years from first public release. Restrict commercial/production use.
+- **Phase 2 (AGPL-3.0-or-later):** Automatic conversion on 2030-02-23. Full open-source with copyleft.
+
+Copyright (C) 2026 Malar Kannan
+
+See the LICENSE file in the `floorplan-app` directory for the full Business Source License 1.1 text.
+
 ## User-Facing Applications (GPL v3)
 The following modules are licensed under the GNU General Public License v3:
 - **viewer/** - Interactive 3D floorplan viewer application

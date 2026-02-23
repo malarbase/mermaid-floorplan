@@ -541,6 +541,15 @@ If headless-gl fails to build, see [headless-gl installation guide](https://gith
 
 This project uses a dual-licensing structure to reflect different use cases:
 
+### SaaS Application (Dual-Phase Licensing)
+- **`floorplan-app/`** - SolidStart full-stack application
+
+Licensed under BSL 1.1, converting to AGPL-3.0-or-later on 2030-02-23. See LICENSE.
+- **Phase 1 (BSL 1.1):** 4 years from first public release. Restrict commercial/production use.
+- **Phase 2 (AGPL-3.0-or-later):** Automatic conversion on Change Date. Full open-source with copyleft.
+
+**Copyright © 2026 Malar Kannan**
+
 ### User-Facing Applications (GPL v3)
 The following modules are licensed under **GNU General Public License v3**:
 - **`floorplan-viewer/`** - Interactive 3D floorplan viewer application
@@ -568,6 +577,7 @@ These libraries can be freely used in both open-source and proprietary projects.
 
 | Module | License | Copyright |
 |--------|---------|-----------|
+| `floorplan-app/` | BSL 1.1 → AGPL-3.0-or-later | Malar Kannan |
 | `floorplan-viewer/` | GPL-3.0-or-later | Malar Kannan |
 | `floorplan-mcp-server/` | GPL-3.0-or-later | Malar Kannan |
 | `floorplan-3d-core/` | MIT | Malar Kannan |
