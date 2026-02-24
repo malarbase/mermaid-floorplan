@@ -12,7 +12,9 @@ const siteUrl = process.env.SITE_URL!;
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
 export const createAuth = (ctx: GenericCtx<DataModel>, request?: Request) => {
-  const origin = request?.headers.get('origin') ?? request?.headers.get('x-forwarded-host');
+  const requestOrigin = request?.headers.get('origin');
+  const customHost = request?.headers.get('x-custom-forwarded-host') || request?.headers.get('x-forwarded-host');
+  const origin = requestOrigin ?? (customHost ? (customHost.startsWith('http') ? customHost : `https://${customHost}`) : null);
   let validOrigin = false;
   let dynamicBaseUrl = siteUrl;
 
