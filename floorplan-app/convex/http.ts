@@ -9,8 +9,15 @@ const http = httpRouter();
 // matches routes based on its baseURL (e.g. localhost:3000). We rewrite the
 // request URL origin so route matching works correctly.
 const authHandler = httpAction(async (ctx, request) => {
-  const auth = createAuth(ctx);
-  const baseURL = auth.options?.baseURL ?? process.env.SITE_URL!;
+  const auth = createAuth(ctx, request);
+
+  // Extract origin exactly like createAuth does
+  const origin = request.headers.get('origin') ?? request.headers.get('x-forwarded-host');
+  const inferredBaseUrl = origin ? (origin.startsWith('http') ? origin : `https://${origin}`) : process.env.SITE_URL!;
+
+  // Use auth.options?.baseURL if present, otherwise fallback to the inferred one, then SITE_URL
+  const baseURL = auth.options?.baseURL ?? inferredBaseUrl;
+
   const incoming = new URL(request.url);
   const rewritten = `${baseURL}${incoming.pathname}${incoming.search}`;
   const proxiedRequest = new Request(rewritten, request);

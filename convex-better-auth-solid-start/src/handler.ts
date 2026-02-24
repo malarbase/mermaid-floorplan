@@ -18,6 +18,9 @@ export function createProxyHandler(convexSiteUrl: string) {
     const headers = new Headers(event.request.headers);
     headers.set('accept-encoding', 'application/json');
     headers.set('host', targetHost);
+    if (!headers.has('x-forwarded-host') && requestUrl.host !== 'localhost') {
+      headers.set('x-forwarded-host', requestUrl.host);
+    }
     return fetch(targetUrl, {
       method: event.request.method,
       headers,

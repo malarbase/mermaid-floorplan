@@ -11,9 +11,35 @@ const siteUrl = process.env.SITE_URL!;
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
-export const createAuth = (ctx: GenericCtx<DataModel>) =>
-  betterAuth({
-    baseURL: siteUrl,
+export const createAuth = (ctx: GenericCtx<DataModel>, request?: Request) => {
+  const origin = request?.headers.get('origin') ?? request?.headers.get('x-forwarded-host');
+  let validOrigin = false;
+  let dynamicBaseUrl = siteUrl;
+
+  if (origin) {
+    try {
+      const urlString = origin.startsWith('http') ? origin : `https://${origin}`;
+      const url = new URL(urlString);
+
+      const allowedSuffixes = process.env.ALLOWED_ORIGIN_SUFFIXES
+        ? process.env.ALLOWED_ORIGIN_SUFFIXES.split(',')
+        : ['.vercel.app', '.convex.site'];
+
+      validOrigin = url.hostname === 'localhost' || url.hostname === '127.0.0.1' || allowedSuffixes.some(suffix => url.hostname.endsWith(suffix));
+
+      if (validOrigin) {
+        dynamicBaseUrl = urlString;
+      }
+    } catch (e) {
+      // invalid URL
+    }
+  }
+
+  const trustedOrigins = validOrigin && origin ? [dynamicBaseUrl] : [];
+
+  return betterAuth({
+    baseURL: dynamicBaseUrl,
+    trustedOrigins,
     secret: process.env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
     emailAndPassword: {
@@ -28,6 +54,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     },
     plugins: [convex({ authConfig })],
   });
+};
 
 export const getCurrentUser = query({
   args: {},
@@ -85,37 +112,37 @@ export const listActiveSessions = query({
   args: {},
   handler: IS_DEV_MODE
     ? // -- Dev handler: resolve BA user by email, then list sessions ----------
-      async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
+    async (ctx) => {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) return [];
 
-        const baUserId = (await resolveDevBaUserId(ctx, identity.subject)) ?? identity.subject;
+      const baUserId = (await resolveDevBaUserId(ctx, identity.subject)) ?? identity.subject;
 
-        const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-          model: 'session' as const,
-          where: [
-            { field: 'userId', value: baUserId },
-            { field: 'expiresAt', operator: 'gt' as const, value: Date.now() },
-          ],
-          paginationOpts: { cursor: null, numItems: 50 },
-        });
-        return toActiveSessions(result.page ?? []);
-      }
+      const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+        model: 'session' as const,
+        where: [
+          { field: 'userId', value: baUserId },
+          { field: 'expiresAt', operator: 'gt' as const, value: Date.now() },
+        ],
+        paginationOpts: { cursor: null, numItems: 50 },
+      });
+      return toActiveSessions(result.page ?? []);
+    }
     : // -- Prod handler: identity.subject IS the BA user _id ------------------
-      async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return [];
+    async (ctx) => {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) return [];
 
-        const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-          model: 'session' as const,
-          where: [
-            { field: 'userId', value: identity.subject },
-            { field: 'expiresAt', operator: 'gt' as const, value: Date.now() },
-          ],
-          paginationOpts: { cursor: null, numItems: 50 },
-        });
-        return toActiveSessions(result.page ?? []);
-      },
+      const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+        model: 'session' as const,
+        where: [
+          { field: 'userId', value: identity.subject },
+          { field: 'expiresAt', operator: 'gt' as const, value: Date.now() },
+        ],
+        paginationOpts: { cursor: null, numItems: 50 },
+      });
+      return toActiveSessions(result.page ?? []);
+    },
 });
 
 /**
@@ -129,45 +156,13 @@ export const isSessionValid = query({
   args: {},
   handler: IS_DEV_MODE
     ? // -- Dev handler: sessionId lookup + email-based fallback ---------------
-      async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return false;
+    async (ctx) => {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) return false;
 
-        // Dev JWTs with sessionId (two-phase login) — precise lookup
-        const sessionId = (identity as Record<string, unknown>).sessionId as string | undefined;
-        if (sessionId) {
-          const session = await ctx.runQuery(components.betterAuth.adapter.findOne, {
-            model: 'session',
-            where: [
-              { field: '_id', value: sessionId },
-              { field: 'expiresAt', operator: 'gt', value: Date.now() },
-            ],
-          });
-          return !!session;
-        }
-
-        // Legacy dev JWTs without sessionId — check if any session exists
-        const baUserId = await resolveDevBaUserId(ctx, identity.subject);
-        if (!baUserId) return null; // No BA user yet — indeterminate
-
-        const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
-          model: 'session' as const,
-          where: [
-            { field: 'userId', value: baUserId },
-            { field: 'expiresAt', operator: 'gt' as const, value: Date.now() },
-          ],
-          paginationOpts: { cursor: null, numItems: 1 },
-        });
-        return (result.page ?? []).length > 0;
-      }
-    : // -- Prod handler: sessionId is always present in BA JWT ----------------
-      async (ctx) => {
-        const identity = await ctx.auth.getUserIdentity();
-        if (!identity) return false;
-
-        const sessionId = (identity as Record<string, unknown>).sessionId as string | undefined;
-        if (!sessionId) return false; // Shouldn't happen in production
-
+      // Dev JWTs with sessionId (two-phase login) — precise lookup
+      const sessionId = (identity as Record<string, unknown>).sessionId as string | undefined;
+      if (sessionId) {
         const session = await ctx.runQuery(components.betterAuth.adapter.findOne, {
           model: 'session',
           where: [
@@ -176,5 +171,37 @@ export const isSessionValid = query({
           ],
         });
         return !!session;
-      },
+      }
+
+      // Legacy dev JWTs without sessionId — check if any session exists
+      const baUserId = await resolveDevBaUserId(ctx, identity.subject);
+      if (!baUserId) return null; // No BA user yet — indeterminate
+
+      const result = await ctx.runQuery(components.betterAuth.adapter.findMany, {
+        model: 'session' as const,
+        where: [
+          { field: 'userId', value: baUserId },
+          { field: 'expiresAt', operator: 'gt' as const, value: Date.now() },
+        ],
+        paginationOpts: { cursor: null, numItems: 1 },
+      });
+      return (result.page ?? []).length > 0;
+    }
+    : // -- Prod handler: sessionId is always present in BA JWT ----------------
+    async (ctx) => {
+      const identity = await ctx.auth.getUserIdentity();
+      if (!identity) return false;
+
+      const sessionId = (identity as Record<string, unknown>).sessionId as string | undefined;
+      if (!sessionId) return false; // Shouldn't happen in production
+
+      const session = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+        model: 'session',
+        where: [
+          { field: '_id', value: sessionId },
+          { field: 'expiresAt', operator: 'gt', value: Date.now() },
+        ],
+      });
+      return !!session;
+    },
 });
