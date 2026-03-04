@@ -57,10 +57,10 @@ FloorplanAppCore emits events; UI subscribes via signals. Use `createEffect` / `
 See `solidjs-daisyui` skill for DaisyUI theming (don't duplicate).
 
 <!-- freshness
-watches_hash: 6db341a
-last_verified: 2026-02-17
+watches_hash: a030ca8
+last_verified: 2026-03-04
 watches:
   - floorplan-viewer-core/src/floorplan-app-core.ts
   - floorplan-viewer-core/src/interactive-editor-core.ts
-  - floorplan-viewer-core/src/ui/solid/*
+  - floorplan-viewer-core/src/ui/solid/**
 -->

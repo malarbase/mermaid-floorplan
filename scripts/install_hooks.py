@@ -24,17 +24,12 @@ import subprocess
 import sys
 from pathlib import Path
 
-SKILL_DIR = Path(__file__).resolve().parent.parent
-HOOK_TEMPLATES_DIR = SKILL_DIR / "references" / "githooks"
-
-# Inline hook content — used when template files aren't available
-# (e.g., when this script is copied to a project's scripts/ directory).
 _POST_COMMIT_HOOK = """\
 #!/bin/sh
 # Context freshness check — warns if committed files affect context
 SCRIPTS_DIR="$(git rev-parse --show-toplevel)/scripts"
 if command -v python3 >/dev/null 2>&1 && [ -f "$SCRIPTS_DIR/context_check_watches.py" ]; then
-  git diff-tree --no-commit-id --name-only -r HEAD | xargs python3 "$SCRIPTS_DIR/context_check_watches.py" 2>/dev/null
+  git diff-tree --no-commit-id --name-only -r HEAD -z | xargs -0 python3 "$SCRIPTS_DIR/context_check_watches.py" 2>/dev/null
 fi
 """
 
@@ -47,7 +42,7 @@ if command -v python3 >/dev/null 2>&1 && [ -f "$SCRIPTS_DIR/context_audit.py" ];
 fi
 """
 
-_INLINE_HOOKS = {
+HOOK_CONTENT = {
     "post-commit": _POST_COMMIT_HOOK,
     "post-merge": _POST_MERGE_HOOK,
 }
@@ -65,17 +60,6 @@ def find_git_root(start: str = ".") -> Path:
     except (subprocess.CalledProcessError, FileNotFoundError):
         print("Error: not inside a git repository", file=sys.stderr)
         sys.exit(1)
-
-
-def read_template(name: str) -> str:
-    """Read a hook template, falling back to inline content."""
-    template_path = HOOK_TEMPLATES_DIR / name
-    if template_path.exists():
-        return template_path.read_text(encoding="utf-8")
-    if name in _INLINE_HOOKS:
-        return _INLINE_HOOKS[name]
-    print(f"Error: hook template not found: {template_path}", file=sys.stderr)
-    sys.exit(1)
 
 
 def make_executable(path: Path) -> None:
@@ -141,11 +125,10 @@ def install_husky(git_root: Path) -> None:
     print("Detected: Husky")
     husky_dir = git_root / ".husky"
 
-    post_commit = read_template("post-commit")
-    post_merge = read_template("post-merge")
-
-    write_hook(husky_dir / "post-commit", post_commit, ".husky/post-commit")
-    write_hook(husky_dir / "post-merge", post_merge, ".husky/post-merge")
+    write_hook(husky_dir / "post-commit", HOOK_CONTENT["post-commit"],
+               ".husky/post-commit")
+    write_hook(husky_dir / "post-merge", HOOK_CONTENT["post-merge"],
+               ".husky/post-merge")
 
 
 def install_precommit(git_root: Path) -> None:
@@ -161,8 +144,7 @@ def install_precommit(git_root: Path) -> None:
         print("  Skipped: context hooks already in .pre-commit-config.yaml")
         return
 
-    # Find the scripts directory relative to the config
-    scripts_dir = SKILL_DIR / "scripts"
+    scripts_dir = Path(__file__).resolve().parent
 
     hook_entry = f"""
 # --- progressive-context hooks ---
@@ -195,13 +177,12 @@ def install_plain_git(git_root: Path) -> None:
     hooks_dir = git_root / ".githooks"
     hooks_dir.mkdir(exist_ok=True)
 
-    post_commit = read_template("post-commit")
-    post_merge = read_template("post-merge")
-
     wrote_any = False
-    wrote_any |= write_hook(hooks_dir / "post-commit", post_commit,
+    wrote_any |= write_hook(hooks_dir / "post-commit",
+                            HOOK_CONTENT["post-commit"],
                             ".githooks/post-commit")
-    wrote_any |= write_hook(hooks_dir / "post-merge", post_merge,
+    wrote_any |= write_hook(hooks_dir / "post-merge",
+                            HOOK_CONTENT["post-merge"],
                             ".githooks/post-merge")
 
     # Configure git to use .githooks
@@ -259,7 +240,9 @@ def _remove_hook_file(hook_path: Path, hook_name: str) -> bool:
             return True
         if "SCRIPTS_DIR=" in line or "command -v python3" in line:
             return True
-        if "xargs python3" in line or "git diff-tree" in line:
+        if "xargs" in line and "python3" in line:
+            return True
+        if "git diff-tree" in line:
             return True
         if s.rstrip(";") in SHELL_SCAFFOLDING:
             return True

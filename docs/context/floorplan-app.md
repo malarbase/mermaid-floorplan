@@ -35,10 +35,10 @@ npx convex dev                          # Convex backend
 ```
 
 <!-- freshness
-watches_hash: cf9b281
-last_verified: 2026-02-17
+watches_hash: e6aeb0d
+last_verified: 2026-03-04
 watches:
-  - floorplan-app/src/routes/*
-  - floorplan-app/src/components/*
+  - floorplan-app/src/routes/**
+  - floorplan-app/src/components/**
   - floorplan-app/convex/schema.ts
 -->

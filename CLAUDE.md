@@ -32,7 +32,7 @@ floorplan-app/                      # SolidStart full-stack app
 
 ### Single Source of Truth
 
-All rendering code lives in `language/src/diagrams/floorplans/`. Consumers import:
+All rendering code lives in `floorplan-language/src/diagrams/floorplans/`. Consumers import:
 
 ```typescript
 import { render, renderToFile, getStyles, createFloorplansServices } from "floorplan-language";
@@ -42,10 +42,10 @@ import { render, renderToFile, getStyles, createFloorplansServices } from "floor
 
 | File | Purpose |
 |------|---------|
-| `language/src/diagrams/floorplans/floorplans.langium` | Grammar definition |
-| `language/src/diagrams/floorplans/renderer.ts` | SVG rendering |
-| `language/src/diagrams/floorplans/styles.ts` | Theming |
-| `language/langium-config.json` | Langium configuration |
+| `floorplan-language/src/diagrams/floorplans/floorplans.langium` | Grammar definition |
+| `floorplan-language/src/diagrams/floorplans/renderer.ts` | SVG rendering |
+| `floorplan-language/src/diagrams/floorplans/styles.ts` | Theming |
+| `floorplan-language/langium-config.json` | Langium configuration |
 
 ### Related Context
 
