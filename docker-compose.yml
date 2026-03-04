@@ -22,8 +22,8 @@ services:
       context: .
       dockerfile: floorplan-app/Dockerfile.dev
     env_file:
-      - floorplan-app/.env.development  # Development defaults
-      - floorplan-app/.env.local        # Optional local overrides (gitignored)
+      - floorplan-app/.env.development # Development defaults
+      - floorplan-app/.env.local # Optional local overrides (gitignored)
     environment:
       # Docker-internal URLs for server-side code (overrides env_file values).
       # Browser-facing VITE_* URLs (localhost) come from env_file and are correct.
@@ -33,25 +33,26 @@ services:
       - "3000:3000"
     volumes:
       # Mount source for hot-reload
-      - ./floorplan-app/src:/app/floorplan-app/src
-      - ./floorplan-app/convex:/app/floorplan-app/convex
-      - ./floorplan-app/app.config.ts:/app/floorplan-app/app.config.ts
-      - ./floorplan-app/package.json:/app/floorplan-app/package.json
+      - ./floorplan-app/src:/app/floorplan-app/src:z
+      - ./floorplan-app/convex:/app/floorplan-app/convex:z
+      - ./floorplan-app/app.config.ts:/app/floorplan-app/app.config.ts:z
+      - ./floorplan-app/package.json:/app/floorplan-app/package.json:z
       # Lockfile for automatic dependency reinstall on change
-      - ./package-lock.json:/app/package-lock.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro,z
       # Dev auth keys + key generation script (shared between host and container)
-      - ./floorplan-app/dev-keys:/app/floorplan-app/dev-keys
-      - ./floorplan-app/scripts:/app/floorplan-app/scripts
+      - ./floorplan-app/dev-keys:/app/floorplan-app/dev-keys:z
+      - ./floorplan-app/scripts:/app/floorplan-app/scripts:z
       # Mount shared packages for development
-      - ./floorplan-viewer-core/src:/app/floorplan-viewer-core/src
-      - ./floorplan-3d-core/src:/app/floorplan-3d-core/src
-      - ./floorplan-common:/app/floorplan-common
+      - ./floorplan-viewer-core/src:/app/floorplan-viewer-core/src:z
+      - ./floorplan-3d-core/src:/app/floorplan-3d-core/src:z
+      - ./floorplan-common:/app/floorplan-common:z
+      - ./floorplan-language:/app/floorplan-language:z
       # Preserve node_modules
       - app-node-modules:/app/node_modules
       - app-floorplan-app-node-modules:/app/floorplan-app/node_modules
       # Shared volume for auto-generated admin key
       - convex-shared:/shared:ro
-    command: npm run --workspace floorplan-app dev
+    command: npm run --workspace floorplan-app dev -- --host
     networks:
       - floorplan-network
     depends_on:
@@ -66,12 +67,12 @@ services:
   convex:
     image: ghcr.io/get-convex/convex-backend:latest
     ports:
-      - "3210:3210"  # Backend port
-      - "3211:3211"  # Site proxy port
+      - "3210:3210" # Backend port
+      - "3211:3211" # Site proxy port
     environment:
       - CONVEX_CLOUD_ORIGIN=http://localhost:3210
       - CONVEX_SITE_ORIGIN=http://localhost:3211
-      - CONVEX_DEPLOYMENT=dev:local  # Used by devAuth.ts to detect dev mode
+      - CONVEX_DEPLOYMENT=dev:local # Used by devAuth.ts to detect dev mode
       - RUST_LOG=info
       - DISABLE_BEACON=true
       - DO_NOT_REQUIRE_SSL=true
@@ -84,7 +85,7 @@ services:
     networks:
       - floorplan-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3210/version"]
+      test: [ "CMD", "curl", "-f", "http://localhost:3210/version" ]
       interval: 5s
       start_period: 10s
       retries: 5
@@ -107,7 +108,7 @@ services:
     stop_signal: SIGINT
     stop_grace_period: 10s
     profiles:
-      - dashboard  # Only start if explicitly requested
+      - dashboard # Only start if explicitly requested
 
   # Optional: PostgreSQL for future local auth testing
   # (Currently Better Auth uses Convex, but this is here for flexibility)
@@ -124,7 +125,7 @@ services:
     networks:
       - floorplan-network
     profiles:
-      - postgres  # Only start if explicitly requested
+      - postgres # Only start if explicitly requested
 
 volumes:
   app-node-modules:
@@ -132,6 +133,7 @@ volumes:
   convex-data:
   convex-shared:
   postgres-data:
+
 
 networks:
   floorplan-network:

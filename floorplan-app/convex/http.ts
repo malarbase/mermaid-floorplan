@@ -13,8 +13,8 @@ const authHandler = httpAction(async (ctx, request) => {
 
   // Extract origin exactly like createAuth does
   const customHost = request.headers.get('x-custom-forwarded-host') || request.headers.get('x-forwarded-host');
-  const origin = request.headers.get('origin') ?? (customHost ? (customHost.startsWith('http') ? customHost : `https://${customHost}`) : null);
-  const inferredBaseUrl = origin ? (origin.startsWith('http') ? origin : `https://${origin}`) : process.env.SITE_URL!;
+  const origin = request.headers.get('origin') ?? (customHost ? (customHost.startsWith('http') ? customHost : (customHost.startsWith('localhost') || customHost.startsWith('127.0.0.1') ? `http://${customHost}` : `https://${customHost}`)) : null);
+  const inferredBaseUrl = origin ? (origin.startsWith('http') ? origin : (origin.startsWith('localhost') || origin.startsWith('127.0.0.1') ? `http://${origin}` : `https://${origin}`)) : process.env.SITE_URL!;
 
   // Use auth.options?.baseURL if present, otherwise fallback to the inferred one, then SITE_URL
   const baseURL = auth.options?.baseURL ?? inferredBaseUrl;

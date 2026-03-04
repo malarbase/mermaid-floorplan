@@ -48,8 +48,22 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
         import('~/lib/mock-auth').then(({ getDevToken }) => {
           let authSettled = false;
 
+          const getAuthToken = async () => {
+            const devToken = getDevToken();
+            if (devToken) return devToken;
+
+            // Fallback to Better Auth token for Social/Email logins in dev mode
+            try {
+              const res = await fetch('/api/auth/convex/token');
+              const data = await res.json();
+              return data?.token ?? null;
+            } catch {
+              return null;
+            }
+          };
+
           convexClient.setAuth(
-            async () => getDevToken(),
+            getAuthToken,
             (isAuthenticated) => {
               if (!authSettled) {
                 authSettled = true;
@@ -72,7 +86,7 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
           window.addEventListener('storage', (e) => {
             if (e.key === 'dev-auth-token') {
               convexClient.setAuth(
-                async () => getDevToken(),
+                getAuthToken,
                 () => { },
               );
             }

@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { internalMutation, mutation, query } from './_generated/server';
+import { internalMutation, internalQuery, mutation, query } from './_generated/server';
 import { getCurrentUser as getAuthUser, requireUser } from './lib/auth';
 
 // ============================================================================
@@ -49,6 +49,54 @@ function isValidUsername(username: string): boolean {
   const pattern = /^[a-zA-Z0-9][a-zA-Z0-9_]{2,29}$/;
   return pattern.test(username);
 }
+
+/**
+ * Sync Better Auth user to the app's internal users table.
+ * Called automatically via BetterAuth databaseHooks when a user is created/updated.
+ */
+export const syncUser = internalMutation({
+  args: {
+    authId: v.string(),
+    displayName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('users')
+      .withIndex('by_auth_id', (q) => q.eq('authId', args.authId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        displayName: args.displayName ?? existing.displayName,
+        avatarUrl: args.avatarUrl ?? existing.avatarUrl,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    }
+
+    const tempUsername = await _generateTempUsername(args.authId);
+
+    return await ctx.db.insert('users', {
+      authId: args.authId,
+      username: tempUsername,
+      displayName: args.displayName,
+      avatarUrl: args.avatarUrl,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  }
+});
+
+export const getExistingByAuthId = internalQuery({
+  args: { authId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('users')
+      .withIndex('by_auth_id', (q) => q.eq('authId', args.authId))
+      .first();
+  }
+});
 
 /**
  * Calculate exponential cooldown based on recent change count.
@@ -380,7 +428,7 @@ export const setUsername = mutation({
         const daysRemaining = Math.ceil((cooldownExpiry - now) / DAY_MS);
         throw new Error(
           `Username change cooldown: please wait ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}. ` +
-            `You've changed your username ${recentCount} time${recentCount === 1 ? '' : 's'} this year.`,
+          `You've changed your username ${recentCount} time${recentCount === 1 ? '' : 's'} this year.`,
         );
       }
     }

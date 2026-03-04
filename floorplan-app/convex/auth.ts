@@ -1,7 +1,7 @@
 import { createClient, type GenericCtx } from '@convex-dev/better-auth';
 import { convex } from '@convex-dev/better-auth/plugins';
 import { betterAuth } from 'better-auth/minimal';
-import { components } from './_generated/api';
+import { components, internal } from './_generated/api';
 import type { DataModel } from './_generated/dataModel';
 import { query } from './_generated/server';
 import authConfig from './auth.config';
@@ -14,7 +14,7 @@ export const authComponent = createClient<DataModel>(components.betterAuth);
 export const createAuth = (ctx: GenericCtx<DataModel>, request?: Request) => {
   const requestOrigin = request?.headers.get('origin');
   const customHost = request?.headers.get('x-custom-forwarded-host') || request?.headers.get('x-forwarded-host');
-  const origin = requestOrigin ?? (customHost ? (customHost.startsWith('http') ? customHost : `https://${customHost}`) : null);
+  const origin = requestOrigin ?? (customHost ? (customHost.startsWith('http') ? customHost : (customHost.startsWith('localhost') || customHost.startsWith('127.0.0.1') ? `http://${customHost}` : `https://${customHost}`)) : null);
   let validOrigin = false;
   let dynamicBaseUrl = siteUrl;
 
@@ -44,6 +44,49 @@ export const createAuth = (ctx: GenericCtx<DataModel>, request?: Request) => {
     trustedOrigins,
     secret: process.env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            // biome-ignore lint/suspicious/noExplicitAny: GenericCtx doesn't expose runMutation natively but at runtime it has it
+            await (ctx as any).runMutation(internal.users.syncUser, {
+              authId: user.id,
+              displayName: user.name,
+              avatarUrl: user.image,
+            });
+          },
+        },
+        update: {
+          after: async (user) => {
+            // biome-ignore lint/suspicious/noExplicitAny: GenericCtx doesn't expose runMutation natively but at runtime it has it
+            await (ctx as any).runMutation(internal.users.syncUser, {
+              authId: user.id,
+              displayName: user.name,
+              avatarUrl: user.image,
+            });
+          },
+        },
+      },
+      session: {
+        create: {
+          after: async (session) => {
+            // Re-sync user on every login (session creation) to ensure 
+            // the internal users table is caught up without a full backfill
+            const user = await (ctx as any).runQuery(components.betterAuth.adapter.findOne, {
+              model: 'user' as const,
+              where: [{ field: 'id', value: session.userId }],
+            });
+            if (user) {
+              await (ctx as any).runMutation(internal.users.syncUser, {
+                authId: user.id as string,
+                displayName: user.name as string,
+                avatarUrl: user.image as string,
+              });
+            }
+          }
+        }
+      }
+    },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
