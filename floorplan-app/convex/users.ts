@@ -60,6 +60,7 @@ export const syncUser = internalMutation({
     displayName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
   },
+  returns: v.id('users'),
   handler: async (ctx, args) => {
     const existing = await ctx.db
       .query('users')
@@ -85,17 +86,55 @@ export const syncUser = internalMutation({
       createdAt: Date.now(),
       updatedAt: Date.now(),
     });
-  }
+  },
 });
 
 export const getExistingByAuthId = internalQuery({
   args: { authId: v.string() },
+  returns: v.union(
+    v.object({
+      _id: v.id('users'),
+      _creationTime: v.number(),
+      authId: v.string(),
+      username: v.string(),
+      displayName: v.optional(v.string()),
+      avatarUrl: v.optional(v.string()),
+      usernameSetAt: v.optional(v.number()),
+      isAdmin: v.optional(v.boolean()),
+      usernameChanges: v.optional(
+        v.array(
+          v.object({
+            username: v.string(),
+            changedAt: v.number(),
+            heldSince: v.number(),
+          }),
+        ),
+      ),
+      lastUsernameChangeAt: v.optional(v.number()),
+      bannedUntil: v.optional(v.number()),
+      bannedAt: v.optional(v.number()),
+      moderationHistory: v.optional(
+        v.array(
+          v.object({
+            action: v.union(v.literal('warn'), v.literal('ban'), v.literal('unban')),
+            reason: v.optional(v.string()),
+            duration: v.optional(v.string()),
+            actorId: v.id('users'),
+            timestamp: v.number(),
+          }),
+        ),
+      ),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+    v.null(),
+  ),
   handler: async (ctx, args) => {
     return await ctx.db
       .query('users')
       .withIndex('by_auth_id', (q) => q.eq('authId', args.authId))
       .first();
-  }
+  },
 });
 
 /**
@@ -428,7 +467,7 @@ export const setUsername = mutation({
         const daysRemaining = Math.ceil((cooldownExpiry - now) / DAY_MS);
         throw new Error(
           `Username change cooldown: please wait ${daysRemaining} day${daysRemaining === 1 ? '' : 's'}. ` +
-          `You've changed your username ${recentCount} time${recentCount === 1 ? '' : 's'} this year.`,
+            `You've changed your username ${recentCount} time${recentCount === 1 ? '' : 's'} this year.`,
         );
       }
     }

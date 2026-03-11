@@ -8,16 +8,12 @@ const http = httpRouter();
 // Requests arrive at Convex's site URL (e.g. localhost:3211) but Better Auth
 // matches routes based on its baseURL (e.g. localhost:3000). We rewrite the
 // request URL origin so route matching works correctly.
+//
+// Origin resolution is handled by resolveAuthOrigin() inside createAuth(),
+// which validates the request origin against ALLOWED_ORIGINS before using it.
 const authHandler = httpAction(async (ctx, request) => {
   const auth = createAuth(ctx, request);
-
-  // Extract origin exactly like createAuth does
-  const customHost = request.headers.get('x-custom-forwarded-host') || request.headers.get('x-forwarded-host');
-  const origin = request.headers.get('origin') ?? (customHost ? (customHost.startsWith('http') ? customHost : (customHost.startsWith('localhost') || customHost.startsWith('127.0.0.1') ? `http://${customHost}` : `https://${customHost}`)) : null);
-  const inferredBaseUrl = origin ? (origin.startsWith('http') ? origin : (origin.startsWith('localhost') || origin.startsWith('127.0.0.1') ? `http://${origin}` : `https://${origin}`)) : process.env.SITE_URL!;
-
-  // Use auth.options?.baseURL if present, otherwise fallback to the inferred one, then SITE_URL
-  const baseURL = auth.options?.baseURL ?? inferredBaseUrl;
+  const baseURL = auth.options?.baseURL ?? process.env.SITE_URL!;
 
   const incoming = new URL(request.url);
   const rewritten = `${baseURL}${incoming.pathname}${incoming.search}`;
@@ -25,11 +21,7 @@ const authHandler = httpAction(async (ctx, request) => {
   const newHeaders = new Headers(request.headers);
   const rewriteUrlObj = new URL(baseURL);
   newHeaders.set('host', rewriteUrlObj.host);
-  if (!newHeaders.has('x-forwarded-host')) {
-    newHeaders.set('x-forwarded-host', rewriteUrlObj.host);
-  }
 
-  // Create standard request object correctly. If method is GET or HEAD, omit body!
   const init: RequestInit = {
     method: request.method,
     headers: newHeaders,
@@ -37,7 +29,7 @@ const authHandler = httpAction(async (ctx, request) => {
 
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     init.body = request.body;
-    // @ts-ignore
+    // @ts-expect-error
     init.duplex = 'half';
   }
 

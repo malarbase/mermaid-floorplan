@@ -87,25 +87,29 @@ export function useSession(): Accessor<SessionData> {
     }
   });
 
-  // Centralized query to Convex for authoritative app state (username, isAdmin, etc)
+  // Convex user query — only enabled when there's evidence of authentication.
+  // Avoids unnecessary subscriptions for unauthenticated visitors.
   const convexUser = useQuery(
     api.users.getCurrentUser,
     () => {
       if (import.meta.env.DEV) void authVersion();
       return {};
-    }
+    },
+    () => ({
+      enabled: !!realSession()?.data?.user || (import.meta.env.DEV && devLoggedIn()),
+    }),
   );
 
   return createMemo(() => {
     const rs = realSession();
     const cUser = convexUser.data() as
       | {
-        authId: string;
-        username: string;
-        displayName?: string;
-        avatarUrl?: string | null;
-        isAdmin?: boolean;
-      }
+          authId: string;
+          username: string;
+          displayName?: string;
+          avatarUrl?: string | null;
+          isAdmin?: boolean;
+        }
       | null
       | undefined;
 
