@@ -1,19 +1,25 @@
 import { createClient, type GenericCtx } from '@convex-dev/better-auth';
 import { convex } from '@convex-dev/better-auth/plugins';
 import { betterAuth } from 'better-auth/minimal';
-import { components } from './_generated/api';
+import { components, internal } from './_generated/api';
 import type { DataModel } from './_generated/dataModel';
 import { query } from './_generated/server';
 import authConfig from './auth.config';
 import { IS_DEV_MODE } from './lib/auth';
+import { resolveAuthOrigin } from './lib/auth-origin';
 
 const siteUrl = process.env.SITE_URL!;
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
-export const createAuth = (ctx: GenericCtx<DataModel>) =>
-  betterAuth({
-    baseURL: siteUrl,
+export const createAuth = (ctx: GenericCtx<DataModel>, request?: Request) => {
+  const { baseURL, trustedOrigins } = request
+    ? resolveAuthOrigin(request, siteUrl, process.env.ALLOWED_ORIGINS)
+    : { baseURL: siteUrl, trustedOrigins: [siteUrl] };
+
+  return betterAuth({
+    baseURL,
+    trustedOrigins,
     secret: process.env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
     emailAndPassword: {
@@ -27,7 +33,60 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
       },
     },
     plugins: [convex({ authConfig })],
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            try {
+              // biome-ignore lint/suspicious/noExplicitAny: Convex action ctx exposes runMutation but GenericCtx type doesn't
+              await (ctx as any).runMutation(internal.users.syncUser, {
+                authId: user.id,
+                name: user.name ?? undefined,
+                image: user.image ?? undefined,
+              });
+            } catch {
+              // Non-fatal: user sync will retry on next login via session.create hook
+            }
+          },
+        },
+        update: {
+          after: async (user) => {
+            try {
+              // biome-ignore lint/suspicious/noExplicitAny: Convex action ctx exposes runMutation but GenericCtx type doesn't
+              await (ctx as any).runMutation(internal.users.syncUser, {
+                authId: user.id,
+                name: user.name ?? undefined,
+                image: user.image ?? undefined,
+              });
+            } catch {
+              // Non-fatal: profile data will sync on next login
+            }
+          },
+        },
+      },
+      session: {
+        create: {
+          after: async (session) => {
+            try {
+              // biome-ignore lint/suspicious/noExplicitAny: Convex action ctx exposes runQuery/runMutation but GenericCtx type doesn't
+              const existing = await (ctx as any).runQuery(internal.users.getExistingByAuthId, {
+                authId: session.userId,
+              });
+              if (!existing) {
+                // biome-ignore lint/suspicious/noExplicitAny: see above
+                await (ctx as any).runMutation(internal.users.syncUser, {
+                  authId: session.userId,
+                });
+              }
+            } catch {
+              // Non-fatal: session creation must succeed even if app-level sync fails
+            }
+          },
+        },
+      },
+    },
   });
+};
 
 export const getCurrentUser = query({
   args: {},

@@ -17,8 +17,12 @@ import { getConvexToken } from './token';
  * Factory function that creates the proxy handler and token utilities
  * for integrating Better Auth (running in Convex) with SolidStart.
  */
-export function convexBetterAuthSolidStart(opts: { convexUrl: string; convexSiteUrl: string }) {
-  const proxyHandler = createProxyHandler(opts.convexSiteUrl);
+export function convexBetterAuthSolidStart(opts: {
+  convexUrl: string;
+  convexSiteUrl: string;
+  siteUrl?: string;
+}) {
+  const proxyHandler = createProxyHandler(opts.convexSiteUrl, { siteUrl: opts.siteUrl });
   return {
     handler: {
       GET: proxyHandler,

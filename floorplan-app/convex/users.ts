@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { internalMutation, mutation, query } from './_generated/server';
+import { internalMutation, internalQuery, mutation, query } from './_generated/server';
 import { getCurrentUser as getAuthUser, requireUser } from './lib/auth';
 
 // ============================================================================
@@ -679,5 +679,85 @@ export const fixReleasedUsernameAuthIds = mutation({
     }
 
     return { fixed, total: releasedUsernames.length };
+  },
+});
+
+// ============================================================================
+// Internal functions for BetterAuth database hooks
+// ============================================================================
+
+/**
+ * Look up an existing app user by their BetterAuth user ID.
+ * Used by database hooks to check if a sync is needed.
+ */
+export const getExistingByAuthId = internalQuery({
+  args: { authId: v.string() },
+  returns: v.union(
+    v.object({
+      _id: v.id('users'),
+      authId: v.string(),
+      username: v.string(),
+      displayName: v.optional(v.string()),
+      avatarUrl: v.optional(v.string()),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_auth_id', (q) => q.eq('authId', args.authId))
+      .first();
+    if (!user) return null;
+    return {
+      _id: user._id,
+      authId: user.authId,
+      username: user.username,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+    };
+  },
+});
+
+/**
+ * Sync a BetterAuth user to the app-level users table.
+ * Creates a new user if none exists; updates name/avatar if changed.
+ * Called from BetterAuth database hooks (user.create, user.update, session.create).
+ */
+export const syncUser = internalMutation({
+  args: {
+    authId: v.string(),
+    name: v.optional(v.string()),
+    image: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('users')
+      .withIndex('by_auth_id', (q) => q.eq('authId', args.authId))
+      .first();
+
+    const now = Date.now();
+
+    if (existing) {
+      const updates: Record<string, unknown> = {};
+      if (args.name && !existing.displayName) updates.displayName = args.name;
+      if (args.image && !existing.avatarUrl) updates.avatarUrl = args.image;
+      if (Object.keys(updates).length > 0) {
+        updates.updatedAt = now;
+        await ctx.db.patch(existing._id, updates);
+      }
+      return null;
+    }
+
+    const username = await _generateTempUsername(args.authId);
+    await ctx.db.insert('users', {
+      authId: args.authId,
+      username,
+      displayName: args.name,
+      avatarUrl: args.image,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return null;
   },
 });

@@ -115,13 +115,13 @@ export function useSession(): Accessor<SessionData> {
 
       const user = convexUser.data() as
         | {
-          _id: string;
-          authId: string;
-          username: string;
-          displayName?: string;
-          avatarUrl?: string | null;
-          isAdmin?: boolean;
-        }
+            _id: string;
+            authId: string;
+            username: string;
+            displayName?: string;
+            avatarUrl?: string | null;
+            isAdmin?: boolean;
+          }
         | null
         | undefined;
 
@@ -152,13 +152,44 @@ export function useSession(): Accessor<SessionData> {
     });
   }
 
-  // Production: always use real Better Auth session
+  // Production: use Better Auth session, overlay Convex user data for username/isAdmin
   const realSession = realUseSession();
+
+  const convexUser = useQuery(
+    api.users.getCurrentUser,
+    () => ({}),
+    () => ({ enabled: !!realSession()?.data?.user }),
+  );
+
   return createMemo(() => {
     const session = realSession();
+
+    if (session.isPending) {
+      return { data: null, isPending: true, error: null };
+    }
+
+    if (!session.data) {
+      return { data: null, isPending: false, error: session.error ?? null };
+    }
+
+    const baUser = session.data.user;
+    const cxUser = convexUser.data() as
+      | { username?: string; isAdmin?: boolean; displayName?: string; avatarUrl?: string | null }
+      | null
+      | undefined;
+
     return {
-      data: session.data ? { user: session.data.user as unknown as SessionUser } : null,
-      isPending: session.isPending,
+      data: {
+        user: {
+          id: baUser.id,
+          email: baUser.email,
+          name: cxUser?.displayName ?? baUser.name,
+          image: cxUser?.avatarUrl ?? baUser.image,
+          username: cxUser?.username,
+          isAdmin: cxUser?.isAdmin,
+        } as SessionUser,
+      },
+      isPending: false,
       error: session.error ?? null,
     };
   });
