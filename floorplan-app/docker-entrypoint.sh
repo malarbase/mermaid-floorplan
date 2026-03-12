@@ -80,9 +80,11 @@ fi
 # Deploy Convex functions
 
 echo "Setting Convex environment variables..."
-npx convex env set DEV_AUTH_ENABLED true \
-  --url "$CONVEX_SELF_HOSTED_URL" \
-  --admin-key "$CONVEX_SELF_HOSTED_ADMIN_KEY" 2>&1 || true
+npx convex env set DEV_AUTH_ENABLED true --url "$CONVEX_SELF_HOSTED_URL" --admin-key "$CONVEX_SELF_HOSTED_ADMIN_KEY" 2>&1 || true
+[ -n "$SITE_URL" ] && npx convex env set SITE_URL "$SITE_URL" --url "$CONVEX_SELF_HOSTED_URL" --admin-key "$CONVEX_SELF_HOSTED_ADMIN_KEY" 2>&1 || true
+[ -n "$BETTER_AUTH_SECRET" ] && npx convex env set BETTER_AUTH_SECRET "$BETTER_AUTH_SECRET" --url "$CONVEX_SELF_HOSTED_URL" --admin-key "$CONVEX_SELF_HOSTED_ADMIN_KEY" 2>&1 || true
+[ -n "$GOOGLE_CLIENT_ID" ] && npx convex env set GOOGLE_CLIENT_ID "$GOOGLE_CLIENT_ID" --url "$CONVEX_SELF_HOSTED_URL" --admin-key "$CONVEX_SELF_HOSTED_ADMIN_KEY" 2>&1 || true
+[ -n "$GOOGLE_CLIENT_SECRET" ] && npx convex env set GOOGLE_CLIENT_SECRET "$GOOGLE_CLIENT_SECRET" --url "$CONVEX_SELF_HOSTED_URL" --admin-key "$CONVEX_SELF_HOSTED_ADMIN_KEY" 2>&1 || true
 
 echo "Deploying Convex functions..."
 if npx convex deploy \

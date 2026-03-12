@@ -1,5 +1,5 @@
 import { v } from 'convex/values';
-import { internalMutation, mutation, query } from './_generated/server';
+import { internalMutation, internalQuery, mutation, query } from './_generated/server';
 import { getCurrentUser as getAuthUser, requireUser } from './lib/auth';
 
 // ============================================================================
@@ -49,6 +49,93 @@ function isValidUsername(username: string): boolean {
   const pattern = /^[a-zA-Z0-9][a-zA-Z0-9_]{2,29}$/;
   return pattern.test(username);
 }
+
+/**
+ * Sync Better Auth user to the app's internal users table.
+ * Called automatically via BetterAuth databaseHooks when a user is created/updated.
+ */
+export const syncUser = internalMutation({
+  args: {
+    authId: v.string(),
+    displayName: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+  },
+  returns: v.id('users'),
+  handler: async (ctx, args) => {
+    const existing = await ctx.db
+      .query('users')
+      .withIndex('by_auth_id', (q) => q.eq('authId', args.authId))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        displayName: args.displayName ?? existing.displayName,
+        avatarUrl: args.avatarUrl ?? existing.avatarUrl,
+        updatedAt: Date.now(),
+      });
+      return existing._id;
+    }
+
+    const tempUsername = await _generateTempUsername(args.authId);
+
+    return await ctx.db.insert('users', {
+      authId: args.authId,
+      username: tempUsername,
+      displayName: args.displayName,
+      avatarUrl: args.avatarUrl,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const getExistingByAuthId = internalQuery({
+  args: { authId: v.string() },
+  returns: v.union(
+    v.object({
+      _id: v.id('users'),
+      _creationTime: v.number(),
+      authId: v.string(),
+      username: v.string(),
+      displayName: v.optional(v.string()),
+      avatarUrl: v.optional(v.string()),
+      usernameSetAt: v.optional(v.number()),
+      isAdmin: v.optional(v.boolean()),
+      usernameChanges: v.optional(
+        v.array(
+          v.object({
+            username: v.string(),
+            changedAt: v.number(),
+            heldSince: v.number(),
+          }),
+        ),
+      ),
+      lastUsernameChangeAt: v.optional(v.number()),
+      bannedUntil: v.optional(v.number()),
+      bannedAt: v.optional(v.number()),
+      moderationHistory: v.optional(
+        v.array(
+          v.object({
+            action: v.union(v.literal('warn'), v.literal('ban'), v.literal('unban')),
+            reason: v.optional(v.string()),
+            duration: v.optional(v.string()),
+            actorId: v.id('users'),
+            timestamp: v.number(),
+          }),
+        ),
+      ),
+      createdAt: v.number(),
+      updatedAt: v.number(),
+    }),
+    v.null(),
+  ),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('users')
+      .withIndex('by_auth_id', (q) => q.eq('authId', args.authId))
+      .first();
+  },
+});
 
 /**
  * Calculate exponential cooldown based on recent change count.

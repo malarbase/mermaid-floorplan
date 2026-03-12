@@ -1,21 +1,81 @@
 import { createClient, type GenericCtx } from '@convex-dev/better-auth';
 import { convex } from '@convex-dev/better-auth/plugins';
 import { betterAuth } from 'better-auth/minimal';
-import { components } from './_generated/api';
+import { components, internal } from './_generated/api';
 import type { DataModel } from './_generated/dataModel';
 import { query } from './_generated/server';
 import authConfig from './auth.config';
 import { IS_DEV_MODE } from './lib/auth';
+import { resolveAuthOrigin } from './lib/authOrigin';
 
 const siteUrl = process.env.SITE_URL!;
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
-export const createAuth = (ctx: GenericCtx<DataModel>) =>
-  betterAuth({
-    baseURL: siteUrl,
+export const createAuth = (ctx: GenericCtx<DataModel>, request?: Request) => {
+  const { baseURL, trustedOrigins } = request
+    ? resolveAuthOrigin(request, siteUrl, process.env.ALLOWED_ORIGINS)
+    : { baseURL: siteUrl, trustedOrigins: [siteUrl] };
+
+  return betterAuth({
+    baseURL,
+    trustedOrigins,
     secret: process.env.BETTER_AUTH_SECRET,
     database: authComponent.adapter(ctx),
+    databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            try {
+              // biome-ignore lint/suspicious/noExplicitAny: GenericCtx doesn't expose runMutation natively but at runtime it has it
+              await (ctx as any).runMutation(internal.users.syncUser, {
+                authId: user.id,
+                displayName: user.name,
+                avatarUrl: user.image,
+              });
+            } catch {
+              // Non-fatal: user sync will retry on next login via session.create hook
+            }
+          },
+        },
+        update: {
+          after: async (user) => {
+            try {
+              // biome-ignore lint/suspicious/noExplicitAny: GenericCtx doesn't expose runMutation natively but at runtime it has it
+              await (ctx as any).runMutation(internal.users.syncUser, {
+                authId: user.id,
+                displayName: user.name,
+                avatarUrl: user.image,
+              });
+            } catch {
+              // Non-fatal: profile data will sync on next login
+            }
+          },
+        },
+      },
+      session: {
+        create: {
+          after: async (session) => {
+            try {
+              const user = await (ctx as any).runQuery(components.betterAuth.adapter.findOne, {
+                model: 'user' as const,
+                where: [{ field: 'id', value: session.userId }],
+              });
+              if (user) {
+                // biome-ignore lint/suspicious/noExplicitAny: see above
+                await (ctx as any).runMutation(internal.users.syncUser, {
+                  authId: user.id as string,
+                  displayName: user.name as string,
+                  avatarUrl: user.image as string,
+                });
+              }
+            } catch {
+              // Non-fatal: session creation must succeed even if app-level sync fails
+            }
+          },
+        },
+      },
+    },
     emailAndPassword: {
       enabled: true,
       requireEmailVerification: false,
@@ -28,6 +88,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) =>
     },
     plugins: [convex({ authConfig })],
   });
+};
 
 export const getCurrentUser = query({
   args: {},

@@ -17,3 +17,5 @@ trial/
 # Ignore everything in examples directory except .floorplan files
 examples/*
 !examples/*.floorplan
+secrets/
+.env

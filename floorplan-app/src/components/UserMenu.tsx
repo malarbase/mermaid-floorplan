@@ -16,14 +16,9 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
   const user = createMemo(() => session()?.data?.user);
   const isLoading = createMemo(() => session()?.isPending ?? true);
 
-  // Query current user from Convex for authoritative username
-  const currentUserQuery = useQuery(api.users.getCurrentUser, {});
+  const username = createMemo(() => user()?.username ?? user()?.name ?? '');
 
-  // Use Convex data as source of truth, fallback to session
-  const username = createMemo(() => {
-    const convexUser = currentUserQuery.data() as { username?: string } | undefined;
-    return convexUser?.username ?? user()?.username ?? user()?.name ?? '';
-  });
+  const isAdmin = createMemo(() => user()?.isAdmin ?? false);
 
   const avatarSize = () => (props.size === 'sm' ? 'w-8' : 'w-10');
   const avatarSizeClass = () => (props.size === 'sm' ? 'w-8 h-8' : 'w-10 h-10');
@@ -137,7 +132,7 @@ export const UserMenu: Component<UserMenuProps> = (props) => {
                 New Project
               </A>
             </li>
-            <Show when={user()?.isAdmin}>
+            <Show when={isAdmin()}>
               <div class="divider my-1" />
               <li>
                 <A href="/admin" class="flex items-center gap-2 text-warning">

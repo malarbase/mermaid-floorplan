@@ -29,6 +29,7 @@ COPY . .
 
 # Build shared packages that floorplan-app depends on
 RUN npm run build --workspace floorplan-common
+RUN npm run build --workspace floorplan-language
 RUN npm run build --workspace floorplan-3d-core
 RUN npm run build --workspace floorplan-viewer-core
 

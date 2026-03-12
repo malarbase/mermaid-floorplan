@@ -32,6 +32,9 @@ const getAuthBaseUrl = () => {
   if (typeof window !== 'undefined') {
     return window.location.origin;
   }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
   return import.meta.env.VITE_BETTER_AUTH_URL ?? 'http://localhost:3000';
 };
 
@@ -59,31 +62,18 @@ export interface SessionData {
   error: Error | null;
 }
 
-/**
- * Session hook that works identically in dev and production.
- *
- * In development:
- *   - JWT from mock-auth.ts is verified by Convex's customJwt provider
- *   - ctx.auth.getUserIdentity() returns a real identity
- *   - getCurrentUser query works via the standard auth path
- *   - Listens for localStorage changes to re-query when personas switch
- *
- * In production:
- *   - Uses Better Auth session (real OAuth)
- */
 export function useSession(): Accessor<SessionData> {
-  // Dev mode: derive session from getCurrentUser (backed by JWT auth).
-  // ConvexProvider.tsx calls setAuth() with the dev JWT, so
-  // ctx.auth.getUserIdentity() works identically to production.
-  if (import.meta.env.DEV) {
-    const [devLoggedIn, setDevLoggedIn] = createSignal(false);
-    const [isChecked, setIsChecked] = createSignal(false);
-    const [authVersion, setAuthVersion] = createSignal(0);
+  const realSession = realUseSession();
 
-    onMount(() => {
+  // Track dev persona changes (only utilized in dev, but declared here to obey hooks rules)
+  const [authVersion, setAuthVersion] = createSignal(0);
+  const [devLoggedIn, setDevLoggedIn] = createSignal(false);
+  const [isChecked, setIsChecked] = createSignal(false);
+
+  onMount(() => {
+    if (import.meta.env.DEV) {
       setDevLoggedIn(isDevLoggedIn());
       setIsChecked(true);
-
       const onStorageChange = (e: StorageEvent) => {
         if (e.key === 'dev-auth-token') {
           setDevLoggedIn(isDevLoggedIn());
@@ -92,74 +82,95 @@ export function useSession(): Accessor<SessionData> {
       };
       window.addEventListener('storage', onStorageChange);
       onCleanup(() => window.removeEventListener('storage', onStorageChange));
-    });
+    } else {
+      setIsChecked(true);
+    }
+  });
 
-    // Query Convex for the current user — works via JWT auth in dev
-    const convexUser = useQuery(
-      api.users.getCurrentUser,
-      () => {
-        void authVersion();
-        return {};
-      },
-      () => ({ enabled: devLoggedIn() }),
-    );
+  // Convex user query — only enabled when there's evidence of authentication.
+  // Avoids unnecessary subscriptions for unauthenticated visitors.
+  const convexUser = useQuery(
+    api.users.getCurrentUser,
+    () => {
+      if (import.meta.env.DEV) void authVersion();
+      return {};
+    },
+    () => ({
+      enabled: !!realSession()?.data?.user || (import.meta.env.DEV && devLoggedIn()),
+    }),
+  );
 
-    return createMemo(() => {
-      if (!isChecked()) {
-        return { data: null, isPending: true, error: null };
-      }
-
-      if (!devLoggedIn()) {
-        return { data: null, isPending: false, error: null };
-      }
-
-      const user = convexUser.data() as
-        | {
-          _id: string;
+  return createMemo(() => {
+    const rs = realSession();
+    const cUser = convexUser.data() as
+      | {
           authId: string;
           username: string;
           displayName?: string;
           avatarUrl?: string | null;
           isAdmin?: boolean;
         }
-        | null
-        | undefined;
+      | null
+      | undefined;
 
-      // undefined = query hasn't returned yet; null = no user found
-      if (user === undefined) {
-        return { data: null, isPending: true, error: null };
-      }
-
-      if (!user) {
-        // getCurrentUser returned null — JWT not verified or no user document
-        return { data: null, isPending: false, error: null };
-      }
-
+    // 1. Valid Better Auth Session (Primary Prod flow, also hits Dev if OAuth used)
+    if (rs.data?.user) {
       return {
         data: {
           user: {
-            id: user.authId,
-            email: `${user.username}@dev.local`,
-            name: user.displayName ?? user.username,
-            username: user.username,
-            image: user.avatarUrl,
-            isAdmin: user.isAdmin,
-          } as SessionUser,
+            ...rs.data.user,
+            username: cUser?.username,
+            isAdmin: cUser?.isAdmin ?? false,
+            // Convex provides canonical avatar if available
+            image: cUser?.avatarUrl ?? rs.data.user.image,
+          } as unknown as SessionUser,
         },
-        isPending: false,
-        error: null,
+        // We ensure `isPending` stays true until Convex completes the user load
+        isPending: rs.isPending || cUser === undefined,
+        error: rs.error ?? null,
       };
-    });
-  }
+    }
 
-  // Production: always use real Better Auth session
-  const realSession = realUseSession();
-  return createMemo(() => {
-    const session = realSession();
+    // 2. Production fallback: Not logged in
+    if (!import.meta.env.DEV) {
+      return {
+        data: null,
+        isPending: rs.isPending || !isChecked(),
+        error: rs.error ?? null,
+      };
+    }
+
+    // 3. Dev Mode fallback: Check mock JWT when BA isn't fully active
+    if (!isChecked() || rs.isPending) {
+      return { data: null, isPending: true, error: null };
+    }
+    if (!devLoggedIn()) {
+      return { data: null, isPending: false, error: null };
+    }
+
+    // Dev mode Mock waiting for Convex mapping
+    if (cUser === undefined) {
+      return { data: null, isPending: true, error: null };
+    }
+    // Convex query finished but returned null (no such user)
+    if (!cUser) {
+      return { data: null, isPending: false, error: null };
+    }
+
+    // Construct mock session completely out of Convex data
     return {
-      data: session.data ? { user: session.data.user as unknown as SessionUser } : null,
-      isPending: session.isPending,
-      error: session.error ?? null,
+      data: {
+        user: {
+          id: cUser.authId,
+          email: `${cUser.username}@dev.local`,
+          name: cUser.displayName ?? cUser.username,
+          username: cUser.username,
+          image: cUser.avatarUrl,
+          isAdmin: cUser.isAdmin ?? false,
+        } as SessionUser,
+      },
+      isPending: false,
+      error: null,
     };
   });
 }
