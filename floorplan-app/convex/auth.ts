@@ -6,7 +6,7 @@ import type { DataModel } from './_generated/dataModel';
 import { query } from './_generated/server';
 import authConfig from './auth.config';
 import { IS_DEV_MODE } from './lib/auth';
-import { resolveAuthOrigin } from './lib/auth-origin';
+import { resolveAuthOrigin } from './lib/authOrigin';
 
 const siteUrl = process.env.SITE_URL!;
 
