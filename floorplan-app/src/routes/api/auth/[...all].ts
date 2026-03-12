@@ -16,31 +16,20 @@ import { convexBetterAuthSolidStart } from 'convex-better-auth-solid-start';
  * - GET /api/auth/session - Get current session
  * - GET /api/auth/convex/token - Get Convex JWT
  */
-import { readFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-
+// Server-side proxy: prefer CONVEX_SITE_URL (Docker-internal hostname like
+// convex:3211) over VITE_CONVEX_SITE_URL (browser-facing localhost:3211).
 const convexSiteUrl = (
   process.env.CONVEX_SITE_URL ??
-  import.meta.env.CONVEX_SITE_URL ??
   import.meta.env.VITE_CONVEX_SITE_URL ??
   'http://localhost:3211'
 ).replace(/\/$/, '');
 
-const convexUrl = (
-  process.env.CONVEX_URL ??
-  import.meta.env.CONVEX_URL ??
-  import.meta.env.VITE_CONVEX_URL ??
-  'http://localhost:3210'
-).replace(/\/$/, '');
-
-console.log('--- SOLIDSTART PROXY DEBUG ---');
-console.log('CWD:', process.cwd());
-console.log('CONVEX_SITE_URL resolved to:', convexSiteUrl);
-console.log('CONVEX_URL resolved to:', convexUrl);
-console.log('------------------------------');
-
 const { handler } = convexBetterAuthSolidStart({
-  convexUrl,
+  convexUrl: (
+    process.env.CONVEX_URL ??
+    import.meta.env.VITE_CONVEX_URL ??
+    'http://localhost:3210'
+  ).replace(/\/$/, ''),
   convexSiteUrl,
 });
 
