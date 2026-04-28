@@ -5,8 +5,13 @@
 import * as THREE from 'three';
 import { describe, expect, test } from 'vitest';
 import { COLORS, COLORS_BLUEPRINT, COLORS_DARK } from '../src/constants';
-import { buildCompleteScene, buildFloorplanScene } from '../src/scene-builder';
+import {
+  buildCompleteScene,
+  buildFloorplanScene,
+  buildFloorplanSceneFromNormalized,
+} from '../src/scene-builder';
 import type { JsonExport, JsonFloor, JsonRoom, Render3DOptions } from '../src/types';
+import { normalizeToMeters } from '../src/unit-normalizer';
 
 /**
  * Create a minimal room for testing
@@ -578,5 +583,327 @@ describe('double-door rendering', () => {
     // Panels should have different rotations (mirrored)
     // The exact values depend on swing direction, but they should differ
     expect(leftPanel.rotation.y).not.toBe(rightPanel.rotation.y);
+  });
+});
+
+describe('SceneBuildHooks', () => {
+  /**
+   * Build a fixture with two floors, one room each, plus a stair and a lift on
+   * the ground floor. Used to assert callback fan-out and `floorGroups` map
+   * contents in a single representative scene.
+   */
+  function createHookFixture(): JsonExport {
+    return {
+      floors: [
+        {
+          id: 'ground',
+          index: 0,
+          rooms: [createRoom('living', 0, 0, 8, 6)],
+          stairs: [
+            {
+              name: 'main',
+              x: 1,
+              z: 1,
+              rise: 3.0,
+              width: 1.0,
+              tread: 0.28,
+              shape: { type: 'straight', direction: 'top' },
+            },
+          ],
+          lifts: [
+            {
+              name: 'L1',
+              x: 5,
+              z: 0.5,
+              width: 1.5,
+              height: 1.5,
+              doors: ['top'],
+            },
+          ],
+        },
+        createFloor('first', 1, [createRoom('bedroom', 0, 0, 8, 6)]),
+      ],
+      connections: [],
+      config: { default_height: 3.0 },
+    };
+  }
+
+  test('floorGroups exposes one entry per rendered floor, keyed by id', () => {
+    const data = createHookFixture();
+    const result = buildFloorplanScene(data);
+
+    expect(result.floorGroups).toBeInstanceOf(Map);
+    expect(result.floorGroups.size).toBe(2);
+    expect(result.floorGroups.has('ground')).toBe(true);
+    expect(result.floorGroups.has('first')).toBe(true);
+
+    const groundGroup = result.floorGroups.get('ground')!;
+    expect(groundGroup).toBeInstanceOf(THREE.Group);
+    expect(groundGroup.name).toBe('floor_ground');
+    expect(result.scene.children).toContain(groundGroup);
+  });
+
+  test('floorGroups respects floorIndices filtering', () => {
+    const data = createHookFixture();
+    const result = buildFloorplanScene(data, { floorIndices: [1] });
+
+    expect(result.floorGroups.size).toBe(1);
+    expect(result.floorGroups.has('first')).toBe(true);
+    expect(result.floorGroups.has('ground')).toBe(false);
+  });
+
+  test('onFloorGroup fires once per rendered floor with entity ref', () => {
+    const data = createHookFixture();
+    const calls: Array<{ name: string; floorId: string }> = [];
+
+    buildFloorplanScene(data, {
+      onFloorGroup: (group, floor) => {
+        calls.push({ name: group.name, floorId: floor.id });
+      },
+    });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual({ name: 'floor_ground', floorId: 'ground' });
+    expect(calls[1]).toEqual({ name: 'floor_first', floorId: 'first' });
+  });
+
+  test('onRoomMesh fires once per room slab with the JsonRoom reference', () => {
+    const data = createHookFixture();
+    const calls: Array<{ roomName: string; floorId: string; meshName: string }> = [];
+
+    buildFloorplanScene(data, {
+      onRoomMesh: (mesh, room, floor) => {
+        calls.push({ roomName: room.name, floorId: floor.id, meshName: mesh.name });
+      },
+    });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0].roomName).toBe('living');
+    expect(calls[0].meshName).toBe('floor_slab_living');
+    expect(calls[1].roomName).toBe('bedroom');
+    expect(calls[1].meshName).toBe('floor_slab_bedroom');
+  });
+
+  test('onRoomMesh does not fire when showFloors is false', () => {
+    const data = createHookFixture();
+    let count = 0;
+
+    buildFloorplanScene(data, {
+      showFloors: false,
+      onRoomMesh: () => {
+        count++;
+      },
+    });
+
+    expect(count).toBe(0);
+  });
+
+  test('onWallMesh fires per wall-segment mesh with the originating JsonWall', () => {
+    const data = createHookFixture();
+    const calls: Array<{ direction: string; roomName: string; floorId: string }> = [];
+
+    buildFloorplanScene(data, {
+      onWallMesh: (mesh, wall, room, floor) => {
+        expect(mesh).toBeInstanceOf(THREE.Mesh);
+        calls.push({ direction: wall.direction, roomName: room.name, floorId: floor.id });
+      },
+    });
+
+    // Two floors × one room × four walls × ≥1 mesh per wall = ≥8 calls.
+    expect(calls.length).toBeGreaterThanOrEqual(8);
+
+    const directions = new Set(calls.map((c) => c.direction));
+    expect(directions).toEqual(new Set(['top', 'bottom', 'left', 'right']));
+
+    const floorsSeen = new Set(calls.map((c) => c.floorId));
+    expect(floorsSeen).toEqual(new Set(['ground', 'first']));
+  });
+
+  test('onWallMesh does not fire when showWalls is false', () => {
+    const data = createHookFixture();
+    let count = 0;
+
+    buildFloorplanScene(data, {
+      showWalls: false,
+      onWallMesh: () => {
+        count++;
+      },
+    });
+
+    expect(count).toBe(0);
+  });
+
+  test('onStairMesh fires once per stair with the JsonStair reference', () => {
+    const data = createHookFixture();
+    const calls: Array<{ stairName: string; floorId: string }> = [];
+
+    buildFloorplanScene(data, {
+      onStairMesh: (group, stair, floor) => {
+        expect(group).toBeInstanceOf(THREE.Group);
+        calls.push({ stairName: stair.name, floorId: floor.id });
+      },
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual({ stairName: 'main', floorId: 'ground' });
+  });
+
+  test('onLiftMesh fires once per lift with the JsonLift reference', () => {
+    const data = createHookFixture();
+    const calls: Array<{ liftName: string; floorId: string }> = [];
+
+    buildFloorplanScene(data, {
+      onLiftMesh: (group, lift, floor) => {
+        expect(group).toBeInstanceOf(THREE.Group);
+        calls.push({ liftName: lift.name, floorId: floor.id });
+      },
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toEqual({ liftName: 'L1', floorId: 'ground' });
+  });
+
+  test('headless render path (no hooks) keeps existing scene structure', () => {
+    // Regression: hooks must be purely additive — omitting them should leave
+    // the existing scene exactly as before.
+    const data = createHookFixture();
+    const result = buildFloorplanScene(data);
+
+    expect(result.scene.children.length).toBeGreaterThan(0);
+    expect(result.floorsRendered).toEqual([0, 1]);
+    // floorGroups is the only new field; the rest of the result stays intact.
+    expect(result.styleMap).toBeInstanceOf(Map);
+  });
+
+  test('buildCompleteScene exposes floorGroups in its return value', () => {
+    const data = createHookFixture();
+    const renderOptions: Render3DOptions = {
+      width: 800,
+      height: 600,
+      renderAllFloors: true,
+    };
+
+    const result = buildCompleteScene(data, renderOptions);
+
+    expect(result.floorGroups).toBeInstanceOf(Map);
+    expect(result.floorGroups.size).toBe(2);
+  });
+});
+
+describe('unit normalization at the scene-build entry points', () => {
+  /**
+   * Build a fixture whose source unit is feet and whose dimensions, once
+   * converted to meters, are well-known so we can compare scene bounds
+   * with float tolerance.
+   *
+   * Single 10ft × 10ft room → ~3.048m × 3.048m on the floor plane after
+   * one normalization pass. A second normalization pass (the bug) would
+   * scale by 1/3.28 again to ~0.929m × 0.929m, which is what
+   * `BaseViewer.loadFloorplan` was producing pre-fix when it called
+   * `normalizeToMeters` itself and then handed the already-normalized
+   * `JsonExport` to `buildFloorplanScene` (which normalizes again).
+   */
+  function createFeetFixture(): JsonExport {
+    return {
+      floors: [
+        {
+          id: 'ground',
+          index: 0,
+          rooms: [
+            {
+              name: 'room',
+              x: 0,
+              z: 0,
+              width: 10,
+              height: 10,
+              walls: [
+                { direction: 'top', type: 'solid' },
+                { direction: 'bottom', type: 'solid' },
+                { direction: 'left', type: 'solid' },
+                { direction: 'right', type: 'solid' },
+              ],
+            },
+          ],
+        },
+      ],
+      connections: [],
+      config: {
+        default_unit: 'ft',
+      },
+    };
+  }
+
+  /**
+   * Pull the room-slab mesh dimensions out of a scene-build result via the
+   * `onRoomMesh` hook. Slab bounds align exactly with the room rectangle
+   * (no wall thickness), which lets us compare raw conversion math.
+   */
+  function measureSlabExtent(data: JsonExport): { dx: number; dz: number } {
+    let dx = NaN;
+    let dz = NaN;
+    buildFloorplanScene(data, {
+      onRoomMesh: (mesh) => {
+        const box = new THREE.Box3().setFromObject(mesh);
+        dx = box.max.x - box.min.x;
+        dz = box.max.z - box.min.z;
+      },
+    });
+    return { dx, dz };
+  }
+
+  test('buildFloorplanScene normalizes feet → meters exactly once', () => {
+    const data = createFeetFixture();
+    const expectedMeters = 10 * 0.3048;
+
+    const { dx, dz } = measureSlabExtent(data);
+
+    expect(dx).toBeCloseTo(expectedMeters, 3);
+    expect(dz).toBeCloseTo(expectedMeters, 3);
+  });
+
+  test('buildFloorplanSceneFromNormalized does NOT re-normalize already-meters data', () => {
+    const data = createFeetFixture();
+    const normalized = normalizeToMeters(data);
+
+    // Sanity: `normalizeToMeters` preserves `default_unit` so a naive
+    // second call would re-convert. This is the documented non-idempotency
+    // that motivated exporting `buildFloorplanSceneFromNormalized`.
+    expect(normalized.config?.default_unit).toBe('ft');
+
+    let fromNormalizedDx = NaN;
+    buildFloorplanSceneFromNormalized(normalized, {
+      onRoomMesh: (mesh) => {
+        const box = new THREE.Box3().setFromObject(mesh);
+        fromNormalizedDx = box.max.x - box.min.x;
+      },
+    });
+
+    const { dx: directDx } = measureSlabExtent(data);
+
+    expect(fromNormalizedDx).toBeCloseTo(directDx, 6);
+  });
+
+  test('regression: double-normalizing via buildFloorplanScene scales DOWN by 0.3048', () => {
+    // Pins the bug we are fixing: pre-normalizing and then calling
+    // `buildFloorplanScene` (which normalizes again) collapses the scene
+    // by an extra factor of 0.3048. `BaseViewer.loadFloorplan` previously
+    // did exactly this, which broke `make viewer-dev` / `make editor-dev`
+    // for any DSL that defaulted to feet. Future contributors who wire
+    // the viewer back into `buildFloorplanScene` while still pre-
+    // normalizing will trip this test.
+    const data = createFeetFixture();
+    const normalized = normalizeToMeters(data);
+
+    let doubleDx = NaN;
+    buildFloorplanScene(normalized, {
+      onRoomMesh: (mesh) => {
+        const box = new THREE.Box3().setFromObject(mesh);
+        doubleDx = box.max.x - box.min.x;
+      },
+    });
+
+    const { dx: correctDx } = measureSlabExtent(data);
+
+    expect(doubleDx / correctDx).toBeCloseTo(0.3048, 3);
   });
 });

@@ -549,7 +549,7 @@ async function parseAndUpdate(content: string) {
       connections: currentJsonData.connections?.length ?? 0,
       rooms: currentJsonData.floors.reduce((sum, f) => sum + f.rooms.length, 0),
     });
-    editorCore.loadFloorplan(currentJsonData);
+    await editorCore.loadFloorplan(currentJsonData);
     log('Floorplan loaded');
 
     // Create Langium document for 2D overlay and validation

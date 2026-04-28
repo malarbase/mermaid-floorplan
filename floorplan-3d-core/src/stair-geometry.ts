@@ -6,6 +6,10 @@ import * as THREE from 'three';
 import { MATERIAL_PROPERTIES } from './constants.js';
 import type { JsonLift, JsonStair } from './types.js';
 
+// Tread thickness used for stair tread BoxGeometry. Treads are positioned by
+// their CENTER, so tread tops sit half this height above their position.y.
+const TREAD_THICKNESS = 0.05;
+
 export class StairGenerator {
   private material: THREE.MeshStandardMaterial;
 
@@ -44,41 +48,52 @@ export class StairGenerator {
         break;
     }
 
-    // Normalize geometry so the top-left corner (min x, min z) is at (0,0)
-    // This matches the 2D coordinate system where (x,y) is top-left
+    // Normalize geometry so the top-left corner (min x, min z) is at (0,0).
+    // This sets group.position to a compensating offset; we then add the
+    // requested stair.x / stair.z on top.
     this.normalizeGeometryOrigin(group);
 
-    // Now place the group at the specified position
-    group.position.set(stair.x, 0, stair.z);
+    // Place the group at the specified position (add to compensating offset)
+    group.position.x += stair.x;
+    group.position.z += stair.z;
+
+    // Shift the entire stair down so the LAST tread's TOP sits ~25mm BELOW
+    // the next floor's walking surface (= slab top). This achieves two things:
+    //   1. Tread top doesn't poke above the slab through the cutout.
+    //   2. Tread top doesn't z-fight with the slab top.
+    // Because the tread is centered on its `position.y` (BoxGeometry of height
+    // TREAD_THICKNESS), the tread *top* is `position.y + TREAD_THICKNESS/2`.
+    // Last tread position.y = rise, so without offset the tread top would be
+    // at rise + TREAD_THICKNESS/2 (poking above the slab). We offset the whole
+    // group by -TREAD_THICKNESS to land 25mm below the slab top.
+    group.position.y = -TREAD_THICKNESS;
 
     return group;
   }
 
   private normalizeGeometryOrigin(group: THREE.Group): void {
-    // Compute bounding box of the generated geometry
+    // Compute world-space bounding box. This already includes any rotation
+    // applied to the group itself (e.g., group.rotation.y for direction).
     const box = new THREE.Box3().setFromObject(group);
 
     // If box is empty (no geometry), do nothing
     if (box.isEmpty()) return;
 
-    const minX = box.min.x;
-    const minZ = box.min.z;
-
-    // Shift all children so min is at 0,0
-    // We modify the children's positions directly to keep the group's pivot at the corner
-    const shiftX = -minX;
-    const shiftZ = -minZ;
-
-    for (const child of group.children) {
-      child.position.x += shiftX;
-      child.position.z += shiftZ;
-    }
+    // Shift the group so its world-space min corner is at (0, 0).
+    // We adjust group.position (parent-space, == world-space when group has
+    // no parent yet) instead of children's local positions, which would be
+    // re-rotated by the group's rotation and end up in the wrong direction.
+    group.position.x = -box.min.x;
+    group.position.z = -box.min.z;
   }
 
   public generateLift(lift: JsonLift, floorHeight: number): THREE.Group {
     const group = new THREE.Group();
     group.name = `lift_${lift.name ?? 'unnamed'}`;
-    group.position.set(lift.x, 0, lift.z);
+    // Shift the lift down by half the tread thickness for the same reason as
+    // stairs: the top of the shaft must sit just below (not coplanar with)
+    // the next floor's slab top, so the cutout in that slab is visibly empty.
+    group.position.set(lift.x, -TREAD_THICKNESS / 2, lift.z);
 
     const width = lift.width;
     const depth = lift.height; // mapped from height in JSON to depth (Z)

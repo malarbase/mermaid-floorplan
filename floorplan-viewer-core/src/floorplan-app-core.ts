@@ -187,11 +187,15 @@ export class FloorplanAppCore extends BaseViewer implements ViewerPublicApi {
     this._annotationManager.setupControls();
     this._floorManager.setupControls();
 
-    // Load initial content
+    // Load initial content. Both `loadFromDsl` and `loadFloorplan` are async
+    // (they await `initCSG()` so the core's CSG-based wall and slab cutters
+    // are wired up before the first scene build); fire-and-forget here lets
+    // the constructor stay synchronous while the initial render lands a few
+    // ms later.
     if (options.initialDsl) {
-      this.loadFromDsl(options.initialDsl);
+      void this.loadFromDsl(options.initialDsl);
     } else if (options.initialData) {
-      this.loadFloorplan(options.initialData);
+      void this.loadFloorplan(options.initialData);
     }
 
     // Start animation loop
@@ -252,7 +256,7 @@ export class FloorplanAppCore extends BaseViewer implements ViewerPublicApi {
       }
 
       if (result.data) {
-        this.loadFloorplan(result.data);
+        await this.loadFloorplan(result.data);
         this._currentLangiumDocument = result.document ?? null;
         this._overlay2DManager?.setLangiumDocument(this._currentLangiumDocument);
 
@@ -292,7 +296,7 @@ export class FloorplanAppCore extends BaseViewer implements ViewerPublicApi {
 
       if (url.endsWith('.json')) {
         const data = JSON.parse(content) as JsonExport;
-        this.loadFloorplan(data);
+        await this.loadFloorplan(data);
         this.emit('floorplanLoaded', { filename, data });
       } else {
         await this.loadFromDsl(content);
@@ -309,12 +313,13 @@ export class FloorplanAppCore extends BaseViewer implements ViewerPublicApi {
     this.setFilename(file.name);
 
     if (isFloorplanFile(file.name)) {
-      this.loadFromDsl(content);
+      void this.loadFromDsl(content);
     } else if (isJsonFile(file.name)) {
       try {
         const data = JSON.parse(content) as JsonExport;
-        this.loadFloorplan(data);
-        this.emit('floorplanLoaded', { filename: file.name, data });
+        void this.loadFloorplan(data).then(() => {
+          this.emit('floorplanLoaded', { filename: file.name, data });
+        });
       } catch {
         this.showToast('Invalid JSON file', 'error');
       }

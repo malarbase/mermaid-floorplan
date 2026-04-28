@@ -202,8 +202,15 @@ function normalizeConnection(conn: JsonConnection, unit: LengthUnit): JsonConnec
 }
 
 /**
- * Normalize all dimensional values in a JsonExport from DSL units to meters.
+ * Normalize all dimensional values in a `JsonExport` from DSL units to meters.
  * This ensures consistent 3D rendering regardless of the source unit.
+ *
+ * Ownership: this function is intended to run exactly once per render, at the
+ * top of `buildFloorplanScene` / `buildCompleteScene` (the public scene-build
+ * entry points). Internal call paths reuse the already-normalized object via
+ * `buildFloorplanSceneFromNormalized`, so there is no idempotency guard here:
+ * calling this twice on the same object will double-scale dimensions, which
+ * is what we want the call graph to make impossible.
  *
  * @param data - The JSON export from DSL parsing
  * @returns A new JsonExport with all dimensions converted to meters
@@ -211,7 +218,7 @@ function normalizeConnection(conn: JsonConnection, unit: LengthUnit): JsonConnec
 export function normalizeToMeters(data: JsonExport): JsonExport {
   const sourceUnit = getSourceUnit(data.config);
 
-  // If already in meters, return as-is
+  // Already in meters: nothing to convert.
   if (sourceUnit === 'm') {
     return data;
   }

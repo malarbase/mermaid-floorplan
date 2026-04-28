@@ -22,6 +22,8 @@ let browserInstance: Browser | null = null;
 // Cache sources
 let threeJsSource: string | null = null;
 let floorplanCoreSource: string | null = null;
+let threeMeshBvhSource: string | null = null;
+let threeBvhCsgSource: string | null = null;
 
 /**
  * Load Three.js source from node_modules
@@ -49,6 +51,33 @@ function getThreeJsSource(): string {
     }
   }
   return threeJsSource;
+}
+
+/**
+ * Load `three-mesh-bvh` UMD bundle for the puppeteer page.
+ * Required as a peer dependency of `three-bvh-csg` and exposes `window.MeshBVHLib`.
+ */
+function getThreeMeshBvhSource(): string {
+  if (!threeMeshBvhSource) {
+    const pkgJsonPath = require.resolve('three-mesh-bvh/package.json');
+    const umdPath = join(dirname(pkgJsonPath), 'build', 'index.umd.cjs');
+    threeMeshBvhSource = readFileSync(umdPath, 'utf-8');
+  }
+  return threeMeshBvhSource;
+}
+
+/**
+ * Load `three-bvh-csg` UMD bundle for the puppeteer page.
+ * Exposes `window.ThreBvhCsg` (note the upstream library's spelling).
+ * Must be loaded after Three.js and three-mesh-bvh globals are set.
+ */
+function getThreeBvhCsgSource(): string {
+  if (!threeBvhCsgSource) {
+    const pkgJsonPath = require.resolve('three-bvh-csg/package.json');
+    const umdPath = join(dirname(pkgJsonPath), 'build', 'index.umd.cjs');
+    threeBvhCsgSource = readFileSync(umdPath, 'utf-8');
+  }
+  return threeBvhCsgSource;
 }
 
 /**
@@ -160,6 +189,21 @@ export async function renderWithPuppeteer(
       timeout: 10000,
     });
 
+    // Inject CSG dependencies (three-mesh-bvh, then three-bvh-csg).
+    // Their UMD bundles auto-bind to globals (`window.MeshBVHLib`, `window.ThreBvhCsg`)
+    // when no module/CJS environment is present. The floorplan-3d-core CSG manager
+    // detects these globals to enable slab cutouts and door/window cuts.
+    try {
+      await page.addScriptTag({ content: getThreeMeshBvhSource() });
+      await page.waitForFunction('typeof window.MeshBVHLib !== "undefined"', { timeout: 5000 });
+      await page.addScriptTag({ content: getThreeBvhCsgSource() });
+      await page.waitForFunction('typeof window.ThreBvhCsg !== "undefined"', { timeout: 5000 });
+    } catch (err) {
+      console.warn(
+        `CSG libraries unavailable; floor cutouts and door/window holes will be skipped: ${err instanceof Error ? err.message : err}`,
+      );
+    }
+
     // Inject floorplan-3d-core browser bundle
     await page.addScriptTag({ content: getFloorplanCoreSource() });
 
@@ -268,8 +312,14 @@ function getRenderingWrapper(): string {
 
       // Use the shared buildCompleteScene from floorplan-3d-core
       // This now uses WallBuilder with CSG for consistent rendering with the viewer
+      const sceneOptions = {};
+      if (options.showFloors !== undefined) sceneOptions.showFloors = options.showFloors;
+      if (options.showWalls !== undefined) sceneOptions.showWalls = options.showWalls;
+      if (options.showStairs !== undefined) sceneOptions.showStairs = options.showStairs;
+      if (options.showLifts !== undefined) sceneOptions.showLifts = options.showLifts;
+      if (options.showConnections !== undefined) sceneOptions.showConnections = options.showConnections;
       const { scene, camera, cameraResult, bounds, floorsRendered } = 
-        FloorplanCore.buildCompleteScene(jsonData, options);
+        FloorplanCore.buildCompleteScene(jsonData, options, sceneOptions);
 
       // Create WebGL renderer
       const renderer = new THREE.WebGLRenderer({

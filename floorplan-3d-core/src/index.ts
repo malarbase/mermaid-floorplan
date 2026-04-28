@@ -99,6 +99,7 @@ export type {
 export {
   buildCompleteScene,
   buildFloorplanScene,
+  buildFloorplanSceneFromNormalized,
 } from './scene-builder.js';
 // Geometry
 export { StairGenerator } from './stair-geometry.js';
@@ -122,6 +123,7 @@ export type {
   Render3DOptions,
   Render3DResult,
   SceneBounds,
+  SceneBuildHooks,
 } from './types.js';
 // Unit normalization
 export { normalizeToMeters } from './unit-normalizer.js';

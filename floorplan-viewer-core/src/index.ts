@@ -7,7 +7,6 @@
  * - SceneContext: Interface for Three.js scene, camera, renderer, controls
  * - MeshRegistry: Bidirectional mapping between entities and meshes
  * - SelectionAPI: Interface for selection operations
- * - WallGenerator: CSG-based wall generation with ownership detection
  * - PivotIndicator: Visual pivot point that shows camera orbit target
  * - KeyboardControls: WASD navigation, zoom, view presets
  * - CameraManager: Perspective/orthographic/isometric switching
@@ -192,6 +191,3 @@ export type {
 
 // Performance utilities
 export { perf } from './utils/performance.js';
-export type { StyleResolver } from './wall-generator.js';
-// Wall generator (CSG-based, browser-only)
-export { WallGenerator } from './wall-generator.js';

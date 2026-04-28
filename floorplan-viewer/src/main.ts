@@ -50,8 +50,11 @@ injectStyles();
 // Initialize layout manager early so it can be used by UI components
 const layoutManager = getLayoutManager();
 
-// Default floorplan content for initial display
-const defaultFloorplan = `%%{version: 1.0}%%
+import stairsAndLiftsExample from '../../examples/StairsAndLifts.floorplan?raw';
+
+const defaultFloorplan = stairsAndLiftsExample;
+
+const _unusedDefaultFloorplan = `%%{version: 1.0}%%
 floorplan
   # Style definitions
   style Modern {

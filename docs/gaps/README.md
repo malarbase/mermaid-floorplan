@@ -1,0 +1,26 @@
+# Known gaps
+
+Short, self‑contained write‑ups of issues we've identified but not yet
+addressed. Each file is structured so that a future debugging or feature
+session can pick it up without re‑deriving the context.
+
+| File | Type | Area |
+|---|---|---|
+| [`ui-selection-agent-context.md`](./ui-selection-agent-context.md) | Feature | `floorplan-app` ↔ `floorplan-viewer-core` — selection (rooms, walls, stairs, lifts, connections) isn't passed as structured context to the agent. |
+| [`ui-render-layer-toggles.md`](./ui-render-layer-toggles.md) | Feature | `floorplan-viewer-core` / `floorplan-viewer` / `floorplan-app` — scene builder already supports `showWalls` / `showFloors` / `showStairs` / `showLifts` / `showConnections`, but no UI exposes them; should slot into the View section alongside Theme & Exploded View. |
+
+## Archived
+
+| File | Type | Area | Resolution |
+|---|---|---|---|
+| [`archive/3d-stair-floor-holes.md`](./archive/3d-stair-floor-holes.md) | Bug | `floorplan-3d-core` / `floorplan-viewer-core` — floor slab CSG cuts the boarding/arrival landings, not just the stair run. | Closed by `consolidate-scene-build-into-core`: viewer now uses mesh-derived `Box3.setFromObject(stairOrLiftGroup)` cutouts (matching the headless renderer), and both paths share `buildFloorplanScene` from `floorplan-3d-core`. |
+
+Conventions for new entries:
+
+- One file per gap. Filename is kebab‑case and area‑prefixed.
+- Use sections: **Symptom / Where it lives / Root cause hypotheses /
+  Suggested fix shape / Acceptance criteria / Out of scope**.
+- Cite code with `startLine:endLine:filepath` blocks so the next session
+  can jump straight to the relevant lines.
+- Cross‑link sibling gaps when they overlap (e.g. UI selection ↔ 3D
+  rendering both touch stairs but are independent fixes).

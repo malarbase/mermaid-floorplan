@@ -3,20 +3,17 @@
  * Uses Puppeteer with headless Chromium for full WebGL2 support
  */
 
-import {
-  type JsonExport,
-  normalizeToMeters,
-  type Render3DOptions,
-  type Render3DResult,
-  type SceneBounds,
-} from 'floorplan-3d-core';
+import type { JsonExport, Render3DOptions, Render3DResult, SceneBounds } from 'floorplan-3d-core';
 import { closeBrowser, renderWithPuppeteer } from './puppeteer-renderer.js';
 
 // Re-export closeBrowser for cleanup
 export { closeBrowser };
 
 /**
- * Render a floorplan as a 3D PNG image
+ * Render a floorplan as a 3D PNG image.
+ *
+ * Unit normalization (DSL units → meters) is owned by `buildCompleteScene`
+ * inside the puppeteer page, so we forward `jsonData` unchanged.
  *
  * @param jsonData - Floorplan data in JSON format (from convertFloorplanToJson)
  * @param options - Rendering options (camera, dimensions, etc.)
@@ -26,10 +23,7 @@ export async function render3DToPng(
   jsonData: JsonExport,
   options: Render3DOptions = {},
 ): Promise<Render3DResult> {
-  // Normalize all dimensions to meters for consistent 3D rendering
-  // This ensures stairs, lifts, rooms, and other elements are correctly scaled
-  const normalizedData = normalizeToMeters(jsonData);
-  return renderWithPuppeteer(normalizedData, options);
+  return renderWithPuppeteer(jsonData, options);
 }
 
 /**

@@ -1,0 +1,65 @@
+# StairConstraints.floorplan
+# Two-story plan that satisfies every stair critic rule.
+# Demonstrates the geometry implied by the four new rules:
+#   - StairCore is 6 x 24 ft (16.5 ft straight run + 4 ft top landing
+#     + 3.5 ft bottom landing).
+#   - Stair element is positioned at (1, 10) so the top landing sits
+#     at y=[6, 10] (4 ft) and the bottom landing at y=[26.5, 30]
+#     (3.5 ft) — both >= the 3 ft residential minimum.
+#   - Doors land in the top-landing strip on every floor, so the
+#     stair_door_collision rule sees no overlap.
+#   - The stair-core has at least one door to a non-stair room on
+#     each floor, so stair_room_access stays clean.
+#
+# Run `node scripts/design_critic.mjs --file examples/StairConstraints.floorplan`
+# and confirm there are zero `stair_*` findings.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft,
+    default_height: 10,
+    door_size: (3 x 7),
+    stair_code: residential
+  }
+
+  floor GroundFloor height 10ft {
+    room StairCore at (0, 6) size (6 x 24) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair"
+    room Foyer at (6, 0) size (12 x 6) walls [top: window, right: solid, bottom: solid, left: solid] label "Foyer"
+    room Hall_G at (6, 6) size (12 x 24) walls [top: solid, right: solid, bottom: solid, left: solid] label "Hall"
+    room ParentsBed at (6, 30) size (12 x 10) walls [top: solid, right: solid, bottom: window, left: solid] label "Parents Bed"
+
+    stair MainStair at (1, 10) shape straight toward bottom rise 10ft width 4ft label "Main Stair"
+  }
+
+  floor FirstFloor height 10ft {
+    room StairCore_1 at (0, 6) size (6 x 24) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair"
+    room Bed1 at (6, 0) size (12 x 16) walls [top: window, right: window, bottom: solid, left: solid] label "Bed 1"
+    room Bed2 at (6, 16) size (12 x 14) walls [top: solid, right: window, bottom: solid, left: solid] label "Bed 2"
+    room Bed3 at (6, 30) size (12 x 10) walls [top: solid, right: solid, bottom: window, left: solid] label "Bed 3"
+
+    stair MainStair at (1, 10) shape straight toward bottom rise 10ft width 4ft label "Main Stair"
+  }
+
+  # === Ground Floor circulation ===
+  connect Foyer.top to outside door at 50%
+  connect Foyer.bottom to Hall_G.top opening at 50%
+  # 8% on the 24 ft overlap = y ~= 7.92 ft, comfortably inside the
+  # 4 ft top landing (y=[6, 10]) and clear of the tread strip
+  # (y=[10, 26.5]). The 3 ft door rests in y=[6.42, 9.42].
+  connect StairCore.right to Hall_G.left door at 8%
+  connect Hall_G.bottom to ParentsBed.top door at 50%
+
+  # === First Floor circulation ===
+  # Bed1 shares y=[6, 16] with StairCore_1 (10 ft overlap). Door at
+  # 20% lands at y=8 (top landing y=[6, 10]).
+  connect StairCore_1.right to Bed1.left door at 20%
+  # Bed2 shares y=[16, 30] with StairCore_1 (14 ft overlap). Door at
+  # 87.5% lands at y=28.25 (bottom landing y=[26.5, 30]).
+  connect StairCore_1.right to Bed2.left door at 87.5%
+  # Bed3 sits south of Bed2, reached through Bed2's south wall.
+  connect Bed2.bottom to Bed3.top door at 50%
+
+  vertical GroundFloor.MainStair to FirstFloor.MainStair
