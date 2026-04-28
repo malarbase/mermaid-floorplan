@@ -1,6 +1,0 @@
-{
-  "wall_clock_seconds": 960,
-  "tool_calls": null,
-  "exit_status": "stalled_after_outputs",
-  "notes": "Baseline produced variations/v{1,2,3}.floorplan + variations/v{1,2,3}-Main.png (filename discipline violation on PNG side: per-floor suffix not stripped). Stalled without metrics.json. Synthesized by parent runner."
-}

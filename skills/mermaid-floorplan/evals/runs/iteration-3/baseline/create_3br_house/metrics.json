@@ -1,6 +1,0 @@
-{
-  "wall_clock_seconds": 480,
-  "tool_calls": null,
-  "exit_status": "stalled_after_outputs",
-  "notes": "Baseline produced house.floorplan + house-MainFloor.png (filename discipline violation). Synthesized after >5 min idle. must_produce check will fail on PNG name."
-}

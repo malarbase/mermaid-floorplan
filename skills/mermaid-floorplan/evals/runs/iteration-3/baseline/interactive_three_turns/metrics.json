@@ -1,6 +1,0 @@
-{
-  "wall_clock_seconds": 1080,
-  "tool_calls": null,
-  "exit_status": "failed",
-  "notes": "Baseline produced ZERO outputs — never even started writing files. Synthesized by parent runner after >15 min idle. The eval's instructions reference validate.mjs / design_critic.mjs which live inside the off-limits skill folder; the baseline subagent failed to substitute them via the floorplan-language Node API and instead stalled at the planning stage."
-}

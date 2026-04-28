@@ -1,6 +1,0 @@
-{
-  "wall_clock_seconds": 180,
-  "tool_calls": 13,
-  "exit_status": "ok",
-  "notes": "Renamed Bedroom2 -> KidsRoom (label 'Kids Room'); kept size at 10x12 (already that size in seed, prompt target was 10x12). Increased MasterBedroom from 12x12 to 14x12 (square so 'long edge' was ambiguous; widened to keep shared wall lengths with Bath2 and MasterBath at 12 ft and avoid validation issues). Updated right-of and connect references to KidsRoom. Validated cleanly via scripts/export-json.ts: 1 floor, 8 rooms, 908 sq units."
-}

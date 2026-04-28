@@ -1,6 +1,0 @@
-[
-  { "action": "move_room", "target": "MasterBedroom", "params": { "x": 0, "y": 14 } },
-  { "action": "move_room", "target": "MasterBath", "params": { "x": 12, "y": 14 } },
-  { "action": "move_room", "target": "Bath2", "params": { "x": 18, "y": 14 } },
-  { "action": "move_room", "target": "Bedroom2", "params": { "x": 24, "y": 14 } }
-]

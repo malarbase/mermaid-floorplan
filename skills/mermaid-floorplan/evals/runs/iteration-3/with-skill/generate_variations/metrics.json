@@ -1,6 +1,0 @@
-{
-  "wall_clock_seconds": 4,
-  "tool_calls": 1,
-  "exit_status": "ok",
-  "notes": "Initial subagent run produced 3 .floorplan files with WRONG names (variation-linear.floorplan instead of v1.floorplan) and never rendered PNGs, then stalled. Root cause: generate_variations.mjs hardcoded the `variation-{strategy}` filename and did not render. Fix landed in iteration-3: added `--name-pattern \"v{n}\"` and `--render` flags. Re-ran with the patched script; outputs now match the eval's must_produce."
-}

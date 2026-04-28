@@ -1,6 +1,0 @@
-{
-  "wall_clock_seconds": 195,
-  "tool_calls": 22,
-  "exit_status": "ok",
-  "notes": "Identified 8 design findings in the rough studio (5 errors, 3 warnings, score 35): bath-into-living privacy violation, kitchen+bath not sharing a plumbing wall, kitchen with no daylight, front door entering an isolated Storage room, no circulation backbone (Storage->Bath->Living chain), storage with no daylight, oversized storage room, and unfrosted bath window. Fixes: replaced Storage with a small Entry vestibule that buffers the front door from both Living and Bath; restacked Bath above Kitchen so Bath.bottom and Kitchen.top form a shared wet wall; gave Kitchen three windowed exterior walls (south, east, west) for full daylight; routed the front door into the Entry alcove with a clear backbone (outside->Entry; Entry<->Living; Entry->Bath; Living<->Kitchen via opening). Validated fixed.floorplan via export-json.ts CLI - parsed cleanly with zero validation errors or warnings. After-critic finds 2 residual warnings (frosted-window not expressible in DSL; bath in studio circulation envelope is inherent), score 88. Net improvement: 8 -> 2 findings (-6), score 35 -> 88 (+53)."
-}

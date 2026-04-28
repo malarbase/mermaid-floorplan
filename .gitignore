@@ -26,5 +26,4 @@ __pycache__/
 
 # Generated skill artifacts (rendered from source .floorplan files)
 skills/mermaid-floorplan/assets/templates/renders/
-skills/mermaid-floorplan/evals/runs/**/*.png
-skills/mermaid-floorplan/evals/runs/**/*.svg
+skills/mermaid-floorplan/evals/runs/

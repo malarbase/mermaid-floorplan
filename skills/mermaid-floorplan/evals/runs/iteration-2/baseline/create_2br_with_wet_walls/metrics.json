@@ -1,6 +1,0 @@
-{
-  "wall_clock_seconds": null,
-  "tool_calls": null,
-  "exit_status": "ok",
-  "notes": "Baseline create_2br. Produced twobr.floorplan but PNG was named twobr-MainFloor.png (filename discipline violation). Metrics finalized post-hoc."
-}
