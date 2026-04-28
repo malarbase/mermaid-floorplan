@@ -24,14 +24,17 @@ import type {
   JsonStyle,
   Render3DOptions,
   SceneBounds,
+  SceneBuildHooks,
 } from './types.js';
 import { normalizeToMeters } from './unit-normalizer.js';
 import { WallBuilder } from './wall-builder.js';
 
 /**
- * Scene building options
+ * Scene building options. Extends `SceneBuildHooks` so consumers can attach
+ * mesh-creation callbacks (e.g. for the viewer's `MeshRegistry`) directly on
+ * the options object.
  */
-export interface SceneBuildOptions {
+export interface SceneBuildOptions extends SceneBuildHooks {
   /** Which floors to render (undefined = all) */
   floorIndices?: number[];
   /** Theme for default colors */
@@ -62,21 +65,49 @@ export interface SceneBuildResult {
   floorsRendered: number[];
   /** Style map for lookups */
   styleMap: Map<string, MaterialStyle>;
+  /**
+   * Per-floor `THREE.Group`s keyed by `JsonFloor.id`. Surfaces the
+   * already-created floor groups so consumers (e.g. the viewer's exploded-
+   * view animation, floor visibility manager) can iterate them without
+   * walking `scene.children` and risking collisions with lights or
+   * decorations added later.
+   */
+  floorGroups: Map<string, THREE.Group>;
 }
 
 /**
- * Build a Three.js scene from JSON floorplan data
+ * Build a Three.js scene from JSON floorplan data.
  *
  * Note: This function automatically normalizes all dimensions to meters
- * for consistent 3D rendering, regardless of the source unit.
+ * for consistent 3D rendering, regardless of the source unit. Internal
+ * call sites that already hold normalized data should call
+ * `buildFloorplanSceneFromNormalized` directly to avoid redundant work.
  */
 export function buildFloorplanScene(
   data: JsonExport,
   options: SceneBuildOptions = {},
 ): SceneBuildResult {
-  // Normalize all dimensions to meters for consistent 3D rendering
-  const normalizedData = normalizeToMeters(data);
+  return buildFloorplanSceneFromNormalized(normalizeToMeters(data), options);
+}
 
+/**
+ * Scene-build entry point that assumes `normalizedData` has already been
+ * passed through `normalizeToMeters`.
+ *
+ * Use this from consumers that need the normalized `JsonExport` for their
+ * own bookkeeping *before* calling the builder (e.g. `BaseViewer.loadFloorplan`
+ * uses normalized config / styles / first-room coords for camera framing,
+ * theme resolution, and the styles map). Calling `buildFloorplanScene` after
+ * already normalizing would re-convert dimensions a second time, since
+ * `normalizeToMeters` preserves `default_unit` on the output.
+ *
+ * `buildCompleteScene` also uses this to avoid normalizing twice across the
+ * camera / lighting hand-off.
+ */
+export function buildFloorplanSceneFromNormalized(
+  normalizedData: JsonExport,
+  options: SceneBuildOptions = {},
+): SceneBuildResult {
   const {
     floorIndices,
     theme,
@@ -86,7 +117,15 @@ export function buildFloorplanScene(
     showConnections = true,
     showStairs = true,
     showLifts = true,
+    onFloorGroup,
+    onRoomMesh,
+    onWallMesh,
+    onStairMesh,
+    onLiftMesh,
   } = options;
+
+  // Track floor groups by id for the result map (D7).
+  const floorGroups = new Map<string, THREE.Group>();
 
   // Create scene with background color
   const scene = new THREE.Scene();
@@ -133,6 +172,9 @@ export function buildFloorplanScene(
     const yOffset = floorPositions.get(floor.index) ?? 0;
     floorGroup.position.y = yOffset;
 
+    floorGroups.set(floor.id, floorGroup);
+    onFloorGroup?.(floorGroup, floor);
+
     // Generate floor slabs (cut holes for stairs/lifts from floor below)
     if (showFloors) {
       const slabs = generateFloorSlabs(floor, {
@@ -142,6 +184,18 @@ export function buildFloorplanScene(
         penetrations: prevFloorPenetrations,
       });
       floorGroup.add(slabs);
+
+      // Surface each room slab to the consumer. `generateFloorSlabs` emits
+      // one `THREE.Mesh` per room (named `floor_slab_${room.name}`) in
+      // `floor.rooms` order, so we attribute by name.
+      if (onRoomMesh) {
+        for (const room of floor.rooms) {
+          const slabMesh = slabs.children.find(
+            (c): c is THREE.Mesh => c instanceof THREE.Mesh && c.name === `floor_slab_${room.name}`,
+          );
+          if (slabMesh) onRoomMesh(slabMesh, room, floor);
+        }
+      }
     }
 
     // Prepare rooms with default heights for wall ownership detection
@@ -162,6 +216,13 @@ export function buildFloorplanScene(
         for (const wall of room.walls) {
           if (wall.type === 'open') continue;
 
+          // Snapshot the floor group's children before WallBuilder appends so
+          // we can attribute every newly added mesh to this `(wall, room)`.
+          // `onWallMesh` fires per emitted mesh (segments, door/window glass,
+          // connection meshes); see the wall-callback granularity decision
+          // in `design.md` (resolved to per-emitted-mesh). The
+          // `JsonWall`/`JsonRoom` references retain `_sourceRange`.
+          const childCountBefore = onWallMesh ? floorGroup.children.length : 0;
           wallBuilder.generateWall(
             wall,
             room,
@@ -171,6 +232,14 @@ export function buildFloorplanScene(
             floorGroup,
             config,
           );
+          if (onWallMesh) {
+            for (let i = childCountBefore; i < floorGroup.children.length; i++) {
+              const child = floorGroup.children[i];
+              if (child instanceof THREE.Mesh) {
+                onWallMesh(child, wall, room, floor);
+              }
+            }
+          }
         }
       }
     }
@@ -199,6 +268,7 @@ export function buildFloorplanScene(
         // Track for next floor's holes
         const stairBox = new THREE.Box3().setFromObject(stairGroup);
         currentFloorPenetrations.push(stairBox);
+        onStairMesh?.(stairGroup, stair, floor);
       }
     }
 
@@ -210,6 +280,7 @@ export function buildFloorplanScene(
         floorGroup.add(liftGroup);
         // Track for next floor's holes
         currentFloorPenetrations.push(new THREE.Box3().setFromObject(liftGroup));
+        onLiftMesh?.(liftGroup, lift, floor);
       }
     }
 
@@ -227,14 +298,16 @@ export function buildFloorplanScene(
     bounds,
     floorsRendered,
     styleMap,
+    floorGroups,
   };
 }
 
 /**
- * Build a complete scene with camera and lighting
+ * Build a complete scene with camera and lighting.
  *
- * Note: This function automatically normalizes all dimensions to meters
- * for consistent 3D rendering, regardless of the source unit.
+ * Normalizes all dimensions to meters once at the entry point and forwards
+ * the normalized data to the internal scene-build helper, so it isn't
+ * re-normalized downstream.
  */
 export function buildCompleteScene(
   data: JsonExport,
@@ -246,9 +319,11 @@ export function buildCompleteScene(
   cameraResult: CameraSetupResult;
   bounds: SceneBounds;
   floorsRendered: number[];
+  floorGroups: Map<string, THREE.Group>;
 } {
-  // Normalize all dimensions to meters (buildFloorplanScene does this internally,
-  // but we need it here for theme resolution too)
+  // Normalize once — we need meters here for theme/bounds/camera setup, and
+  // we hand the same normalized object to the internal scene-build helper so
+  // it isn't re-normalized.
   const normalizedData = normalizeToMeters(data);
 
   // Determine theme from config
@@ -257,13 +332,14 @@ export function buildCompleteScene(
   // Determine which floors to render
   const floorIndices = renderOptions.renderAllFloors ? undefined : [renderOptions.floorIndex ?? 0];
 
-  // Build scene (normalizedData is already in meters, so buildFloorplanScene
-  // will detect this and skip re-normalization)
-  const { scene, bounds, floorsRendered } = buildFloorplanScene(normalizedData, {
-    ...sceneOptions,
-    theme,
-    floorIndices,
-  });
+  const { scene, bounds, floorsRendered, floorGroups } = buildFloorplanSceneFromNormalized(
+    normalizedData,
+    {
+      ...sceneOptions,
+      theme,
+      floorIndices,
+    },
+  );
 
   // Set up camera
   const width = renderOptions.width ?? 800;
@@ -283,6 +359,7 @@ export function buildCompleteScene(
     cameraResult,
     bounds,
     floorsRendered,
+    floorGroups,
   };
 }
 

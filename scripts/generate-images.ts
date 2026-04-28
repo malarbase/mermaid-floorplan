@@ -30,7 +30,7 @@ import {
   renderFloor,
   resolveVariables,
 } from 'floorplan-language';
-import { svgToPng } from 'floorplans-mcp-server/utils/renderer';
+import { svgToPng } from 'floorplan-mcp-server/utils/renderer';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 

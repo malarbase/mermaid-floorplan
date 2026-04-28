@@ -50,38 +50,9 @@ injectStyles();
 // Initialize layout manager early so it can be used by UI components
 const layoutManager = getLayoutManager();
 
-// Default floorplan content for initial display
-const defaultFloorplan = `%%{version: 1.0}%%
-floorplan
-  # Style definitions
-  style Modern {
-    floor_color: "#E8E8E8",
-    wall_color: "#505050",
-    roughness: 0.4,
-    metalness: 0.1
-  }
-  
-  style WarmWood {
-    floor_color: "#8B4513",
-    wall_color: "#D2B48C",
-    roughness: 0.7,
-    metalness: 0.0
-  }
-  
-  # Configuration
-  config { default_style: Modern, wall_thickness: 0.25 }
-  
-  floor MainFloor {
-    room LivingRoom at (0,0) size (12 x 10) walls [top: solid, right: solid, bottom: solid, left: window] label "Living Area" style WarmWood
-    room Kitchen size (8 x 8) walls [top: solid, right: window, bottom: solid, left: open] right-of LivingRoom
-    room Hallway size (4 x 10) walls [top: solid, right: solid, bottom: solid, left: solid] below LivingRoom gap 0.5
-    room MasterBedroom size (10 x 10) walls [top: solid, right: window, bottom: solid, left: solid] right-of Hallway
-  }
-  
-  connect LivingRoom.right to Kitchen.left door at 50%
-  connect LivingRoom.bottom to Hallway.top door at 50%
-  connect Hallway.right to MasterBedroom.left door at 50%
-`;
+import stairConstraintsExample from '../../examples/StairConstraints.floorplan?raw';
+
+const defaultFloorplan = stairConstraintsExample;
 
 // ========================================
 // Create UI Components BEFORE FloorplanApp

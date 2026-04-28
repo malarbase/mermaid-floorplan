@@ -19,7 +19,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Floorplan } from 'floorplan-language';
 import { convertFloorplanToJson, createFloorplansServices } from 'floorplan-language';
-import { closeBrowser, render3DToPng } from 'floorplans-mcp-server/utils/renderer3d';
+import { closeBrowser, render3DToPng } from 'floorplan-mcp-server/utils/renderer3d';
 import { EmptyFileSystem } from 'langium';
 import { parseHelper } from 'langium/test';
 
@@ -37,6 +37,10 @@ interface Options {
   width: number;
   height: number;
   scale: number;
+  showWalls?: boolean;
+  showStairs?: boolean;
+  showFloors?: boolean;
+  showConnections?: boolean;
 }
 
 function parseArgs(args: string[]): Options {
@@ -80,6 +84,14 @@ function parseArgs(args: string[]): Options {
       options.height = parseInt(args[++i], 10);
     } else if (arg === '--scale' && i + 1 < args.length) {
       options.scale = parseInt(args[++i], 10);
+    } else if (arg === '--no-walls') {
+      options.showWalls = false;
+    } else if (arg === '--no-stairs') {
+      options.showStairs = false;
+    } else if (arg === '--no-floors') {
+      options.showFloors = false;
+    } else if (arg === '--no-connections') {
+      options.showConnections = false;
     } else if (!arg.startsWith('--')) {
       positionalArgs.push(arg);
     }
@@ -177,6 +189,10 @@ async function main() {
         fov: options.fov,
         floorIndex: i,
         renderAllFloors: false,
+        showWalls: options.showWalls,
+        showStairs: options.showStairs,
+        showFloors: options.showFloors,
+        showConnections: options.showConnections,
       });
 
       const filenameSuffix = options.projection === 'perspective' ? '-Perspective' : '';
@@ -201,6 +217,10 @@ async function main() {
         cameraTarget: options.cameraTarget,
         fov: options.fov,
         renderAllFloors: true,
+        showWalls: options.showWalls,
+        showStairs: options.showStairs,
+        showFloors: options.showFloors,
+        showConnections: options.showConnections,
       });
 
       const filenameSuffix = options.projection === 'perspective' ? '-Perspective' : '';

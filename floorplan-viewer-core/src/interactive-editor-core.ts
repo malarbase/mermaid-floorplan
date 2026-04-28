@@ -10,8 +10,7 @@
  * Use with EditorUI (Solid root) for the full editor experience.
  */
 
-import type { JsonExport, JsonFloor, JsonRoom } from 'floorplan-3d-core';
-import { DIMENSIONS, MaterialFactory } from 'floorplan-3d-core';
+import type { JsonExport, JsonRoom, JsonWall } from 'floorplan-3d-core';
 import * as THREE from 'three';
 import {
   type EventHandler,
@@ -343,7 +342,7 @@ export class InteractiveEditorCore extends FloorplanAppCore {
    * Preserves the current selection by snapshotting entity IDs before the
    * scene rebuild and restoring them from the new mesh registry afterwards.
    */
-  public loadFloorplan(data: JsonExport): void {
+  public async loadFloorplan(data: JsonExport): Promise<void> {
     const sm = this.getSelectionManager();
 
     // Snapshot selected entity identifiers before the scene is rebuilt
@@ -359,7 +358,7 @@ export class InteractiveEditorCore extends FloorplanAppCore {
     sm?.deselect();
 
     // Call parent implementation (clears mesh registry, rebuilds scene)
-    super.loadFloorplan(data);
+    await super.loadFloorplan(data);
 
     // Restore selection from new mesh registry by matching entity IDs
     if (sm && previousSelection.length > 0) {
@@ -398,127 +397,46 @@ export class InteractiveEditorCore extends FloorplanAppCore {
   }
 
   /**
-   * Override generateFloorWithPenetrations to register wall meshes for selection.
-   * This is the key difference from FloorplanAppCore - we need walls to be selectable.
+   * Override `registerRoomMesh` to attach the DSL `_sourceRange` so the
+   * editor can navigate from a selected room slab to its source location.
    */
-  protected generateFloorWithPenetrations(
-    floorData: JsonFloor,
-    prevFloorPenetrations: THREE.Box3[],
-  ): { group: THREE.Group; penetrations: THREE.Box3[] } {
-    const group = new THREE.Group();
-    group.name = floorData.id;
+  protected registerRoomMesh(mesh: THREE.Mesh, room: JsonRoom, floorId: string): void {
+    this._meshRegistry.register(mesh, 'room', room.name, floorId, room._sourceRange);
+  }
 
-    // Height resolution priority: room > floor > config > constant
-    const globalDefault = this.config.default_height ?? DIMENSIONS.WALL.HEIGHT;
-    const floorDefault = floorData.height ?? globalDefault;
+  /**
+   * Override `registerWallMesh` to register wall-segment meshes for
+   * selection / source-range navigation. Filters out non-wall meshes
+   * (window glass, door panels) emitted alongside wall segments by the
+   * core scene builder, using the same material-shape heuristic the
+   * pre-consolidation editor used:
+   *   - multi-material array → CSG-cut wall segment
+   *   - single non-transparent standard material → simple wall segment
+   *   - single transparent standard material → window glass (skip)
+   */
+  protected registerWallMesh(
+    mesh: THREE.Mesh,
+    wall: JsonWall,
+    room: JsonRoom,
+    floorId: string,
+  ): void {
+    if (this._meshRegistry.getEntityForMesh(mesh)) return;
 
-    // Prepare all rooms with defaults for wall ownership detection
-    const allRoomsWithDefaults = floorData.rooms.map((r) => ({
-      ...r,
-      roomHeight: r.roomHeight ?? floorDefault,
-    }));
+    const isArrayMaterial = Array.isArray(mesh.material);
+    const isStandardMaterial = mesh.material instanceof THREE.MeshStandardMaterial;
+    const isTransparent =
+      isStandardMaterial && (mesh.material as THREE.MeshStandardMaterial).transparent;
+    const isWallMesh = isArrayMaterial || (isStandardMaterial && !isTransparent);
+    if (!isWallMesh) return;
 
-    // Set style resolver for wall ownership detection
-    this.wallGenerator.setStyleResolver((room: JsonRoom) => this.resolveRoomStyle(room));
-
-    floorData.rooms.forEach((room) => {
-      // Apply default height to room if not specified
-      const roomWithDefaults = {
-        ...room,
-        roomHeight: room.roomHeight ?? floorDefault,
-      };
-
-      // Resolve style for this room
-      const roomStyle = this.resolveRoomStyle(room);
-
-      // Create materials for this room with style and theme
-      const hasExplicitStyle =
-        (room.style && this.styles.has(room.style)) ||
-        (this.config.default_style && this.styles.has(this.config.default_style));
-      const materials = MaterialFactory.createMaterialSet(
-        roomStyle,
-        hasExplicitStyle ? undefined : this.currentTheme,
-      );
-
-      // 1. Floor plate with penetration support
-      const floorMesh = this.createFloorMeshWithPenetrations(
-        roomWithDefaults,
-        materials.floor,
-        prevFloorPenetrations,
-      );
-      group.add(floorMesh);
-
-      // Register floor mesh in registry for selection support
-      this._meshRegistry.register(floorMesh, 'room', room.name, floorData.id, room._sourceRange);
-
-      // 2. Walls with doors, windows, and connections
-      // Uses wall ownership detection to prevent Z-fighting
-      roomWithDefaults.walls.forEach((wall) => {
-        // Track wall meshes added by WallGenerator
-        const wallMeshesBefore = new Set<THREE.Object3D>();
-        group.traverse((obj) => wallMeshesBefore.add(obj));
-
-        this.wallGenerator.generateWall(
-          wall,
-          roomWithDefaults,
-          allRoomsWithDefaults,
-          this.connections,
-          materials,
-          group,
-          this.config,
-        );
-
-        // Find newly added meshes and register walls for selection
-        group.traverse((obj) => {
-          if (!wallMeshesBefore.has(obj) && obj instanceof THREE.Mesh) {
-            // Check if this looks like a wall mesh (not a door/window)
-            const isArrayMaterial = Array.isArray(obj.material);
-            const isStandardMaterial = obj.material instanceof THREE.MeshStandardMaterial;
-            const isTransparent =
-              isStandardMaterial && (obj.material as THREE.MeshStandardMaterial).transparent;
-            const isWallMesh = isArrayMaterial || (isStandardMaterial && !isTransparent);
-
-            if (isWallMesh && !this._meshRegistry.getEntityForMesh(obj)) {
-              const wallSourceRange = (wall as { _sourceRange?: SourceRange })._sourceRange;
-              this._meshRegistry.register(
-                obj,
-                'wall',
-                `${room.name}_${wall.direction}`,
-                floorData.id,
-                wallSourceRange,
-              );
-            }
-          }
-        });
-      });
-    });
-
-    // Collect penetrations for the next floor
-    const penetrations: THREE.Box3[] = [];
-
-    // 3. Stairs
-    if (floorData.stairs) {
-      floorData.stairs.forEach((stair) => {
-        const stairGroup = this.stairGenerator.generateStair(stair);
-        group.add(stairGroup);
-
-        // Compute penetration bounds for next floor
-        penetrations.push(this.computeStairPenetration(stair, stair.tread, stair.rise));
-      });
-    }
-
-    // 4. Lifts
-    if (floorData.lifts) {
-      floorData.lifts.forEach((lift) => {
-        const liftGroup = this.stairGenerator.generateLift(lift, floorDefault);
-        group.add(liftGroup);
-
-        // Compute penetration bounds for next floor
-        penetrations.push(this.computeLiftPenetration(lift));
-      });
-    }
-
-    return { group, penetrations };
+    const wallSourceRange = (wall as { _sourceRange?: SourceRange })._sourceRange;
+    this._meshRegistry.register(
+      mesh,
+      'wall',
+      `${room.name}_${wall.direction}`,
+      floorId,
+      wallSourceRange,
+    );
   }
 
   /**

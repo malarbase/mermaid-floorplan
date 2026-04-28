@@ -3,6 +3,8 @@
  * These types define the intermediate JSON format used between DSL parsing and 3D rendering
  */
 
+import type * as THREE from 'three';
+
 /**
  * Source location range in the DSL file.
  * Used for bidirectional sync between 3D view and editor.
@@ -269,6 +271,45 @@ export interface Render3DOptions {
   floorIndex?: number;
   /** Enable shadow rendering (default: false for headless rendering) */
   shadows?: boolean;
+  /**
+   * Optional scene-build toggles forwarded to `buildCompleteScene`.
+   * Useful for diagnostic renders (e.g. hide walls to inspect slab cutouts).
+   * If omitted, defaults from `buildFloorplanScene` apply (everything visible).
+   */
+  showFloors?: boolean;
+  showWalls?: boolean;
+  showStairs?: boolean;
+  showLifts?: boolean;
+  showConnections?: boolean;
+}
+
+/**
+ * Optional callbacks invoked by `buildFloorplanScene` while it walks the
+ * floorplan. Each callback fires synchronously the moment the corresponding
+ * mesh/group is added to its owning floor group, with the originating DSL
+ * entity reference so consumers can attribute meshes back to their source.
+ *
+ * Used by `floorplan-viewer-core` to populate `MeshRegistry` for selection,
+ * hover, and editor source-range navigation. The headless renderer omits
+ * these hooks entirely; the cost of an undefined check per entity is
+ * negligible in the build loop.
+ */
+export interface SceneBuildHooks {
+  /** Fires once per rendered floor, after the floor group is created and named. */
+  onFloorGroup?: (group: THREE.Group, floor: JsonFloor) => void;
+  /** Fires for each room slab mesh added to the floor group. */
+  onRoomMesh?: (mesh: THREE.Mesh, room: JsonRoom, floor: JsonFloor) => void;
+  /**
+   * Fires for each wall-segment mesh emitted by `WallBuilder.generateWall`.
+   * A single `JsonWall` may yield multiple meshes (segments + door/window
+   * geometry); the callback fires once per emitted mesh, with the same
+   * `JsonWall` reference, so the registry can attribute every visible piece.
+   */
+  onWallMesh?: (mesh: THREE.Mesh, wall: JsonWall, room: JsonRoom, floor: JsonFloor) => void;
+  /** Fires once per stair group after `floorGroup.add(stairGroup)`. */
+  onStairMesh?: (group: THREE.Group, stair: JsonStair, floor: JsonFloor) => void;
+  /** Fires once per lift group after `floorGroup.add(liftGroup)`. */
+  onLiftMesh?: (group: THREE.Group, lift: JsonLift, floor: JsonFloor) => void;
 }
 
 /**

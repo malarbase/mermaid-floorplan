@@ -71,13 +71,16 @@ const wallMat = MaterialFactory.createWallMaterial(style, 'dark');
 
 ### Scene Builder (`scene-builder.ts`)
 
-Build Three.js scenes from JSON floorplan data:
+Build Three.js scenes from JSON floorplan data. `buildFloorplanScene` is the
+single source of truth for floorplan scene construction — both the headless
+renderer (`floorplan-mcp-server`) and the interactive viewer
+(`floorplan-viewer-core`) delegate to it.
 
 ```typescript
 import { buildFloorplanScene, buildCompleteScene } from 'floorplan-3d-core';
 
 // Build just the scene geometry
-const { scene, bounds, floorsRendered, styleMap } = buildFloorplanScene(jsonData, {
+const { scene, bounds, floorsRendered, styleMap, floorGroups } = buildFloorplanScene(jsonData, {
   theme: 'dark',
   floorIndices: [0, 1],  // Which floors to render
   showFloors: true,
@@ -87,16 +90,87 @@ const { scene, bounds, floorsRendered, styleMap } = buildFloorplanScene(jsonData
   showLifts: true,
 });
 
+// `floorGroups` is keyed by `JsonFloor.id` and exposes the per-floor
+// `THREE.Group` (useful for adding to an existing long-lived scene or for
+// stair/lift exploded-view animation).
+for (const [floorId, group] of floorGroups) {
+  console.log(floorId, group.children.length);
+}
+
 // Build complete scene with camera and lighting
-const { scene, camera, cameraResult, bounds, floorsRendered } = buildCompleteScene(
+const { scene, camera, cameraResult, bounds, floorsRendered, floorGroups } = buildCompleteScene(
   jsonData,
-  { 
-    width: 800, 
-    height: 600, 
-    projection: 'isometric' 
-  }
+  {
+    width: 800,
+    height: 600,
+    projection: 'isometric',
+  },
 );
 ```
+
+#### `SceneBuildHooks` — observe mesh creation
+
+Consumers (e.g. interactive editors) can attach optional callbacks to be
+notified as each mesh / group is created, without owning the build loop:
+
+```typescript
+import {
+  buildFloorplanScene,
+  type SceneBuildHooks,
+} from 'floorplan-3d-core';
+
+const hooks: SceneBuildHooks = {
+  onFloorGroup: (group, floor) => {
+    console.log('floor', floor.id, '→ group', group.uuid);
+  },
+  onRoomMesh: (slabMesh, room, floor) => {
+    registry.register(slabMesh, 'room', room.name, floor.id, room._sourceRange);
+  },
+  onWallMesh: (mesh, wall, room, floor) => {
+    // Fires once per emitted Three.js mesh (wall segments, plus auxiliary
+    // door / window meshes that pass through `WallBuilder.generateWall`).
+    registry.register(mesh, 'wall', `${room.name}_${wall.direction}`, floor.id);
+  },
+  onStairMesh: (group, stair, floor) => { /* ... */ },
+  onLiftMesh: (group, lift, floor) => { /* ... */ },
+};
+
+buildFloorplanScene(jsonData, { theme: 'dark', ...hooks });
+```
+
+All callbacks are optional and are invoked synchronously during scene
+construction. They do not affect the returned `floorGroups` map, the scene
+graph, or the resulting `bounds`.
+
+#### Avoiding double-normalization with `buildFloorplanSceneFromNormalized`
+
+`buildFloorplanScene` calls `normalizeToMeters` at the top to convert all
+dimensions from the DSL's `default_unit` (e.g. `ft`) to meters. The
+normalizer preserves `default_unit` on the output, so it is **not
+idempotent** — calling it twice on the same `JsonExport` will scale every
+dimension by the conversion factor a second time (e.g. another 1/0.3048
+for feet), which silently breaks the render.
+
+Most consumers should pass raw DSL output to `buildFloorplanScene` and let
+it own the single normalization pass. Consumers that need the normalized
+data *before* the build (e.g. the interactive viewer, which uses normalized
+config / first-room coordinates for camera framing and theme resolution)
+should normalize once themselves and use `buildFloorplanSceneFromNormalized`
+to skip the redundant pass:
+
+```typescript
+import {
+  buildFloorplanSceneFromNormalized,
+  normalizeToMeters,
+} from 'floorplan-3d-core';
+
+const normalized = normalizeToMeters(rawJsonData);
+// …use `normalized.config`, `normalized.floors[0].rooms[0]`, etc.
+const result = buildFloorplanSceneFromNormalized(normalized, { theme: 'dark' });
+```
+
+Pinned by the `unit normalization at the scene-build entry points` block
+in `scene-builder.test.ts`.
 
 ### Camera Utils (`camera-utils.ts`)
 

@@ -4,6 +4,19 @@
 
 Separates 3D rendering from 2D UI. Three.js handles all 3D; Solid.js handles UI.
 
+## Scene Construction
+
+`floorplan-viewer-core` does **not** maintain its own scene-build pipeline.
+`BaseViewer.loadFloorplan` delegates the entire mesh / group hierarchy to
+`buildFloorplanScene` from `floorplan-3d-core` (the same entry point used by
+the headless renderer in `floorplan-mcp-server`). Selection / source-range
+registration is wired via the optional `SceneBuildHooks` callbacks
+(`onFloorGroup`, `onRoomMesh`, `onWallMesh`, `onStairMesh`, `onLiftMesh`),
+which `BaseViewer` and `InteractiveEditorCore` override to populate
+`MeshRegistry`. Stair / lift floor-slab cutouts use mesh-derived bounds
+(`THREE.Box3().setFromObject(...)`) so the interactive viewer and the
+headless renderer always agree on the cut shape.
+
 ## Modes
 
 | Mode | Core Class | Use Case |

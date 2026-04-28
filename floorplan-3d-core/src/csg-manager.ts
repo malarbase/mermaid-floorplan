@@ -38,6 +38,33 @@ export async function initCSG(): Promise<boolean> {
     return true; // Already initialized
   }
 
+  // Browser/puppeteer path: prefer the UMD-attached global if a host page has
+  // injected `three-bvh-csg` directly (the npm bundler externalises this dep).
+  // Note the upstream library's typoed global name `ThreBvhCsg`.
+  const browserGlobal:
+    | {
+        Evaluator: typeof csgModule extends null ? never : never;
+        Brush: unknown;
+        SUBTRACTION: number;
+        ADDITION: number;
+        INTERSECTION: number;
+      }
+    | undefined = (globalThis as unknown as { ThreBvhCsg?: any }).ThreBvhCsg;
+  if (
+    browserGlobal &&
+    typeof browserGlobal.Evaluator === 'function' &&
+    typeof browserGlobal.Brush === 'function'
+  ) {
+    csgModule = {
+      Evaluator: browserGlobal.Evaluator as any,
+      Brush: browserGlobal.Brush as any,
+      SUBTRACTION: browserGlobal.SUBTRACTION,
+      ADDITION: browserGlobal.ADDITION,
+      INTERSECTION: browserGlobal.INTERSECTION,
+    };
+    return true;
+  }
+
   try {
     const mod = await import('three-bvh-csg');
     csgModule = {
