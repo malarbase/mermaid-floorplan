@@ -10,6 +10,13 @@ export interface FloorManagerCallbacks {
   getFloors: () => THREE.Group[];
   getFloorplanData: () => JsonExport | null;
   onVisibilityChange: () => void;
+  /**
+   * Called after a floor group becomes visible so consumers (e.g.
+   * `LayerVisibilityManager`) can re-apply sub-layer visibility.
+   * Three.js propagates parent visibility automatically, but calling
+   * this ensures any pending desired-state is applied immediately.
+   */
+  onFloorShown?: (floorGroup: THREE.Group) => void;
 }
 
 export class FloorManager {
@@ -104,6 +111,9 @@ export class FloorManager {
     const floorIndex = floorplanData?.floors.findIndex((f) => f.id === floorId) ?? -1;
     if (floorIndex >= 0 && floors[floorIndex]) {
       floors[floorIndex].visible = visible;
+      if (visible) {
+        this.callbacks.onFloorShown?.(floors[floorIndex]);
+      }
     }
 
     // Notify caller of visibility change (e.g., to update floor summary)

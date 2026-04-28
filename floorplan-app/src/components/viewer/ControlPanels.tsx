@@ -20,6 +20,7 @@ export default function ControlPanels(props: ControlPanelsProps) {
       createControlPanelSection,
       getSectionContent,
       createSliderControl,
+      createLayerControlsUI,
       getLayoutManager,
       cls,
       injectStyles,
@@ -109,6 +110,14 @@ export default function ControlPanels(props: ControlPanelsProps) {
         onChange: (v) => viewer.setExplodedView(v / 100),
       });
       viewContent.appendChild(explodedSlider.element);
+
+      // Layers checkboxes
+      const layerControls = createLayerControlsUI({
+        onLayerToggle: (layer, visible) => {
+          viewer.layerVisibilityManager.setLayerVisible(layer, visible);
+        },
+      });
+      viewContent.appendChild(layerControls.element);
     }
     controlPanel.appendChild(viewSection);
 

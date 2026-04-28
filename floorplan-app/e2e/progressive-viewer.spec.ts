@@ -93,8 +93,9 @@ test.describe('Advanced Mode', () => {
   });
 
   test('floor visibility controls work', async ({ page }) => {
-    // Check floors section
-    const floorsSection = page.locator('.fp-control-section').filter({ hasText: 'Floors' });
+    // Use the stable section id — the View section also contains a "Floors" layer
+    // checkbox so a hasText filter would match two elements.
+    const floorsSection = page.locator('#floor-section');
     await expect(floorsSection).toBeVisible();
 
     // Should have floor toggle controls

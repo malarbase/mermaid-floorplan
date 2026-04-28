@@ -38,6 +38,13 @@ export {
   type KeyboardShortcut,
 } from './keyboard-help-ui.js';
 export {
+  createLayerControlsUI,
+  LAYER_ENTRIES,
+  type LayerControlsUI,
+  type LayerControlsUIOptions,
+  type LayerEntry,
+} from './layer-controls-ui.js';
+export {
   createLightControlsUI,
   type LightControlsUI,
   type LightControlsUIOptions,

@@ -956,6 +956,15 @@ explodedView?.addEventListener('input', () => {
   editorCore.setExplodedView(value / 100);
 });
 
+// Layer visibility toggles
+const LAYER_IDS = ['floor', 'wall', 'connection', 'stair', 'lift'] as const;
+for (const layer of LAYER_IDS) {
+  const checkbox = document.getElementById(`layer-toggle-${layer}`) as HTMLInputElement | null;
+  checkbox?.addEventListener('change', () => {
+    editorCore.layerVisibilityManager.setLayerVisible(layer, checkbox.checked);
+  });
+}
+
 // Floor visibility
 const floorList = document.getElementById('floor-list');
 const showAllFloorsBtn = document.getElementById('show-all-floors');

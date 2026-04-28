@@ -30,6 +30,7 @@ import {
   createFileCommands,
   createFloorControlsUI,
   createKeyboardHelpUI,
+  createLayerControlsUI,
   createLightControlsUI,
   createOverlay2DUI,
   createShortcutInfoUI,
@@ -443,6 +444,14 @@ if (viewContent) {
     },
   });
   viewContent.appendChild(explodedSlider.element);
+
+  // Layers checkboxes
+  const layerControls = createLayerControlsUI({
+    onLayerToggle: (layer, visible) => {
+      viewer.layerVisibilityManager.setLayerVisible(layer, visible);
+    },
+  });
+  viewContent.appendChild(layerControls.element);
 }
 controlPanel.appendChild(viewSection);
 

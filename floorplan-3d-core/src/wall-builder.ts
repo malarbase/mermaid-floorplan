@@ -210,6 +210,11 @@ export class WallBuilder {
   /**
    * Generate a complete wall with holes for a room
    * Uses CSG if available, otherwise generates simple box walls
+   *
+   * @param connectionsGroup - Optional separate group for door/window meshes.
+   *   When provided, connection geometry (door frames, window glass) is placed
+   *   here instead of `group`, allowing independent layer visibility toggling.
+   *   When omitted, connection meshes are added to `group` (backward-compatible).
    */
   generateWall(
     wall: JsonWall,
@@ -219,6 +224,7 @@ export class WallBuilder {
     materials: MaterialSet,
     group: THREE.Group,
     config: JsonConfig = {},
+    connectionsGroup?: THREE.Group,
   ): void {
     const wallThickness = config.wall_thickness ?? DIMENSIONS.WALL.THICKNESS;
     const elevation = room.elevation || 0;
@@ -236,7 +242,7 @@ export class WallBuilder {
         allRooms,
         connections,
         materials,
-        group,
+        connectionsGroup ?? group,
         elevation,
         config,
       );
@@ -257,6 +263,7 @@ export class WallBuilder {
         wallHeight,
         wallThickness,
         config,
+        connectionsGroup,
       );
     } else {
       // Fallback path: simple box walls (doors clip through)
@@ -272,6 +279,7 @@ export class WallBuilder {
         wallHeight,
         wallThickness,
         config,
+        connectionsGroup,
       );
     }
   }
@@ -291,6 +299,7 @@ export class WallBuilder {
     wallHeight: number,
     wallThickness: number,
     config: JsonConfig,
+    connectionsGroup?: THREE.Group,
   ): void {
     const { Brush, SUBTRACTION } = getCSG();
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
@@ -298,6 +307,10 @@ export class WallBuilder {
 
     // Collect all holes
     const holes: CSGBrush[] = [];
+
+    // Destination for door/window meshes — separate group when provided so
+    // connection visibility can be toggled independently of wall segments.
+    const connDest = connectionsGroup ?? group;
 
     // Handle explicit wall type (window/door)
     if (wall.type === 'door' || wall.type === 'window') {
@@ -321,7 +334,7 @@ export class WallBuilder {
             materials,
             config,
           );
-          if (glassMesh) group.add(glassMesh);
+          if (glassMesh) connDest.add(glassMesh);
         }
       }
     }
@@ -354,7 +367,7 @@ export class WallBuilder {
           );
           if (connectionMesh) {
             connectionMesh.position.y += elevation;
-            group.add(connectionMesh);
+            connDest.add(connectionMesh);
           }
         }
       }
@@ -415,9 +428,13 @@ export class WallBuilder {
     wallHeight: number,
     wallThickness: number,
     config: JsonConfig,
+    connectionsGroup?: THREE.Group,
   ): void {
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
     const baseGeometry = this.getWallGeometry(wall, room, wallThickness);
+
+    // Destination for door/window meshes — separate group when provided.
+    const connDest = connectionsGroup ?? group;
 
     // Handle explicit wall type (window)
     if (wall.type === 'window') {
@@ -429,7 +446,7 @@ export class WallBuilder {
         materials,
         config,
       );
-      if (glassMesh) group.add(glassMesh);
+      if (glassMesh) connDest.add(glassMesh);
     }
 
     // Handle connections - add door meshes (they'll clip through walls)
@@ -447,7 +464,7 @@ export class WallBuilder {
         );
         if (connectionMesh) {
           connectionMesh.position.y += elevation;
-          group.add(connectionMesh);
+          connDest.add(connectionMesh);
         }
       }
     }

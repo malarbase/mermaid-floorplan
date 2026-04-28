@@ -183,6 +183,7 @@ export function buildFloorplanSceneFromNormalized(
         styleMap,
         penetrations: prevFloorPenetrations,
       });
+      slabs.userData.layer = 'floor';
       floorGroup.add(slabs);
 
       // Surface each room slab to the consumer. `generateFloorSlabs` emits
@@ -205,10 +206,18 @@ export function buildFloorplanSceneFromNormalized(
       roomHeight: r.roomHeight ?? floorHeight,
     }));
 
-    // Generate walls using WallBuilder (CSG-enabled when available)
-    // WallBuilder handles connections internally, so we only need separate
-    // connection generation when walls are disabled
+    // Generate walls using WallBuilder (CSG-enabled when available).
+    // Connection meshes (doors, windows) go into a sibling `connectionsGroup`
+    // so their visibility can be toggled independently of wall segments.
     if (showWalls) {
+      const wallsGroup = new THREE.Group();
+      wallsGroup.name = `walls_${floor.id}`;
+      wallsGroup.userData.layer = 'wall';
+
+      const connectionsGroup = new THREE.Group();
+      connectionsGroup.name = `connections_${floor.id}`;
+      connectionsGroup.userData.layer = 'connection';
+
       for (const room of allRooms) {
         const roomStyle = styleMap.get(room.style ?? config.default_style ?? '');
         const materials = MaterialFactory.createMaterialSet(roomStyle, theme);
@@ -216,25 +225,23 @@ export function buildFloorplanSceneFromNormalized(
         for (const wall of room.walls) {
           if (wall.type === 'open') continue;
 
-          // Snapshot the floor group's children before WallBuilder appends so
-          // we can attribute every newly added mesh to this `(wall, room)`.
-          // `onWallMesh` fires per emitted mesh (segments, door/window glass,
-          // connection meshes); see the wall-callback granularity decision
-          // in `design.md` (resolved to per-emitted-mesh). The
-          // `JsonWall`/`JsonRoom` references retain `_sourceRange`.
-          const childCountBefore = onWallMesh ? floorGroup.children.length : 0;
+          // Snapshot wall-segment count before generating so onWallMesh fires
+          // only for wall meshes, not for connection geometry placed in the
+          // separate connectionsGroup.
+          const childCountBefore = onWallMesh ? wallsGroup.children.length : 0;
           wallBuilder.generateWall(
             wall,
             room,
             allRooms,
             normalizedData.connections ?? [],
             materials,
-            floorGroup,
+            wallsGroup,
             config,
+            connectionsGroup,
           );
           if (onWallMesh) {
-            for (let i = childCountBefore; i < floorGroup.children.length; i++) {
-              const child = floorGroup.children[i];
+            for (let i = childCountBefore; i < wallsGroup.children.length; i++) {
+              const child = wallsGroup.children[i];
               if (child instanceof THREE.Mesh) {
                 onWallMesh(child, wall, room, floor);
               }
@@ -242,10 +249,12 @@ export function buildFloorplanSceneFromNormalized(
           }
         }
       }
+
+      floorGroup.add(wallsGroup);
+      floorGroup.add(connectionsGroup);
     }
 
-    // Generate standalone connections only when walls are disabled
-    // (WallBuilder handles connections internally when generating walls)
+    // When walls are disabled, still render standalone door/window geometry.
     if (showConnections && !showWalls) {
       const connections = generateFloorConnections(floor, normalizedData.connections ?? [], {
         wallThickness,
@@ -253,6 +262,7 @@ export function buildFloorplanSceneFromNormalized(
         theme,
         styleMap,
       });
+      connections.userData.layer = 'connection';
       floorGroup.add(connections);
     }
 
@@ -262,6 +272,7 @@ export function buildFloorplanSceneFromNormalized(
     if (showStairs && floor.stairs) {
       for (const stair of floor.stairs) {
         const stairGroup = stairGenerator.generateStair(stair);
+        stairGroup.userData.layer = 'stair';
         floorGroup.add(stairGroup);
         // Update world matrix before computing bounding box
         floorGroup.updateMatrixWorld(true);
@@ -277,6 +288,7 @@ export function buildFloorplanSceneFromNormalized(
       const floorHeight = floor.height ?? defaultHeight;
       for (const lift of floor.lifts) {
         const liftGroup = stairGenerator.generateLift(lift, floorHeight);
+        liftGroup.userData.layer = 'lift';
         floorGroup.add(liftGroup);
         // Track for next floor's holes
         currentFloorPenetrations.push(new THREE.Box3().setFromObject(liftGroup));
