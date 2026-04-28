@@ -1,15 +1,15 @@
 /**
- * Tests for wall slab-embedment (Phase 3 of Z-fighting fix).
+ * Tests for wall slab-embedment.
  *
- * Walls are now made SLAB_EMBED taller than the visible wall height, with the
- * extra length buried below floor level so that the wall's visible bottom face
- * is hidden inside the slab.  Key contracts:
+ * Walls extend EMBED into the floor slab below (bottom face hidden) and EMBED
+ * into the floor slab above (top face hidden), eliminating coplanar z-fighting
+ * at both the floor–wall seam and the wall–ceiling seam.  Key contracts:
  *
  *   1. wallBottom < slabTop       — wall's bottom Y is strictly below the slab's
  *                                    top surface (the coplanar face is gone).
- *   2. wallTop == elevation + wallHeight  — the visible ceiling of the wall is
- *                                            unchanged.
- *   3. Assertion holds for both ground-level and elevated rooms.
+ *   2. wallTop > elevation + wallHeight  — wall extends EMBED into the slab above.
+ *   3. totalHeight == wallHeight + 2 * EMBED
+ *   4. Assertions hold for both ground-level and elevated rooms.
  */
 
 import * as THREE from 'three';
@@ -18,9 +18,8 @@ import { DIMENSIONS } from '../src/constants.js';
 import { buildFloorplanScene } from '../src/scene-builder.js';
 import type { JsonExport } from '../src/types.js';
 
-const FLOOR_THICKNESS = DIMENSIONS.FLOOR.THICKNESS;
 const WALL_HEIGHT = DIMENSIONS.WALL.HEIGHT;
-const SLAB_EMBED = DIMENSIONS.WALL.SLAB_EMBED;
+const EMBED = DIMENSIONS.WALL.EMBED;
 const EPS = 1e-6;
 
 /**
@@ -130,14 +129,14 @@ describe('wall slab-embedment — floor/wall coplanar face eliminated', () => {
     }
   });
 
-  it('wall top equals elevation + wallHeight (visible height is unchanged)', () => {
+  it('wall top equals elevation + wallHeight + EMBED (extends into ceiling slab)', () => {
     const elevation = 0;
     const { scene } = buildFloorplanScene(makeFloorplan(elevation));
 
     const wallMeshes = collectWallMeshes(scene);
     expect(wallMeshes.length).toBeGreaterThan(0);
 
-    const expectedTop = elevation + WALL_HEIGHT;
+    const expectedTop = elevation + WALL_HEIGHT + EMBED;
 
     for (const wallMesh of wallMeshes) {
       const { top } = worldYExtent(wallMesh);
@@ -145,7 +144,7 @@ describe('wall slab-embedment — floor/wall coplanar face eliminated', () => {
     }
   });
 
-  it('wall is exactly SLAB_EMBED taller than wallHeight', () => {
+  it('wall is exactly wallHeight + 2 * EMBED tall', () => {
     const { scene } = buildFloorplanScene(makeFloorplan(0));
     const wallMeshes = collectWallMeshes(scene);
     expect(wallMeshes.length).toBeGreaterThan(0);
@@ -153,18 +152,18 @@ describe('wall slab-embedment — floor/wall coplanar face eliminated', () => {
     for (const wallMesh of wallMeshes) {
       const { bottom, top } = worldYExtent(wallMesh);
       const actualHeight = top - bottom;
-      expect(actualHeight).toBeCloseTo(WALL_HEIGHT + SLAB_EMBED, 4);
+      expect(actualHeight).toBeCloseTo(WALL_HEIGHT + 2 * EMBED, 4);
     }
   });
 
-  it('wall bottom equals elevation − SLAB_EMBED (embedded by the right amount)', () => {
+  it('wall bottom equals elevation − EMBED (embedded into floor slab)', () => {
     const elevation = 0;
     const { scene } = buildFloorplanScene(makeFloorplan(elevation));
     const wallMeshes = collectWallMeshes(scene);
 
     for (const wallMesh of wallMeshes) {
       const { bottom } = worldYExtent(wallMesh);
-      expect(bottom).toBeCloseTo(elevation - SLAB_EMBED, 4);
+      expect(bottom).toBeCloseTo(elevation - EMBED, 4);
     }
   });
 
@@ -192,12 +191,10 @@ describe('wall slab-embedment — floor/wall coplanar face eliminated', () => {
     const wallMeshes = collectWallMeshes(scene);
     expect(wallMeshes.length).toBeGreaterThan(0);
 
-    const expectedTop = elevation + WALL_HEIGHT;
-
     for (const wallMesh of wallMeshes) {
       const { bottom, top } = worldYExtent(wallMesh);
-      expect(top).toBeCloseTo(expectedTop, 4);
-      expect(bottom).toBeCloseTo(elevation - SLAB_EMBED, 4);
+      expect(top).toBeCloseTo(elevation + WALL_HEIGHT + EMBED, 4);
+      expect(bottom).toBeCloseTo(elevation - EMBED, 4);
     }
   });
 });

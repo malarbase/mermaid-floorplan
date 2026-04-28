@@ -99,7 +99,8 @@ export const DIMENSIONS = {
   WALL: {
     THICKNESS: 0.15,
     HEIGHT: 3.35, // 11 feet (scale: 1 unit ≈ 3.3 feet)
-    SLAB_EMBED: 0.05,
+    /** Distance walls extend into floor slabs at top and bottom to eliminate coplanar z-fighting */
+    EMBED: 0.02,
   },
   FLOOR: {
     THICKNESS: 0.2,

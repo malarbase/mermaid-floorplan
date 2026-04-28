@@ -140,11 +140,14 @@ export function createWallSegmentGeometry(
   isVertical: boolean,
 ): THREE.BoxGeometry {
   const segmentLength = segment.endPos - segment.startPos;
+  // Extend wall into the slabs above and below by EMBED on each side so their
+  // shared faces are never coplanar (eliminates floor–wall and ceiling–wall z-fighting).
+  const embeddedHeight = wallHeight + 2 * DIMENSIONS.WALL.EMBED;
 
   if (isVertical) {
-    return new THREE.BoxGeometry(wallThickness, wallHeight, segmentLength);
+    return new THREE.BoxGeometry(wallThickness, embeddedHeight, segmentLength);
   } else {
-    return new THREE.BoxGeometry(segmentLength, wallHeight, wallThickness);
+    return new THREE.BoxGeometry(segmentLength, embeddedHeight, wallThickness);
   }
 }
 
@@ -403,24 +406,18 @@ export class WallBuilder {
     }
 
     // Generate each segment with CSG.
-    // Walls are embedded SLAB_EMBED into the floor slab so the wall's bottom
-    // face is hidden inside the slab rather than sitting on its top surface.
-    // This eliminates the coplanar floor↔wall seam that causes Z-fighting.
-    const slabEmbed = DIMENSIONS.WALL.SLAB_EMBED;
-    const totalHeight = wallHeight + slabEmbed;
-    const centerY = elevation + wallHeight / 2 - slabEmbed / 2;
-
+    // Wall geometry is extended by EMBED on both sides inside createWallSegmentGeometry,
+    // burying the top and bottom faces inside the adjacent slabs (no coplanar surfaces).
     for (const segment of segments) {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue;
 
-      // Calculate segment geometry using the taller (embedded) height
       const segmentGeom = this.getSegmentGeometry(
         segment,
         wall,
         room,
         wallThickness,
-        totalHeight,
+        wallHeight,
         isVertical,
       );
       const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
@@ -433,10 +430,8 @@ export class WallBuilder {
         this.theme,
       );
 
-      // Create brush — centre shifted down by slabEmbed/2 so the top stays at
-      // elevation + wallHeight while the bottom sinks into the slab.
       const segmentBrush = new Brush(segmentGeom, segmentMaterials);
-      segmentBrush.position.set(segmentPos.x, centerY, segmentPos.z);
+      segmentBrush.position.set(segmentPos.x, elevation + wallHeight / 2, segmentPos.z);
       segmentBrush.updateMatrixWorld();
 
       // Filter holes for this segment
@@ -507,13 +502,8 @@ export class WallBuilder {
     }
 
     // Generate simple box walls for each segment.
-    // Same slab-embed logic as the CSG path: wall is made taller by SLAB_EMBED
-    // and shifted downward so its visible top stays at elevation + wallHeight
-    // while its bottom sinks into the floor slab, eliminating the coplanar seam.
-    const slabEmbed = DIMENSIONS.WALL.SLAB_EMBED;
-    const totalHeight = wallHeight + slabEmbed;
-    const centerY = elevation + wallHeight / 2 - slabEmbed / 2;
-
+    // Wall geometry is extended by EMBED on both sides inside createWallSegmentGeometry,
+    // burying the top and bottom faces inside the adjacent slabs (no coplanar surfaces).
     for (const segment of segments) {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue;
@@ -523,7 +513,7 @@ export class WallBuilder {
         wall,
         room,
         wallThickness,
-        totalHeight,
+        wallHeight,
         isVertical,
       );
       const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
@@ -534,7 +524,7 @@ export class WallBuilder {
         wall.direction,
       );
       const wallMesh = new THREE.Mesh(segmentGeom, segmentMaterial);
-      wallMesh.position.set(segmentPos.x, centerY, segmentPos.z);
+      wallMesh.position.set(segmentPos.x, elevation + wallHeight / 2, segmentPos.z);
       wallMesh.castShadow = true;
       wallMesh.receiveShadow = true;
       group.add(wallMesh);
