@@ -84,6 +84,7 @@ export { InteractiveEditorCore } from './interactive-editor-core.js';
 export type { KeyboardControlsConfig } from './keyboard-controls.js';
 // Keyboard controls
 export { KeyboardControls } from './keyboard-controls.js';
+export { ALL_LAYERS, type Layer, LayerVisibilityManager } from './layer-visibility-manager.js';
 export type {
   LayoutManagerConfig,
   LayoutState,

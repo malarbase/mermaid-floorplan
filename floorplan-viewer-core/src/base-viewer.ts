@@ -39,6 +39,7 @@ import { AnnotationManager } from './annotation-manager.js';
 import { CameraManager } from './camera-manager.js';
 import { FloorManager } from './floor-manager.js';
 import { KeyboardControls } from './keyboard-controls.js';
+import { LayerVisibilityManager } from './layer-visibility-manager.js';
 import { MeshRegistry } from './mesh-registry.js';
 import { PivotIndicator } from './pivot-indicator.js';
 import type { SceneContext } from './scene-context.js';
@@ -96,6 +97,7 @@ export abstract class BaseViewer implements SceneContext {
   protected _cameraManager: CameraManager;
   protected _annotationManager: AnnotationManager;
   protected _floorManager: FloorManager;
+  protected _layerVisibilityManager: LayerVisibilityManager;
 
   // Lighting
   protected directionalLight: THREE.DirectionalLight;
@@ -155,6 +157,9 @@ export abstract class BaseViewer implements SceneContext {
   }
   get floorManager(): FloorManager {
     return this._floorManager;
+  }
+  get layerVisibilityManager(): LayerVisibilityManager {
+    return this._layerVisibilityManager;
   }
 
   /** Overlay layer for floating UI panels (scoped to viewer container). */
@@ -296,12 +301,17 @@ export abstract class BaseViewer implements SceneContext {
       overlayContainer: this._overlayLayer,
     });
 
+    this._layerVisibilityManager = new LayerVisibilityManager();
+
     this._floorManager = new FloorManager({
       getFloors: () => this._floors,
       getFloorplanData: () => this.currentFloorplanData,
       onVisibilityChange: () => {
         this._annotationManager.updateFloorSummary();
         this.onFloorVisibilityChanged?.();
+      },
+      onFloorShown: (floorGroup) => {
+        this._layerVisibilityManager.applyToFloor(floorGroup);
       },
     });
 
@@ -595,6 +605,8 @@ export abstract class BaseViewer implements SceneContext {
     this._annotationManager.updateAll();
 
     this._floorManager.initFloorVisibility();
+
+    this._layerVisibilityManager.initLayerVisibility(this._floors);
 
     this.onFloorplanLoaded?.();
   }

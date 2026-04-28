@@ -11,6 +11,11 @@
  *   --width N           Output width in pixels (default: 1200)
  *   --height N          Output height in pixels (default: 900)
  *   --scale N           Scale factor (for annotation text size)
+ *   --no-walls          Hide all wall meshes
+ *   --no-floors         Hide all floor slab meshes
+ *   --no-stairs         Hide all stair meshes
+ *   --no-lifts          Hide all lift meshes
+ *   --no-connections    Hide all door/window meshes
  *
  * Uses the floorplan 3D renderer from the mcp-server package.
  */
@@ -39,6 +44,7 @@ interface Options {
   scale: number;
   showWalls?: boolean;
   showStairs?: boolean;
+  showLifts?: boolean;
   showFloors?: boolean;
   showConnections?: boolean;
 }
@@ -88,6 +94,8 @@ function parseArgs(args: string[]): Options {
       options.showWalls = false;
     } else if (arg === '--no-stairs') {
       options.showStairs = false;
+    } else if (arg === '--no-lifts') {
+      options.showLifts = false;
     } else if (arg === '--no-floors') {
       options.showFloors = false;
     } else if (arg === '--no-connections') {
@@ -191,6 +199,7 @@ async function main() {
         renderAllFloors: false,
         showWalls: options.showWalls,
         showStairs: options.showStairs,
+        showLifts: options.showLifts,
         showFloors: options.showFloors,
         showConnections: options.showConnections,
       });
@@ -219,6 +228,7 @@ async function main() {
         renderAllFloors: true,
         showWalls: options.showWalls,
         showStairs: options.showStairs,
+        showLifts: options.showLifts,
         showFloors: options.showFloors,
         showConnections: options.showConnections,
       });
