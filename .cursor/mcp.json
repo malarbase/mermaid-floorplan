@@ -1,8 +1,18 @@
 {
-    "mcpServers": {
-        "floorplans": {
-            "command": "node",
-            "args": ["/Users/malar/Personal/Code/mermaid-floorplan/mcp-server/out/index.js"]
-          }
+  "mcpServers": {
+    "floorplans": {
+      "command": "node",
+      "args": [
+        "/Users/malar/Personal/Code/mermaid-floorplan/mcp-server/out/index.js"
+      ]
+    },
+    "code-review-graph": {
+      "command": "uvx",
+      "args": [
+        "code-review-graph",
+        "serve"
+      ],
+      "type": "stdio"
     }
+  }
 }

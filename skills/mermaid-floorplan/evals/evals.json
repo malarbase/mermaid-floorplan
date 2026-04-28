@@ -1,0 +1,351 @@
+{
+  "$schema": "./eval-schema.json",
+  "skill": "mermaid-floorplan",
+  "version": "1.0.0",
+  "description": "11 prompts that exercise the four core workflows plus the critic/variations side-channels. Each eval defines a prompt the agent receives, the file artifacts it should produce, and a list of assertions the grader can run on those artifacts. Assertions are written so they do not depend on a particular planner or wording — they check structural and behavioural outcomes.",
+  "globalSetup": {
+    "workingDir": "evals/runs/{iteration}/{eval_id}/",
+    "agentReceives": [
+      "the prompt below verbatim",
+      "the agent's normal tools (file edits, shell)",
+      "for skill runs: the full mermaid-floorplan skill (SKILL.md + references + scripts)",
+      "for baseline runs: only knowledge that the mermaid-floorplan DSL exists, with a pointer to mermaid-floorplan/examples/"
+    ]
+  },
+  "evals": [
+    {
+      "id": "create_studio",
+      "workflow": "A",
+      "title": "Create a small studio from a one-line brief",
+      "prompt": "Create a 480 sqft studio apartment as a .floorplan file. Save it as plan.floorplan. The studio should have a sleeping area, a kitchen, a bathroom, and an entry vestibule.",
+      "must_produce": ["plan.floorplan", "plan.png"],
+      "assertions": [
+        { "kind": "validate", "file": "plan.floorplan", "expected": { "valid": true } },
+        { "kind": "render_exists", "file": "plan.png", "minBytes": 5000 },
+        { "kind": "rooms_present", "file": "plan.floorplan", "minRooms": 4 },
+        {
+          "kind": "kind_coverage",
+          "file": "plan.floorplan",
+          "kinds": ["entry", "kitchen", "bathroom"],
+          "atLeast": 3
+        },
+        { "kind": "area_within", "file": "plan.floorplan", "target": 480, "tolerance": 0.25 },
+        { "kind": "critic", "file": "plan.floorplan", "maxErrors": 0 }
+      ]
+    },
+    {
+      "id": "create_studio_open_plan",
+      "workflow": "A",
+      "title": "Studio with separated wet rooms and no hallway",
+      "prompt": "Create a 480 sqft studio apartment as a .floorplan file. Save it as plan.floorplan. The studio should have a sleeping area, a kitchen, a bathroom, and a living/entry zone. Hard preferences: (1) the kitchen and the bathroom must NOT share a wall; (2) the bathroom door should NOT open onto the entry/foyer/outside (route it off the sleeping area instead); (3) do NOT include a dedicated hallway/corridor — the public zone should be open-plan. Also render to plan.png.",
+      "must_produce": ["plan.floorplan", "plan.png"],
+      "assertions": [
+        { "kind": "validate", "file": "plan.floorplan", "expected": { "valid": true } },
+        { "kind": "render_exists", "file": "plan.png", "minBytes": 5000 },
+        { "kind": "rooms_present", "file": "plan.floorplan", "minRooms": 4 },
+        {
+          "kind": "kind_coverage",
+          "file": "plan.floorplan",
+          "kinds": ["kitchen", "bathroom"],
+          "atLeast": 2
+        },
+        { "kind": "area_within", "file": "plan.floorplan", "target": 480, "tolerance": 0.25 },
+        {
+          "kind": "wet_walls_separated",
+          "file": "plan.floorplan",
+          "between": ["kitchen", "bathroom"]
+        },
+        { "kind": "no_hallway", "file": "plan.floorplan" },
+        {
+          "kind": "critic_no_rule_findings",
+          "file": "plan.floorplan",
+          "rules": ["bathroom_off_entry", "corridor_only_hallway"]
+        }
+      ]
+    },
+    {
+      "id": "create_2br_with_wet_walls",
+      "workflow": "A",
+      "title": "2BR apartment with the wet-wall constraint",
+      "prompt": "Design a 1000 sqft 2-bedroom apartment in the mermaid-floorplan DSL. Bedrooms should each have at least one window. The kitchen and bathroom MUST share a plumbing wall. Save as twobr.floorplan and render to twobr.png.",
+      "must_produce": ["twobr.floorplan", "twobr.png"],
+      "assertions": [
+        { "kind": "validate", "file": "twobr.floorplan", "expected": { "valid": true } },
+        { "kind": "render_exists", "file": "twobr.png", "minBytes": 5000 },
+        { "kind": "kind_count", "file": "twobr.floorplan", "roomKind": "bedroom", "exactly": 2 },
+        { "kind": "kind_count", "file": "twobr.floorplan", "roomKind": "bathroom", "atLeast": 1 },
+        { "kind": "every_bedroom_has_window", "file": "twobr.floorplan" },
+        {
+          "kind": "wet_walls_share",
+          "file": "twobr.floorplan",
+          "between": ["kitchen", "bathroom"]
+        },
+        { "kind": "area_within", "file": "twobr.floorplan", "target": 1000, "tolerance": 0.2 }
+      ]
+    },
+    {
+      "id": "create_3br_house",
+      "workflow": "A",
+      "title": "3BR house with ensuite + dedicated dining",
+      "prompt": "Lay out a 3-bedroom suburban house, around 1800 sqft, single floor. The master bedroom needs an ensuite bath. There should be a separate dining room and a hall bathroom for the other two bedrooms. Keep all bedrooms accessible via a hallway, not through other rooms. Save as house.floorplan and render to house.png.",
+      "must_produce": ["house.floorplan", "house.png"],
+      "assertions": [
+        { "kind": "validate", "file": "house.floorplan", "expected": { "valid": true } },
+        { "kind": "kind_count", "file": "house.floorplan", "roomKind": "bedroom", "exactly": 3 },
+        { "kind": "kind_count", "file": "house.floorplan", "roomKind": "bathroom", "atLeast": 2 },
+        { "kind": "kind_count", "file": "house.floorplan", "roomKind": "dining", "atLeast": 1 },
+        { "kind": "no_walk_through_bedrooms", "file": "house.floorplan" },
+        { "kind": "critic", "file": "house.floorplan", "maxErrors": 0 }
+      ]
+    },
+    {
+      "id": "modify_rename_resize",
+      "workflow": "B",
+      "title": "Rename + resize a few rooms in an existing plan",
+      "fixture": "fixtures/two-br-seed.floorplan",
+      "prompt": "Open the supplied two-br-seed.floorplan. Rename the room currently called Bedroom2 to KidsRoom, and shrink it from its current size to 10x12. Then increase the Master bedroom by 2 ft on its long edge. Save the result as plan.floorplan.",
+      "must_produce": ["plan.floorplan"],
+      "assertions": [
+        { "kind": "validate", "file": "plan.floorplan", "expected": { "valid": true } },
+        { "kind": "room_present", "file": "plan.floorplan", "id": "KidsRoom" },
+        { "kind": "room_absent", "file": "plan.floorplan", "id": "Bedroom2" },
+        {
+          "kind": "room_size",
+          "file": "plan.floorplan",
+          "id": "KidsRoom",
+          "expectedWidth": 10,
+          "expectedHeight": 12
+        },
+        {
+          "kind": "room_size_grew",
+          "file": "plan.floorplan",
+          "id": "MasterBedroom",
+          "altIds": ["Master"],
+          "byAtLeast": 2
+        }
+      ]
+    },
+    {
+      "id": "modify_add_closet",
+      "workflow": "B",
+      "title": "Add a walk-in closet inside the master bedroom",
+      "fixture": "fixtures/two-br-seed.floorplan",
+      "prompt": "Add a walk-in closet (4x8 ft, kind 'closet') anchored to the right side of the Master bedroom in two-br-seed.floorplan. Save the result as with-closet.floorplan.",
+      "must_produce": ["with-closet.floorplan"],
+      "assertions": [
+        { "kind": "validate", "file": "with-closet.floorplan", "expected": { "valid": true } },
+        {
+          "kind": "room_present",
+          "file": "with-closet.floorplan",
+          "id": "MasterCloset",
+          "altIds": ["WalkInCloset", "Closet"]
+        },
+        {
+          "kind": "kind_count",
+          "file": "with-closet.floorplan",
+          "roomKind": "closet",
+          "atLeast": 1
+        }
+      ]
+    },
+    {
+      "id": "modify_convert_to_relative",
+      "workflow": "B",
+      "title": "Convert an absolute-positioned plan to relative positioning",
+      "fixture": "fixtures/absolute-positions.floorplan",
+      "prompt": "The supplied absolute-positions.floorplan uses `at (x, y)` for every room. Convert it to use relative positioning anchored at the Foyer. Save as relative.floorplan.",
+      "must_produce": ["relative.floorplan"],
+      "assertions": [
+        { "kind": "validate", "file": "relative.floorplan", "expected": { "valid": true } },
+        { "kind": "anchor_only_absolute", "file": "relative.floorplan", "anchor": "Foyer" },
+        {
+          "kind": "render_unchanged",
+          "before": "fixtures/absolute-positions.floorplan",
+          "after": "relative.floorplan",
+          "minSimilarity": 0.95
+        }
+      ]
+    },
+    {
+      "id": "reverse_engineer_from_image",
+      "workflow": "C",
+      "title": "Recover DSL from a clean rendered floorplan PNG",
+      "fixture": "fixtures/source-image.png",
+      "prompt": "The supplied source-image.png shows a single-floor apartment. Produce a .floorplan file (recovered.floorplan) that reproduces the layout as closely as possible. Render it to recovered.png and run compare_visual.py against the source.",
+      "must_produce": ["recovered.floorplan", "recovered.png", "compare.json"],
+      "assertions": [
+        { "kind": "validate", "file": "recovered.floorplan", "expected": { "valid": true } },
+        { "kind": "compare_similarity", "file": "compare.json", "minSimilarity": 0.55 },
+        { "kind": "rooms_present", "file": "recovered.floorplan", "minRooms": 4 }
+      ]
+    },
+    {
+      "id": "reverse_engineer_low_confidence",
+      "workflow": "C",
+      "title": "Honour low-confidence dimensions instead of hallucinating",
+      "fixture": "fixtures/blurry-source.png",
+      "prompt": "The supplied blurry-source.png is a phone photo of a hand-drawn floor plan; some dimensions are illegible. Produce both a program brief (brief.json) with explicit confidence scores and a derived recovered.floorplan. For any dimension you can't read, do NOT invent a number — use the brief's confidence field and let the generator pick a default.",
+      "must_produce": ["brief.json", "recovered.floorplan"],
+      "assertions": [
+        { "kind": "validate", "file": "recovered.floorplan", "expected": { "valid": true } },
+        { "kind": "brief_has_confidence", "file": "brief.json", "minRoomsWithConfidence": 3 },
+        {
+          "kind": "brief_no_dim_above_unverified",
+          "file": "brief.json",
+          "rule": "if size present without confidence, fail"
+        }
+      ]
+    },
+    {
+      "id": "interactive_three_turns",
+      "workflow": "D",
+      "title": "Three-turn natural-language refinement",
+      "fixture": "fixtures/two-br-seed.floorplan",
+      "prompt": "Apply three sequential edits to two-br-seed.floorplan: (1) make the kitchen 2 ft wider, (2) swap Bedroom2 and Master so Bedroom2 is on the right, (3) add a 4x4 powder room next to the Foyer. Save the final result as final.floorplan. After EACH turn, re-run validate.mjs and design_critic.mjs and bail out with an explanation if the plan becomes invalid.",
+      "must_produce": ["final.floorplan", "turn1.json", "turn2.json", "turn3.json"],
+      "assertions": [
+        { "kind": "validate", "file": "final.floorplan", "expected": { "valid": true } },
+        {
+          "kind": "turn_logs",
+          "files": ["turn1.json", "turn2.json", "turn3.json"],
+          "everyTurnIncludes": ["validate", "design_critic"]
+        },
+        { "kind": "kind_count", "file": "final.floorplan", "roomKind": "powder_room", "atLeast": 1 }
+      ]
+    },
+    {
+      "id": "generate_variations",
+      "workflow": "A",
+      "title": "Three layout variations from a single brief",
+      "fixture": "fixtures/twobr-brief.json",
+      "prompt": "Use generate_variations.mjs to produce 3 layout variations from twobr-brief.json (linear, L-shape, central-corridor). Save them to variations/ and render each to a PNG. All three must validate.",
+      "must_produce": [
+        "variations/v1.floorplan",
+        "variations/v2.floorplan",
+        "variations/v3.floorplan",
+        "variations/v1.png",
+        "variations/v2.png",
+        "variations/v3.png"
+      ],
+      "assertions": [
+        {
+          "kind": "all_validate",
+          "files": ["variations/v1.floorplan", "variations/v2.floorplan", "variations/v3.floorplan"]
+        },
+        {
+          "kind": "all_render",
+          "files": ["variations/v1.png", "variations/v2.png", "variations/v3.png"],
+          "minBytes": 4000
+        },
+        {
+          "kind": "layouts_distinct",
+          "files": ["variations/v1.png", "variations/v2.png", "variations/v3.png"],
+          "maxPairwiseSimilarity": 0.92
+        }
+      ]
+    },
+    {
+      "id": "create_townhouse_two_story",
+      "workflow": "A",
+      "title": "Two-story 3BR townhouse with stair core + 3D feedback",
+      "prompt": "Design a 2-story 3-bedroom townhouse, ~1800 sqft total, in the mermaid-floorplan DSL. Public rooms (entry, living, kitchen, dining, powder) belong on the ground floor; bedrooms and baths on the first floor. The stair must be declared on BOTH floors and connected with a `vertical` link. Render BOTH a 2D plan (plan.png) AND an axonometric 3D view (plan-3d.png) using scripts/render_3d.mjs. Save the DSL as plan.floorplan.",
+      "must_produce": ["plan.floorplan", "plan.png", "plan-3d.png"],
+      "assertions": [
+        { "kind": "validate", "file": "plan.floorplan", "expected": { "valid": true } },
+        { "kind": "render_exists", "file": "plan.png", "minBytes": 5000 },
+        { "kind": "render_exists", "file": "plan-3d.png", "minBytes": 20000 },
+        { "kind": "floor_count", "file": "plan.floorplan", "exactly": 2 },
+        { "kind": "kind_count", "file": "plan.floorplan", "roomKind": "bedroom", "atLeast": 3 },
+        { "kind": "kind_count", "file": "plan.floorplan", "roomKind": "bathroom", "atLeast": 2 },
+        { "kind": "vertical_link_present", "file": "plan.floorplan" },
+        {
+          "kind": "critic_no_rule_findings",
+          "file": "plan.floorplan",
+          "rules": [
+            "footprint_aligned",
+            "stair_vertical_aligned",
+            "multi_floor_egress",
+            "stair_through_walls",
+            "stair_landing_clearance",
+            "stair_room_access",
+            "stair_landing_egress"
+          ]
+        },
+        { "kind": "area_within", "file": "plan.floorplan", "target": 1800, "tolerance": 0.25 }
+      ]
+    },
+    {
+      "id": "fix_stair_constraints",
+      "workflow": "B+critic",
+      "title": "Fix an undersized stair core (stair_through_walls + landing rules)",
+      "fixture": "../assets/templates/StairConstraints-rough.floorplan",
+      "prompt": "The supplied StairConstraints-rough.floorplan has a 6 x 14 ft StairCore that cannot fit a straight 10 ft residential stair (16.5 ft of run + 2 x 3 ft landings). Read the new \"Stair footprint and landings\" subsection in references/multi-floor.md, run design_critic.mjs and suggest_improvements.mjs, then either resize the StairCore (apply via modify.mjs) or switch the stair shape to U-shaped/L-shaped/spiral. Emit the corrected file as fixed.floorplan and verify with design_critic.mjs --strict.",
+      "must_produce": ["fixed.floorplan", "before-critic.json", "after-critic.json"],
+      "assertions": [
+        { "kind": "validate", "file": "fixed.floorplan", "expected": { "valid": true } },
+        {
+          "kind": "critic_no_rule_findings",
+          "file": "fixed.floorplan",
+          "rules": [
+            "stair_through_walls",
+            "stair_landing_clearance",
+            "stair_door_collision",
+            "stair_room_access"
+          ]
+        },
+        {
+          "kind": "critic_findings_decreased",
+          "before": "before-critic.json",
+          "after": "after-critic.json",
+          "minReduction": 2
+        }
+      ]
+    },
+    {
+      "id": "fix_stair_landing_egress",
+      "workflow": "B+critic",
+      "title": "Fix a straight-stair dead-end landing (stair_landing_egress)",
+      "fixture": "../assets/templates/StairLandingEgress-rough.floorplan",
+      "prompt": "The supplied StairLandingEgress-rough.floorplan has a correctly sized 6 x 23 ft StairCore for a straight 10 ft residential stair, but only the *arrival* (top-step) landing has a connection to the rest of each floor. The *boarding* (bottom-step) landing on the ground floor is stranded — anyone on the ground floor cannot reach the first tread. Run design_critic.mjs to confirm the new `stair_landing_egress` finding, then run suggest_improvements.mjs and apply the resulting `add_connection` op via modify.mjs. The auto-suggested connector is `opening` because `config.stair_code = residential`. Emit the corrected file as fixed.floorplan and verify with design_critic.mjs --strict.",
+      "must_produce": ["fixed.floorplan", "before-critic.json", "after-critic.json"],
+      "assertions": [
+        { "kind": "validate", "file": "fixed.floorplan", "expected": { "valid": true } },
+        {
+          "kind": "critic_no_rule_findings",
+          "file": "fixed.floorplan",
+          "rules": [
+            "stair_landing_egress",
+            "stair_through_walls",
+            "stair_landing_clearance",
+            "stair_door_collision",
+            "stair_room_access"
+          ]
+        },
+        {
+          "kind": "critic_findings_decreased",
+          "before": "before-critic.json",
+          "after": "after-critic.json",
+          "minReduction": 1
+        }
+      ]
+    },
+    {
+      "id": "fix_rough_studio",
+      "workflow": "B+critic",
+      "title": "Improve a rough studio: drive critic findings to zero",
+      "fixture": "../assets/templates/studio-rough.floorplan",
+      "prompt": "The supplied studio-rough.floorplan is a flawed studio. Use design_critic.mjs and suggest_improvements.mjs to identify the design issues, apply fixes via modify.mjs, and produce fixed.floorplan. The fixed plan should still be a studio (no extra bedrooms/walls of separation) but should resolve as many critic findings as possible.",
+      "must_produce": ["fixed.floorplan", "before-critic.json", "after-critic.json"],
+      "assertions": [
+        { "kind": "validate", "file": "fixed.floorplan", "expected": { "valid": true } },
+        {
+          "kind": "critic_findings_decreased",
+          "before": "before-critic.json",
+          "after": "after-critic.json",
+          "minReduction": 1
+        },
+        { "kind": "kind_count", "file": "fixed.floorplan", "roomKind": "bedroom", "atLeast": 0 }
+      ]
+    }
+  ]
+}

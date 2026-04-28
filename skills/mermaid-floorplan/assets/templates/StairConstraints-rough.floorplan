@@ -1,0 +1,53 @@
+# StairConstraints-rough.floorplan
+# Intentionally flawed two-story plan that exercises every new stair
+# critic rule. Derived from ImprovedTriplexVilla but with an
+# undersized StairCore (6 x 14) holding a straight 10 ft stair —
+# 16.5 ft of run + 2 x 3 ft landings = 22.5 ft, so the stair
+# pierces the south wall by ~3.5 ft on every floor.
+#
+# Expected critic findings (subset):
+#   - error  stair_through_walls       on every floor (footprint pokes
+#                                       into Storage / Linen / Mech).
+#   - warn   stair_landing_clearance   entry/exit landings too small.
+#   - warn   stair_door_collision      Hall.left @ 25% lands on the
+#                                       tread strip.
+#   - warn   stair_room_access         StairCore has no usable door
+#                                       once the collision is removed.
+#
+# Companion: StairConstraints.floorplan (same brief, fixed).
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft,
+    default_height: 10,
+    door_size: (3 x 7),
+    stair_code: residential
+  }
+
+  floor GroundFloor height 10ft {
+    room StairCore at (0, 6) size (6 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair"
+    room Storage_G at (0, 20) size (6 x 10) walls [top: solid, right: solid, bottom: solid, left: solid] label "Storage"
+    room Foyer at (6, 0) size (12 x 6) walls [top: window, right: solid, bottom: solid, left: solid] label "Foyer"
+    room Hall_G at (6, 6) size (12 x 24) walls [top: solid, right: solid, bottom: solid, left: solid] label "Hall"
+
+    stair MainStair at (1, 7) shape straight toward bottom rise 10ft width 4ft label "Main Stair"
+  }
+
+  floor FirstFloor height 10ft {
+    room StairCore_1 at (0, 6) size (6 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair"
+    room Linen_1 at (0, 20) size (6 x 10) walls [top: solid, right: solid, bottom: solid, left: solid] label "Linen"
+    room Bed1 at (6, 0) size (12 x 14) walls [top: window, right: solid, bottom: solid, left: solid] label "Bed 1"
+    room Bed2 at (6, 14) size (12 x 16) walls [top: solid, right: solid, bottom: window, left: solid] label "Bed 2"
+
+    stair MainStair at (1, 7) shape straight toward bottom rise 10ft width 4ft label "Main Stair"
+  }
+
+  connect Foyer.top to outside door at 50%
+
+  connect StairCore.right to Hall_G.left door at 25%
+  connect StairCore_1.right to Bed1.left door at 50%
+
+  vertical GroundFloor.MainStair to FirstFloor.MainStair

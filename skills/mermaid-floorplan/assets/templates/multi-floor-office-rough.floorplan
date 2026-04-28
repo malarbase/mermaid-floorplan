@@ -1,0 +1,76 @@
+# Template: Multi-Floor Office - ROUGH variant
+#
+# Intentionally flawed two-story office that demonstrates common LLM
+# mistakes for multi-floor work:
+#   1. Stair core on the upper floor is offset from the ground floor
+#      (the shaft does not stack vertically).
+#   2. Restrooms on the two floors are not vertically aligned (no shared
+#      wet stack).
+#   3. Vertical declaration references stairs that have different IDs on
+#      each floor (warns / fails analyzer).
+#   4. Upper floor has no door at all to the stair core (only a window
+#      next to it -> the floor is unreachable without the elevator).
+#   5. Office 1 has no exterior window.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor Ground height 10ft {
+    room Reception at (0,0) size (16 x 12) walls [top: window, right: solid, bottom: solid, left: window] label "Reception"
+    room StairCore at (16,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair / Lift"
+    room Conf at (26,0) size (14 x 12) walls [top: window, right: solid, bottom: solid, left: solid] label "Conference"
+
+    room Lobby at (0,12) size (28 x 8) walls [top: solid, right: solid, bottom: window, left: window] label "Lobby"
+    room RestroomA at (28,12) size (12 x 8) walls [top: solid, right: solid, bottom: window, left: solid] label "Restroom"
+
+    stair MainStair at (17, 1) shape straight toward top rise 10ft width 4ft label "Stair"
+    lift MainLift at (22, 1) size (4ft x 5ft) doors (bottom) label "Lift"
+  }
+
+  floor Upper height 10ft {
+    # Open offsets too far left, pushing the stair core to a different x.
+    room Open at (0,0) size (20 x 12) walls [top: window, right: solid, bottom: solid, left: window] label "Open Workstations"
+
+    # Upper stair core does NOT line up with Ground.StairCore (x=16 vs 20).
+    room UpperCore at (20,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair / Lift"
+
+    # No window on Office 1.
+    room Office1 at (30,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] label "Office 1"
+
+    room Break at (0,12) size (16 x 8) walls [top: solid, right: solid, bottom: window, left: window] label "Break"
+
+    # Restroom shifted left, breaking wet-stack alignment with RestroomA.
+    room RestroomB at (16,12) size (8 x 8) walls [top: solid, right: solid, bottom: window, left: solid] label "Restroom"
+
+    room Office2 at (24,12) size (16 x 8) walls [top: solid, right: solid, bottom: window, left: solid] label "Office 2"
+
+    # Different stair ID on the upper floor: confuses vertical wiring.
+    stair UpperStair at (21, 1) shape straight toward top rise 10ft width 4ft label "Stair"
+    lift MainLift at (26, 1) size (4ft x 5ft) doors (bottom) label "Lift"
+  }
+
+  # Ground circulation
+  connect Reception.left to outside door at 50%
+  connect Reception.bottom to Lobby.top opening at 25% size (8ft x full)
+  connect Lobby.right to RestroomA.left door at 50%
+  connect Reception.right to StairCore.left door at 50%
+  connect StairCore.right to Conf.left door at 50%
+
+  # Upper circulation: the only "connect" to UpperCore from Open is a wide
+  # opening with no door (fire-egress violation; stair shaft must be
+  # enclosed and accessed via a fire-rated door).
+  connect Open.right to UpperCore.left opening at 50% size (5ft x full)
+  connect UpperCore.right to Office1.left door at 50%
+  connect Open.bottom to Break.top door at 30%
+  connect Break.right to RestroomB.left door at 50%
+  connect RestroomB.right to Office2.left door at 50%
+
+  # Vertical references different stair IDs (Ground.MainStair vs
+  # Upper.UpperStair) so the analyzer cannot pair them.
+  vertical Ground.MainStair to Upper.UpperStair
+  vertical Ground.MainLift to Upper.MainLift
