@@ -1,0 +1,56 @@
+# Fixed studio apartment.
+#
+# Resolves the issues called out in studio-rough.floorplan while staying a
+# single-room studio (no extra bedrooms, no separating walls inside the
+# main living/sleeping area):
+#
+#   1. Bath no longer opens directly into the living area. A small entry
+#      vestibule buffers the front door, the living room, and the bath.
+#   2. Bath and Kitchen now share a wall (Bath.bottom <-> Kitchen.top), so
+#      plumbing runs are short and stacked.
+#   3. Kitchen has windows on three exterior walls -> ample daylight.
+#   4. The front door enters the vestibule, giving a clear circulation
+#      backbone: outside -> Entry -> (Living | Bath), and Living -> Kitchen
+#      via an open passage that keeps the studio feel.
+#
+# Studio constraints respected: there is still one open Living + Sleeping
+# room. The Entry is a small circulation alcove, not a separate bedroom.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Main open living + sleeping area with daylight from north and west.
+    room Living at (0,0) size (14 x 12) walls [top: window, right: solid, bottom: solid, left: window] label "Living + Sleeping"
+
+    # Compact entry vestibule - lands the front door and buffers the bath
+    # so the bathroom door does not open into the main living area.
+    room Entry size (6 x 4) walls [top: solid, right: window, bottom: solid, left: solid] right-of Living align top label "Entry"
+
+    # Bath sits directly under the entry alcove and shares its south wall
+    # with the kitchen so plumbing is stacked on a single wet wall.
+    # The east wall is a frosted window for ventilation and light.
+    room Bath size (6 x 8) walls [top: solid, right: window, bottom: solid, left: solid] below Entry align left label "Bath"
+
+    # Kitchen runs along the south side of the unit. It shares Bath.bottom
+    # for plumbing and has windows on its three exterior walls (south, east,
+    # and west) to bring full daylight into the cooking area.
+    room Kitchen size (20 x 6) walls [top: solid, right: window, bottom: window, left: window] below Living align left label "Kitchen"
+  }
+
+  # Front door enters the vestibule, not a storage closet.
+  connect Entry.top to outside door at 50%
+
+  # Living <-> Entry: main circulation spine.
+  connect Living.right to Entry.left door at 50%
+
+  # Bath accessed from the vestibule, preserving privacy from the living area.
+  connect Entry.bottom to Bath.top door at 50%
+
+  # Living <-> Kitchen as an open passage to keep the studio feel.
+  connect Living.bottom to Kitchen.top opening at 50%

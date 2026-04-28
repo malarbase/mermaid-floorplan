@@ -1,0 +1,51 @@
+# Template: Hotel Suite (~520 sqft)
+# Single-key hotel suite with vestibule, bathroom, sleeping area, and a
+# small lounge/kitchenette. Layout follows typical hotel circulation:
+# enter into a short vestibule, with the bathroom on one side and the
+# bedroom/lounge open beyond.
+#
+#   Row 1: Vestibule | Closet | Bath
+#   Row 2: Bedroom (full width)
+#   Row 3: Lounge (full width)
+#
+# Anchored at Vestibule. Footprint 20 x 26 = 520 sqft.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GuestFloor {
+    # Vestibule serves as entry buffer.
+    room Vestibule at (0,0) size (5 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] label "Entry"
+
+    # Walk-in closet stacked between vestibule and bath.
+    room Closet size (5 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] right-of Vestibule align top label "Closet"
+
+    # Bathroom on the front-right of the suite, sharing wet wall with the
+    # adjacent suite via the right exterior wall (typical hotel stack).
+    room Bath size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] right-of Closet align top label "Bath"
+
+    # Sleeping area beneath the entry zone, full width with window wall on
+    # the bottom (street/courtyard facing).
+    room Bedroom size (20 x 10) walls [top: solid, right: solid, bottom: window, left: solid] below Vestibule align left label "Bedroom"
+
+    # Lounge / kitchenette area at the back of the suite.
+    room Lounge size (20 x 8) walls [top: solid, right: solid, bottom: window, left: solid] below Bedroom align left label "Lounge"
+  }
+
+  # Suite door from corridor
+  connect Vestibule.top to outside door at 50%
+
+  # Vestibule access to closet and bath
+  connect Vestibule.right to Closet.left door at 50%
+  connect Closet.right to Bath.left door at 50%
+
+  # Vestibule into the bedroom
+  connect Vestibule.bottom to Bedroom.top door at 50%
+
+  # Bedroom flows into lounge (open partition or sliding panel)
+  connect Bedroom.bottom to Lounge.top opening at 50% size (6ft x full)

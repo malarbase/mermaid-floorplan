@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": 254,
+  "tool_calls": 11,
+  "exit_status": "ok",
+  "notes": "Designed a 1008 sqft 2BR (36x28 footprint) with Foyer/Living/Kitchen on the public top row, a horizontal Hall, HallBath stacked directly under Kitchen so Kitchen.bottom and HallBath.top share the same interior wall (the wet/plumbing wall, x=24..36 at y=10), and Bedroom2/Master/Ensuite on the private bottom row. Bedroom2 has windows on left+bottom exterior walls; Master has a window on the bottom exterior wall; both bedroom-window requirements satisfied. validate.mjs: success, valid=true, 1 floor, 8 rooms, no warnings or errors. design_critic.mjs: score 100, allClean=true, 0 findings; rulesChecked included wet_walls, bedroom_bath_adjacency, bathroom_privacy, bedroom_size, windowless_habitable, reachability, entry_from_outside, corridor_width, door_opening, overlap, with no rules failed. The wet_walls finding is clean (rule passed), confirming the Kitchen/HallBath plumbing wall is recognized as shared."
+}

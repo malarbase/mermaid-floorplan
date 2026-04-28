@@ -1,0 +1,53 @@
+# Template: Retail Shop (~1100 sqft)
+# Small storefront with a customer-facing sales floor, a checkout zone, a
+# back-of-house storage/stock room, a single-occupancy ADA bathroom, and a
+# staff break room. Public/back zoning is enforced via a single staff door.
+#
+#   Row 1: SalesFloor (large, full width front)
+#   Row 2: Checkout strip (small) | Storage | Bath | Break
+#
+# Anchored at SalesFloor. Footprint 36 x 30 = 1080 sqft.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Sales floor: front-facing with windows, customer-accessible only.
+    room SalesFloor at (0,0) size (36 x 22) walls [top: window, right: solid, bottom: solid, left: window] label "Sales"
+
+    # Checkout counter zone (technically part of the same room volume; we
+    # represent it as a labeled sub-room to surface circulation).
+    room Checkout size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] below SalesFloor align left label "Checkout"
+
+    # Back-of-house storage. Doors only from staff side.
+    room Storage size (12 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] right-of Checkout align top label "Storage"
+
+    # ADA-accessible single-user restroom for staff and customers via staff
+    # escort. Wet wall shared with break-room sink.
+    room Bath size (6 x 8) walls [top: solid, right: solid, bottom: window, left: solid] right-of Storage align top label "Bath"
+
+    # Break room with employee sink and small kitchenette.
+    room Break size (8 x 8) walls [top: solid, right: solid, bottom: window, left: solid] right-of Bath align top label "Break"
+  }
+
+  # Storefront entrance
+  connect SalesFloor.top to outside door at 50%
+
+  # Customer flow to checkout (open)
+  connect SalesFloor.bottom to Checkout.top opening at 14% size (8ft x full)
+
+  # Single staff-controlled door from sales floor into BOH
+  connect SalesFloor.bottom to Storage.top door at 50%
+
+  # Internal BOH circulation
+  connect Checkout.right to Storage.left door at 50%
+  connect Storage.right to Bath.left door at 50%
+  connect Bath.right to Break.left door at 50%
+
+  # Loading door at the rear of storage
+  connect Storage.bottom to outside door at 50%

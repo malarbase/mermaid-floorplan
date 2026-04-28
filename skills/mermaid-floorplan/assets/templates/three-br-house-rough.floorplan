@@ -1,0 +1,59 @@
+# Template: 3BR House - ROUGH variant
+#
+# Intentionally flawed 3BR that demonstrates common LLM mistakes:
+#   1. Bedroom 2 has no exterior wall / window.
+#   2. Master bedroom only reachable by walking through Bedroom 3.
+#   3. Hall bath has no door at all (only an opening into the corridor).
+#   4. Master ensuite plumbing is on the opposite side of the house from
+#      the kitchen and hall bath (long, expensive runs).
+#   5. Two `connect` statements share the same 50% position on the same
+#      wall (overlap warning).
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Public zone
+    room Foyer at (0,0) size (8 x 12) walls [top: solid, right: solid, bottom: solid, left: window] label "Foyer"
+    room Living size (16 x 12) walls [top: window, right: solid, bottom: solid, left: solid] right-of Foyer align top label "Living"
+    room Kitchen size (12 x 12) walls [top: window, right: solid, bottom: solid, left: solid] right-of Living align top label "Kitchen"
+    room MasterBath size (10 x 12) walls [top: window, right: window, bottom: solid, left: solid] right-of Kitchen align top label "Ensuite"
+
+    # Hall (only spans part of the width - private zone is forced through bedrooms)
+    room Hall size (24 x 4) walls [top: solid, right: solid, bottom: solid, left: solid] below Foyer align left label "Hall"
+
+    # Private zone with awkward circulation
+    room Bedroom2 size (12 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] below Hall align left label "Bedroom 2"
+    room HallBath size (8 x 12) walls [top: solid, right: solid, bottom: window, left: solid] right-of Bedroom2 align top label "Hall Bath"
+
+    # Bedroom 3 along the bottom-right; master is further right and only
+    # accessible via Bedroom 3 (forced walk-through).
+    room Bedroom3 size (12 x 12) walls [top: solid, right: solid, bottom: window, left: solid] right-of HallBath align top label "Bedroom 3"
+    room Master size (14 x 12) walls [top: solid, right: window, bottom: window, left: solid] right-of Bedroom3 align top label "Master"
+  }
+
+  # Front door
+  connect Foyer.left to outside door at 50%
+
+  # Public open plan
+  connect Foyer.right to Living.left opening at 50% size (5ft x full)
+  connect Living.right to Kitchen.left opening at 50% size (5ft x full)
+  connect Kitchen.right to MasterBath.left door at 50%
+
+  # Public to hall
+  connect Living.bottom to Hall.top door at 50%
+
+  # Two overlapping connects on Hall.bottom both at 50% — validation warning.
+  connect Hall.bottom to Bedroom2.top door at 50%
+  connect Hall.bottom to HallBath.top opening at 50%
+
+  # Hall bath has no door; just an opening (privacy issue for a full bath).
+
+  # Walk-through to master via Bedroom 3 (anti-pattern).
+  connect Bedroom2.right to Bedroom3.left door at 50%
+  connect Bedroom3.right to Master.left door at 50%

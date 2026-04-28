@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": 180.0,
+  "tool_calls": 14,
+  "exit_status": "ok",
+  "notes": "Baseline run: 480 sqft studio with Entry, Bathroom, Kitchen, Sleeping/Living. Rendered to plan.png via scripts/generate-images.ts (fixed import typo floorplans-mcp-server -> floorplan-mcp-server)."
+}

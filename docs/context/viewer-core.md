@@ -24,6 +24,33 @@ headless renderer always agree on the cut shape.
 | Viewer | `FloorplanAppCore` | Read-only 3D display |
 | Editor | `InteractiveEditorCore` (extends FloorplanAppCore) | Interactive editing, selection, DSL sync |
 
+## Editor-Specific Features (InteractiveEditorCore)
+
+**Parse error state** — When DSL parse fails, the 3D view holds the last valid geometry.
+Use `setErrorState(true, msg)` / `clearErrorState()` and observe via the `parseError` event.
+
+**Entity location tracking** — Each successful load populates `entityLocations` with
+`EntityLocation[]` (name, type, floorId, sourceRange). Use `findEntitiesAtLine(n)` for
+DSL ↔ 3D navigation. The `entityLocationsUpdate` event fires after each rebuild.
+
+**Selection preservation** — `InteractiveEditorCore.loadFloorplan` snapshots selected
+entity IDs before the scene rebuild and restores them from the new mesh registry,
+so edits don't clear the current selection.
+
+**Editor events** (extends `FloorplanAppCoreEvents`):
+
+| Event | Payload |
+|-------|---------|
+| `selectionChange` | `{ selection: ReadonlySet<SelectableObject>; source: 'click'\|'marquee'\|'api' }` |
+| `parseError` | `{ hasError: boolean; errorMessage?: string }` |
+| `entityLocationsUpdate` | `{ locations: EntityLocation[] }` |
+
+## FloorplanAppCore Key API
+
+- `currentLangiumDocument` — Langium document from last successful DSL parse; used by `Overlay2DManager` for 2D overlay rendering.
+- `on(event, handler)` — Event subscription; returns unsubscribe function.
+- `FloorplanAppCoreOptions` — `enableSelection`, `allowSelectionToggle`, `isAuthenticated`, `onAuthRequired`, etc.
+
 ## Three.js Isolation Rule
 
 **NEVER use Solid.js for 3D rendering.** All Three.js scene work lives in FloorplanAppCore / InteractiveEditorCore. UI components observe state via events and signals.
@@ -70,8 +97,8 @@ FloorplanAppCore emits events; UI subscribes via signals. Use `createEffect` / `
 See `solidjs-daisyui` skill for DaisyUI theming (don't duplicate).
 
 <!-- freshness
-watches_hash: a030ca8
-last_verified: 2026-03-04
+watches_hash: 08880e7
+last_verified: 2026-04-28
 watches:
   - floorplan-viewer-core/src/floorplan-app-core.ts
   - floorplan-viewer-core/src/interactive-editor-core.ts

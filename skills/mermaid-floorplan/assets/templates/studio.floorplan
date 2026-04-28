@@ -1,0 +1,40 @@
+# Template: Studio Apartment (~440 sqft)
+# Single-room studio with a partitioned bathroom and a tucked-in kitchen.
+# Kitchen and Bath stack on the left so they share a wet wall (plumbing).
+# Living + sleeping area is the open volume on the right.
+#
+#   Col 1: Kitchen
+#          Bath        (shared wet wall: Kitchen.bottom = Bath.top)
+#   Col 2: LivingArea  (full-height)
+#
+# Anchored at Kitchen. 1 grid unit = 1 foot. Footprint 22 x 20 = 440 sqft.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Kitchen in the upper-left corner. Cabinetry on three solid walls.
+    room Kitchen at (0,0) size (10 x 10) walls [top: window, right: solid, bottom: solid, left: solid] label "Kitchen"
+
+    # Bath stacked under Kitchen so plumbing runs share a wall (wet stack).
+    room Bath size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: window] below Kitchen align left label "Bath"
+
+    # Open-plan living + sleeping area; full-height right column. Connect
+    # statements carve a wide opening to Kitchen and a single door to Bath.
+    room LivingArea size (12 x 20) walls [top: window, right: window, bottom: window, left: solid] right-of Kitchen align top label "Living / Sleep"
+  }
+
+  # Front door enters the bath-side wall (typical for studios with side
+  # corridor access; if entry is from the living side, swap to LivingArea.right).
+  connect Kitchen.left to outside door at 50%
+
+  # Wide opening from kitchen to living (open-plan).
+  connect Kitchen.right to LivingArea.left opening at 50% size (5ft x full)
+
+  # Bath access from the living area.
+  connect LivingArea.left to Bath.right door at 75%

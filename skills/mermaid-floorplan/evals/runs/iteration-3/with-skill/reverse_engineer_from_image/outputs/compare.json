@@ -1,0 +1,17 @@
+{
+  "success": true,
+  "data": {
+    "a": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-3/with-skill/reverse_engineer_from_image/inputs/source-image.png",
+    "b": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-3/with-skill/reverse_engineer_from_image/outputs/recovered.png",
+    "size": { "width": 900, "height": 600 },
+    "meanL1": 0.02034657952069717,
+    "similarity": 0.9796534204793028,
+    "diffPixels": 29520,
+    "diffPct": 0.05466666666666667,
+    "threshold": 25,
+    "composite": null,
+    "diff": null
+  },
+  "warnings": [],
+  "errors": []
+}

@@ -1,0 +1,5 @@
+[
+  { "action": "rename_room", "target": "Bedroom2", "params": { "newName": "KidsRoom" } },
+  { "action": "resize_room", "target": "KidsRoom", "params": { "width": 10, "height": 12 } },
+  { "action": "resize_room", "target": "MasterBedroom", "params": { "width": 14, "height": 12 } }
+]

@@ -1,0 +1,42 @@
+---
+version: "1.0"
+title: "Studio480"
+description: "480 sqft studio apartment with sleeping area, kitchen, bath, and entry vestibule"
+---
+
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Entry vestibule anchors the plan at (0,0). 6x6 = 36 sqft.
+    # Acts as a privacy buffer between the front door and the studio space.
+    room Vestibule at (0, 0) size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] label "Entry"
+
+    # Bathroom shares its left (wet) wall with the vestibule so plumbing
+    # can run along the back partition. 6x6 = 36 sqft.
+    room Bath size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] right-of Vestibule align top label "Bath"
+
+    # Kitchen runs along the top wall, sharing its left wet wall with the bath.
+    # 12x6 = 72 sqft. Window above the sink on the top wall.
+    room Kitchen size (12 x 6) walls [top: window, right: solid, bottom: solid, left: solid] right-of Bath align top label "Kitchen"
+
+    # Combined sleeping + living area spans the full width below the service strip.
+    # 24x14 = 336 sqft. Windows on the left, bottom, and right exterior walls.
+    room Sleeping size (24 x 14) walls [top: solid, right: window, bottom: window, left: window] below Vestibule align left label "Sleeping Area"
+  }
+
+  # Front door from the exterior into the vestibule.
+  connect Vestibule.top to outside door at 50%
+
+  # Vestibule grants private access to the bathroom (door, not exposed to bed).
+  connect Vestibule.right to Bath.left door at 50%
+
+  # Vestibule opens onto the main sleeping/living area.
+  connect Vestibule.bottom to Sleeping.top door at 25%
+
+  # Kitchen is open to the studio with a wide archway above the counter run.
+  connect Kitchen.bottom to Sleeping.top opening at 75% size (8ft x full)

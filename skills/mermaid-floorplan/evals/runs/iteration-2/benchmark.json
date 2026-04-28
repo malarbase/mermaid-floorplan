@@ -1,0 +1,622 @@
+{
+  "iteration": "iteration-2",
+  "generated_at": "2026-04-25T03:05:55.282Z",
+  "arms": {
+    "with-skill": [
+      {
+        "evalId": "create_studio",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/create_studio",
+        "passed": 6,
+        "total": 6,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "plan.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "render_exists",
+              "file": "plan.png",
+              "minBytes": 5000
+            },
+            "ok": true,
+            "message": "45742 bytes"
+          },
+          {
+            "assertion": {
+              "kind": "rooms_present",
+              "file": "plan.floorplan",
+              "minRooms": 4
+            },
+            "ok": true,
+            "message": "4 rooms"
+          },
+          {
+            "assertion": {
+              "kind": "kind_coverage",
+              "file": "plan.floorplan",
+              "kinds": ["entry", "kitchen", "bathroom"],
+              "atLeast": 3
+            },
+            "ok": true,
+            "message": "matched entry, kitchen, bathroom"
+          },
+          {
+            "assertion": {
+              "kind": "area_within",
+              "file": "plan.floorplan",
+              "target": 480,
+              "tolerance": 0.25
+            },
+            "ok": true,
+            "message": "480 sqft (target 480)"
+          },
+          {
+            "assertion": {
+              "kind": "critic",
+              "file": "plan.floorplan",
+              "maxErrors": 0
+            },
+            "ok": true,
+            "message": "0 critic errors"
+          }
+        ]
+      },
+      {
+        "evalId": "create_2br_with_wet_walls",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/create_2br_with_wet_walls",
+        "passed": 7,
+        "total": 7,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "twobr.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "render_exists",
+              "file": "twobr.png",
+              "minBytes": 5000
+            },
+            "ok": true,
+            "message": "49437 bytes"
+          },
+          {
+            "assertion": {
+              "kind": "kind_count",
+              "file": "twobr.floorplan",
+              "roomKind": "bedroom",
+              "exactly": 2
+            },
+            "ok": true,
+            "message": "2 bedroom"
+          },
+          {
+            "assertion": {
+              "kind": "kind_count",
+              "file": "twobr.floorplan",
+              "roomKind": "bathroom",
+              "atLeast": 1
+            },
+            "ok": true,
+            "message": "2 bathroom"
+          },
+          {
+            "assertion": {
+              "kind": "every_bedroom_has_window",
+              "file": "twobr.floorplan"
+            },
+            "ok": true,
+            "message": "every bedroom has a window"
+          },
+          {
+            "assertion": {
+              "kind": "wet_walls_share",
+              "file": "twobr.floorplan",
+              "between": ["kitchen", "bathroom"]
+            },
+            "ok": true,
+            "message": "wet rooms share at least one wall"
+          },
+          {
+            "assertion": {
+              "kind": "area_within",
+              "file": "twobr.floorplan",
+              "target": 1000,
+              "tolerance": 0.2
+            },
+            "ok": true,
+            "message": "1008 sqft (target 1000)"
+          }
+        ]
+      },
+      {
+        "evalId": "create_3br_house",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/create_3br_house",
+        "status": "missing"
+      },
+      {
+        "evalId": "modify_rename_resize",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/modify_rename_resize",
+        "passed": 5,
+        "total": 5,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "plan.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "room_present",
+              "file": "plan.floorplan",
+              "id": "KidsRoom"
+            },
+            "ok": true,
+            "message": "KidsRoom present"
+          },
+          {
+            "assertion": {
+              "kind": "room_absent",
+              "file": "plan.floorplan",
+              "id": "Bedroom2"
+            },
+            "ok": true,
+            "message": "Bedroom2 absent"
+          },
+          {
+            "assertion": {
+              "kind": "room_size",
+              "file": "plan.floorplan",
+              "id": "KidsRoom",
+              "expectedWidth": 10,
+              "expectedHeight": 12
+            },
+            "ok": true,
+            "message": "size matches"
+          },
+          {
+            "assertion": {
+              "kind": "room_size_grew",
+              "file": "plan.floorplan",
+              "id": "MasterBedroom",
+              "altIds": ["Master"],
+              "byAtLeast": 2
+            },
+            "ok": true,
+            "message": "now 14x12"
+          }
+        ]
+      },
+      {
+        "evalId": "modify_add_closet",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/modify_add_closet",
+        "status": "missing"
+      },
+      {
+        "evalId": "modify_convert_to_relative",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/modify_convert_to_relative",
+        "status": "missing"
+      },
+      {
+        "evalId": "reverse_engineer_from_image",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/reverse_engineer_from_image",
+        "passed": 3,
+        "total": 3,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "recovered.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "compare_similarity",
+              "file": "compare.json",
+              "minSimilarity": 0.55
+            },
+            "ok": true,
+            "message": "similarity 0.994"
+          },
+          {
+            "assertion": {
+              "kind": "rooms_present",
+              "file": "recovered.floorplan",
+              "minRooms": 4
+            },
+            "ok": true,
+            "message": "10 rooms"
+          }
+        ]
+      },
+      {
+        "evalId": "reverse_engineer_low_confidence",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/reverse_engineer_low_confidence",
+        "status": "missing"
+      },
+      {
+        "evalId": "interactive_three_turns",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/interactive_three_turns",
+        "status": "missing"
+      },
+      {
+        "evalId": "generate_variations",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/generate_variations",
+        "status": "missing"
+      },
+      {
+        "evalId": "fix_rough_studio",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/with-skill/fix_rough_studio",
+        "passed": 3,
+        "total": 3,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "fixed.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "critic_findings_decreased",
+              "before": "before-critic.json",
+              "after": "after-critic.json",
+              "minReduction": 1
+            },
+            "ok": true,
+            "message": "findings 3 → 0"
+          },
+          {
+            "assertion": {
+              "kind": "kind_count",
+              "file": "fixed.floorplan",
+              "roomKind": "bedroom",
+              "atLeast": 0
+            },
+            "ok": true,
+            "message": "0 bedroom"
+          }
+        ]
+      }
+    ],
+    "baseline": [
+      {
+        "evalId": "create_studio",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/create_studio",
+        "passed": 5,
+        "total": 6,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "plan.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "render_exists",
+              "file": "plan.png",
+              "minBytes": 5000
+            },
+            "ok": false,
+            "message": "Missing plan.png"
+          },
+          {
+            "assertion": {
+              "kind": "rooms_present",
+              "file": "plan.floorplan",
+              "minRooms": 4
+            },
+            "ok": true,
+            "message": "4 rooms"
+          },
+          {
+            "assertion": {
+              "kind": "kind_coverage",
+              "file": "plan.floorplan",
+              "kinds": ["entry", "kitchen", "bathroom"],
+              "atLeast": 3
+            },
+            "ok": true,
+            "message": "matched entry, kitchen, bathroom"
+          },
+          {
+            "assertion": {
+              "kind": "area_within",
+              "file": "plan.floorplan",
+              "target": 480,
+              "tolerance": 0.25
+            },
+            "ok": true,
+            "message": "480 sqft (target 480)"
+          },
+          {
+            "assertion": {
+              "kind": "critic",
+              "file": "plan.floorplan",
+              "maxErrors": 0
+            },
+            "ok": true,
+            "message": "0 critic errors"
+          }
+        ]
+      },
+      {
+        "evalId": "create_2br_with_wet_walls",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/create_2br_with_wet_walls",
+        "passed": 6,
+        "total": 7,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "twobr.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "render_exists",
+              "file": "twobr.png",
+              "minBytes": 5000
+            },
+            "ok": false,
+            "message": "Missing twobr.png"
+          },
+          {
+            "assertion": {
+              "kind": "kind_count",
+              "file": "twobr.floorplan",
+              "roomKind": "bedroom",
+              "exactly": 2
+            },
+            "ok": true,
+            "message": "2 bedroom"
+          },
+          {
+            "assertion": {
+              "kind": "kind_count",
+              "file": "twobr.floorplan",
+              "roomKind": "bathroom",
+              "atLeast": 1
+            },
+            "ok": true,
+            "message": "1 bathroom"
+          },
+          {
+            "assertion": {
+              "kind": "every_bedroom_has_window",
+              "file": "twobr.floorplan"
+            },
+            "ok": true,
+            "message": "every bedroom has a window"
+          },
+          {
+            "assertion": {
+              "kind": "wet_walls_share",
+              "file": "twobr.floorplan",
+              "between": ["kitchen", "bathroom"]
+            },
+            "ok": true,
+            "message": "wet rooms share at least one wall"
+          },
+          {
+            "assertion": {
+              "kind": "area_within",
+              "file": "twobr.floorplan",
+              "target": 1000,
+              "tolerance": 0.2
+            },
+            "ok": true,
+            "message": "1008 sqft (target 1000)"
+          }
+        ]
+      },
+      {
+        "evalId": "create_3br_house",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/create_3br_house",
+        "status": "missing"
+      },
+      {
+        "evalId": "modify_rename_resize",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/modify_rename_resize",
+        "passed": 5,
+        "total": 5,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "plan.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "room_present",
+              "file": "plan.floorplan",
+              "id": "KidsRoom"
+            },
+            "ok": true,
+            "message": "KidsRoom present"
+          },
+          {
+            "assertion": {
+              "kind": "room_absent",
+              "file": "plan.floorplan",
+              "id": "Bedroom2"
+            },
+            "ok": true,
+            "message": "Bedroom2 absent"
+          },
+          {
+            "assertion": {
+              "kind": "room_size",
+              "file": "plan.floorplan",
+              "id": "KidsRoom",
+              "expectedWidth": 10,
+              "expectedHeight": 12
+            },
+            "ok": true,
+            "message": "size matches"
+          },
+          {
+            "assertion": {
+              "kind": "room_size_grew",
+              "file": "plan.floorplan",
+              "id": "MasterBedroom",
+              "altIds": ["Master"],
+              "byAtLeast": 2
+            },
+            "ok": true,
+            "message": "now 14x12"
+          }
+        ]
+      },
+      {
+        "evalId": "modify_add_closet",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/modify_add_closet",
+        "status": "missing"
+      },
+      {
+        "evalId": "modify_convert_to_relative",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/modify_convert_to_relative",
+        "status": "missing"
+      },
+      {
+        "evalId": "reverse_engineer_from_image",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/reverse_engineer_from_image",
+        "passed": 2,
+        "total": 3,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "recovered.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "compare_similarity",
+              "file": "compare.json",
+              "minSimilarity": 0.55
+            },
+            "ok": false,
+            "message": "Similarity 0.00 < 0.55"
+          },
+          {
+            "assertion": {
+              "kind": "rooms_present",
+              "file": "recovered.floorplan",
+              "minRooms": 4
+            },
+            "ok": true,
+            "message": "10 rooms"
+          }
+        ]
+      },
+      {
+        "evalId": "reverse_engineer_low_confidence",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/reverse_engineer_low_confidence",
+        "status": "missing"
+      },
+      {
+        "evalId": "interactive_three_turns",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/interactive_three_turns",
+        "status": "missing"
+      },
+      {
+        "evalId": "generate_variations",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/generate_variations",
+        "status": "missing"
+      },
+      {
+        "evalId": "fix_rough_studio",
+        "runDir": "/Users/malar/Personal/Code/mermaid-floorplan/.cursor/skills/mermaid-floorplan/evals/runs/iteration-2/baseline/fix_rough_studio",
+        "passed": 3,
+        "total": 3,
+        "results": [
+          {
+            "assertion": {
+              "kind": "validate",
+              "file": "fixed.floorplan",
+              "expected": {
+                "valid": true
+              }
+            },
+            "ok": true,
+            "message": "valid as expected"
+          },
+          {
+            "assertion": {
+              "kind": "critic_findings_decreased",
+              "before": "before-critic.json",
+              "after": "after-critic.json",
+              "minReduction": 1
+            },
+            "ok": true,
+            "message": "findings 8 → 2"
+          },
+          {
+            "assertion": {
+              "kind": "kind_count",
+              "file": "fixed.floorplan",
+              "roomKind": "bedroom",
+              "atLeast": 0
+            },
+            "ok": true,
+            "message": "1 bedroom"
+          }
+        ]
+      }
+    ]
+  }
+}

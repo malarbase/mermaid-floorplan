@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": 300,
+  "tool_calls": null,
+  "exit_status": "stalled_after_outputs",
+  "notes": "Baseline produced brief.json + recovered.floorplan (correct filenames, no PNG required). Stalled without metrics.json. Synthesized by parent runner after >5 min idle. Likely to pass on must_produce; brief_no_dim_above_unverified depends on the brief's quality."
+}

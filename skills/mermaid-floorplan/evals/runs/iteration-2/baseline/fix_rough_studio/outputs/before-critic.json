@@ -1,0 +1,45 @@
+{
+  "findings": [
+    {
+      "rule": "bathroom-privacy",
+      "severity": "error",
+      "message": "Bath opens directly into LivingArea (Bath.right -> LivingArea.left). The bathroom door faces the main living/sleeping space with no buffer, which is a privacy violation in a studio."
+    },
+    {
+      "rule": "wet-room-adjacency",
+      "severity": "error",
+      "message": "Bath and Kitchen do not share a wall. Bath occupies (0,0)-(8,8) while Kitchen occupies (8,8)-(22,20); only their corners touch, forcing long plumbing runs between fixtures."
+    },
+    {
+      "rule": "kitchen-daylight",
+      "severity": "error",
+      "message": "Kitchen has [top: solid, right: solid, bottom: solid, left: solid] - all four walls are solid with no window. The cooking area receives no natural daylight."
+    },
+    {
+      "rule": "entry-circulation",
+      "severity": "error",
+      "message": "Front door is placed on Storage.bottom. Entering the unit drops you inside an isolated Storage room rather than a foyer or the main living area."
+    },
+    {
+      "rule": "circulation-backbone",
+      "severity": "error",
+      "message": "There is no clear path from the front door to LivingArea. The connection chain Storage -> Bath -> LivingArea forces residents to walk through the bathroom to reach the living area."
+    },
+    {
+      "rule": "storage-daylight",
+      "severity": "warning",
+      "message": "Storage has [top: solid, right: solid, bottom: solid, left: solid]. As an inhabited interior space (not a closet), it has no daylight."
+    },
+    {
+      "rule": "redundant-room",
+      "severity": "warning",
+      "message": "Storage is laid out as a 96 sqft standalone room reached through Bath. In a 440 sqft studio, dedicating ~22% of the footprint to a hard-walled storage box is poor space economy."
+    },
+    {
+      "rule": "bath-window-privacy",
+      "severity": "warning",
+      "message": "Bath.left is a clear window on the building exterior with no privacy treatment noted. Bathroom windows should be frosted or otherwise screened."
+    }
+  ],
+  "score": 35
+}

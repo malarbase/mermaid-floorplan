@@ -1,0 +1,35 @@
+%%{version: 1.0}%%
+# Variation 1 — LINEAR
+# 2BR test brief, ~1000 sqft, single-loaded linear corridor.
+# Hall runs along the north edge; all rooms hang south of it.
+# Public block (Foyer + Living + Kitchen) on the west, private block on the east.
+# Bathrooms share a vertical wet wall (HallBath/MasterBath at x=50).
+# Every bedroom has a south-facing window.
+floorplan
+  config { default_unit: ft }
+
+  floor Main {
+    room Hall          at (0, 0)  size (70 x 4)  walls [top: solid,  right: solid, bottom: solid, left: solid]  label "Hall"
+
+    room Foyer         at (0, 4)  size (8 x 8)   walls [top: solid,  right: solid, bottom: solid, left: door]   label "Foyer"
+    room LivingRoom    at (8, 4)  size (14 x 14) walls [top: solid,  right: solid, bottom: window, left: solid] label "Living Room"
+    room Kitchen       at (22, 4) size (10 x 10) walls [top: solid,  right: solid, bottom: window, left: solid] label "Kitchen"
+    room Bedroom2      at (32, 4) size (12 x 12) walls [top: solid,  right: solid, bottom: window, left: solid] label "Bedroom 2"
+    room HallBath      at (44, 4) size (6 x 8)   walls [top: solid,  right: solid, bottom: solid, left: solid]  label "Hall Bath"
+    room MasterBath    at (50, 4) size (6 x 7)   walls [top: solid,  right: solid, bottom: solid, left: solid]  label "Ensuite"
+    room MasterBedroom at (56, 4) size (14 x 12) walls [top: solid,  right: window, bottom: window, left: solid] label "Master"
+  }
+
+  # Entry from outside via Foyer's west wall
+  connect Foyer.left to outside door at 50%
+
+  # Hall feeds every room from the north (one-loaded corridor)
+  connect Hall.bottom to Foyer.top         door    at 5%
+  connect Hall.bottom to LivingRoom.top    opening at 20%
+  connect Hall.bottom to Kitchen.top       opening at 38%
+  connect Hall.bottom to Bedroom2.top      door    at 55%
+  connect Hall.bottom to HallBath.top      door    at 70%
+  connect Hall.bottom to MasterBedroom.top door    at 92%
+
+  # Ensuite door between MasterBath and MasterBedroom
+  connect MasterBath.right to MasterBedroom.left door at 50%

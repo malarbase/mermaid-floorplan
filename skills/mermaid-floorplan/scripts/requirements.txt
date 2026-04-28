@@ -1,0 +1,10 @@
+# Python dependencies for the mermaid-floorplan skill scripts.
+# Install via:
+#   python3 -m venv ../.venv
+#   source ../.venv/bin/activate
+#   pip install -r requirements.txt
+#
+# _lib.py auto-reexecs scripts under ../.venv/bin/python3 when that venv
+# exists, so no activation is needed at call time.
+Pillow>=10.0
+pdf2image>=1.17

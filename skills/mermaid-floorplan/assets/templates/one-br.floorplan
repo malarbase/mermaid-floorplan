@@ -1,0 +1,55 @@
+# Template: 1BR Apartment (~700 sqft)
+# Compact one-bedroom unit with separate sleeping area and full bath.
+# Public zone (foyer/living/kitchen) at the top, private zone at the bottom.
+#
+#   Row 1: Foyer | Kitchen
+#   Row 2: LivingRoom (full width)
+#   Row 3: Hall (full width)
+#   Row 4: Bedroom | Bath
+#
+# Anchored at Foyer. 1 grid unit = 1 foot. Footprint 24 x 30 = 720 sqft.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Entry anchor.
+    room Foyer at (0,0) size (8 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] label "Entry"
+
+    # Kitchen along the top, sharing a wet wall with the bath below via the
+    # bedroom's right side. Galley layout against the right exterior wall.
+    room Kitchen size (16 x 8) walls [top: window, right: solid, bottom: solid, left: solid] right-of Foyer align top label "Kitchen"
+
+    # Open-plan living room beneath the public-zone row; opens to foyer
+    # and kitchen via connect statements.
+    room LivingRoom size (24 x 12) walls [top: solid, right: window, bottom: solid, left: window] below Foyer align left label "Living"
+
+    # Hallway carving the private zone away from the public zone.
+    room Hall size (24 x 4) walls [top: solid, right: solid, bottom: solid, left: solid] below LivingRoom align left label "Hall"
+
+    # Bedroom on the left, with windows on two exterior walls.
+    room Bedroom size (16 x 12) walls [top: solid, right: solid, bottom: window, left: window] below Hall align left label "Bedroom"
+
+    # Full bath sharing wet stack with kitchen above.
+    room Bath size (8 x 12) walls [top: solid, right: solid, bottom: window, left: solid] right-of Bedroom align top label "Bath"
+  }
+
+  # Front door
+  connect Foyer.top to outside door at 50%
+
+  # Foyer to public zone (open-plan)
+  connect Foyer.right to Kitchen.left opening at 50% size (5ft x full)
+  connect Foyer.bottom to LivingRoom.top opening at 17% size (5ft x full)
+
+  # Kitchen to living (open-plan)
+  connect Kitchen.bottom to LivingRoom.top opening at 67% size (8ft x full)
+
+  # Living to hall to private rooms
+  connect LivingRoom.bottom to Hall.top door at 50%
+  connect Hall.bottom to Bedroom.top door at 30%
+  connect Hall.bottom to Bath.top door at 80%

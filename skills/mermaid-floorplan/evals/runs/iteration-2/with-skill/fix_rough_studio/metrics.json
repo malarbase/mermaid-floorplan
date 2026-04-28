@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": 133,
+  "tool_calls": 15,
+  "exit_status": "ok",
+  "notes": "Before: 3 warnings (windowless_habitable on Kitchen, wet_walls between Bath/Kitchen, bathroom_privacy Bath->LivingArea), score 91. After: 0 findings, score 100, allClean=true. Fixes applied (still a 4-room studio): swapped Bath and Storage locations and dimensions so Bath sits below Storage at (0,8) size 8x12 and Storage at (0,0) size 8x8 acts as a small entry buffer; Bath.right now shares a wet wall with Kitchen.left (resolves wet_walls); Kitchen.right wall changed from solid to window (resolves windowless_habitable); rerouted connections so the front door enters Storage, Storage->LivingArea opens the studio, Storage->Bath replaces the direct Bath->LivingArea door (resolves bathroom_privacy). LivingArea->Kitchen door retained for studio circulation."
+}

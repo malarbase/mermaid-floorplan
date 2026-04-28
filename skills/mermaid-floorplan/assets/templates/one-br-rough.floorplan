@@ -1,0 +1,43 @@
+# Template: 1BR Apartment - ROUGH variant
+#
+# Intentionally flawed 1BR that demonstrates common LLM mistakes:
+#   1. Bedroom has no window (`bedroom_window` violation).
+#   2. Bath opens directly off the living room (privacy violation).
+#   3. Kitchen and Bath are on opposite ends of the unit (long plumbing).
+#   4. Wall declared `door` AND a `connect` statement is added on it
+#      (double-declaration anti-pattern).
+#   5. No hallway / circulation room - everything routes through the
+#      living room.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Bath wedged to the far left, far from the kitchen.
+    room Bath at (0,0) size (8 x 8) walls [top: solid, right: door, bottom: solid, left: window] label "Bath"
+
+    # Living room dominates the middle - acts as accidental hallway.
+    room Living size (16 x 12) walls [top: window, right: solid, bottom: window, left: solid] right-of Bath align top label "Living"
+
+    # Bedroom on the far right - no exterior window.
+    room Bedroom size (12 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] right-of Living align top label "Bedroom"
+
+    # Kitchen tucked on the bottom-left - opposite the bath.
+    room Kitchen size (10 x 8) walls [top: solid, right: solid, bottom: window, left: window] below Bath align left label "Kitchen"
+  }
+
+  # Front door
+  connect Living.top to outside door at 50%
+
+  # Bath connect overlaps with the wall already declared as `door`.
+  # Both Bath.right declared as door and a connect on Bath.right -- redundant.
+  connect Bath.right to Living.left door at 50%
+
+  # Living routes everywhere (no hall).
+  connect Living.right to Bedroom.left door at 50%
+  connect Living.bottom to Kitchen.top door at 50%

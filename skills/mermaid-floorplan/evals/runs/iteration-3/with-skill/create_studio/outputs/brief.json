@@ -1,0 +1,23 @@
+{
+  "title": "Studio480",
+  "unit": "ft",
+  "areaUnit": "sqft",
+  "targetArea": { "value": 480 },
+  "constraints": { "mustShareWetWalls": true },
+  "rooms": [
+    { "name": "Vestibule", "kind": "entry", "label": "Entry", "size": { "width": 6, "height": 6 } },
+    {
+      "name": "Kitchen",
+      "kind": "kitchen",
+      "label": "Kitchen",
+      "size": { "width": 10, "height": 8 }
+    },
+    { "name": "Bath", "kind": "bathroom", "label": "Bath", "size": { "width": 6, "height": 8 } },
+    {
+      "name": "SleepingArea",
+      "kind": "living",
+      "label": "Sleeping / Living",
+      "size": { "width": 14, "height": 18 }
+    }
+  ]
+}

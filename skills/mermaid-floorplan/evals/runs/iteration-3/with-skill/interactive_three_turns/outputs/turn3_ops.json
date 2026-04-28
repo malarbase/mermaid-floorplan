@@ -1,0 +1,12 @@
+[
+  {
+    "action": "add_room",
+    "params": {
+      "name": "Powder",
+      "size": { "width": 4, "height": 4 },
+      "walls": { "top": "solid", "right": "solid", "bottom": "solid", "left": "solid" },
+      "relativePosition": { "direction": "left-of", "reference": "Foyer", "alignment": "top" },
+      "label": "Powder"
+    }
+  }
+]

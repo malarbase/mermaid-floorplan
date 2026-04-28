@@ -1,0 +1,49 @@
+# Template: Open-plan studio (~440 sqft)
+# Counter-example to `studio.floorplan`. This layout deliberately:
+#   - keeps Kitchen and Bath on diagonally opposite corners (NO shared
+#     wet wall) — for traditions that prefer kitchen/bath separation,
+#   - has no hallway,
+#   - routes the Bath door off the Sleep zone, not off the entry / Living.
+#
+# Public zone (top row):    Kitchen | Living (front door, big windows)
+# Private zone (bottom):    Sleep                | Bath
+#
+# Public<->Private transition is a wide `opening` from Living.bottom to
+# Sleep.top, so the studio still feels like a single open volume even
+# though there are no `open` walls between Living and Sleep.
+#
+# Anchored at Kitchen. 1 grid unit = 1 foot. Footprint 22 x 20 = 440 sqft.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Public top-left: kitchen with cabinetry on three solid walls + top window.
+    room Kitchen at (0,12) size (8 x 8) walls [top: window, right: open, bottom: solid, left: solid] label "Kitchen"
+
+    # Public top-right: open-plan living, holds the front door (right wall).
+    room Living size (14 x 8) walls [top: window, right: door, bottom: solid, left: open] right-of Kitchen align top label "Living"
+
+    # Private bottom-left: sleep zone with two exterior windows for cross light.
+    room Sleep at (0,0) size (14 x 12) walls [top: solid, right: solid, bottom: window, left: window] label "Sleep"
+
+    # Private bottom-right: bath, diagonal to kitchen so they share NO wall.
+    room Bath at (14,0) size (8 x 12) walls [top: solid, right: window, bottom: solid, left: solid] label "Bath"
+  }
+
+  # Front door on the living-room exterior wall (no foyer).
+  connect Living.right to outside door at 50%
+
+  # Wide opening between Living and Sleep keeps the studio feeling open
+  # without making Living -> Bath look open-plan as well.
+  connect Living.bottom to Sleep.top opening at 35% size (5ft x full)
+
+  # Bath is reached from the Sleep zone only (NOT from Living/entry).
+  # Door is at 80% of Sleep.right, i.e. tucked away from the Living
+  # opening at 35%.
+  connect Sleep.right to Bath.left door at 80%

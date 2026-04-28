@@ -1,0 +1,97 @@
+# Template: Multi-Floor Office (2 floors, ~3200 sqft total)
+# Small two-story office with reception/meeting on Floor 1 and open
+# workstations + private offices + breakroom on Floor 2. A single stair
+# core with elevator anchors vertical circulation; restroom stacks share
+# a wet wall.
+#
+# Both floors share footprint 40 x 20 ft. Stair core stacks at x=16-26.
+# Restrooms stack at x=32-40 for shared plumbing.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor Ground height 10ft {
+    # Reception counter with street frontage.
+    room Reception at (0,0) size (16 x 12) walls [top: window, right: solid, bottom: solid, left: window] label "Reception"
+
+    # Stair + elevator core: vertical circulation backbone. Solid walls on
+    # all sides per code (fire-rated egress).
+    room StairCore at (16,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair / Lift"
+
+    # Conference room near reception for client meetings.
+    room Conf at (26,0) size (14 x 12) walls [top: window, right: solid, bottom: solid, left: solid] label "Conference"
+
+    # Lobby/waiting area below reception.
+    room Lobby at (0,12) size (32 x 8) walls [top: solid, right: solid, bottom: window, left: window] label "Lobby"
+
+    # Ground-floor restroom; wet stack with the upper-floor restroom.
+    room RestroomA at (32,12) size (8 x 8) walls [top: solid, right: solid, bottom: window, left: solid] label "Restroom"
+
+    # Stair sits inside StairCore. Straight stair, residential code.
+    stair MainStair at (17, 1)
+        shape straight toward top
+        rise 10ft
+        width 4ft
+        label "Stair"
+
+    # Lift shaft alongside the stair.
+    lift MainLift at (22, 1)
+        size (4ft x 5ft)
+        doors (bottom)
+        label "Lift"
+  }
+
+  floor Upper height 10ft {
+    # Open-plan workstation area; large daylit area on the street side.
+    room Open at (0,0) size (16 x 12) walls [top: window, right: solid, bottom: solid, left: window] label "Open Workstations"
+
+    # Stair core stacks directly over Ground.StairCore.
+    room UpperCore at (16,0) size (10 x 12) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair / Lift"
+
+    # Private office along the front wall.
+    room Office1 at (26,0) size (14 x 12) walls [top: window, right: solid, bottom: solid, left: solid] label "Office 1"
+
+    # Break room on the rear (kitchen + table).
+    room Break at (0,12) size (16 x 8) walls [top: solid, right: solid, bottom: window, left: window] label "Break"
+
+    # Second private office.
+    room Office2 at (16,12) size (16 x 8) walls [top: solid, right: solid, bottom: window, left: solid] label "Office 2"
+
+    # Upper restroom stacks with RestroomA below for shared plumbing run.
+    room RestroomB at (32,12) size (8 x 8) walls [top: solid, right: solid, bottom: window, left: solid] label "Restroom"
+
+    # Same stair / lift footprint repeated on the upper floor.
+    stair MainStair at (17, 1)
+        shape straight toward top
+        rise 10ft
+        width 4ft
+        label "Stair"
+
+    lift MainLift at (22, 1)
+        size (4ft x 5ft)
+        doors (bottom)
+        label "Lift"
+  }
+
+  # === Ground floor circulation ===
+  connect Reception.left to outside door at 50%
+  connect Reception.bottom to Lobby.top opening at 25% size (8ft x full)
+  connect Lobby.right to RestroomA.left door at 50%
+  connect Reception.right to StairCore.left door at 50%
+  connect StairCore.right to Conf.left door at 50%
+
+  # === Upper floor circulation ===
+  connect Open.right to UpperCore.left door at 50%
+  connect UpperCore.right to Office1.left door at 50%
+  connect Open.bottom to Break.top door at 30%
+  connect Break.right to Office2.left door at 50%
+  connect Office2.right to RestroomB.left door at 50%
+
+  # === Vertical connections ===
+  vertical Ground.MainStair to Upper.MainStair
+  vertical Ground.MainLift to Upper.MainLift

@@ -1,0 +1,127 @@
+# Template: Two-Story Townhouse (3BR / 2.5BA, ~1800 sqft total)
+#
+# Public functions on the ground floor (Living, Kitchen, Dining, Powder)
+# with a stair core hugging the west wall. Three bedrooms and two baths
+# on the upper floor share the same 30 x 30 ft footprint (no cantilevers).
+#
+# Plumbing rationale:
+#   - Powder (Ground) stacks under Bath1 (Upper) for the primary wet
+#     riser. Both anchor the back-left of the building.
+#   - Kitchen sink wall (Ground, top of Kitchen) sits below Bath1's south
+#     wall so drains stay short.
+#   - Bath2 has its own short riser through the Dining ceiling soffit;
+#     Bath1 and Bath2 are separated by Bedroom 3 (Vastu-friendly wet
+#     room separation).
+#
+# Vertical circulation:
+#   - StairCore stacks identically on both floors at x=0..5, y=0..14.
+#   - One straight stair (MainStair) at (1,1), 10 ft rise, 4 ft width.
+#   - Linked across floors with a `vertical` declaration so 3D viewers,
+#     egress checks, and stair_vertical_aligned all agree.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft,
+    default_height: 10
+  }
+
+  # ============================================================
+  # Ground Floor — Public living + powder + stair core
+  # ============================================================
+  floor GroundFloor height 10ft {
+    # Stair core: solid walls on every side per code (fire-rated egress).
+    room StairCore at (0,0) size (5 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair Core"
+
+    # Foyer: front entry just east of the stair core. Front door punches
+    # through the top wall.
+    room Foyer at (5,0) size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] label "Foyer"
+
+    # Front living room with twin street-facing windows.
+    room Living at (15,0) size (15 x 14) walls [top: window, right: window, bottom: solid, left: solid] label "Living"
+
+    # Powder bath under the stair return; tucked behind Foyer.
+    room Powder at (5,8) size (10 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] label "Powder"
+
+    # Kitchen runs along the west wall with a back-yard window.
+    room Kitchen at (0,14) size (15 x 16) walls [top: solid, right: solid, bottom: window, left: window] label "Kitchen"
+
+    # Dining opens to Living and Kitchen for an open-plan rear.
+    room Dining at (15,14) size (15 x 16) walls [top: solid, right: window, bottom: window, left: solid] label "Dining"
+
+    # Stair sits inside StairCore, climbs toward the back of the house.
+    stair MainStair at (1, 1)
+      shape straight toward bottom
+      rise 10ft
+      width 4ft
+      label "Stair"
+  }
+
+  # ============================================================
+  # First Floor — 3 bedrooms, 2 baths, central hall
+  # ============================================================
+  floor FirstFloor height 10ft {
+    # Stair shaft stacks directly on top of GroundFloor.StairCore.
+    room UpperCore at (0,0) size (5 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair Core"
+
+    # Laundry alcove: short plumbing drop alongside the stair shaft.
+    room Laundry at (5,0) size (5 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] label "Laundry"
+
+    # Master bedroom: largest room, twin front windows.
+    room Master at (10,0) size (14 x 12) walls [top: window, right: solid, bottom: solid, left: solid] label "Master"
+
+    # Bedroom 2: smaller front-right bedroom with corner windows.
+    room Bed2 at (24,0) size (6 x 12) walls [top: window, right: window, bottom: solid, left: solid] label "Bed 2"
+
+    # Linen closet between laundry and the central hall.
+    room Closet1 at (5,8) size (5 x 4) walls [top: solid, right: solid, bottom: solid, left: solid] label "Linen"
+
+    # Long storage column above the Kitchen wall (utility shaft for HVAC).
+    room Storage at (0,14) size (5 x 16) walls [top: solid, right: solid, bottom: solid, left: solid] label "Storage"
+
+    # Central east-west hall connects every upstairs room.
+    room Hall at (5,12) size (25 x 4) walls [top: solid, right: solid, bottom: solid, left: solid] label "Hall"
+
+    # Bath 1: back-left, stacks over Powder + Kitchen for wet riser.
+    room Bath1 at (5,16) size (8 x 14) walls [top: solid, right: solid, bottom: window, left: solid] label "Bath 1"
+
+    # Bedroom 3 separates the two baths to keep wet rooms apart per Vastu.
+    room Bed3 at (13,16) size (9 x 14) walls [top: solid, right: solid, bottom: window, left: solid] label "Bed 3"
+
+    # Bath 2: back-right, short drop through Dining ceiling soffit.
+    room Bath2 at (22,16) size (8 x 14) walls [top: solid, right: solid, bottom: window, left: solid] label "Bath 2"
+
+    # Stair lands on the upper floor. Same x/y as the lower stair so
+    # the vertical link is structurally coherent.
+    stair MainStair at (1, 1)
+      shape straight toward bottom
+      rise 10ft
+      width 4ft
+      label "Stair"
+  }
+
+  # === Ground floor circulation ===
+  connect Foyer.top to outside door at 50%
+  connect StairCore.right to Foyer.left door at 25%
+  connect StairCore.right to Powder.left door at 80%
+  connect StairCore.bottom to Kitchen.top door at 50%
+  connect Foyer.right to Living.left opening at 50%
+  connect Living.bottom to Dining.top opening at 50%
+  connect Kitchen.right to Dining.left opening at 50%
+
+  # === First floor circulation ===
+  connect UpperCore.right to Laundry.left door at 25%
+  connect UpperCore.right to Closet1.left door at 70%
+  connect UpperCore.bottom to Storage.top door at 50%
+  connect Laundry.right to Master.left door at 50%
+  connect Master.bottom to Hall.top door at 30%
+  connect Bed2.bottom to Hall.top door at 50%
+  connect Hall.bottom to Bath1.top door at 16%
+  connect Hall.bottom to Bed3.top door at 50%
+  connect Hall.bottom to Bath2.top door at 84%
+  connect Hall.left to Storage.right door at 50%
+
+  # === Vertical connections ===
+  vertical GroundFloor.MainStair to FirstFloor.MainStair

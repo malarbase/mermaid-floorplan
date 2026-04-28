@@ -1,0 +1,62 @@
+{
+  "title": "BlurryStudio",
+  "unit": "ft",
+  "areaUnit": "sqft",
+  "orientation": "unknown",
+  "rooms": [
+    {
+      "name": "Kitchen",
+      "label": "Kitchen",
+      "kind": "kitchen",
+      "size": { "width": 10, "height": 10, "confidence": 0.6 },
+      "position": { "x": 0, "y": 0, "confidence": 0.7 },
+      "features": ["anchor"],
+      "confidence": 0.7
+    },
+    {
+      "name": "Bath",
+      "label": "Bath",
+      "kind": "bathroom",
+      "position": { "x": 4, "y": 10, "confidence": 0.55 },
+      "confidence": 0.4
+    },
+    {
+      "name": "LivingArea",
+      "label": "Living / Sleep",
+      "kind": "living",
+      "size": { "width": 12, "height": 20, "confidence": 0.6 },
+      "position": { "x": 10, "y": 0, "confidence": 0.7 },
+      "confidence": 0.7
+    }
+  ],
+  "connections": [
+    {
+      "from": "LivingArea.bottom",
+      "to": "outside",
+      "kind": "door",
+      "position": 35,
+      "confidence": 0.8
+    },
+    {
+      "from": "Kitchen.right",
+      "to": "LivingArea.left",
+      "kind": "door",
+      "position": 25,
+      "confidence": 0.55
+    },
+    {
+      "from": "Bath.right",
+      "to": "LivingArea.left",
+      "kind": "door",
+      "position": 75,
+      "confidence": 0.5
+    }
+  ],
+  "notes": "Phone photo of a hand-drawn studio. Kitchen (10x10) and Living-Area (12x20) dimensions are visible but low-contrast (confidence ~0.6). Bath dimensions are illegible in the source, so size is omitted (room.confidence 0.4); the generator falls back to the bathroom default. Per references/image-extraction.md, dimensions that cannot be read are NOT invented — confidence is lowered and the default is allowed to fill in. Layout positions are inferred from the source: Kitchen top-left, Bath bottom-left, LivingArea spans the right side. Entry door is the arc on the south wall of LivingArea.",
+  "source": {
+    "kind": "image",
+    "path": "../inputs/blurry-source.png",
+    "overallConfidence": 0.55,
+    "extractor": "vision-pass-v1"
+  }
+}

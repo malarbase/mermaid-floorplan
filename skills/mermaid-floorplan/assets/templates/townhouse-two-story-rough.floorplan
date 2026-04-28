@@ -1,0 +1,79 @@
+# Template: Two-Story Townhouse — ROUGH DRAFT (intentionally flawed).
+#
+# Use this with the agent to demonstrate the multi-floor critique loop:
+#
+#   1. Stair core does NOT stack — the upper stair sits at (3,2) instead
+#      of (1,1). The vertical link should fail stair_vertical_aligned.
+#   2. The first floor has a 4 ft cantilever on the right side
+#      (footprint 34 x 30 instead of 30 x 30). Should trip footprint_aligned.
+#   3. Wet rooms on the upper floor (Bath1 + Bath2) are directly adjacent
+#      with no separator bedroom. Trips wet_walls_separated (default
+#      Vastu mode).
+#   4. The vertical declaration is MISSING entirely, so the agent should
+#      surface a stair_vertical_aligned warning about unlinked stairs.
+#   5. Bedroom 2 has no exterior window (private room, top wall solid).
+#      Trips bedroom_window or natural_light depending on critic config.
+#   6. Powder bath connects directly into the Kitchen (bathroom_privacy).
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft,
+    default_height: 10
+  }
+
+  floor GroundFloor height 10ft {
+    room StairCore at (0,0) size (5 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair Core"
+    room Foyer at (5,0) size (10 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] label "Foyer"
+    room Living at (15,0) size (15 x 14) walls [top: window, right: window, bottom: solid, left: solid] label "Living"
+    room Powder at (5,8) size (10 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] label "Powder"
+    room Kitchen at (0,14) size (15 x 16) walls [top: solid, right: solid, bottom: window, left: window] label "Kitchen"
+    room Dining at (15,14) size (15 x 16) walls [top: solid, right: window, bottom: window, left: solid] label "Dining"
+
+    stair MainStair at (1, 1)
+      shape straight toward bottom
+      rise 10ft
+      width 4ft
+      label "Stair"
+  }
+
+  # Upper floor: 34 ft wide (4 ft cantilever past the 30 ft ground floor).
+  floor FirstFloor height 10ft {
+    room UpperCore at (0,0) size (5 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair Core"
+    room Master at (5,0) size (15 x 14) walls [top: window, right: solid, bottom: solid, left: solid] label "Master"
+    room Bed2 at (20,0) size (14 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Bed 2"
+    room Hall at (5,14) size (29 x 4) walls [top: solid, right: solid, bottom: solid, left: solid] label "Hall"
+    room Bath1 at (5,18) size (8 x 12) walls [top: solid, right: solid, bottom: window, left: solid] label "Bath 1"
+    room Bath2 at (13,18) size (8 x 12) walls [top: solid, right: solid, bottom: window, left: solid] label "Bath 2"
+    room Bed3 at (21,18) size (13 x 12) walls [top: solid, right: window, bottom: window, left: solid] label "Bed 3"
+    room Storage at (0,14) size (5 x 16) walls [top: solid, right: solid, bottom: solid, left: solid] label "Storage"
+
+    stair MainStair at (3, 2)
+      shape straight toward bottom
+      rise 10ft
+      width 4ft
+      label "Stair"
+  }
+
+  # === Ground floor circulation ===
+  connect Foyer.top to outside door at 50%
+  connect StairCore.right to Foyer.left door at 25%
+  connect StairCore.right to Powder.left door at 80%
+  connect StairCore.bottom to Kitchen.top door at 50%
+  connect Foyer.right to Living.left opening at 50%
+  connect Living.bottom to Dining.top opening at 50%
+  connect Kitchen.right to Dining.left opening at 50%
+  connect Powder.bottom to Kitchen.top door at 70%
+
+  # === First floor circulation ===
+  connect UpperCore.right to Master.left door at 50%
+  connect UpperCore.bottom to Storage.top door at 50%
+  connect Master.bottom to Hall.top door at 30%
+  connect Bed2.bottom to Hall.top door at 70%
+  connect Hall.bottom to Bath1.top door at 14%
+  connect Hall.bottom to Bath2.top door at 41%
+  connect Hall.bottom to Bed3.top door at 80%
+
+  # NOTE: vertical declaration intentionally omitted.

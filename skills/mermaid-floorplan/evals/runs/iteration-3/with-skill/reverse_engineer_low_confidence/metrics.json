@@ -1,0 +1,63 @@
+{
+  "task": "reverse_engineer_low_confidence",
+  "arm": "with-skill",
+  "iteration": 3,
+  "input": "inputs/blurry-source.png",
+  "outputs": ["outputs/brief.json", "outputs/recovered.floorplan"],
+  "workflow": "C",
+  "tool_calls": 6,
+  "verification_passes": 1,
+  "rooms_extracted": 3,
+  "rooms_with_confidence": 3,
+  "rooms_with_size": 2,
+  "rooms_with_size_confidence": 2,
+  "rooms_with_omitted_size": 1,
+  "low_confidence_rooms": ["Bath"],
+  "allow_low_confidence": true,
+  "confidence_summary": {
+    "Kitchen": { "room": 0.7, "size": 0.6, "position": 0.7 },
+    "Bath": { "room": 0.4, "size": null, "position": 0.55 },
+    "LivingArea": { "room": 0.7, "size": 0.6, "position": 0.7 },
+    "source.overallConfidence": 0.55
+  },
+  "validate": {
+    "success": true,
+    "valid": true,
+    "floors": 1,
+    "rooms": 3,
+    "warnings": 0,
+    "errors": 0
+  },
+  "design_critic": {
+    "errorCount": 0,
+    "warningCount": 1,
+    "infoCount": 0,
+    "score": 97,
+    "rulesFailed": ["bathroom_privacy"],
+    "remaining_warnings": [
+      {
+        "rule": "bathroom_privacy",
+        "severity": "warning",
+        "rationale": "Inherent to a studio with no hallway buffer — the source plan also has the bath opening onto the living/sleep area. Warning, not error."
+      }
+    ]
+  },
+  "blockers_resolved": [
+    {
+      "blocker": "Initial overlapping-connection error at 50% on LivingArea.left for both Kitchen and Bath doors.",
+      "fix": "Staggered connection percentages to 25% (Kitchen) and 75% (Bath).",
+      "elapsed_seconds": 30
+    },
+    {
+      "blocker": "Critic error door_opening: Bath.right at x=6 did not share an edge with LivingArea.left at x=10 because Bath fell back to the default 6x6 (illegible source dimensions).",
+      "fix": "Shifted Bath position from (0,10) to (4,10) so its right wall aligns with LivingArea.left without inventing a width/height.",
+      "elapsed_seconds": 45
+    }
+  ],
+  "must_produce_present": true,
+  "honored_low_confidence_protocol": true,
+  "honored_no_dim_invention": true,
+  "exit_status": "ok",
+  "status": "success",
+  "notes": "Extracted three rooms from blurry-source.png. Kitchen (10x10) and LivingArea / Living-Sleep (12x20) had visible-but-low-contrast dimensions (size.confidence 0.6). Bath dimensions were treated as illegible per the eval scenario — size omitted, room.confidence 0.4 — and the generator filled in the default 6x6 from DEFAULT_SIZE_BY_KIND.bathroom. Used --allow-low-confidence to honour the sub-0.5 Bath room confidence. Bath position was shifted from (0,10) to (4,10) so its right wall could share an edge with LivingArea.left; this is spatial inference from the source layout, not dimension invention. Final state: validate.mjs valid:true with 0 warnings/errors, design_critic.mjs reports 0 errors and 1 warning (bathroom_privacy) which is intrinsic to a studio. brief.json carries confidence on every numeric field. ONE verification pass after first clean validate+critic, no exploratory rewrites."
+}

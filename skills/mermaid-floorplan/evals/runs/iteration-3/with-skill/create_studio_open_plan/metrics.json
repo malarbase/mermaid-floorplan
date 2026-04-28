@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": 75,
+  "tool_calls": 9,
+  "exit_status": "success",
+  "notes": "Seeded from assets/templates/studio-openplan.floorplan and rescaled to a 24x20 footprint = 480 sqft (Kitchen 8x8, Living 16x8, Sleep 16x12, Bath 8x12). Template already encodes the three hard preferences: kitchen/bath on diagonal corners (no shared wall), bath door off Sleep.right (not entry), and no hallway. Validate passed (only the same two benign wall_type warnings the canonical template emits). design_critic.mjs reports score 99 with a single info-severity wet_walls finding (preference, not a defect) and zero bathroom_off_entry or corridor_only_hallway findings."
+}

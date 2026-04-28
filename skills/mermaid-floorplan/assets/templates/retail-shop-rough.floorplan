@@ -1,0 +1,47 @@
+# Template: Retail Shop - ROUGH variant
+#
+# Intentionally flawed retail shop that demonstrates common LLM mistakes:
+#   1. Customers can wander into the storage area (no separation between
+#      sales and back-of-house).
+#   2. Bath opens directly into the sales floor (privacy + code issue).
+#   3. Break room has no exterior window (no daylight for staff).
+#   4. The storefront door is on a side wall instead of the obvious front.
+#   5. No loading door at the rear of storage (deliveries through the
+#      front of house).
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Sales floor.
+    room SalesFloor at (0,0) size (28 x 20) walls [top: window, right: solid, bottom: solid, left: solid] label "Sales"
+
+    # Break room with no daylight.
+    room Break size (8 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] right-of SalesFloor align top label "Break"
+
+    # Bath next to break, also no daylight, opens into sales.
+    room Bath size (8 x 8) walls [top: solid, right: solid, bottom: solid, left: solid] below Break align left label "Bath"
+
+    # Storage along the bottom of sales — no buffer wall.
+    room Storage size (28 x 8) walls [top: open, right: solid, bottom: solid, left: solid] below SalesFloor align left label "Storage"
+  }
+
+  # Storefront door on the side instead of the front-facing window wall.
+  connect SalesFloor.right to outside door at 50%
+
+  # Bath opens straight into the sales floor.
+  connect Bath.left to SalesFloor.right door at 25%
+
+  # Break only accessible from sales (employees forced to walk past customers).
+  connect Break.left to SalesFloor.right door at 75%
+
+  # Storage has no separating door from sales (the wall is `open`).
+  # Customers can wander into back-of-house.
+
+  # Bath access from break room (the only legit pairing).
+  connect Bath.top to Break.bottom door at 50%

@@ -1,0 +1,55 @@
+# 2BR apartment, ~1024 sqft (target ~1000).
+# Layout:
+#   Row 1 (public):  Foyer | Living | Kitchen        (open-plan, top windows)
+#   Row 2 (service): Hall  | Bath                    (Bath stacks UNDER Kitchen
+#                                                     -> shared plumbing wall)
+#   Row 3 (private): Bedroom2 | Master                (each bedroom has 2 exterior
+#                                                      window walls)
+#
+# Footprint 32 x 32 = 1024 sqft. All rooms relative to Foyer anchor.
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Entry foyer - anchor. Front door on top wall, opens into Living on right.
+    room Foyer at (0,0) size (6 x 12) walls [top: solid, right: open, bottom: solid, left: solid] label "Entry"
+
+    # Living room - open-plan with Foyer (left) and Kitchen (right). Window on top.
+    room Living size (14 x 12) walls [top: window, right: open, bottom: solid, left: open] right-of Foyer align top label "Living"
+
+    # Kitchen - top-right corner. Two exterior window walls (top + right).
+    # Bottom wall is the wet wall shared with Bath directly below.
+    room Kitchen size (12 x 12) walls [top: window, right: window, bottom: solid, left: open] right-of Living align top label "Kitchen"
+
+    # Hallway - middle band, links Foyer to bedrooms and to Bath.
+    room Hall size (20 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] below Foyer align left label "Hall"
+
+    # Bathroom - directly under Kitchen. Top wall = plumbing wall with Kitchen.
+    # Right wall is exterior so we keep a small window for ventilation.
+    room Bath size (12 x 6) walls [top: solid, right: window, bottom: solid, left: solid] right-of Hall align top label "Bath"
+
+    # Bedroom 2 - bottom-left. Window on left (exterior) and bottom (exterior).
+    room Bedroom2 size (14 x 14) walls [top: solid, right: solid, bottom: window, left: window] below Hall align left label "Bedroom 2"
+
+    # Master bedroom - bottom-right. Window on right (exterior) and bottom (exterior).
+    room Master size (18 x 14) walls [top: solid, right: window, bottom: window, left: solid] right-of Bedroom2 align top label "Master"
+  }
+
+  # Front door to outside.
+  connect Foyer.top to outside door at 50%
+
+  # Foyer -> Hall (private circulation entry point).
+  connect Foyer.bottom to Hall.top door at 50%
+
+  # Hall -> Bath (bath does NOT open onto foyer; routed via hall for privacy).
+  connect Hall.right to Bath.left door at 50%
+
+  # Hall -> bedrooms.
+  connect Hall.bottom to Bedroom2.top door at 30%
+  connect Hall.bottom to Master.top door at 80%

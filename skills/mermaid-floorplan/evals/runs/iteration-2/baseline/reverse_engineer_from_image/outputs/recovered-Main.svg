@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="-2 -2 54 36" xmlns="http://www.w3.org/2000/svg" width="810" height="540" role="img" aria-roledescription="floorplan"><defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666" />
+    </marker>
+  </defs><style>
+    /* Floor background */
+    .floor-background {
+      fill: #eed;
+      stroke: #000;
+      stroke-width: 0.1;
+    }
+
+    /* Room container */
+    .room {
+      /* Room styling handled by walls */
+    }
+
+    /* Wall styling */
+    .wall {
+      fill: #000;
+      stroke: #000;
+      stroke-width: 0.05;
+    }
+
+    /* Door styling */
+    .door {
+      fill: #fff;
+      stroke: #000;
+      stroke-width: 0.05;
+    }
+
+    /* Window styling */
+    .window {
+      fill: #fff;
+      stroke: #000;
+      stroke-width: 0.01;
+    }
+
+    /* Text styling */
+    .room-name {
+      fill: #000;
+      font-family: Arial, sans-serif;
+      font-size: 0.8;
+    }
+
+    .room-label {
+      fill: #000;
+      font-family: Arial, sans-serif;
+      font-size: 0.8;
+    }
+
+    .room-size {
+      fill: #666;
+      font-family: Arial, sans-serif;
+      font-size: 0.7;
+    }
+  </style><g class="floorplan" aria-label="Floor: Main"><rect x="0" y="0" 
+    width="50" height="32" 
+    class="floor-background" fill="#eed" stroke="black" stroke-width="0.1" /><g class="room" data-room="Foyer"><rect x="0" y="0" width="8" height="12" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="0" y="0" width="8" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="7.8" y="0" width="0.2" height="12" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="0" y="11.8" width="8" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="0" y="0" width="0.2" height="12" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="Living"><rect x="8" y="0" width="16" height="12" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="8" y="0" width="16" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="9.6" y="0.05" width="12.8" height="0.1" 
+    class="window" fill="white" stroke="black" stroke-width="0.01" data-type="window" data-direction="top" /><rect x="23.8" y="0" width="0.2" height="12" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="8" y="11.8" width="16" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="8" y="0" width="0.2" height="12" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="Dining"><rect x="24" y="0" width="12" height="12" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="24" y="0" width="12" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="25.2" y="0.05" width="9.600000000000001" height="0.1" 
+    class="window" fill="white" stroke="black" stroke-width="0.01" data-type="window" data-direction="top" /><rect x="35.8" y="0" width="0.2" height="12" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="24" y="11.8" width="12" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="24" y="0" width="0.2" height="12" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="Kitchen"><rect x="36" y="0" width="14" height="12" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="36" y="0" width="14" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="37.4" y="0.05" width="11.200000000000001" height="0.1" 
+    class="window" fill="white" stroke="black" stroke-width="0.01" data-type="window" data-direction="top" /><rect x="49.8" y="0" width="0.2" height="12" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="36" y="11.8" width="14" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="36" y="0" width="0.2" height="12" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="Hall"><rect x="0" y="12" width="50" height="4" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="0" y="12" width="50" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="49.8" y="12" width="0.2" height="4" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="0" y="15.8" width="50" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="0" y="12" width="0.2" height="4" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="Bedroom2"><rect x="0" y="16" width="12" height="16" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="0" y="16" width="12" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="11.8" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="0" y="31.8" width="12" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="1.1999999999999993" y="31.85" width="9.600000000000001" height="0.1" 
+    class="window" fill="white" stroke="black" stroke-width="0.01" data-type="window" data-direction="bottom" /><rect x="0" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="Bath2"><rect x="12" y="16" width="8" height="16" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="12" y="16" width="8" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="19.8" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="12" y="31.8" width="8" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="12" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="Bedroom3"><rect x="20" y="16" width="12" height="16" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="20" y="16" width="12" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="31.8" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="20" y="31.8" width="12" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="21.2" y="31.85" width="9.600000000000001" height="0.1" 
+    class="window" fill="white" stroke="black" stroke-width="0.01" data-type="window" data-direction="bottom" /><rect x="20" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="Master"><rect x="32" y="16" width="12" height="16" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="32" y="16" width="12" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="43.8" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="32" y="31.8" width="12" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="33.2" y="31.85" width="9.600000000000001" height="0.1" 
+    class="window" fill="white" stroke="black" stroke-width="0.01" data-type="window" data-direction="bottom" /><rect x="32" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><g class="room" data-room="MasterBath"><rect x="44" y="16" width="6" height="16" 
+    class="room-background" fill="#E0E0E0" stroke="none" /><rect x="44" y="16" width="6" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="49.8" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="44" y="31.8" width="6" height="0.2" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /><rect x="44" y="16" width="0.2" height="16" 
+      class="wall" fill="#000000" stroke="#000000" stroke-width="0.05" /></g><path d="M -0.36 11.9 L -0.36 10.200000000000001 A 1.7 1.7 0 0 1 1.6400000000000001 11.9" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="bottom" data-swing="default" /><path d="M 12.120000000000001 11.9 L 12.120000000000001 10.200000000000001 A 1.7 1.7 0 0 1 14.120000000000001 11.9" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="bottom" data-swing="default" /><path d="M 30.2 11.9 L 30.2 10.200000000000001 A 1.7 1.7 0 0 1 32.2 11.9" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="bottom" data-swing="default" /><path d="M 47.04 11.9 L 47.04 10.200000000000001 A 1.7 1.7 0 0 1 49.04 11.9" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="bottom" data-swing="default" /><path d="M 0.43999999999999995 15.9 L 0.43999999999999995 17.6 A 1.7 1.7 0 0 0 2.44 15.9" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="top" data-swing="default" /><path d="M 13.56 15.9 L 13.56 17.6 A 1.7 1.7 0 0 0 15.56 15.9" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="top" data-swing="default" /><path d="M 25.240000000000002 15.9 L 25.240000000000002 17.6 A 1.7 1.7 0 0 0 27.240000000000002 15.9" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="top" data-swing="default" /><path d="M 40.12 15.9 L 40.12 17.6 A 1.7 1.7 0 0 0 42.12 15.9" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="top" data-swing="default" /><path d="M 43.9 25 L 42.199999999999996 25 A 1.7 1.7 0 0 1 43.9 23" fill="white" stroke="black" stroke-width="0.05" class="door" data-type="door" data-direction="right" data-swing="default" /><g class="floor-circulation" aria-label="Circulation elements"></g><g class="room-labels" aria-label="Room labels"><text x="4" y="4.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Foyer</text><text x="4" y="5.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Foyer</text><text x="4" y="6.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">8 x 12</text><text x="4" y="7.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[96 sqft]</text><text x="16" y="4.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Living</text><text x="16" y="5.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Living</text><text x="16" y="6.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">16 x 12</text><text x="16" y="7.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[192 sqft]</text><text x="30" y="4.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Dining</text><text x="30" y="5.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Dining</text><text x="30" y="6.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">12 x 12</text><text x="30" y="7.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[144 sqft]</text><text x="43" y="4.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Kitchen</text><text x="43" y="5.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Kitchen</text><text x="43" y="6.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">14 x 12</text><text x="43" y="7.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[168 sqft]</text><text x="25" y="12.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Hall</text><text x="25" y="13.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Hall</text><text x="25" y="14.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">50 x 4</text><text x="25" y="15.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[200 sqft]</text><text x="6" y="22.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Bedroom2</text><text x="6" y="23.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Bedroom 2</text><text x="6" y="24.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">12 x 16</text><text x="6" y="25.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[192 sqft]</text><text x="16" y="22.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Bath2</text><text x="16" y="23.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Hall Bath</text><text x="16" y="24.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">8 x 16</text><text x="16" y="25.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[128 sqft]</text><text x="26" y="22.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Bedroom3</text><text x="26" y="23.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Bedroom 3</text><text x="26" y="24.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">12 x 16</text><text x="26" y="25.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[192 sqft]</text><text x="38" y="22.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">Master</text><text x="38" y="23.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Master</text><text x="38" y="24.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">12 x 16</text><text x="38" y="25.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[192 sqft]</text><text x="47" y="22.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-name" font-size="0.8" fill="black">MasterBath</text><text x="47" y="23.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-label" font-size="0.8">Ensuite</text><text x="47" y="24.5" text-anchor="middle" dominant-baseline="middle" 
+    class="room-size" font-size="0.7" fill="gray">6 x 16</text><text x="47" y="25.5" text-anchor="middle" dominant-baseline="middle" 
+      class="room-area" font-size="0.6" fill="#666">[96 sqft]</text></g></g></svg>

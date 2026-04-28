@@ -1,0 +1,258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/malarkannan/mermaid-floorplan/.cursor/skills/mermaid-floorplan/program_brief.schema.json",
+  "title": "Program Brief",
+  "description": "Intermediate representation between a natural-language brief (or vision-extracted plan) and a .floorplan DSL. Consumed by program_to_skeleton.mjs and generate_variations.mjs. Rich fields are optional so a minimal counts-based brief stays ergonomic.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["rooms"],
+  "properties": {
+    "title": { "type": "string", "description": "Human-readable project name." },
+    "unit": {
+      "type": "string",
+      "enum": ["ft", "m"],
+      "default": "ft",
+      "description": "Length unit the numeric sizes are expressed in."
+    },
+    "areaUnit": {
+      "type": "string",
+      "enum": ["sqft", "sqm"],
+      "default": "sqft"
+    },
+    "targetArea": {
+      "type": "object",
+      "description": "Optional gross area target. Skeleton generator uses this to scale rooms when individual sizes are omitted.",
+      "additionalProperties": false,
+      "properties": {
+        "value": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "type": "string", "enum": ["sqft", "sqm"], "default": "sqft" },
+        "tolerance": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1,
+          "default": 0.2,
+          "description": "Fraction over/under the target the generator may emit."
+        }
+      },
+      "required": ["value"]
+    },
+    "footprint": {
+      "type": "object",
+      "description": "Optional overall footprint. If both width and height are set, generator honours them verbatim.",
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "number", "exclusiveMinimum": 0 },
+        "height": { "type": "number", "exclusiveMinimum": 0 },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "orientation": {
+      "type": "string",
+      "enum": ["north", "south", "east", "west", "unknown"],
+      "default": "unknown",
+      "description": "Which direction the front door / primary facade faces. Affects where the generator places windows."
+    },
+    "style": {
+      "type": "string",
+      "description": "Optional named style from assets/templates or references/patterns-library.md."
+    },
+    "floors": {
+      "type": "array",
+      "description": "Optional explicit floor list. If omitted, one 'GroundFloor' is assumed.",
+      "items": { "$ref": "#/$defs/floor" }
+    },
+    "rooms": {
+      "type": "array",
+      "minItems": 1,
+      "description": "Room list. When floors is not provided, every room goes on the first floor.",
+      "items": { "$ref": "#/$defs/room" }
+    },
+    "connections": {
+      "type": "array",
+      "description": "Optional explicit connection list. If omitted, the skeleton generator will create doors between adjacent rooms using defaults.",
+      "items": { "$ref": "#/$defs/connection" }
+    },
+    "constraints": {
+      "type": "object",
+      "description": "Hard constraints the generator must honour or reject the brief.",
+      "additionalProperties": false,
+      "properties": {
+        "minCorridorWidth": { "type": "number", "minimum": 0 },
+        "mustShareWetWalls": { "type": "boolean" },
+        "requireWindowInEveryBedroom": { "type": "boolean" },
+        "maxBedroomsWithoutEnsuite": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "notes": { "type": "string" },
+    "source": {
+      "type": "object",
+      "description": "Provenance. Useful when the brief was extracted from an image or PDF.",
+      "additionalProperties": false,
+      "properties": {
+        "kind": { "type": "string", "enum": ["text", "image", "pdf", "mixed"] },
+        "path": { "type": "string" },
+        "overallConfidence": { "$ref": "#/$defs/confidence" },
+        "extractor": { "type": "string" }
+      }
+    }
+  },
+
+  "$defs": {
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1,
+      "description": "Extractor confidence in the inferred value. 1.0 = certain (explicit in source), 0.0 = pure guess. program_to_skeleton.mjs rejects fields below 0.5 unless --allow-low-confidence is set."
+    },
+    "floor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" },
+        "label": { "type": "string" },
+        "elevation": { "type": "number" },
+        "height": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "room": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
+          "description": "DSL identifier. Must be unique within the floor."
+        },
+        "label": { "type": "string" },
+        "kind": {
+          "type": "string",
+          "description": "Semantic role. Used by design_critic and generate_variations.",
+          "enum": [
+            "entry",
+            "living",
+            "dining",
+            "kitchen",
+            "hallway",
+            "bedroom",
+            "bathroom",
+            "powder_room",
+            "laundry",
+            "closet",
+            "office",
+            "garage",
+            "utility",
+            "storage",
+            "stair",
+            "lift",
+            "retail",
+            "backroom",
+            "hotel_bedroom",
+            "hotel_wet",
+            "other"
+          ]
+        },
+        "floor": {
+          "type": "string",
+          "description": "Which floor id this room lives on. Defaults to the first floor."
+        },
+        "size": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "width": { "type": "number", "exclusiveMinimum": 0 },
+            "height": { "type": "number", "exclusiveMinimum": 0 },
+            "area": { "type": "number", "exclusiveMinimum": 0 },
+            "confidence": { "$ref": "#/$defs/confidence" }
+          },
+          "description": "Prefer explicit width+height. If only area is given, the generator picks a sensible aspect ratio per kind."
+        },
+        "position": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "confidence": { "$ref": "#/$defs/confidence" }
+          }
+        },
+        "relativeTo": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "direction": {
+              "type": "string",
+              "enum": [
+                "right-of",
+                "left-of",
+                "above",
+                "below",
+                "above-right-of",
+                "above-left-of",
+                "below-right-of",
+                "below-left-of"
+              ]
+            },
+            "reference": { "type": "string" },
+            "gap": { "type": "number", "minimum": 0 },
+            "alignment": { "type": "string", "enum": ["top", "bottom", "left", "right", "center"] }
+          },
+          "required": ["direction", "reference"]
+        },
+        "walls": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "top": { "$ref": "#/$defs/wallType" },
+            "right": { "$ref": "#/$defs/wallType" },
+            "bottom": { "$ref": "#/$defs/wallType" },
+            "left": { "$ref": "#/$defs/wallType" }
+          }
+        },
+        "features": {
+          "type": "array",
+          "description": "Non-structural annotations used by design_critic (e.g. requiresPlumbing).",
+          "items": {
+            "type": "string",
+            "enum": [
+              "requiresPlumbing",
+              "requiresExteriorWindow",
+              "requiresNaturalLight",
+              "hotelBath",
+              "wheelchairTurningCircle",
+              "anchor"
+            ]
+          }
+        },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "wallType": {
+      "type": "string",
+      "enum": ["solid", "door", "window", "open"]
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to"],
+      "properties": {
+        "from": { "type": "string", "description": "<Room>.<wall>" },
+        "to": { "type": "string", "description": "<Room>.<wall> or 'outside'" },
+        "kind": {
+          "type": "string",
+          "enum": ["door", "opening", "window"],
+          "default": "door"
+        },
+        "position": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100,
+          "default": 50,
+          "description": "Percentage along the shared wall."
+        },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    }
+  }
+}

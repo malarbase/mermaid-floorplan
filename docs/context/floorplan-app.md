@@ -35,8 +35,8 @@ npx convex dev                          # Convex backend
 ```
 
 <!-- freshness
-watches_hash: e6aeb0d
-last_verified: 2026-03-04
+watches_hash: a2e5f6b
+last_verified: 2026-03-15
 watches:
   - floorplan-app/src/routes/**
   - floorplan-app/src/components/**

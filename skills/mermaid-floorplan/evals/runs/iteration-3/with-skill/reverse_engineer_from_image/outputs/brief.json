@@ -1,0 +1,162 @@
+{
+  "title": "ReverseEngineered_3BR_1600sqft",
+  "unit": "ft",
+  "areaUnit": "sqft",
+  "targetArea": { "value": 1600, "unit": "sqft" },
+  "footprint": { "width": 50, "height": 32, "confidence": 1.0 },
+  "orientation": "north",
+  "rooms": [
+    {
+      "name": "Foyer",
+      "kind": "entry",
+      "label": "Foyer",
+      "size": { "width": 8, "height": 12, "confidence": 1.0 },
+      "position": { "x": 0, "y": 0, "confidence": 1.0 },
+      "walls": { "top": "solid", "right": "solid", "bottom": "solid", "left": "solid" },
+      "features": ["anchor"],
+      "confidence": 1.0
+    },
+    {
+      "name": "Living",
+      "kind": "living",
+      "label": "Living",
+      "size": { "width": 16, "height": 12, "confidence": 1.0 },
+      "position": { "x": 8, "y": 0, "confidence": 1.0 },
+      "walls": { "top": "window", "right": "solid", "bottom": "solid", "left": "solid" },
+      "confidence": 1.0
+    },
+    {
+      "name": "Dining",
+      "kind": "dining",
+      "label": "Dining",
+      "size": { "width": 12, "height": 12, "confidence": 1.0 },
+      "position": { "x": 24, "y": 0, "confidence": 1.0 },
+      "walls": { "top": "window", "right": "solid", "bottom": "solid", "left": "solid" },
+      "confidence": 1.0
+    },
+    {
+      "name": "Kitchen",
+      "kind": "kitchen",
+      "label": "Kitchen",
+      "size": { "width": 14, "height": 12, "confidence": 1.0 },
+      "position": { "x": 36, "y": 0, "confidence": 1.0 },
+      "walls": { "top": "window", "right": "solid", "bottom": "solid", "left": "solid" },
+      "confidence": 1.0
+    },
+    {
+      "name": "Hall",
+      "kind": "hallway",
+      "label": "Hall",
+      "size": { "width": 50, "height": 4, "confidence": 1.0 },
+      "position": { "x": 0, "y": 12, "confidence": 1.0 },
+      "walls": { "top": "solid", "right": "solid", "bottom": "solid", "left": "solid" },
+      "confidence": 1.0
+    },
+    {
+      "name": "Bedroom2",
+      "kind": "bedroom",
+      "label": "Bedroom 2",
+      "size": { "width": 12, "height": 16, "confidence": 1.0 },
+      "position": { "x": 0, "y": 16, "confidence": 1.0 },
+      "walls": { "top": "solid", "right": "solid", "bottom": "window", "left": "window" },
+      "confidence": 1.0
+    },
+    {
+      "name": "Bath2",
+      "kind": "bathroom",
+      "label": "Hall Bath",
+      "size": { "width": 8, "height": 16, "confidence": 1.0 },
+      "position": { "x": 12, "y": 16, "confidence": 1.0 },
+      "walls": { "top": "solid", "right": "solid", "bottom": "solid", "left": "solid" },
+      "confidence": 1.0
+    },
+    {
+      "name": "Bedroom3",
+      "kind": "bedroom",
+      "label": "Bedroom 3",
+      "size": { "width": 12, "height": 16, "confidence": 1.0 },
+      "position": { "x": 20, "y": 16, "confidence": 1.0 },
+      "walls": { "top": "solid", "right": "solid", "bottom": "window", "left": "solid" },
+      "confidence": 1.0
+    },
+    {
+      "name": "Master",
+      "kind": "bedroom",
+      "label": "Master",
+      "size": { "width": 12, "height": 16, "confidence": 1.0 },
+      "position": { "x": 32, "y": 16, "confidence": 1.0 },
+      "walls": { "top": "solid", "right": "solid", "bottom": "window", "left": "solid" },
+      "confidence": 1.0
+    },
+    {
+      "name": "MasterBath",
+      "kind": "bathroom",
+      "label": "Ensuite",
+      "size": { "width": 6, "height": 16, "confidence": 1.0 },
+      "position": { "x": 44, "y": 16, "confidence": 1.0 },
+      "walls": { "top": "solid", "right": "solid", "bottom": "solid", "left": "solid" },
+      "confidence": 1.0
+    }
+  ],
+  "connections": [
+    { "from": "Foyer.bottom", "to": "Hall.top", "kind": "door", "position": 50, "confidence": 1.0 },
+    {
+      "from": "Living.bottom",
+      "to": "Hall.top",
+      "kind": "door",
+      "position": 25,
+      "confidence": 1.0
+    },
+    {
+      "from": "Dining.bottom",
+      "to": "Hall.top",
+      "kind": "door",
+      "position": 65,
+      "confidence": 1.0
+    },
+    {
+      "from": "Kitchen.bottom",
+      "to": "Hall.top",
+      "kind": "door",
+      "position": 90,
+      "confidence": 1.0
+    },
+    {
+      "from": "Hall.bottom",
+      "to": "Bedroom2.top",
+      "kind": "door",
+      "position": 10,
+      "confidence": 1.0
+    },
+    { "from": "Hall.bottom", "to": "Bath2.top", "kind": "door", "position": 32, "confidence": 1.0 },
+    {
+      "from": "Hall.bottom",
+      "to": "Bedroom3.top",
+      "kind": "door",
+      "position": 52,
+      "confidence": 1.0
+    },
+    {
+      "from": "Hall.bottom",
+      "to": "Master.top",
+      "kind": "door",
+      "position": 78,
+      "confidence": 1.0
+    },
+    {
+      "from": "Master.right",
+      "to": "MasterBath.left",
+      "kind": "door",
+      "position": 15,
+      "confidence": 1.0
+    },
+    { "from": "Hall.left", "to": "outside", "kind": "door", "position": 50, "confidence": 1.0 }
+  ],
+  "source": {
+    "kind": "image",
+    "path": "evals/runs/iteration-3/with-skill/reverse_engineer_from_image/inputs/source-image.png",
+    "extractor": "vision-pass-iter3",
+    "overallConfidence": 1.0
+  },
+  "notes": "Single-floor 3BR layout, 50x32ft (~1600 sqft). Three bands: public rooms top, central hall, bedrooms+baths bottom. Entry on Hall.left from outside; ensuite off Master."
+}

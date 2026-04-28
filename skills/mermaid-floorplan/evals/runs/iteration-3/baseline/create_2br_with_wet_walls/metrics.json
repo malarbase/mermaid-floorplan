@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": 360,
+  "tool_calls": null,
+  "exit_status": "stalled_after_outputs",
+  "notes": "Baseline produced twobr.floorplan + twobr-MainFloor.png (filename discipline violation: per-floor suffix not stripped). Did not write metrics.json or stop. Synthesized by parent runner after >5 min idle. must_produce check will fail on the PNG name."
+}

@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": null,
+  "tool_calls": null,
+  "exit_status": "failed",
+  "notes": "Baseline reverse_engineer. Produced recovered.floorplan and recovered-Main.png but PNG was named recovered-Main.png (filename discipline violation) and compare.json was never written (must_produce miss). Metrics finalized post-hoc."
+}

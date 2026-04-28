@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": 90,
+  "tool_calls": 12,
+  "exit_status": "ok",
+  "notes": "Baseline modify_add_closet (no skill). Read fixture two-br-seed.floorplan, inspected canonical examples and the floorplans.langium grammar to confirm DSL syntax (no 'kind' keyword exists in the grammar; 'closet' interpreted as the room name/label). Inserted a 4x8 walk-in Closet right-of MasterBedroom align top, between Master and the existing Ensuite. To preserve a valid layout I shifted MasterBath's relative anchor from 'right-of MasterBedroom' to 'right-of Closet' (Master and MasterBath are no longer adjacent, so the original 'connect MasterBedroom.right to MasterBath.left' was replaced with 'connect MasterBedroom.right to Closet.left' plus 'connect Closet.right to MasterBath.left' - ensuite is now reached via the walk-in). Bedroom row width grew from 34 to 38 ft; rest of plan unchanged. One verification pass (re-read output file, structure looks consistent with the langium Room and Connection rules). No automated validator was run in baseline arm. Stopped after producing with-closet.floorplan and metrics.json."
+}

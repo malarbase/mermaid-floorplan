@@ -1,0 +1,6 @@
+{
+  "wall_clock_seconds": 226.8,
+  "tool_calls": 20,
+  "exit_status": "ok",
+  "notes": "480 sqft studio (24x20): Kitchen 80 + Bath 70 + Entry 50 + LivingSleep 280; validate.mjs valid:true; design_critic score 97 (one bathroom_privacy warning, expected at studio scale)."
+}

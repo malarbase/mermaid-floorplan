@@ -1,0 +1,71 @@
+# Template: 3BR Single-Family House (~1800 sqft)
+# Single-floor 3-bedroom plan with master suite and dedicated dining.
+#
+#   Row 1 (public):  Foyer | Living | Dining | Kitchen
+#   Row 2 (hall):    Hall (full width)
+#   Row 3 (private): Bedroom2 | Bath2 | Bedroom3 | Master | MasterBath
+#
+# Anchored at Foyer. Footprint 50 x 32 = 1600 sqft net (~1800 with walls).
+
+%%{version: 1.0}%%
+floorplan
+
+  config {
+    default_unit: ft,
+    area_unit: sqft
+  }
+
+  floor GroundFloor {
+    # Entry anchor with porch overhang implied by exterior door.
+    room Foyer at (0,0) size (8 x 12) walls [top: solid, right: solid, bottom: solid, left: window] label "Foyer"
+
+    # Living room with two windows on the front-facing wall.
+    room Living size (16 x 12) walls [top: window, right: solid, bottom: solid, left: solid] right-of Foyer align top label "Living"
+
+    # Formal dining between living and kitchen.
+    room Dining size (12 x 12) walls [top: window, right: solid, bottom: solid, left: solid] right-of Living align top label "Dining"
+
+    # Kitchen along the right end of the public zone, sharing wet wall with
+    # MasterBath below via the back of the house.
+    room Kitchen size (14 x 12) walls [top: window, right: window, bottom: solid, left: solid] right-of Dining align top label "Kitchen"
+
+    # Center hallway, full width.
+    room Hall size (50 x 4) walls [top: solid, right: solid, bottom: solid, left: solid] below Foyer align left label "Hall"
+
+    # Bedroom 2 - left private corner.
+    room Bedroom2 size (12 x 16) walls [top: solid, right: solid, bottom: window, left: window] below Hall align left label "Bedroom 2"
+
+    # Hall bathroom shared by Bedroom 2 and Bedroom 3.
+    room Bath2 size (8 x 16) walls [top: solid, right: solid, bottom: window, left: solid] right-of Bedroom2 align top label "Hall Bath"
+
+    # Bedroom 3 - center private zone.
+    room Bedroom3 size (12 x 16) walls [top: solid, right: solid, bottom: window, left: solid] right-of Bath2 align top label "Bedroom 3"
+
+    # Master bedroom on the right.
+    room Master size (12 x 16) walls [top: solid, right: solid, bottom: window, left: solid] right-of Bedroom3 align top label "Master"
+
+    # Master ensuite shares plumbing with kitchen above (wet stack on the
+    # right side of the house).
+    room MasterBath size (6 x 16) walls [top: solid, right: window, bottom: window, left: solid] right-of Master align top label "Ensuite"
+  }
+
+  # Front door
+  connect Foyer.left to outside door at 50%
+
+  # Foyer / Living / Dining / Kitchen open-plan zone
+  connect Foyer.right to Living.left opening at 50% size (5ft x full)
+  connect Living.right to Dining.left opening at 50% size (6ft x full)
+  connect Dining.right to Kitchen.left opening at 50% size (5ft x full)
+
+  # Public zone to hallway
+  connect Living.bottom to Hall.top door at 30%
+  connect Kitchen.bottom to Hall.top door at 75%
+
+  # Hallway to bedrooms and baths
+  connect Hall.bottom to Bedroom2.top door at 12%
+  connect Hall.bottom to Bath2.top door at 32%
+  connect Hall.bottom to Bedroom3.top door at 56%
+  connect Hall.bottom to Master.top door at 80%
+
+  # Master ensuite access from master bedroom
+  connect Master.right to MasterBath.left door at 30%
