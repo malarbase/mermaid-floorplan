@@ -25,7 +25,12 @@ import { type CSGBrush, type CSGEvaluator, getCSG, isCsgAvailable } from './csg-
 import { reassignMaterialsByNormal } from './csg-utils.js';
 import { MaterialFactory, type MaterialSet } from './materials.js';
 import type { JsonConfig, JsonConnection, JsonRoom, JsonWall } from './types.js';
-import { analyzeWallOwnership, type StyleResolver, type WallSegment } from './wall-ownership.js';
+import {
+  analyzeWallOwnership,
+  hasNeighborAtCorner,
+  type StyleResolver,
+  type WallSegment,
+} from './wall-ownership.js';
 
 /**
  * Hole specification for wall cutouts
@@ -52,20 +57,33 @@ export interface WallGeometry {
 }
 
 /**
- * Calculate wall geometry (dimensions and position)
+ * Calculate wall geometry (dimensions and position).
  *
- * @param wall - Wall data
- * @param room - Room data
- * @param wallThickness - Wall thickness
+ * Horizontal walls (top/bottom) extend past the room edge by `wallThickness/2`
+ * **only** when the adjacent corner has no perpendicular neighbour room that
+ * would fill it.  When a neighbour exists, the extension is omitted so the two
+ * walls share exactly one edge — no overlapping volume, no Z-fighting corner.
+ *
+ * Vertical walls (left/right) **never** extend past the room edge in the Z
+ * direction — they always butt against the top/bottom walls (or open space at
+ * exterior corners).  This guarantees that every corner is owned by exactly
+ * one wall.
+ *
+ * @param wall         Wall data
+ * @param room         Room data
+ * @param wallThickness Wall thickness
+ * @param allRooms     All rooms on the same floor (default empty = treat all
+ *                     corners as exterior, matching the pre-fix behaviour for
+ *                     callers that don't have room context)
  * @returns Wall geometry specification
  */
 export function calculateWallGeometry(
   wall: JsonWall,
   room: JsonRoom,
   wallThickness: number,
+  allRooms: JsonRoom[] = [],
 ): WallGeometry {
-  const centerX = room.x + room.width / 2;
-  const centerZ = room.z + room.height / 2;
+  const halfT = wallThickness / 2;
 
   let width = 0,
     depth = 0,
@@ -75,31 +93,32 @@ export function calculateWallGeometry(
 
   switch (wall.direction) {
     case 'top':
-      width = room.width + wallThickness;
+    case 'bottom': {
+      // Extend left (start) and right (end) ends only where there is no
+      // perpendicular neighbour to fill the corner cell.
+      const extStart = !hasNeighborAtCorner(room, wall, 'start', allRooms) ? halfT : 0;
+      const extEnd = !hasNeighborAtCorner(room, wall, 'end', allRooms) ? halfT : 0;
+      width = room.width + extStart + extEnd;
       depth = wallThickness;
-      posX = centerX;
-      posZ = room.z;
+      // Centre shifts when the extensions are asymmetric.
+      posX = room.x - extStart + width / 2;
+      posZ = wall.direction === 'top' ? room.z : room.z + room.height;
       break;
-    case 'bottom':
-      width = room.width + wallThickness;
-      depth = wallThickness;
-      posX = centerX;
-      posZ = room.z + room.height;
-      break;
+    }
     case 'left':
+    case 'right': {
+      // Segment positions are adjusted by adjustSegmentsForCorners to embed the
+      // vertical wall's end faces (halfT - CUTTER_INFLATE) into the horizontal
+      // walls.  The depth here represents the full span used for door/window
+      // hole brushes (createExplicitHole / createConnectionHole); the actual
+      // rendered segment length comes from endPos - startPos after adjustment.
       width = wallThickness;
-      depth = room.height + wallThickness;
-      posX = room.x;
-      posZ = centerZ;
+      depth = room.height;
+      posX = wall.direction === 'left' ? room.x : room.x + room.width;
+      posZ = room.z + room.height / 2;
       isVertical = true;
       break;
-    case 'right':
-      width = wallThickness;
-      depth = room.height + wallThickness;
-      posX = room.x + room.width;
-      posZ = centerZ;
-      isVertical = true;
-      break;
+    }
   }
 
   return { width, depth, posX, posZ, isVertical };
@@ -249,12 +268,22 @@ export class WallBuilder {
       return;
     }
 
+    // Adjust segment extents so corner cells are owned by exactly one wall with
+    // no overlapping volume (eliminating Z-fighting at every room corner).
+    const adjustedSegments = this.adjustSegmentsForCorners(
+      ownership.segments,
+      wall,
+      room,
+      wallThickness,
+      allRooms,
+    );
+
     if (this.evaluator && isCsgAvailable()) {
       // CSG path: generate wall with proper cutouts
       this.generateWallWithCSG(
         wall,
         room,
-        ownership.segments,
+        adjustedSegments,
         allRooms,
         connections,
         materials,
@@ -270,7 +299,7 @@ export class WallBuilder {
       this.generateSimpleWall(
         wall,
         room,
-        ownership.segments,
+        adjustedSegments,
         allRooms,
         connections,
         materials,
@@ -303,7 +332,7 @@ export class WallBuilder {
   ): void {
     const { Brush, SUBTRACTION } = getCSG();
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
-    const baseGeometry = this.getWallGeometry(wall, room, wallThickness);
+    const baseGeometry = this.getWallGeometry(wall, room, wallThickness, allRooms);
 
     // Collect all holes
     const holes: CSGBrush[] = [];
@@ -373,18 +402,25 @@ export class WallBuilder {
       }
     }
 
-    // Generate each segment with CSG
+    // Generate each segment with CSG.
+    // Walls are embedded SLAB_EMBED into the floor slab so the wall's bottom
+    // face is hidden inside the slab rather than sitting on its top surface.
+    // This eliminates the coplanar floor↔wall seam that causes Z-fighting.
+    const slabEmbed = DIMENSIONS.WALL.SLAB_EMBED;
+    const totalHeight = wallHeight + slabEmbed;
+    const centerY = elevation + wallHeight / 2 - slabEmbed / 2;
+
     for (const segment of segments) {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue;
 
-      // Calculate segment geometry
+      // Calculate segment geometry using the taller (embedded) height
       const segmentGeom = this.getSegmentGeometry(
         segment,
         wall,
         room,
         wallThickness,
-        wallHeight,
+        totalHeight,
         isVertical,
       );
       const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
@@ -397,9 +433,10 @@ export class WallBuilder {
         this.theme,
       );
 
-      // Create brush
+      // Create brush — centre shifted down by slabEmbed/2 so the top stays at
+      // elevation + wallHeight while the bottom sinks into the slab.
       const segmentBrush = new Brush(segmentGeom, segmentMaterials);
-      segmentBrush.position.set(segmentPos.x, elevation + wallHeight / 2, segmentPos.z);
+      segmentBrush.position.set(segmentPos.x, centerY, segmentPos.z);
       segmentBrush.updateMatrixWorld();
 
       // Filter holes for this segment
@@ -431,7 +468,7 @@ export class WallBuilder {
     connectionsGroup?: THREE.Group,
   ): void {
     const isVertical = wall.direction === 'left' || wall.direction === 'right';
-    const baseGeometry = this.getWallGeometry(wall, room, wallThickness);
+    const baseGeometry = this.getWallGeometry(wall, room, wallThickness, allRooms);
 
     // Destination for door/window meshes — separate group when provided.
     const connDest = connectionsGroup ?? group;
@@ -469,7 +506,14 @@ export class WallBuilder {
       }
     }
 
-    // Generate simple box walls for each segment
+    // Generate simple box walls for each segment.
+    // Same slab-embed logic as the CSG path: wall is made taller by SLAB_EMBED
+    // and shifted downward so its visible top stays at elevation + wallHeight
+    // while its bottom sinks into the floor slab, eliminating the coplanar seam.
+    const slabEmbed = DIMENSIONS.WALL.SLAB_EMBED;
+    const totalHeight = wallHeight + slabEmbed;
+    const centerY = elevation + wallHeight / 2 - slabEmbed / 2;
+
     for (const segment of segments) {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue;
@@ -479,14 +523,18 @@ export class WallBuilder {
         wall,
         room,
         wallThickness,
-        wallHeight,
+        totalHeight,
         isVertical,
       );
       const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
 
-      const segmentMaterial = MaterialFactory.createWallMaterial(segment.ownerStyle, this.theme);
+      const segmentMaterial = MaterialFactory.createWallMaterial(
+        segment.ownerStyle,
+        this.theme,
+        wall.direction,
+      );
       const wallMesh = new THREE.Mesh(segmentGeom, segmentMaterial);
-      wallMesh.position.set(segmentPos.x, elevation + wallHeight / 2, segmentPos.z);
+      wallMesh.position.set(segmentPos.x, centerY, segmentPos.z);
       wallMesh.castShadow = true;
       wallMesh.receiveShadow = true;
       group.add(wallMesh);
@@ -531,8 +579,13 @@ export class WallBuilder {
   /**
    * Calculate wall dimensions and position (delegates to exported function)
    */
-  private getWallGeometry(wall: JsonWall, room: JsonRoom, wallThickness: number): WallGeometry {
-    return calculateWallGeometry(wall, room, wallThickness);
+  private getWallGeometry(
+    wall: JsonWall,
+    room: JsonRoom,
+    wallThickness: number,
+    allRooms: JsonRoom[] = [],
+  ): WallGeometry {
+    return calculateWallGeometry(wall, room, wallThickness, allRooms);
   }
 
   /**
@@ -752,6 +805,73 @@ export class WallBuilder {
       const holePos = isVertical ? hole.position.z : hole.position.x;
       return holePos >= segmentWorldStart - 0.5 && holePos <= segmentWorldEnd + 0.5;
     });
+  }
+
+  /**
+   * Adjust segment start/end positions to account for corner geometry.
+   *
+   * This is the heart of the Z-fighting corner fix.
+   *
+   * Horizontal walls (top/bottom)
+   * ─────────────────────────────
+   * Each exterior end is extended outward by halfT so the horizontal wall
+   * fills the corner cell.  An interior end (adjacent room present) is NOT
+   * extended — the corner cell will be empty, which is correct because the
+   * adjacent room's horizontal wall will fill it from the other side.
+   *
+   * Vertical walls (left/right)
+   * ───────────────────────────
+   * Vertical walls always butt against the horizontal walls.  Both ends are
+   * always shrunk inward by halfT regardless of adjacency, because every
+   * corner cell is owned by a horizontal wall (either this room's or the
+   * adjacent room's).
+   */
+  private adjustSegmentsForCorners(
+    segments: WallSegment[],
+    wall: JsonWall,
+    room: JsonRoom,
+    wallThickness: number,
+    allRooms: JsonRoom[],
+  ): WallSegment[] {
+    if (segments.length === 0) return segments;
+
+    const halfT = wallThickness / 2;
+    const isHorizontal = wall.direction === 'top' || wall.direction === 'bottom';
+    const adjusted = segments.map((s) => ({ ...s }));
+
+    if (isHorizontal) {
+      // Expand exterior ends; leave interior ends (adjacent room) unchanged.
+      const extStart = !hasNeighborAtCorner(room, wall, 'start', allRooms) ? halfT : 0;
+      const extEnd = !hasNeighborAtCorner(room, wall, 'end', allRooms) ? halfT : 0;
+
+      if (extStart > 0) {
+        adjusted[0] = { ...adjusted[0], startPos: adjusted[0].startPos - extStart };
+      }
+      if (extEnd > 0) {
+        const last = adjusted.length - 1;
+        adjusted[last] = { ...adjusted[last], endPos: adjusted[last].endPos + extEnd };
+      }
+    } else {
+      // Vertical walls embed their ends (halfT - WALL_CORNER_EMBED) into the
+      // horizontal walls.  The end face sits 0.1 mm inside the horizontal wall
+      // body: completely hidden, no coplanar surface, no visible bump.
+      // polygonOffset on horizontal-wall materials provides the final depth-buffer
+      // tie-break so any residual coplanar strip is invisible.
+      const embed = DIMENSIONS.GEOMETRY.WALL_CORNER_EMBED;
+      const shrink = halfT - embed; // < halfT so end is inside H-wall, not flush
+      adjusted[0] = { ...adjusted[0], startPos: adjusted[0].startPos + shrink };
+      const last = adjusted.length - 1;
+      adjusted[last] = { ...adjusted[last], endPos: adjusted[last].endPos - shrink };
+
+      // Guard: don't produce negative-length segments for tiny rooms.
+      for (let i = 0; i < adjusted.length; i++) {
+        if (adjusted[i].endPos < adjusted[i].startPos) {
+          adjusted[i] = { ...adjusted[i], endPos: adjusted[i].startPos };
+        }
+      }
+    }
+
+    return adjusted;
   }
 
   /**

@@ -90,9 +90,16 @@ export function resolveUnit(explicitUnit?: string, configDefault?: string): Leng
 }
 
 export const DIMENSIONS = {
+  GEOMETRY: {
+    EPSILON: 1e-4,
+    CUTTER_INFLATE: 0.001,
+    /** Vertical walls embed this far inside horizontal walls so their end faces are never coplanar */
+    WALL_CORNER_EMBED: 0.0001,
+  },
   WALL: {
     THICKNESS: 0.15,
     HEIGHT: 3.35, // 11 feet (scale: 1 unit ≈ 3.3 feet)
+    SLAB_EMBED: 0.05,
   },
   FLOOR: {
     THICKNESS: 0.2,

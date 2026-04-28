@@ -306,6 +306,102 @@ export function computeWallSegments(
 }
 
 /**
+ * Determine whether a wall's corner has a perpendicular neighbour room whose
+ * wall will fill that corner.
+ *
+ * This is used by `calculateWallGeometry` so that horizontal (top/bottom) walls
+ * only extend past the room edge at a corner when there is no perpendicular
+ * (left/right) room wall that already covers that corner space.  Without this
+ * check, every corner gets double-covered by two walls, producing a
+ * `wallThickness × wallHeight × wallThickness` overlap cube that causes Z-fighting.
+ *
+ * Terminology
+ * -----------
+ * - A "start" corner for a top/bottom wall is the wall's left (min-X) end.
+ * - An "end" corner is the wall's right (max-X) end.
+ * - A "start" corner for a left/right wall is the wall's top (min-Z) end.
+ * - An "end" corner is the wall's bottom (max-Z) end.
+ *
+ * A neighbour "fills the corner" when:
+ *   1. It is adjacent along the perpendicular axis at that end.
+ *   2. Its room body (not just its wall position) overlaps the corner cell.
+ *
+ * @param room         The room that owns the wall being evaluated.
+ * @param wall         The wall direction being evaluated.
+ * @param end          Which end of the wall to check ('start' | 'end').
+ * @param allRooms     All rooms on the same floor.
+ * @param tolerance    Floating-point tolerance for boundary comparisons.
+ * @returns `true` if a perpendicular neighbour will fill the corner cell.
+ */
+export function hasNeighborAtCorner(
+  room: JsonRoom,
+  wall: JsonWall,
+  end: 'start' | 'end',
+  allRooms: JsonRoom[],
+  tolerance: number = 0.1,
+): boolean {
+  const dir = wall.direction;
+  const isHorizontal = dir === 'top' || dir === 'bottom';
+
+  for (const candidate of allRooms) {
+    if (candidate.name === room.name) continue;
+
+    if (isHorizontal) {
+      // For a top/bottom wall we check the perpendicular (left / right) direction.
+      // 'start' = the left (−X) end of the wall → need a neighbour on the left.
+      // 'end'   = the right (+X) end              → need a neighbour on the right.
+      const cornerX = end === 'start' ? room.x : room.x + room.width;
+
+      if (end === 'start') {
+        // We need a room whose right edge meets our left edge
+        if (Math.abs(candidate.x + candidate.width - cornerX) > tolerance) continue;
+      } else {
+        // We need a room whose left edge meets our right edge
+        if (Math.abs(candidate.x - cornerX) > tolerance) continue;
+      }
+
+      // The candidate must have a Z body that overlaps with the current room's
+      // Z body — not merely touch the corner boundary.  A diagonal neighbour
+      // that only shares the exact corner point (e.g. room above-left) would
+      // pass an "isPoint-inside-range" test but does NOT fill the corner cell.
+      const candidateZEnd = candidate.z + candidate.height;
+      const candidateZStart = candidate.z;
+
+      if (
+        candidateZEnd > room.z + tolerance &&
+        candidateZStart < room.z + room.height - tolerance
+      ) {
+        return true;
+      }
+    } else {
+      // For a left/right wall we check the perpendicular (top / bottom) direction.
+      // 'start' = the top (−Z) end of the wall → need a neighbour above.
+      // 'end'   = the bottom (+Z) end           → need a neighbour below.
+      const cornerZ = end === 'start' ? room.z : room.z + room.height;
+
+      if (end === 'start') {
+        // We need a room whose bottom edge meets our top edge
+        if (Math.abs(candidate.z + candidate.height - cornerZ) > tolerance) continue;
+      } else {
+        // We need a room whose top edge meets our bottom edge
+        if (Math.abs(candidate.z - cornerZ) > tolerance) continue;
+      }
+
+      // Same body-overlap check along X: the candidate must overlap the current
+      // room's X body, not merely touch the corner boundary.
+      const candidateXEnd = candidate.x + candidate.width;
+      const candidateXStart = candidate.x;
+
+      if (candidateXEnd > room.x + tolerance && candidateXStart < room.x + room.width - tolerance) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * Full wall ownership analysis - determines if wall should be rendered
  * and computes segments with materials
  */

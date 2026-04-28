@@ -209,6 +209,20 @@ floorplan
   }
 
   # ============================================================
+  # ROOF SLAB — caps stair and lift shafts from SecondFloor.
+  # A single room covering the full 30 x 50 plot ensures the
+  # MainStair and MainLift bounding boxes have a slab to punch
+  # through in the 3D viewer (prevents "stair ends in mid-air").
+  # Solid perimeter walls render as a parapet.
+  # No circulation elements on the roof; no `vertical` link needed.
+  # ============================================================
+  floor Roof {
+    room RoofSlab at (0, 0) size (30 x 50) height 3ft
+         walls [top: solid, right: solid, bottom: solid, left: solid]
+         label "Roof" style Outdoor
+  }
+
+  # ============================================================
   # CONNECTIONS — distinct percentages per shared wall
   # ============================================================
 
