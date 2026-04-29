@@ -200,7 +200,7 @@ export abstract class BaseViewer implements SceneContext {
     const fov = 75;
     const aspect =
       container.clientWidth / container.clientHeight || window.innerWidth / window.innerHeight;
-    this._perspectiveCamera = new THREE.PerspectiveCamera(fov, aspect, 0.1, 1000);
+    this._perspectiveCamera = new THREE.PerspectiveCamera(fov, aspect, 0.5, 500);
     this._perspectiveCamera.position.set(20, 20, 20);
 
     // Init orthographic camera
@@ -210,13 +210,17 @@ export abstract class BaseViewer implements SceneContext {
       (frustumSize * aspect) / 2,
       frustumSize / 2,
       frustumSize / -2,
-      0.1,
-      1000,
+      0.5,
+      500,
     );
     this._orthographicCamera.position.set(20, 20, 20);
 
     // Init WebGL renderer
-    this._renderer = new THREE.WebGLRenderer({ antialias: true });
+    // logarithmicDepthBuffer gives more uniform depth precision across the near→far
+    // range, which is the safety net that keeps any residual coplanar surfaces from
+    // shimmering.  The slight fragment-shader cost is acceptable for interactive
+    // architectural rendering at these poly counts.
+    this._renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true });
     this._renderer.setSize(
       container.clientWidth || window.innerWidth,
       container.clientHeight || window.innerHeight,
@@ -277,6 +281,7 @@ export abstract class BaseViewer implements SceneContext {
     this.directionalLight.shadow.camera.right = 50;
     this.directionalLight.shadow.camera.top = 50;
     this.directionalLight.shadow.camera.bottom = -50;
+    this.directionalLight.shadow.bias = -0.001;
     this._scene.add(this.directionalLight);
 
     // Init stair generator

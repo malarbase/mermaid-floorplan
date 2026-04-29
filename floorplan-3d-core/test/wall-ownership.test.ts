@@ -7,6 +7,7 @@ import {
   checkAdjacency,
   computeWallSegments,
   findAdjacentRooms,
+  hasNeighborAtCorner,
   shouldRenderWall,
 } from '../src/wall-ownership.js';
 
@@ -558,6 +559,110 @@ describe('Wall Ownership', () => {
       expect(result.segments[1].startPos).toBe(10);
       expect(result.segments[1].endPos).toBe(20);
       expect(result.segments[1].adjacentStyle?.wall_color).toBe('#0000ff');
+    });
+  });
+});
+
+// ─── hasNeighborAtCorner ──────────────────────────────────────────────────────
+
+describe('hasNeighborAtCorner', () => {
+  const topWall: JsonWall = { direction: 'top', type: 'solid' };
+  const bottomWall: JsonWall = { direction: 'bottom', type: 'solid' };
+  const leftWall: JsonWall = { direction: 'left', type: 'solid' };
+  const rightWall: JsonWall = { direction: 'right', type: 'solid' };
+
+  // Single isolated room — no neighbours anywhere.
+  const isolatedRoom = createRoom('R', 0, 0, 10, 8);
+
+  describe('single isolated room', () => {
+    test('top wall start (left corner) — no neighbour → false', () => {
+      expect(hasNeighborAtCorner(isolatedRoom, topWall, 'start', [isolatedRoom])).toBe(false);
+    });
+    test('top wall end (right corner) — no neighbour → false', () => {
+      expect(hasNeighborAtCorner(isolatedRoom, topWall, 'end', [isolatedRoom])).toBe(false);
+    });
+    test('bottom wall start — no neighbour → false', () => {
+      expect(hasNeighborAtCorner(isolatedRoom, bottomWall, 'start', [isolatedRoom])).toBe(false);
+    });
+    test('left wall start — no neighbour → false', () => {
+      expect(hasNeighborAtCorner(isolatedRoom, leftWall, 'start', [isolatedRoom])).toBe(false);
+    });
+    test('right wall end — no neighbour → false', () => {
+      expect(hasNeighborAtCorner(isolatedRoom, rightWall, 'end', [isolatedRoom])).toBe(false);
+    });
+  });
+
+  describe('two rooms side-by-side (A left, B right)', () => {
+    // A: x=0-10, z=0-8   B: x=10-20, z=0-8
+    const roomA = createRoom('A', 0, 0, 10, 8);
+    const roomB = createRoom('B', 10, 0, 10, 8);
+    const allRooms = [roomA, roomB];
+
+    test('A top-wall start (left) — no left neighbour → false', () => {
+      expect(hasNeighborAtCorner(roomA, topWall, 'start', allRooms)).toBe(false);
+    });
+    test('A top-wall end (right) — B is at x=10 → true', () => {
+      expect(hasNeighborAtCorner(roomA, topWall, 'end', allRooms)).toBe(true);
+    });
+    test('B top-wall start (left) — A is at x=10 → true', () => {
+      expect(hasNeighborAtCorner(roomB, topWall, 'start', allRooms)).toBe(true);
+    });
+    test('B top-wall end (right) — no right neighbour → false', () => {
+      expect(hasNeighborAtCorner(roomB, topWall, 'end', allRooms)).toBe(false);
+    });
+  });
+
+  describe('2×2 grid', () => {
+    // TL TR
+    // BL BR
+    const TL = createRoom('TL', 0, 0, 5, 5);
+    const TR = createRoom('TR', 5, 0, 5, 5);
+    const BL = createRoom('BL', 0, 5, 5, 5);
+    const BR = createRoom('BR', 5, 5, 5, 5);
+    const allRooms = [TL, TR, BL, BR];
+
+    test('TL top-wall start (left exterior) → false', () => {
+      expect(hasNeighborAtCorner(TL, topWall, 'start', allRooms)).toBe(false);
+    });
+    test('TL top-wall end (right, TR present) → true', () => {
+      expect(hasNeighborAtCorner(TL, topWall, 'end', allRooms)).toBe(true);
+    });
+    test('TR top-wall end (right exterior) → false', () => {
+      expect(hasNeighborAtCorner(TR, topWall, 'end', allRooms)).toBe(false);
+    });
+    test('BL bottom-wall start (left exterior) → false', () => {
+      expect(hasNeighborAtCorner(BL, bottomWall, 'start', allRooms)).toBe(false);
+    });
+    test('BL bottom-wall end (right, BR present) → true', () => {
+      expect(hasNeighborAtCorner(BL, bottomWall, 'end', allRooms)).toBe(true);
+    });
+  });
+
+  describe('L-shape (3 rooms)', () => {
+    // A | B
+    //   | C  (C is below B only)
+    const A = createRoom('A', 0, 0, 5, 5);
+    const B = createRoom('B', 5, 0, 5, 5);
+    const C = createRoom('C', 5, 5, 5, 5);
+    const allRooms = [A, B, C];
+
+    test('A top-wall start (exterior) → false', () => {
+      expect(hasNeighborAtCorner(A, topWall, 'start', allRooms)).toBe(false);
+    });
+    test('A top-wall end (B is adjacent on the right) → true', () => {
+      expect(hasNeighborAtCorner(A, topWall, 'end', allRooms)).toBe(true);
+    });
+    test('B right-wall start (top, B top-wall exists) → not applicable for left/right walls', () => {
+      // For left/right walls, hasNeighborAtCorner checks perpendicular adjacency.
+      // B right wall's start (top end, z=0 corner): need a room above B at z=0.
+      // No room above B → false.
+      expect(hasNeighborAtCorner(B, rightWall, 'start', allRooms)).toBe(false);
+    });
+    test('B right-wall end (bottom end, z=5 corner): C is adjacent below → true', () => {
+      expect(hasNeighborAtCorner(B, rightWall, 'end', allRooms)).toBe(true);
+    });
+    test('C top-wall start (left corner, no room to the left at z=5) → false', () => {
+      expect(hasNeighborAtCorner(C, topWall, 'start', allRooms)).toBe(false);
     });
   });
 });

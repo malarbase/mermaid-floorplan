@@ -100,18 +100,13 @@ function generateRoomFloorSlabWithCSG(
 
   let resultBrush = brush;
 
-  // Cut holes
+  // Cut holes using inflated cutter footprint to avoid Z-fighting at the edge
   for (const p of penetrations) {
-    // Create a cutter brush
-    const w = p.max.x - p.min.x;
-    const d = p.max.z - p.min.z;
-    const h = thickness * 4; // Make it significantly thicker
+    const { w, d, cx, cz } = computeCutterBox(p);
+    const h = thickness * 4; // Tall enough to fully penetrate the slab
 
     const cutterGeom = new THREE.BoxGeometry(w, h, d);
     const cutter = new Brush(cutterGeom);
-
-    const cx = p.min.x + w / 2;
-    const cz = p.min.z + d / 2;
     const cy = brush.position.y; // Center vertically on the slab
 
     cutter.position.set(cx, cy, cz);
@@ -158,6 +153,33 @@ export function generateRoomFloorSlab(
   mesh.receiveShadow = true;
 
   return mesh;
+}
+
+/**
+ * Compute the inflated cutter dimensions for a stair/lift penetration.
+ *
+ * Exported so the inflation logic can be unit-tested independently of CSG.
+ * The cutter is inflated by CUTTER_INFLATE on every XZ side so the slab's
+ * cut edge sits just inside the stair footprint — eliminating the coplanar
+ * face that would otherwise cause Z-fighting.
+ *
+ * @returns `{ w, d, cx, cz }` — width, depth, and centre of the cutter
+ */
+export function computeCutterBox(penetration: THREE.Box3): {
+  w: number;
+  d: number;
+  cx: number;
+  cz: number;
+} {
+  const inflate = DIMENSIONS.GEOMETRY.CUTTER_INFLATE;
+  const rawW = penetration.max.x - penetration.min.x;
+  const rawD = penetration.max.z - penetration.min.z;
+  return {
+    w: rawW + 2 * inflate,
+    d: rawD + 2 * inflate,
+    cx: penetration.min.x + rawW / 2,
+    cz: penetration.min.z + rawD / 2,
+  };
 }
 
 /**

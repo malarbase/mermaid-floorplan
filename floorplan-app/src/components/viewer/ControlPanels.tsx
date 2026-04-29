@@ -236,6 +236,10 @@ export default function ControlPanels(props: ControlPanelsProps) {
     controlPanel.appendChild(overlaySection);
 
     const annotationControls = createAnnotationControlsUI({
+      onShowRoomNameChange: (show) => {
+        viewer.annotationManager.state.showRoomName = show;
+        viewer.annotationManager.updateAll();
+      },
       onShowAreaChange: (show) => {
         viewer.annotationManager.state.showArea = show;
         viewer.annotationManager.updateAll();

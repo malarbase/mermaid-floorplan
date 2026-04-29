@@ -572,6 +572,10 @@ viewer.on('themeChange', () => renderOverlay2D());
 
 // Add annotation controls
 const annotationControls = createAnnotationControlsUI({
+  onShowRoomNameChange: (show) => {
+    viewer.annotationManager.state.showRoomName = show;
+    viewer.annotationManager.updateAll();
+  },
   onShowAreaChange: (show) => {
     viewer.annotationManager.state.showArea = show;
     viewer.annotationManager.updateAll();

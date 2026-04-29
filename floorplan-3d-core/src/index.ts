@@ -68,6 +68,7 @@ export {
 } from './csg-utils.js';
 export type { FloorSlabOptions } from './floor-geometry.js';
 export {
+  computeCutterBox,
   computeFloorBounds,
   generateFloorSlabs,
   generateRoomFloorSlab,
@@ -159,5 +160,6 @@ export {
   checkAdjacency,
   computeWallSegments,
   findAdjacentRooms,
+  hasNeighborAtCorner,
   shouldRenderWall,
 } from './wall-ownership.js';

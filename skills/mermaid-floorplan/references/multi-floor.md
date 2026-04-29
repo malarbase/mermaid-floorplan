@@ -247,9 +247,9 @@ floor Penthouse height 12ft {
 }
 
 floor Roof {
-  room GrandFoyer at (0, 0) size (36 x 25)
-       walls [top: open, right: open, bottom: open, left: open]
-       label "Grand Foyer Roof"
+  room RoofSlab at (0, 0) size (36 x 25) height 3ft
+       walls [top: solid, right: solid, bottom: solid, left: solid]
+       label "Roof" style Outdoor
 }
 ```
 
@@ -260,17 +260,17 @@ Rules for the `floor Roof` block:
   top-floor stair and lift bounding box. The simplest robust choice is
   to match the floor below's perimeter; otherwise expand the room until
   every penetration sits inside it.
-- **Open the perimeter walls** (`walls [top: open, right: open,
-  bottom: open, left: open]`) for an unenclosed roof deck — this
-  prevents the renderer from drawing parapet walls. Use `solid` instead
-  if the brief explicitly calls for a parapet or a fully enclosed top
-  story, but **don't** use `solid` purely to "cap off" a deck — the
-  walls render full-floor-height and look like an extra floor.
-- **No `height` is required.** The default applies; the slab thickness
-  comes from `config.floor_thickness`.
-- **No circulation on the Roof.** A roof deck terminates the
-  `vertical` chain; you don't add a stair on the Roof itself unless
-  the brief calls for a roof-deck-to-attic stair.
+- **Use `solid` walls with `height 3ft` for a parapet.** Solid walls
+  render as parapet walls. You **must** set an explicit `height` (3–4 ft
+  is typical) — without it the room inherits the full floor height and
+  the parapet renders as a full-story wall. Use `height 3ft` for a
+  standard parapet or `height 4ft` for a taller one.
+- **Use `open` walls only for a completely unenclosed deck** where no
+  visual cap is desired (rare; most rooftops benefit from at least a
+  code-minimum parapet).
+- **No circulation on the Roof.** A roof slab terminates the `vertical`
+  chain; don't add a stair on the Roof itself unless the brief calls for
+  a roof-deck-to-attic stair.
 - **No `vertical` link to the Roof is needed.** `vertical` only chains
   stair/lift elements, and the Roof has none.
 

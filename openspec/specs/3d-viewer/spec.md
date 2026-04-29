@@ -16,28 +16,45 @@ The system SHALL provide a web-based interface to visualize the floorplan in 3D,
 _(Added "doors, and windows" to reflect expanded rendering capabilities)_
 
 ### Requirement: Wall Rendering
-The viewer SHALL render walls with appropriate dimensions based on the floorplan data, using wall ownership rules to prevent overlapping geometry.
 
-#### Scenario: Wall Height
-- **WHEN** the floorplan is rendered
-- **THEN** walls appear with a standard vertical height (e.g., 2.5 meters/units).
+The 3D viewer SHALL render walls using an asymmetric vertical span that eliminates depth-precision artifacts at both the floor–wall boundary and the wall–ceiling boundary.
+
+#### Scenario: Wall extends into floor slab to eliminate floor z-fighting
+- **GIVEN** a wall sits at floor elevation
+- **WHEN** the wall mesh is positioned
+- **THEN** the wall bottom SHALL be at `elevation − EMBED` (embedded into the slab below)
+- **AND** the floor↔wall coplanar face SHALL be buried inside the slab volume (never visible)
+
+#### Scenario: Wall clears ceiling slab to eliminate orbit shimmer
+- **GIVEN** a wall approaches the ceiling slab above it
+- **WHEN** the wall mesh is positioned
+- **THEN** the wall top SHALL be at `elevation + wallHeight − CEILING_GAP`
+- **AND** the wall and the ceiling slab SHALL NOT overlap volumetrically
+- **AND** no shimmer SHALL appear when the camera orbits past the slab edge at any angle
+
+#### Scenario: Wall height reflects asymmetric span
+- **GIVEN** the standard wall height and asymmetric embedding constants
+- **WHEN** wall segment geometry is created
+- **THEN** the total mesh height SHALL equal `wallHeight + EMBED − CEILING_GAP`
+- **AND** the center Y SHALL be `elevation + wallHeight/2 − EMBED/2 − CEILING_GAP/2`
 
 #### Scenario: Clean Intersections
-- **WHEN** two walls meet at a corner
-- **THEN** they SHALL appear as a single continuous mesh without visible overlapping faces (z-fighting).
+- **GIVEN** walls meet at a corner
+- **WHEN** the scene is rendered
+- **THEN** no coplanar surfaces SHALL exist between wall meshes at room corners
+- **AND** horizontal walls SHALL only extend past room edges when no perpendicular neighbour fills the corner
 
-#### Scenario: Shared Wall Ownership
-- **GIVEN** two adjacent rooms "A" at position (0, 0) and "B" at position (10, 0) sharing a vertical wall
-- **WHEN** the floorplan is rendered
-- **THEN** only one room SHALL render the shared wall
-- **AND** the room with the lower X position (Room A) SHALL be the wall owner
-- **AND** Room B SHALL skip rendering its left wall at that position
+#### Scenario: Logarithmic depth buffer active
+- **GIVEN** the WebGLRenderer is initialised
+- **WHEN** the viewer renders any frame
+- **THEN** `logarithmicDepthBuffer` SHALL be enabled
+- **AND** camera near plane SHALL be 0.5 and far plane SHALL be 500
 
-#### Scenario: Shared Wall Ownership for Horizontal Walls
-- **GIVEN** two adjacent rooms "A" at position (0, 0) and "B" at position (0, 10) sharing a horizontal wall
-- **WHEN** the floorplan is rendered
-- **THEN** the room with the lower Z position (Room A) SHALL be the wall owner
-- **AND** Room A renders its bottom wall; Room B skips its top wall
+#### Scenario: Floor penetration cutters are over-sized
+- **GIVEN** stairs or lifts penetrate a floor slab via CSG subtraction
+- **WHEN** the cutter box is computed
+- **THEN** the cutter SHALL be inflated by `CUTTER_INFLATE` on all horizontal axes
+- **AND** no coplanar strips SHALL remain at the edge of the penetration hole
 
 ### Requirement: Multi-Floor Inspection
 The viewer SHALL provide tools to inspect individual floors in a multi-story building.
@@ -1407,4 +1424,42 @@ The scene builder SHALL stamp `userData.layer` on every emitted group so the
 - **WHEN** the scene is built with walls enabled
 - **THEN** a `walls_<floorId>` group (`userData.layer === 'wall'`) contains only wall-segment meshes
 - **AND** a sibling `connections_<floorId>` group (`userData.layer === 'connection'`) contains door and window meshes
+
+### Requirement: Room Name Annotations
+
+The 3D viewer SHALL display room name labels as CSS2D overlays positioned above each room, with a user-controlled toggle in the Annotations panel.
+
+#### Scenario: Room name label shown by default
+- **GIVEN** a floorplan is loaded with named rooms
+- **WHEN** the viewer initialises
+- **THEN** each room SHALL have a CSS2D label showing its name (or DSL `label` override if present)
+- **AND** the label SHALL be visible without any user interaction
+
+#### Scenario: Room name label uses DSL label override
+- **GIVEN** a room defines a `label "custom name"` clause
+- **WHEN** the viewer renders room name annotations
+- **THEN** the CSS2D label SHALL show the custom label text, not the room's identifier
+
+#### Scenario: Room name label positioned above area label
+- **GIVEN** both room name and area labels are visible
+- **WHEN** the scene is rendered
+- **THEN** the room name label SHALL be positioned at Y = `elevation + 0.7`
+- **AND** the area label at Y = `elevation + 0.5` SHALL remain visible without overlap
+
+#### Scenario: Room name toggle hides all labels
+- **GIVEN** the "Show Room Names" checkbox is unchecked
+- **WHEN** annotations are updated
+- **THEN** all room name CSS2D labels SHALL be removed from the scene
+- **AND** no DOM elements for room names SHALL remain
+
+#### Scenario: Room name toggle shows labels
+- **GIVEN** the "Show Room Names" checkbox is checked
+- **WHEN** annotations are updated
+- **THEN** each room SHALL have a CSS2D label re-created and attached to its floor group
+
+#### Scenario: Room name labels cleaned up on annotation clear
+- **GIVEN** annotations are cleared (e.g. on floorplan reload)
+- **WHEN** clearAllAnnotations() is called
+- **THEN** all room name CSS2D label DOM elements SHALL be removed
+- **AND** the internal tracking array SHALL be empty (no memory leak)
 
