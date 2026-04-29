@@ -16,12 +16,14 @@ export interface AnnotationControlsUIOptions {
   initialShowArea?: boolean;
   initialShowDimensions?: boolean;
   initialShowFloorSummary?: boolean;
+  initialShowStairInfo?: boolean;
   initialAreaUnit?: AreaUnit;
   initialLengthUnit?: LengthUnit;
   onShowRoomNameChange?: (show: boolean) => void;
   onShowAreaChange?: (show: boolean) => void;
   onShowDimensionsChange?: (show: boolean) => void;
   onShowFloorSummaryChange?: (show: boolean) => void;
+  onShowStairInfoChange?: (show: boolean) => void;
   onAreaUnitChange?: (unit: AreaUnit) => void;
   onLengthUnitChange?: (unit: LengthUnit) => void;
 }
@@ -32,6 +34,7 @@ export interface AnnotationControlsUI {
   showAreaCheckbox: HTMLInputElement;
   showDimensionsCheckbox: HTMLInputElement;
   showFloorSummaryCheckbox: HTMLInputElement;
+  showStairInfoCheckbox: HTMLInputElement;
   areaUnitSelect: HTMLSelectElement;
   lengthUnitSelect: HTMLSelectElement;
 }
@@ -49,12 +52,14 @@ export function createAnnotationControlsUI(
     initialShowArea = false,
     initialShowDimensions = false,
     initialShowFloorSummary = false,
+    initialShowStairInfo = false,
     initialAreaUnit = 'sqft',
     initialLengthUnit = 'ft',
     onShowRoomNameChange,
     onShowAreaChange,
     onShowDimensionsChange,
     onShowFloorSummaryChange,
+    onShowStairInfoChange,
     onAreaUnitChange,
     onLengthUnitChange,
   } = options;
@@ -151,6 +156,27 @@ export function createAnnotationControlsUI(
   summaryRow.appendChild(summaryLabel);
   content.appendChild(summaryRow);
 
+  // Show stair info checkbox
+  const stairInfoRow = document.createElement('label');
+  stairInfoRow.className = cls.checkbox.wrapper;
+
+  const showStairInfoCheckbox = document.createElement('input');
+  showStairInfoCheckbox.type = 'checkbox';
+  showStairInfoCheckbox.className = cls.checkbox.input;
+  showStairInfoCheckbox.id = 'show-stair-info';
+  showStairInfoCheckbox.checked = initialShowStairInfo;
+  showStairInfoCheckbox.addEventListener('change', () => {
+    onShowStairInfoChange?.(showStairInfoCheckbox.checked);
+  });
+
+  const stairInfoLabel = document.createElement('span');
+  stairInfoLabel.className = cls.checkbox.label;
+  stairInfoLabel.textContent = 'Show Stair Info';
+
+  stairInfoRow.appendChild(showStairInfoCheckbox);
+  stairInfoRow.appendChild(stairInfoLabel);
+  content.appendChild(stairInfoRow);
+
   // Area unit select
   const areaUnitRow = document.createElement('div');
   areaUnitRow.className = `${cls.layout.betweenCenter} mt-2`;
@@ -211,6 +237,7 @@ export function createAnnotationControlsUI(
     showAreaCheckbox,
     showDimensionsCheckbox,
     showFloorSummaryCheckbox,
+    showStairInfoCheckbox,
     areaUnitSelect,
     lengthUnitSelect,
   };

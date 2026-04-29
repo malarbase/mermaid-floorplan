@@ -303,7 +303,15 @@ body.dark-theme {
 }
 
 /* === Annotation Labels (CSS2D) === */
-.room-name-label {
+.room-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  pointer-events: none;
+}
+
+.room-label__name {
   background: rgba(30, 30, 30, 0.72);
   color: #fff;
   padding: 3px 8px;
@@ -314,19 +322,41 @@ body.dark-theme {
   white-space: nowrap;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
   text-transform: capitalize;
-  pointer-events: none;
 }
 
-.area-label {
+.room-label__area {
   background: var(--fp-accent);
   color: var(--fp-text-inverted);
-  padding: 4px 8px;
+  padding: 2px 7px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: 500;
   white-space: nowrap;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   opacity: 0.9;
+}
+
+.stair-info-label {
+  background: rgba(60, 40, 10, 0.78);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: center;
+}
+.stair-info-label__name {
+  font-weight: 700;
+  white-space: nowrap;
+}
+.stair-info-label__detail {
+  font-weight: 400;
+  opacity: 0.85;
+  white-space: nowrap;
 }
 
 .dimension-label {

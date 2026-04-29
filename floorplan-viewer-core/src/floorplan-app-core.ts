@@ -498,6 +498,7 @@ export class FloorplanAppCore extends BaseViewer implements ViewerPublicApi {
     am.state.showFloorSummary = false;
     am.state.showArea = false;
     am.state.showDimensions = false;
+    am.state.showStairInfo = false;
     am.updateFloorSummary();
     am.updateAll();
   }

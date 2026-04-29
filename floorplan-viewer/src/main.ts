@@ -593,6 +593,10 @@ const annotationControls = createAnnotationControlsUI({
     }
     layoutManager.setFloorSummaryVisible(show);
   },
+  onShowStairInfoChange: (show) => {
+    viewer.annotationManager.state.showStairInfo = show;
+    viewer.annotationManager.updateAll();
+  },
   onAreaUnitChange: (unit) => {
     viewer.annotationManager.state.areaUnit = unit;
     viewer.annotationManager.updateAll();
