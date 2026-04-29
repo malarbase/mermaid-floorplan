@@ -337,26 +337,38 @@ body.dark-theme {
 }
 
 .stair-info-label {
-  background: rgba(60, 40, 10, 0.78);
+  background: rgba(60, 40, 10, 0.82);
   color: #fff;
-  padding: 4px 8px;
+  padding: 5px 9px;
   border-radius: 4px;
   font-size: 11px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  line-height: 1.35;
+  min-width: 130px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0;
   text-align: center;
 }
 .stair-info-label__name {
+  font-size: 12px;
   font-weight: 700;
   white-space: nowrap;
+  margin-bottom: 2px;
 }
 .stair-info-label__detail {
+  font-size: 11px;
   font-weight: 400;
-  opacity: 0.85;
+  opacity: 0.95;
   white-space: nowrap;
+}
+.stair-info-label__extras {
+  font-size: 10px;
+  opacity: 0.8;
+  margin-top: 3px;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .dimension-label {

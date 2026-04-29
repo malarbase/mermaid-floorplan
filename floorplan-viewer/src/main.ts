@@ -597,6 +597,10 @@ const annotationControls = createAnnotationControlsUI({
     viewer.annotationManager.state.showStairInfo = show;
     viewer.annotationManager.updateAll();
   },
+  onShowStairDimensionsChange: (show) => {
+    viewer.annotationManager.state.showStairDimensions = show;
+    viewer.annotationManager.updateStairDimensionAnnotations();
+  },
   onAreaUnitChange: (unit) => {
     viewer.annotationManager.state.areaUnit = unit;
     viewer.annotationManager.updateAll();

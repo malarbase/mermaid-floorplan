@@ -17,8 +17,25 @@ export interface AnnotationState {
   showDimensions: boolean;
   showFloorSummary: boolean;
   showStairInfo: boolean;
+  showStairDimensions: boolean;
   areaUnit: AreaUnit;
   lengthUnit: LengthUnit;
+}
+
+interface StairDimensions {
+  stepCount: number;
+  /** Actual riser height = rise / stepCount */
+  riser: number;
+  tread: number;
+  width: number;
+  /** Total horizontal travel along the climb axis (excluding landings) */
+  runLength: number;
+  /** Bounding-box dimension along x-axis (stair.x → stair.x + fpX) */
+  fpX: number;
+  /** Bounding-box dimension along z-axis (stair.z → stair.z + fpZ) */
+  fpZ: number;
+  /** false for spiral/curved/custom/double-L — skip dimension overlay */
+  hasFootprint: boolean;
 }
 
 export interface AnnotationCallbacks {
@@ -33,6 +50,7 @@ export interface AnnotationCallbacks {
 export class AnnotationManager {
   private roomLabels: CSS2DObject[] = [];
   private stairLabels: CSS2DObject[] = [];
+  private stairDimensionLabels: CSS2DObject[] = [];
   private dimensionLabels: CSS2DObject[] = [];
   private floorSummaryPanel: HTMLElement | null = null;
   /** Whether the floor summary panel was dynamically created (vs. pre-existing in HTML) */
@@ -44,6 +62,7 @@ export class AnnotationManager {
     showDimensions: false,
     showFloorSummary: false,
     showStairInfo: false,
+    showStairDimensions: false,
     areaUnit: 'sqft',
     lengthUnit: 'ft',
   };
@@ -80,6 +99,14 @@ export class AnnotationManager {
     showStairInfoToggle?.addEventListener('change', (e) => {
       this.state.showStairInfo = (e.target as HTMLInputElement).checked;
       this.updateStairAnnotations();
+    });
+
+    const showStairDimensionsToggle = document.getElementById(
+      'show-stair-dimensions',
+    ) as HTMLInputElement;
+    showStairDimensionsToggle?.addEventListener('change', (e) => {
+      this.state.showStairDimensions = (e.target as HTMLInputElement).checked;
+      this.updateStairDimensionAnnotations();
     });
 
     // Unit dropdowns
@@ -122,6 +149,7 @@ export class AnnotationManager {
   public updateAll(): void {
     this.updateRoomLabels();
     this.updateStairAnnotations();
+    this.updateStairDimensionAnnotations();
     this.updateDimensionAnnotations();
     this.updateFloorSummary();
   }
@@ -301,7 +329,8 @@ export class AnnotationManager {
 
   /**
    * Compute total step count for a stair from its JSON definition.
-   * Matches the formula used in generateStraightStair.
+   * For custom/segmented stairs sums steps across flight segments.
+   * For all other shapes uses: Math.round(rise / riser).
    */
   private computeStepCount(stair: JsonStair): number {
     if (stair.shape.segments) {
@@ -314,7 +343,112 @@ export class AnnotationManager {
   }
 
   /**
-   * Update stair info annotations — one label per stair showing name, step count, and rise.
+   * Compute geometric dimensions for a stair, accounting for shape type.
+   * fpX/fpZ are the bounding-box extents from (stair.x, stair.z) — the
+   * normalised min-corner used by the renderer.
+   */
+  private getStairDimensions(stair: JsonStair): StairDimensions {
+    const stepCount = this.computeStepCount(stair);
+    const tread = stair.tread ?? 0.28;
+    const width = stair.width ?? 1.0;
+    const riser = stepCount > 0 ? stair.rise / stepCount : (stair.riser ?? 0.18);
+    const shape = stair.shape;
+    const dir = shape.direction ?? 'top';
+
+    const straightFootprint = (runLen: number) => {
+      // top/bottom: stair runs along z, width along x
+      // left/right: stair runs along x, width along z
+      if (dir === 'top' || dir === 'bottom') {
+        return { fpX: width, fpZ: runLen };
+      }
+      return { fpX: runLen, fpZ: width };
+    };
+
+    switch (shape.type) {
+      case 'straight': {
+        const runLength = stepCount * tread;
+        return {
+          stepCount,
+          riser,
+          tread,
+          width,
+          runLength,
+          ...straightFootprint(runLength),
+          hasFootprint: true,
+        };
+      }
+
+      case 'winder': {
+        const winders = shape.winders ?? 0;
+        const straightSteps = stepCount - winders;
+        const runLength = straightSteps * tread;
+        return {
+          stepCount,
+          riser,
+          tread,
+          width,
+          runLength,
+          ...straightFootprint(runLength),
+          hasFootprint: true,
+        };
+      }
+
+      case 'L-shaped': {
+        const runs = shape.runs ?? [Math.ceil(stepCount / 2), Math.floor(stepCount / 2)];
+        const r1 = runs[0] ?? Math.ceil(stepCount / 2);
+        const r2 = runs[1] ?? Math.floor(stepCount / 2);
+        const landing = shape.landing ?? [width, width];
+        const runLength = (r1 + r2) * tread;
+        // First run along entry direction; second run perpendicular after the turn.
+        // Footprint: r1 * tread + landing depth along entry axis;
+        //            r2 * tread + landing width perpendicular.
+        const fpAlong = r1 * tread + landing[1];
+        const fpPerp = r2 * tread + landing[0];
+        const entryDir = shape.entry ?? dir;
+        const { fpX, fpZ } =
+          entryDir === 'top' || entryDir === 'bottom'
+            ? { fpX: fpPerp, fpZ: fpAlong }
+            : { fpX: fpAlong, fpZ: fpPerp };
+        return { stepCount, riser, tread, width, runLength, fpX, fpZ, hasFootprint: true };
+      }
+
+      case 'U-shaped': {
+        const runs = shape.runs ?? [Math.ceil(stepCount / 2), Math.floor(stepCount / 2)];
+        const r1 = runs[0] ?? Math.ceil(stepCount / 2);
+        const r2 = runs[1] ?? Math.floor(stepCount / 2);
+        const landing = shape.landing ?? [width, width];
+        const runLength = (r1 + r2) * tread;
+        // Two parallel runs (same direction) separated by a landing.
+        // Along run direction: max(r1,r2)*tread + landing depth.
+        // Perpendicular: 2*width + landing width.
+        const fpAlong = Math.max(r1, r2) * tread + landing[1];
+        const fpPerp = 2 * width + landing[0];
+        const entryDir = shape.entry ?? dir;
+        const { fpX, fpZ } =
+          entryDir === 'top' || entryDir === 'bottom'
+            ? { fpX: fpPerp, fpZ: fpAlong }
+            : { fpX: fpAlong, fpZ: fpPerp };
+        return { stepCount, riser, tread, width, runLength, fpX, fpZ, hasFootprint: true };
+      }
+
+      default:
+        // spiral, curved, custom, double-L: provide runLength only
+        return {
+          stepCount,
+          riser,
+          tread,
+          width,
+          runLength: stepCount * tread,
+          fpX: width,
+          fpZ: stepCount * tread,
+          hasFootprint: false,
+        };
+    }
+  }
+
+  /**
+   * Update stair info annotations — one label per stair with name, step count,
+   * rise, step geometry, run width, and optional nosing/headroom.
    */
   public updateStairAnnotations(): void {
     const floors = this.callbacks.getFloors();
@@ -330,8 +464,7 @@ export class AnnotationManager {
 
     floorplanData.floors.forEach((floor, floorIndex) => {
       (floor.stairs ?? []).forEach((stair) => {
-        const stepCount = this.computeStepCount(stair);
-        const riseText = this.formatLength(stair.rise);
+        const dims = this.getStairDimensions(stair);
         const displayName = stair.label ?? stair.name;
 
         const labelDiv = document.createElement('div');
@@ -340,23 +473,84 @@ export class AnnotationManager {
         const nameEl = document.createElement('div');
         nameEl.className = 'stair-info-label__name';
         nameEl.textContent = displayName;
+        labelDiv.appendChild(nameEl);
 
         const stepsEl = document.createElement('div');
         stepsEl.className = 'stair-info-label__detail';
-        stepsEl.textContent = `${stepCount} steps`;
-
-        const riseEl = document.createElement('div');
-        riseEl.className = 'stair-info-label__detail';
-        riseEl.textContent = `${riseText} rise`;
-
-        labelDiv.appendChild(nameEl);
+        stepsEl.textContent = `${dims.stepCount} steps · ${this.formatLength(stair.rise)} rise`;
         labelDiv.appendChild(stepsEl);
-        labelDiv.appendChild(riseEl);
+
+        const stepDimEl = document.createElement('div');
+        stepDimEl.className = 'stair-info-label__detail';
+        stepDimEl.textContent = `riser: ${this.formatLength(dims.riser)} · tread: ${this.formatLength(dims.tread)}`;
+        labelDiv.appendChild(stepDimEl);
+
+        const runEl = document.createElement('div');
+        runEl.className = 'stair-info-label__detail';
+        runEl.textContent = `${this.formatLength(dims.width)} wide · ${this.formatLength(dims.runLength)} run`;
+        labelDiv.appendChild(runEl);
+
+        if (stair.nosing != null || stair.headroom != null) {
+          const parts: string[] = [];
+          if (stair.nosing != null) parts.push(`nosing: ${this.formatLength(stair.nosing)}`);
+          if (stair.headroom != null) parts.push(`headroom: ${this.formatLength(stair.headroom)}`);
+          const extrasEl = document.createElement('div');
+          extrasEl.className = 'stair-info-label__detail stair-info-label__extras';
+          extrasEl.textContent = parts.join(' · ');
+          labelDiv.appendChild(extrasEl);
+        }
 
         const label = new CSS2DObject(labelDiv);
         label.position.set(stair.x, 0.9, stair.z);
         floors[floorIndex]?.add(label);
         this.stairLabels.push(label);
+      });
+    });
+  }
+
+  /**
+   * Update stair dimension overlay — w: and d: labels along the footprint axes.
+   * Currently supports straight, winder, L-shaped, and U-shaped stairs.
+   * Spiral/curved/custom stairs are skipped (hasFootprint = false).
+   */
+  public updateStairDimensionAnnotations(): void {
+    const floors = this.callbacks.getFloors();
+    const floorplanData = this.callbacks.getFloorplanData();
+
+    this.stairDimensionLabels.forEach((label) => {
+      label.parent?.remove(label);
+      label.element.remove();
+    });
+    this.stairDimensionLabels = [];
+
+    if (!this.state.showStairDimensions || !floorplanData) return;
+
+    floorplanData.floors.forEach((floor, floorIndex) => {
+      (floor.stairs ?? []).forEach((stair) => {
+        const dims = this.getStairDimensions(stair);
+        if (!dims.hasFootprint) return;
+
+        const y = 0.3;
+        const { x, z } = stair;
+        const { fpX, fpZ } = dims;
+
+        // Width label: along x-axis, placed just north of the stair (-z edge)
+        const wDiv = document.createElement('div');
+        wDiv.className = 'dimension-label width-label';
+        wDiv.textContent = `w: ${this.formatLength(fpX)}`;
+        const wLabel = new CSS2DObject(wDiv);
+        wLabel.position.set(x + fpX / 2, y, z - 0.5);
+        floors[floorIndex]?.add(wLabel);
+        this.stairDimensionLabels.push(wLabel);
+
+        // Depth label: along z-axis, placed just west of the stair (-x edge)
+        const dDiv = document.createElement('div');
+        dDiv.className = 'dimension-label depth-label';
+        dDiv.textContent = `d: ${this.formatLength(fpZ)}`;
+        const dLabel = new CSS2DObject(dDiv);
+        dLabel.position.set(x - 0.5, y, z + fpZ / 2);
+        floors[floorIndex]?.add(dLabel);
+        this.stairDimensionLabels.push(dLabel);
       });
     });
   }
@@ -383,6 +577,12 @@ export class AnnotationManager {
       label.element.remove();
     }
     this.stairLabels = [];
+
+    for (const label of this.stairDimensionLabels) {
+      label.parent?.remove(label);
+      label.element.remove();
+    }
+    this.stairDimensionLabels = [];
 
     for (const label of this.dimensionLabels) {
       label.parent?.remove(label);
