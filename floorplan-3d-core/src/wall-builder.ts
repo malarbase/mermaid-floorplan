@@ -15,6 +15,7 @@
  *   wallBuilder.generateWall(...);
  */
 
+import { calculatePositionWithFallback, type RoomBounds } from 'floorplan-common';
 import * as THREE from 'three';
 import { generateConnection } from './connection-geometry.js';
 import { findMatchingConnections, shouldRenderConnection } from './connection-matcher.js';
@@ -766,17 +767,27 @@ export class WallBuilder {
     const holeY = elevation + doorHeight / 2;
 
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
+    const targetRoom = allRooms.find((r) => r.name === connection.toRoom) ?? null;
     const percentage = connection.position ?? 50;
-    const ratio = percentage / 100;
 
     const sourceIsVertical = connection.fromWall === 'left' || connection.fromWall === 'right';
 
+    const sourceBounds: RoomBounds = {
+      x: sourceRoom.x,
+      y: sourceRoom.z,
+      width: sourceRoom.width,
+      height: sourceRoom.height,
+    };
+    const targetBounds: RoomBounds | null = targetRoom
+      ? { x: targetRoom.x, y: targetRoom.z, width: targetRoom.width, height: targetRoom.height }
+      : null;
+
     let holeX: number, holeZ: number;
     if (sourceIsVertical) {
-      holeZ = sourceRoom.z + sourceRoom.height * ratio;
+      holeZ = calculatePositionWithFallback(sourceBounds, targetBounds, true, percentage);
       holeX = connection.fromWall === 'left' ? sourceRoom.x : sourceRoom.x + sourceRoom.width;
     } else {
-      holeX = sourceRoom.x + sourceRoom.width * ratio;
+      holeX = calculatePositionWithFallback(sourceBounds, targetBounds, false, percentage);
       holeZ = connection.fromWall === 'top' ? sourceRoom.z : sourceRoom.z + sourceRoom.height;
     }
 
