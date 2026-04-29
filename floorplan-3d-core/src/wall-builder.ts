@@ -537,11 +537,7 @@ export class WallBuilder {
       );
       const segmentPos = this.getSegmentPosition(segment, wall, room, wallThickness, isVertical);
 
-      const segmentMaterial = MaterialFactory.createWallMaterial(
-        segment.ownerStyle,
-        this.theme,
-        wall.direction,
-      );
+      const segmentMaterial = MaterialFactory.createWallMaterial(segment.ownerStyle, this.theme);
       const wallMesh = new THREE.Mesh(segmentGeom, segmentMaterial);
       wallMesh.position.set(segmentPos.x, wallCenterY, segmentPos.z);
       wallMesh.castShadow = true;
