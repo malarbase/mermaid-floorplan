@@ -1,1 +1,15 @@
 npx lint-staged
+
+# Type-check only the workspace packages that have staged TypeScript changes.
+# Catches arity / type errors that biome/lint-staged cannot see.
+staged_ts=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(ts|tsx)$' || true)
+if [ -n "$staged_ts" ]; then
+  # Collect unique workspace roots (first path segment) that have a tsconfig.json
+  pkgs=$(echo "$staged_ts" | cut -d/ -f1 | sort -u)
+  for pkg in $pkgs; do
+    if [ -f "$pkg/tsconfig.json" ]; then
+      echo "tsc: type-checking $pkg..."
+      (cd "$pkg" && npx tsc --noEmit) || { echo "Type error in $pkg — commit blocked."; exit 1; }
+    fi
+  done
+fi
