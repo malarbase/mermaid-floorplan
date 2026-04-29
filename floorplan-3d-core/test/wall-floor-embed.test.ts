@@ -1,14 +1,18 @@
 /**
- * Tests for wall slab-embedment.
+ * Tests for wall slab-embedment (asymmetric span).
  *
- * Walls extend EMBED into the floor slab below (bottom face hidden) and EMBED
- * into the floor slab above (top face hidden), eliminating coplanar z-fighting
- * at both the floor–wall seam and the wall–ceiling seam.  Key contracts:
+ *   bottom = elevation − EMBED            (extends DOWN into slab below to bury
+ *                                          the floor↔wall coplanar seam)
+ *   top    = elevation + wallHeight       (sits a CEILING_GAP-sized air gap
+ *            − CEILING_GAP                 BELOW the ceiling slab so the two
+ *                                          solids never overlap volumetrically;
+ *                                          eliminates orbit-time shimmer.)
  *
- *   1. wallBottom < slabTop       — wall's bottom Y is strictly below the slab's
- *                                    top surface (the coplanar face is gone).
- *   2. wallTop > elevation + wallHeight  — wall extends EMBED into the slab above.
- *   3. totalHeight == wallHeight + 2 * EMBED
+ *   1. wallBottom < slabTop                   — floor↔wall coplanar gone.
+ *   2. wallTop == elevation + wallHeight      — wall stays clear of the
+ *                  − CEILING_GAP                 ceiling slab volume.
+ *   3. totalHeight == wallHeight + EMBED      — asymmetric span.
+ *                     − CEILING_GAP
  *   4. Assertions hold for both ground-level and elevated rooms.
  */
 
@@ -20,6 +24,7 @@ import type { JsonExport } from '../src/types.js';
 
 const WALL_HEIGHT = DIMENSIONS.WALL.HEIGHT;
 const EMBED = DIMENSIONS.WALL.EMBED;
+const CEILING_GAP = DIMENSIONS.WALL.CEILING_GAP;
 const EPS = 1e-6;
 
 /**
@@ -129,14 +134,14 @@ describe('wall slab-embedment — floor/wall coplanar face eliminated', () => {
     }
   });
 
-  it('wall top equals elevation + wallHeight + EMBED (extends into ceiling slab)', () => {
+  it('wall top equals elevation + wallHeight − CEILING_GAP (clear of ceiling slab)', () => {
     const elevation = 0;
     const { scene } = buildFloorplanScene(makeFloorplan(elevation));
 
     const wallMeshes = collectWallMeshes(scene);
     expect(wallMeshes.length).toBeGreaterThan(0);
 
-    const expectedTop = elevation + WALL_HEIGHT + EMBED;
+    const expectedTop = elevation + WALL_HEIGHT - CEILING_GAP;
 
     for (const wallMesh of wallMeshes) {
       const { top } = worldYExtent(wallMesh);
@@ -144,7 +149,7 @@ describe('wall slab-embedment — floor/wall coplanar face eliminated', () => {
     }
   });
 
-  it('wall is exactly wallHeight + 2 * EMBED tall', () => {
+  it('wall is exactly wallHeight + EMBED − CEILING_GAP tall (asymmetric span)', () => {
     const { scene } = buildFloorplanScene(makeFloorplan(0));
     const wallMeshes = collectWallMeshes(scene);
     expect(wallMeshes.length).toBeGreaterThan(0);
@@ -152,7 +157,7 @@ describe('wall slab-embedment — floor/wall coplanar face eliminated', () => {
     for (const wallMesh of wallMeshes) {
       const { bottom, top } = worldYExtent(wallMesh);
       const actualHeight = top - bottom;
-      expect(actualHeight).toBeCloseTo(WALL_HEIGHT + 2 * EMBED, 4);
+      expect(actualHeight).toBeCloseTo(WALL_HEIGHT + EMBED - CEILING_GAP, 4);
     }
   });
 
@@ -193,7 +198,7 @@ describe('wall slab-embedment — floor/wall coplanar face eliminated', () => {
 
     for (const wallMesh of wallMeshes) {
       const { bottom, top } = worldYExtent(wallMesh);
-      expect(top).toBeCloseTo(elevation + WALL_HEIGHT + EMBED, 4);
+      expect(top).toBeCloseTo(elevation + WALL_HEIGHT - CEILING_GAP, 4);
       expect(bottom).toBeCloseTo(elevation - EMBED, 4);
     }
   });

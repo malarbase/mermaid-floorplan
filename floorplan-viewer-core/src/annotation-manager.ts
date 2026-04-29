@@ -12,6 +12,7 @@ export type AreaUnit = 'sqft' | 'sqm' | 'cent';
 
 // Annotation state
 export interface AnnotationState {
+  showRoomName: boolean;
   showArea: boolean;
   showDimensions: boolean;
   showFloorSummary: boolean;
@@ -29,6 +30,7 @@ export interface AnnotationCallbacks {
 }
 
 export class AnnotationManager {
+  private roomNameLabels: CSS2DObject[] = [];
   private areaLabels: CSS2DObject[] = [];
   private dimensionLabels: CSS2DObject[] = [];
   private floorSummaryPanel: HTMLElement | null = null;
@@ -36,6 +38,7 @@ export class AnnotationManager {
   private dynamicallyCreated: boolean = false;
 
   public state: AnnotationState = {
+    showRoomName: true,
     showArea: false,
     showDimensions: false,
     showFloorSummary: false,
@@ -109,6 +112,7 @@ export class AnnotationManager {
    * Update all annotations
    */
   public updateAll(): void {
+    this.updateRoomNameAnnotations();
     this.updateAreaAnnotations();
     this.updateDimensionAnnotations();
     this.updateFloorSummary();
@@ -239,6 +243,42 @@ export class AnnotationManager {
   }
 
   /**
+   * Update room name annotations (labels showing room name/label above each room)
+   */
+  public updateRoomNameAnnotations(): void {
+    const floors = this.callbacks.getFloors();
+    const floorplanData = this.callbacks.getFloorplanData();
+
+    this.roomNameLabels.forEach((label) => {
+      label.parent?.remove(label);
+      label.element.remove();
+    });
+    this.roomNameLabels = [];
+
+    if (!this.state.showRoomName || !floorplanData) return;
+
+    floorplanData.floors.forEach((floor, floorIndex) => {
+      floor.rooms.forEach((room) => {
+        const displayName = room.label ?? room.name;
+
+        const labelDiv = document.createElement('div');
+        labelDiv.className = 'room-name-label';
+        labelDiv.textContent = displayName;
+
+        const label = new CSS2DObject(labelDiv);
+        const centerX = room.x + room.width / 2;
+        const centerZ = room.z + room.height / 2;
+        // Slightly above area label (area is at +0.5) to avoid overlap when both are visible
+        const y = (room.elevation || 0) + 0.7;
+
+        label.position.set(centerX, y, centerZ);
+        floors[floorIndex]?.add(label);
+        this.roomNameLabels.push(label);
+      });
+    });
+  }
+
+  /**
    * Update area annotations (labels showing room areas)
    */
   public updateAreaAnnotations(): void {
@@ -288,6 +328,12 @@ export class AnnotationManager {
     this.floorSummaryPanel = null;
 
     // Remove CSS2D labels from scene
+    for (const label of this.roomNameLabels) {
+      label.parent?.remove(label);
+      label.element.remove();
+    }
+    this.roomNameLabels = [];
+
     for (const label of this.areaLabels) {
       label.parent?.remove(label);
       label.element.remove();

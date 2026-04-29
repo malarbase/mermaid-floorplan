@@ -12,11 +12,13 @@ export type AreaUnit = 'sqft' | 'sqm' | 'cent';
 export type LengthUnit = 'm' | 'ft' | 'cm' | 'in' | 'mm';
 
 export interface AnnotationControlsUIOptions {
+  initialShowRoomName?: boolean;
   initialShowArea?: boolean;
   initialShowDimensions?: boolean;
   initialShowFloorSummary?: boolean;
   initialAreaUnit?: AreaUnit;
   initialLengthUnit?: LengthUnit;
+  onShowRoomNameChange?: (show: boolean) => void;
   onShowAreaChange?: (show: boolean) => void;
   onShowDimensionsChange?: (show: boolean) => void;
   onShowFloorSummaryChange?: (show: boolean) => void;
@@ -26,6 +28,7 @@ export interface AnnotationControlsUIOptions {
 
 export interface AnnotationControlsUI {
   element: HTMLElement;
+  showRoomNameCheckbox: HTMLInputElement;
   showAreaCheckbox: HTMLInputElement;
   showDimensionsCheckbox: HTMLInputElement;
   showFloorSummaryCheckbox: HTMLInputElement;
@@ -42,11 +45,13 @@ export function createAnnotationControlsUI(
   injectStyles();
 
   const {
+    initialShowRoomName = true,
     initialShowArea = false,
     initialShowDimensions = false,
     initialShowFloorSummary = false,
     initialAreaUnit = 'sqft',
     initialLengthUnit = 'ft',
+    onShowRoomNameChange,
     onShowAreaChange,
     onShowDimensionsChange,
     onShowFloorSummaryChange,
@@ -61,6 +66,27 @@ export function createAnnotationControlsUI(
   });
 
   const content = getSectionContent(section)!;
+
+  // Show room name checkbox
+  const roomNameRow = document.createElement('label');
+  roomNameRow.className = cls.checkbox.wrapper;
+
+  const showRoomNameCheckbox = document.createElement('input');
+  showRoomNameCheckbox.type = 'checkbox';
+  showRoomNameCheckbox.className = cls.checkbox.input;
+  showRoomNameCheckbox.id = 'show-room-name';
+  showRoomNameCheckbox.checked = initialShowRoomName;
+  showRoomNameCheckbox.addEventListener('change', () => {
+    onShowRoomNameChange?.(showRoomNameCheckbox.checked);
+  });
+
+  const roomNameLabel = document.createElement('span');
+  roomNameLabel.className = cls.checkbox.label;
+  roomNameLabel.textContent = 'Show Room Names';
+
+  roomNameRow.appendChild(showRoomNameCheckbox);
+  roomNameRow.appendChild(roomNameLabel);
+  content.appendChild(roomNameRow);
 
   // Show area checkbox
   const areaRow = document.createElement('label');
@@ -181,6 +207,7 @@ export function createAnnotationControlsUI(
 
   return {
     element: section,
+    showRoomNameCheckbox,
     showAreaCheckbox,
     showDimensionsCheckbox,
     showFloorSummaryCheckbox,

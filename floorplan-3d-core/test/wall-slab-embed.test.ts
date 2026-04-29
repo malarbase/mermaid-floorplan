@@ -1,9 +1,14 @@
 /**
  * Tests for wall slab-embed geometry
  *
- * Walls must extend DIMENSIONS.WALL.EMBED into the floor slab below and
- * into the ceiling slab above so their shared faces are never coplanar
- * (eliminates floor–wall and ceiling–wall z-fighting).
+ * Asymmetric wall span:
+ *   bottom = elevation - EMBED            (extends DOWN into slab below to bury
+ *                                          the floor↔wall coplanar seam)
+ *   top    = elevation + wallHeight       (sits a CEILING_GAP-sized air gap
+ *            - CEILING_GAP                 BELOW the ceiling slab so the two
+ *                                          solids never overlap volumetrically;
+ *                                          overlap there causes shimmer at
+ *                                          orbit angles, even at small EMBED.)
  */
 
 import * as THREE from 'three';
@@ -73,10 +78,13 @@ function makeTwoFloorPlan(wallHeight: number): JsonExport {
 // Unit tests — createWallSegmentGeometry
 // ---------------------------------------------------------------------------
 
-describe('createWallSegmentGeometry — wall embed', () => {
+describe('createWallSegmentGeometry — asymmetric span (down-embed + ceiling-gap)', () => {
   const E = DIMENSIONS.WALL.EMBED;
+  const G = DIMENSIONS.WALL.CEILING_GAP;
+  // Total geometry height = wallHeight + EMBED (down) - CEILING_GAP (up shy)
+  const SPAN_DELTA = E - G;
 
-  test('horizontal wall geometry height = wallHeight + 2 * EMBED', () => {
+  test('horizontal wall geometry height = wallHeight + EMBED - CEILING_GAP', () => {
     const seg = makeSegment(0, 5);
     const wallHeight = DIMENSIONS.WALL.HEIGHT;
     const geom = createWallSegmentGeometry(seg, DIMENSIONS.WALL.THICKNESS, wallHeight, false);
@@ -85,10 +93,10 @@ describe('createWallSegmentGeometry — wall embed', () => {
 
     expect(box).not.toBeNull();
     const actualHeight = box!.max.y - box!.min.y;
-    expect(actualHeight).toBeCloseTo(wallHeight + 2 * E, 6);
+    expect(actualHeight).toBeCloseTo(wallHeight + SPAN_DELTA, 6);
   });
 
-  test('vertical wall geometry height = wallHeight + 2 * EMBED', () => {
+  test('vertical wall geometry height = wallHeight + EMBED - CEILING_GAP', () => {
     const seg = makeSegment(0, 4);
     const wallHeight = 2.8;
     const geom = createWallSegmentGeometry(seg, DIMENSIONS.WALL.THICKNESS, wallHeight, true);
@@ -97,18 +105,18 @@ describe('createWallSegmentGeometry — wall embed', () => {
 
     expect(box).not.toBeNull();
     const actualHeight = box!.max.y - box!.min.y;
-    expect(actualHeight).toBeCloseTo(wallHeight + 2 * E, 6);
+    expect(actualHeight).toBeCloseTo(wallHeight + SPAN_DELTA, 6);
   });
 
-  test('geometry is vertically centered at origin — max.y = (wallHeight + 2*EMBED) / 2', () => {
+  test('geometry is centered at origin in local space', () => {
     const wallHeight = DIMENSIONS.WALL.HEIGHT;
     const seg = makeSegment(0, 3);
     const geom = createWallSegmentGeometry(seg, DIMENSIONS.WALL.THICKNESS, wallHeight, false);
     geom.computeBoundingBox();
     const box = geom.boundingBox!;
 
-    expect(box.max.y).toBeCloseTo((wallHeight + 2 * E) / 2, 6);
-    expect(box.min.y).toBeCloseTo(-(wallHeight + 2 * E) / 2, 6);
+    expect(box.max.y).toBeCloseTo((wallHeight + SPAN_DELTA) / 2, 6);
+    expect(box.min.y).toBeCloseTo(-(wallHeight + SPAN_DELTA) / 2, 6);
   });
 
   test('wall never pokes through slab — EMBED < FLOOR.THICKNESS', () => {
@@ -116,14 +124,19 @@ describe('createWallSegmentGeometry — wall embed', () => {
     expect(DIMENSIONS.WALL.EMBED).toBeGreaterThan(0);
   });
 
-  test('embed is consistent for custom wallHeight', () => {
+  test('CEILING_GAP is small enough to be invisible but > 0', () => {
+    expect(DIMENSIONS.WALL.CEILING_GAP).toBeGreaterThan(0);
+    expect(DIMENSIONS.WALL.CEILING_GAP).toBeLessThan(0.05);
+  });
+
+  test('span scales with custom wallHeight', () => {
     const customHeight = 4.0;
     const seg = makeSegment(0, 5);
     const geom = createWallSegmentGeometry(seg, DIMENSIONS.WALL.THICKNESS, customHeight, false);
     geom.computeBoundingBox();
     const box = geom.boundingBox!;
 
-    expect(box.max.y - box.min.y).toBeCloseTo(customHeight + 2 * E, 6);
+    expect(box.max.y - box.min.y).toBeCloseTo(customHeight + SPAN_DELTA, 6);
   });
 });
 
@@ -133,6 +146,7 @@ describe('createWallSegmentGeometry — wall embed', () => {
 
 describe('scene builder — wall meshes embed into slabs', () => {
   const E = DIMENSIONS.WALL.EMBED;
+  const G = DIMENSIONS.WALL.CEILING_GAP;
 
   /**
    * Collect all wall meshes from a scene along with their floor group Y offsets,
@@ -193,25 +207,26 @@ describe('scene builder — wall meshes embed into slabs', () => {
     }
   });
 
-  test('every wall mesh extends EMBED above its wall height (into ceiling slab)', () => {
+  test('every wall mesh top sits CEILING_GAP below elevation + wallHeight', () => {
     const plan = makeTwoFloorPlan(DIMENSIONS.WALL.HEIGHT);
     const bounds = collectWallWorldBounds(plan);
 
     expect(bounds.length).toBeGreaterThan(0);
     for (const { worldMaxY, elevation, wallHeight } of bounds) {
-      // Wall top must be elevation + wallHeight + EMBED (embedded into slab above)
-      expect(worldMaxY).toBeCloseTo(elevation + wallHeight + E, 5);
+      // Wall top is shy of the ceiling slab by CEILING_GAP, ensuring no
+      // volumetric overlap with the slab above.
+      expect(worldMaxY).toBeCloseTo(elevation + wallHeight - G, 5);
     }
   });
 
-  test('visible wall height (world extent minus 2*EMBED) equals configured wallHeight', () => {
+  test('visible wall span (excluding embed and gap) equals configured wallHeight', () => {
     const customHeight = 3.0;
     const plan = makeTwoFloorPlan(customHeight);
     const bounds = collectWallWorldBounds(plan);
 
     expect(bounds.length).toBeGreaterThan(0);
     for (const { worldMinY, worldMaxY, wallHeight } of bounds) {
-      const visibleHeight = worldMaxY - worldMinY - 2 * E;
+      const visibleHeight = worldMaxY - worldMinY - E + G;
       expect(visibleHeight).toBeCloseTo(wallHeight, 5);
     }
   });
@@ -226,7 +241,7 @@ describe('scene builder — wall meshes embed into slabs', () => {
     expect(bounds.length).toBeGreaterThan(0);
     for (const { worldMinY, worldMaxY, elevation, wallHeight } of bounds) {
       expect(worldMinY).toBeCloseTo(elevation - E, 5);
-      expect(worldMaxY).toBeCloseTo(elevation + wallHeight + E, 5);
+      expect(worldMaxY).toBeCloseTo(elevation + wallHeight - G, 5);
     }
   });
 });

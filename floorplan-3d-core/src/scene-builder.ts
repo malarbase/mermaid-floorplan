@@ -290,6 +290,8 @@ export function buildFloorplanSceneFromNormalized(
         const liftGroup = stairGenerator.generateLift(lift, floorHeight);
         liftGroup.userData.layer = 'lift';
         floorGroup.add(liftGroup);
+        // Update world matrix before computing bounding box
+        floorGroup.updateMatrixWorld(true);
         // Track for next floor's holes
         currentFloorPenetrations.push(new THREE.Box3().setFromObject(liftGroup));
         onLiftMesh?.(liftGroup, lift, floor);

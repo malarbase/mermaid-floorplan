@@ -140,9 +140,20 @@ export function createWallSegmentGeometry(
   isVertical: boolean,
 ): THREE.BoxGeometry {
   const segmentLength = segment.endPos - segment.startPos;
-  // Extend wall into the slabs above and below by EMBED on each side so their
-  // shared faces are never coplanar (eliminates floor–wall and ceiling–wall z-fighting).
-  const embeddedHeight = wallHeight + 2 * DIMENSIONS.WALL.EMBED;
+  // Asymmetric wall span:
+  //   bottom = elevation - EMBED         (wall extends DOWN into slab below to
+  //                                        bury the floor↔wall coplanar seam)
+  //   top    = elevation + wallHeight    (NOT extended into slab above, plus a
+  //            - CEILING_GAP              5mm air gap so wall and ceiling slab
+  //                                        never overlap volumetrically — that
+  //                                        overlap is what makes the wall
+  //                                        shimmer through the slab at orbit
+  //                                        angles, even at small magnitudes.
+  //                                        See `setExplodedView` for why a
+  //                                        purely vertical air gap suppresses
+  //                                        the shimmer: 1% explode adds enough
+  //                                        separation to break the overlap.)
+  const embeddedHeight = wallHeight + DIMENSIONS.WALL.EMBED - DIMENSIONS.WALL.CEILING_GAP;
 
   if (isVertical) {
     return new THREE.BoxGeometry(wallThickness, embeddedHeight, segmentLength);
@@ -406,8 +417,13 @@ export class WallBuilder {
     }
 
     // Generate each segment with CSG.
-    // Wall geometry is extended by EMBED on both sides inside createWallSegmentGeometry,
-    // burying the top and bottom faces inside the adjacent slabs (no coplanar surfaces).
+    // Asymmetric wall span (see createWallSegmentGeometry comment for full
+    // rationale): bottom = elevation - EMBED, top = elevation + wallHeight -
+    // CEILING_GAP. The center is shifted to keep both faces at those exact Y
+    // values without disturbing the segment's local-space geometry.
+    const wallCenterY =
+      elevation + wallHeight / 2 - DIMENSIONS.WALL.EMBED / 2 - DIMENSIONS.WALL.CEILING_GAP / 2;
+
     for (const segment of segments) {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue;
@@ -431,7 +447,7 @@ export class WallBuilder {
       );
 
       const segmentBrush = new Brush(segmentGeom, segmentMaterials);
-      segmentBrush.position.set(segmentPos.x, elevation + wallHeight / 2, segmentPos.z);
+      segmentBrush.position.set(segmentPos.x, wallCenterY, segmentPos.z);
       segmentBrush.updateMatrixWorld();
 
       // Filter holes for this segment
@@ -502,8 +518,11 @@ export class WallBuilder {
     }
 
     // Generate simple box walls for each segment.
-    // Wall geometry is extended by EMBED on both sides inside createWallSegmentGeometry,
-    // burying the top and bottom faces inside the adjacent slabs (no coplanar surfaces).
+    // Same asymmetric span as the CSG path (see createWallSegmentGeometry):
+    // bottom = elevation - EMBED, top = elevation + wallHeight - CEILING_GAP.
+    const wallCenterY =
+      elevation + wallHeight / 2 - DIMENSIONS.WALL.EMBED / 2 - DIMENSIONS.WALL.CEILING_GAP / 2;
+
     for (const segment of segments) {
       const segmentLength = segment.endPos - segment.startPos;
       if (segmentLength < 0.01) continue;
@@ -524,7 +543,7 @@ export class WallBuilder {
         wall.direction,
       );
       const wallMesh = new THREE.Mesh(segmentGeom, segmentMaterial);
-      wallMesh.position.set(segmentPos.x, elevation + wallHeight / 2, segmentPos.z);
+      wallMesh.position.set(segmentPos.x, wallCenterY, segmentPos.z);
       wallMesh.castShadow = true;
       wallMesh.receiveShadow = true;
       group.add(wallMesh);

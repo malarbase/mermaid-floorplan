@@ -295,6 +295,8 @@ export type AreaUnit = 'sqft' | 'sqm' | 'cent';
 export type LengthUnit = 'm' | 'ft' | 'cm' | 'in' | 'mm';
 
 export interface AnnotationControlsProps {
+  /** Show room name labels */
+  showRoomName?: boolean;
   /** Show area labels */
   showArea?: boolean;
   /** Show dimension labels */
@@ -305,6 +307,8 @@ export interface AnnotationControlsProps {
   areaUnit?: AreaUnit;
   /** Length unit */
   lengthUnit?: LengthUnit;
+  /** Show room name change callback */
+  onShowRoomNameChange?: (show: boolean) => void;
   /** Show area change callback */
   onShowAreaChange?: (show: boolean) => void;
   /** Show dimensions change callback */
@@ -334,6 +338,13 @@ export function AnnotationControls(props: AnnotationControlsProps) {
 
   return (
     <ControlPanelSection title="Annotations" id="annotation-section" collapsed={true}>
+      <Checkbox
+        id="show-room-name"
+        label="Show Room Names"
+        checked={props.showRoomName ?? true}
+        onChange={props.onShowRoomNameChange}
+      />
+
       <Checkbox
         id="show-area"
         label="Show Area Labels"

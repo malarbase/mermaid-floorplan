@@ -99,8 +99,28 @@ export const DIMENSIONS = {
   WALL: {
     THICKNESS: 0.15,
     HEIGHT: 3.35, // 11 feet (scale: 1 unit ≈ 3.3 feet)
-    /** Distance walls extend into floor slabs at top and bottom to eliminate coplanar z-fighting */
+    /**
+     * Distance walls extend DOWN into the floor slab below, so the
+     * wall↔floor coplanar seam is buried inside the slab volume below
+     * (eliminates floor↔wall z-fighting). At the wall TOP we deliberately
+     * do NOT extend into the ceiling slab — see CEILING_GAP — because
+     * volumetric overlap between a wall and the slab above causes z-fighting
+     * "shimmer" at orbit angles (the wall's top face fragments alternate with
+     * the slab's interior at depth-precision boundaries when looking through
+     * the slab volume from outside the building).
+     */
     EMBED: 0.02,
+    /**
+     * Air gap between the wall TOP face and the slab BOTTOM face above it.
+     * Walls deliberately fall short of the ceiling slab by this amount so
+     * the two solids never overlap volumetrically; that overlap is what
+     * produces "shimmer" when orbiting, even at small overlap magnitudes
+     * (visible whenever the camera grazes the slab edge from outside).
+     * 5mm is small enough to be visually invisible from any practical
+     * camera distance, but large enough that `logarithmicDepthBuffer`
+     * cleanly separates the two faces at all orbit angles.
+     */
+    CEILING_GAP: 0.005,
   },
   FLOOR: {
     THICKNESS: 0.2,

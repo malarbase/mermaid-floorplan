@@ -303,6 +303,20 @@ body.dark-theme {
 }
 
 /* === Annotation Labels (CSS2D) === */
+.room-name-label {
+  background: rgba(30, 30, 30, 0.72);
+  color: #fff;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  text-transform: capitalize;
+  pointer-events: none;
+}
+
 .area-label {
   background: var(--fp-accent);
   color: var(--fp-text-inverted);
