@@ -6,6 +6,7 @@ session can pick it up without re‑deriving the context.
 
 | File | Type | Area |
 |---|---|---|
+| [`language-primitive-registry-codegen.md`](./language-primitive-registry-codegen.md) | Architectural Gap | `floorplan-language` <-> editor UI <-> annotations <-> renderers <-> `skills/mermaid-floorplan` - grammar changes can drift from UI/forms/metadata/renderer hooks; propose generated primitive descriptors plus authored overlays and lifecycle checks. |
 | [`ui-selection-agent-context.md`](./ui-selection-agent-context.md) | Feature | `floorplan-app` ↔ `floorplan-viewer-core` — selection (rooms, walls, stairs, lifts, connections) isn't passed as structured context to the agent. |
 | [`ui-render-layer-toggles.md`](./ui-render-layer-toggles.md) | Feature | `floorplan-viewer-core` / `floorplan-viewer` / `floorplan-app` — scene builder already supports `showWalls` / `showFloors` / `showStairs` / `showLifts` / `showConnections`, but no UI exposes them; should slot into the View section alongside Theme & Exploded View. |
 | [`3d-wall-network-rebuild.md`](./3d-wall-network-rebuild.md) | Architectural Debt | `floorplan-3d-core` — replace per-room wall emission with a floor-level wall graph that computes mitered intersections once, eliminating the need for adjacency-aware per-corner bookkeeping introduced by the Phase 4 Z-fighting fix. |

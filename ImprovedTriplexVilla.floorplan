@@ -1,0 +1,311 @@
+# ImprovedTriplexVilla.floorplan
+# 3-Story Luxury Triplex Villa — improved from trial/ImprovedTriplexVilla.floorplan
+#
+# Plot per floor: 30 x 50 ft (1500 sqft) -> 4500 sqft total
+#
+# Program (per user requirements):
+#   - Ground:  Hall + Foyer + Office + Kitchen + Dining + Pantry + Powder
+#              + 1 Parents Suite (Bed + Bath + Walk-in Closet)
+#   - First:   Lobby (hall) + 3 Bedroom Suites (Master, Bed2, Bed3),
+#              each with attached bath
+#   - Second:  Sky Lobby (hall) + Home Theater + 2 Bedroom Suites (Bed5, Bed6),
+#              each with attached bath + Partly-covered Open Terrace
+#   - Vertical: Lift core (top) + Stair core (below) stack on every floor,
+#               linked via `vertical` declarations.
+#
+# Plumbing rationale:
+#   - Wet stack 1 (east):  Pwdr_G / Kitchen / Pantry / ParentsBath  ->
+#                          MasterBath (F1) -> Bath5 (F2)
+#   - Wet stack 2 (south): ParentsBath -> Bath2 / Bath3 (F1) -> Bath6 (F2)
+#   - Wet rooms separated horizontally by habitable rooms (Vastu-friendly).
+#
+# Vertical circulation:
+#   - LiftCore at (0, 0) 6x6 on every floor.
+#   - StairCore is 6x24 on every floor (fits a straight 16.5ft / 17.4ft run
+#     plus a 3ft top landing and a 3.5ft+ bottom landing — see references/
+#     multi-floor.md "Stair footprint and landings").
+#   - MainStair at (1, 9), straight, rise = floor height, width 4ft.
+#   - MainLift at (1, 1), 4x4 cab, doors right (east).
+#   - StairCore doors land on the *top landing strip* (y in [6, 9]); a 3ft door
+#     sits at y=7.5, clear of the 4ft tread footprint.
+#
+# Validate:  scripts/validate.mjs
+# Critic:    scripts/design_critic.mjs
+# 2D plan:   scripts/render.mjs
+# 3D feedback: scripts/render_3d.mjs
+
+%%{version: 1.0}%%
+floorplan
+
+  # ============================================================
+  # STYLES — finishes per program zone
+  # ============================================================
+
+  style VillaLiving {
+    floor_color: "#D4A574",
+    wall_color: "#F5F0E6",
+    roughness: 0.6
+  }
+
+  style Bedroom {
+    floor_color: "#C9B896",
+    wall_color: "#FAF6F0",
+    roughness: 0.9
+  }
+
+  style Bathroom {
+    floor_color: "#B8C5D0",
+    wall_color: "#E8EEF2",
+    roughness: 0.3
+  }
+
+  style KitchenStyle {
+    floor_color: "#8B8B7A",
+    wall_color: "#F0EDE8",
+    roughness: 0.4
+  }
+
+  style Circulation {
+    floor_color: "#D8CFC4",
+    wall_color: "#FDFBF8",
+    roughness: 0.5
+  }
+
+  style Entertainment {
+    floor_color: "#2D2D2D",
+    wall_color: "#1A1A2E",
+    roughness: 0.8
+  }
+
+  style Outdoor {
+    floor_color: "#A89882",
+    wall_color: "#C4B8A8",
+    roughness: 0.7
+  }
+
+  # ============================================================
+  # CONFIG
+  # ============================================================
+  config {
+    default_unit: ft,
+    area_unit: sqft,
+    default_height: 10,
+    wall_thickness: 1,
+    door_size: (3 x 7),
+    window_size: (5 x 4),
+    stair_code: residential
+  }
+
+  # ============================================================
+  # GROUND FLOOR
+  # Hall (Great Hall spine) + Foyer + Office + Kitchen + Dining
+  # + Parents Suite at south + service core on west
+  # ============================================================
+  floor GroundFloor height 10ft {
+    # --- Vertical core (same x/y on every floor) ---
+    room LiftCore at (0, 0) size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] label "Lift" style Circulation
+    room StairCore at (0, 6) size (6 x 24) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair" style Circulation
+
+    # --- Service column (west) — shrunk to make room for the 24ft stair core ---
+    room Storage_G at (0, 30) size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] label "Storage" style Circulation
+    room Laundry_G at (0, 36) size (6 x 7) walls [top: solid, right: solid, bottom: solid, left: window] label "Laundry" style KitchenStyle
+    room BackPorch_G at (0, 43) size (6 x 7) walls [top: solid, right: solid, bottom: solid, left: window] label "Back Porch" style Outdoor
+
+    # --- Center column (12 wide): foyer + great hall spine + parents bed ---
+    room Foyer at (6, 0) size (12 x 6) walls [top: window, right: solid, bottom: solid, left: solid] label "Foyer" style Circulation
+    room Hall_G at (6, 6) size (12 x 28) walls [top: solid, right: solid, bottom: solid, left: solid] label "Great Hall" style VillaLiving
+    room ParentsBed at (6, 34) size (12 x 16) walls [top: solid, right: solid, bottom: window, left: solid] label "Parents Bed" style Bedroom
+
+    # --- East column (12 wide): office + powder + kitchen + dining + parents ensuite ---
+    room Office at (18, 0) size (12 x 10) walls [top: window, right: window, bottom: solid, left: solid] label "Office" style Circulation
+    room Pwdr_G at (18, 10) size (12 x 4) walls [top: solid, right: window, bottom: solid, left: solid] label "Powder" style Bathroom
+    room Kitchen at (18, 14) size (12 x 10) walls [top: solid, right: window, bottom: solid, left: solid] label "Kitchen" style KitchenStyle
+    room Pantry at (18, 24) size (12 x 4) walls [top: solid, right: solid, bottom: solid, left: solid] label "Pantry" style KitchenStyle
+    room Dining at (18, 28) size (12 x 12) walls [top: solid, right: window, bottom: solid, left: solid] label "Dining" style VillaLiving
+    room ParentsBath at (18, 40) size (12 x 4) walls [top: solid, right: window, bottom: solid, left: solid] label "Parents Bath" style Bathroom
+    room ParentsCloset at (18, 44) size (12 x 6) walls [top: solid, right: window, bottom: window, left: solid] label "Walk-in" style Bedroom
+
+    # --- Vertical circulation elements ---
+    # 16.5ft run + 3ft top landing + 4.5ft bottom landing fits in a 24ft core
+    stair MainStair at (1, 9) shape straight toward bottom rise 10ft width 4ft label "Main Stair" style Circulation
+    lift MainLift at (1, 1) size (4ft x 4ft) doors (right) label "Lift" style Circulation
+  }
+
+  # ============================================================
+  # FIRST FLOOR
+  # 3 Bedroom Suites: Master, Bed 2, Bed 3 (each ensuite)
+  # Hall = Lobby (front, 24 x 6) + Corridor (vertical spine, 6 x 44)
+  # ============================================================
+  floor FirstFloor height 10ft {
+    # --- Vertical core (stacked over Ground) ---
+    room LiftCore_1 at (0, 0) size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] label "Lift" style Circulation
+    room StairCore_1 at (0, 6) size (6 x 24) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair" style Circulation
+
+    # --- Service column (linen + closets) — sized to keep west column at 50ft ---
+    room Linen_1 at (0, 30) size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: window] label "Linen" style Circulation
+    room Closet_1A at (0, 36) size (6 x 7) walls [top: solid, right: solid, bottom: solid, left: window] label "Closet A" style Bedroom
+    room Closet_1B at (0, 43) size (6 x 7) walls [top: solid, right: solid, bottom: window, left: window] label "Closet B" style Bedroom
+
+    # --- Hall: front lobby + vertical corridor (the "hall" on this floor) ---
+    room Lobby_1 at (6, 0) size (24 x 6) walls [top: window, right: window, bottom: solid, left: solid] label "Lobby" style Circulation
+    room Corridor_1 at (6, 6) size (6 x 44) walls [top: solid, right: solid, bottom: solid, left: solid] label "Corridor" style Circulation
+
+    # --- Master Suite (top) ---
+    room Master at (12, 6) size (18 x 10) walls [top: solid, right: window, bottom: solid, left: solid] label "Master" style Bedroom
+    room MasterBath at (12, 16) size (18 x 4) walls [top: solid, right: window, bottom: solid, left: solid] label "Master Bath" style Bathroom
+
+    # --- Bed 2 Suite (middle) ---
+    room Bed2 at (12, 20) size (18 x 10) walls [top: solid, right: window, bottom: solid, left: solid] label "Bed 2" style Bedroom
+    room Bath2 at (12, 30) size (18 x 4) walls [top: solid, right: window, bottom: solid, left: solid] label "Bath 2" style Bathroom
+
+    # --- Bed 3 Suite (back, with rear window) ---
+    room Bed3 at (12, 34) size (18 x 12) walls [top: solid, right: window, bottom: solid, left: solid] label "Bed 3" style Bedroom
+    room Bath3 at (12, 46) size (18 x 4) walls [top: solid, right: window, bottom: window, left: solid] label "Bath 3" style Bathroom
+
+    # --- Vertical circulation elements (stacked) ---
+    stair MainStair at (1, 9) shape straight toward bottom rise 10ft width 4ft label "Main Stair" style Circulation
+    lift MainLift at (1, 1) size (4ft x 4ft) doors (right) label "Lift" style Circulation
+  }
+
+  # ============================================================
+  # SECOND FLOOR (User calls "third floor" — top story)
+  # 2 Bedroom Suites + Home Theater + Partly-covered Open Terrace
+  # ============================================================
+  floor SecondFloor height 11ft {
+    # --- Vertical core (stacked) ---
+    room LiftCore_2 at (0, 0) size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: solid] label "Lift" style Circulation
+    room StairCore_2 at (0, 6) size (6 x 24) walls [top: solid, right: solid, bottom: solid, left: solid] label "Stair" style Circulation
+
+    # --- Service column (mech + closet) — repacked above the CoveredTerrace
+    # band (y=44). Total west column: 6 + 24 + 6 + 8 = 44.
+    room Mech_2 at (0, 30) size (6 x 6) walls [top: solid, right: solid, bottom: solid, left: window] label "Mech" style Circulation
+    room Closet_2 at (0, 36) size (6 x 8) walls [top: solid, right: solid, bottom: solid, left: window] label "Closet" style Bedroom
+
+    # --- Hall: Sky Lobby (front) + corridor spine ---
+    room Lobby_2 at (6, 0) size (24 x 6) walls [top: window, right: window, bottom: solid, left: solid] label "Sky Lobby" style Circulation
+    room Corridor_2 at (6, 6) size (6 x 38) walls [top: solid, right: solid, bottom: solid, left: solid] label "Corridor" style Circulation
+
+    # --- Bed 5 Suite (top right) ---
+    room Bath5 at (12, 6) size (6 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Bath 5" style Bathroom
+    room Bed5 at (18, 6) size (12 x 14) walls [top: solid, right: window, bottom: solid, left: solid] label "Bed 5" style Bedroom
+
+    # --- Home Theater (mid-floor, blackout) ---
+    room HomeTheater at (12, 20) size (18 x 14) walls [top: solid, right: solid, bottom: solid, left: solid] label "Home Theater" style Entertainment
+
+    # --- Bed 6 Suite (south of theater) ---
+    room Bed6 at (12, 34) size (18 x 6) walls [top: solid, right: window, bottom: solid, left: solid] label "Bed 6" style Bedroom
+    room Bath6 at (12, 40) size (18 x 4) walls [top: solid, right: window, bottom: solid, left: solid] label "Bath 6" style Bathroom
+
+    # --- Partly-covered Open Terrace ---
+    # West half is covered (full height roof) — usable in rain
+    # East half is open to sky (low parapet rendered as 3ft height)
+    room CoveredTerrace at (0, 44) size (18 x 6) walls [top: solid, right: solid, bottom: window, left: solid] label "Covered Terrace" style Outdoor
+    room OpenTerrace at (18, 44) size (12 x 6) height 3ft walls [top: solid, right: open, bottom: open, left: open] label "Open Terrace" style Outdoor
+
+    # --- Vertical circulation (terminal landings) ---
+    # 17.4ft run + 3ft top landing + 3.6ft bottom landing fits in a 24ft core
+    stair MainStair at (1, 9) shape straight toward bottom rise 11ft width 4ft label "Main Stair" style Circulation
+    lift MainLift at (1, 1) size (4ft x 4ft) doors (right) label "Lift" style Circulation
+  }
+
+  # ============================================================
+  # ROOF SLAB — caps stair and lift shafts from SecondFloor.
+  # A single room covering the full 30 x 50 plot ensures the
+  # MainStair and MainLift bounding boxes have a slab to punch
+  # through in the 3D viewer (prevents "stair ends in mid-air").
+  # Solid perimeter walls render as a parapet.
+  # No circulation elements on the roof; no `vertical` link needed.
+  # ============================================================
+  floor Roof {
+    room RoofSlab at (0, 0) size (30 x 50) height 3ft
+         walls [top: solid, right: solid, bottom: solid, left: solid]
+         label "Roof" style Outdoor
+  }
+
+  # ============================================================
+  # CONNECTIONS — distinct percentages per shared wall
+  # ============================================================
+
+  # === Ground Floor ===
+  connect Foyer.top to outside door at 50%
+  connect BackPorch_G.left to outside door at 50%
+  connect LiftCore.right to Foyer.left door at 50%
+  connect Foyer.bottom to Hall_G.top opening at 50%
+  connect Foyer.right to Office.left door at 50%
+
+  # Hall_G is a 28ft-tall great hall spine that fans out to powder/kitchen/dining.
+  # StairCore door must sit on the *top landing* (y in [6, 9]); 6.25% on the
+  # 24ft overlap puts the 3ft door at y=7.5, clear of the 4ft stair tread strip.
+  connect StairCore.right to Hall_G.left door at 6.25%
+  connect Hall_G.left to Storage_G.right door at 50%
+  connect Hall_G.right to Pwdr_G.left door at 21%
+  connect Hall_G.right to Kitchen.left opening at 39%
+  connect Hall_G.right to Dining.left opening at 89%
+  connect Hall_G.bottom to ParentsBed.top door at 50%
+
+  # Service circulation: storage -> laundry -> back porch (entered from Hall_G)
+  connect Storage_G.bottom to Laundry_G.top door at 50%
+  connect Laundry_G.bottom to BackPorch_G.top door at 50%
+
+  # Kitchen back-of-house chain: kitchen -> pantry -> dining
+  connect Kitchen.bottom to Pantry.top door at 50%
+  connect Pantry.bottom to Dining.top opening at 50%
+
+  # Parents suite ensuite + walk-in
+  connect ParentsBed.right to ParentsBath.left door at 50%
+  connect ParentsBed.right to ParentsCloset.left door at 81%
+
+  # === First Floor — Lobby + Corridor circulation ===
+  connect LiftCore_1.right to Lobby_1.left door at 50%
+  connect Lobby_1.bottom to Corridor_1.top opening at 12%
+  connect Lobby_1.bottom to Master.top door at 62%
+
+  # Corridor_1.left fans onto stair core + linen + 2 closets.
+  # StairCore_1 door at 6.25% lands on the top landing (y=7.5, clear of tread).
+  # Remaining %'s are spaced >10% apart so the validator's 10% door footprint
+  # check passes; each pct also keeps the 3ft door inside its room overlap.
+  connect Corridor_1.left to StairCore_1.right door at 6.25%
+  connect Corridor_1.left to Linen_1.right door at 43%
+  connect Corridor_1.left to Closet_1A.right door at 60%
+  connect Corridor_1.left to Closet_1B.right door at 75%
+
+  # Corridor_1.right fans onto bedroom suites (3 distinct %)
+  connect Corridor_1.right to Master.left door at 11%
+  connect Corridor_1.right to Bed2.left door at 43%
+  connect Corridor_1.right to Bed3.left door at 77%
+  connect Corridor_1.left to StairCore_1.right opening at 87.5%
+
+  # Bedroom -> ensuite bath (each on different shared wall)
+  connect Master.bottom to MasterBath.top door at 50%
+  connect Bed2.bottom to Bath2.top door at 50%
+  connect Bed3.bottom to Bath3.top door at 50%
+
+  # === Second Floor ===
+  connect LiftCore_2.right to Lobby_2.left door at 50%
+  connect Lobby_2.bottom to Corridor_2.top opening at 12%
+  connect Lobby_2.bottom to Bed5.top door at 75%
+
+  # Corridor_2.left fans onto stair core + mech + closet (3 distinct %, >10% apart).
+  # StairCore_2 door at 6.25% sits on the 3ft top landing (y=7.5, clear of tread).
+  connect Corridor_2.left to StairCore_2.right door at 6.25%
+  connect Corridor_2.left to Mech_2.right door at 50%
+  connect Corridor_2.left to Closet_2.right door at 75%
+
+  # Corridor_2.right fans onto theater entrance + Bed 6 (2 distinct %)
+  connect Corridor_2.right to HomeTheater.left double-door at 55%
+  connect Corridor_2.right to Bed6.left door at 89%
+
+  # Bed 5 ensuite (interior bath) — share long left wall
+  connect Bed5.left to Bath5.right door at 50%
+
+  # Bed 6 ensuite (south)
+  connect Bed6.bottom to Bath6.top door at 50%
+
+  # Terrace egress: corridor lands into covered terrace, terrace is partly open
+  connect Corridor_2.bottom to CoveredTerrace.top opening at 50%
+  connect Corridor_2.left to StairCore_2.right opening at 91.32%
+  connect CoveredTerrace.right to OpenTerrace.left opening at 50%
+
+  # === Vertical Connections ===
+  vertical GroundFloor.MainStair to FirstFloor.MainStair to SecondFloor.MainStair
+  vertical GroundFloor.MainLift to FirstFloor.MainLift to SecondFloor.MainLift

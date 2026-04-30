@@ -15,6 +15,7 @@
  *   wallBuilder.generateWall(...);
  */
 
+import { calculatePositionWithFallback, type RoomBounds } from 'floorplan-common';
 import * as THREE from 'three';
 import { generateConnection } from './connection-geometry.js';
 import { findMatchingConnections, shouldRenderConnection } from './connection-matcher.js';
@@ -27,6 +28,7 @@ import { MaterialFactory, type MaterialSet } from './materials.js';
 import type { JsonConfig, JsonConnection, JsonRoom, JsonWall } from './types.js';
 import {
   analyzeWallOwnership,
+  hasContinuousWallAt,
   hasNeighborAtCorner,
   type StyleResolver,
   type WallSegment,
@@ -765,17 +767,27 @@ export class WallBuilder {
     const holeY = elevation + doorHeight / 2;
 
     const sourceRoom = allRooms.find((r) => r.name === connection.fromRoom) || room;
+    const targetRoom = allRooms.find((r) => r.name === connection.toRoom) ?? null;
     const percentage = connection.position ?? 50;
-    const ratio = percentage / 100;
 
     const sourceIsVertical = connection.fromWall === 'left' || connection.fromWall === 'right';
 
+    const sourceBounds: RoomBounds = {
+      x: sourceRoom.x,
+      y: sourceRoom.z,
+      width: sourceRoom.width,
+      height: sourceRoom.height,
+    };
+    const targetBounds: RoomBounds | null = targetRoom
+      ? { x: targetRoom.x, y: targetRoom.z, width: targetRoom.width, height: targetRoom.height }
+      : null;
+
     let holeX: number, holeZ: number;
     if (sourceIsVertical) {
-      holeZ = sourceRoom.z + sourceRoom.height * ratio;
+      holeZ = calculatePositionWithFallback(sourceBounds, targetBounds, true, percentage);
       holeX = connection.fromWall === 'left' ? sourceRoom.x : sourceRoom.x + sourceRoom.width;
     } else {
-      holeX = sourceRoom.x + sourceRoom.width * ratio;
+      holeX = calculatePositionWithFallback(sourceBounds, targetBounds, false, percentage);
       holeZ = connection.fromWall === 'top' ? sourceRoom.z : sourceRoom.z + sourceRoom.height;
     }
 
@@ -846,8 +858,21 @@ export class WallBuilder {
 
     if (isHorizontal) {
       // Expand exterior ends; leave interior ends (adjacent room) unchanged.
-      const extStart = !hasNeighborAtCorner(room, wall, 'start', allRooms) ? halfT : 0;
-      const extEnd = !hasNeighborAtCorner(room, wall, 'end', allRooms) ? halfT : 0;
+      // Also skip the extension when a vertically-adjacent room has a vertical
+      // wall at the same X boundary — that wall will cover the corner cell,
+      // so extending here would expose the horizontal wall's outer face as a
+      // visible bump between the two vertical segments (the T-joint bug).
+      const wallZ = wall.direction === 'top' ? room.z : room.z + room.height;
+      const extStart =
+        !hasNeighborAtCorner(room, wall, 'start', allRooms) &&
+        !hasContinuousWallAt(room.x, wallZ, room, allRooms)
+          ? halfT
+          : 0;
+      const extEnd =
+        !hasNeighborAtCorner(room, wall, 'end', allRooms) &&
+        !hasContinuousWallAt(room.x + room.width, wallZ, room, allRooms)
+          ? halfT
+          : 0;
 
       if (extStart > 0) {
         adjusted[0] = { ...adjusted[0], startPos: adjusted[0].startPos - extStart };
@@ -858,15 +883,28 @@ export class WallBuilder {
       }
     } else {
       // Vertical walls embed their ends (halfT - WALL_CORNER_EMBED) into the
-      // horizontal walls.  The end face sits 0.1 mm inside the horizontal wall
-      // body: completely hidden, no coplanar surface, no visible bump.
-      // polygonOffset on horizontal-wall materials provides the final depth-buffer
-      // tie-break so any residual coplanar strip is invisible.
+      // adjacent horizontal wall so their end faces are never coplanar with any
+      // visible surface.
+      //
+      // Exception — T-junctions: when a vertically-adjacent room shares the
+      // SAME outer boundary (e.g. LiftCore and StairCore both with right wall
+      // at X=6), shrinking BOTH ends creates a `wallThickness`-wide gap on the
+      // outer face, exposing the intermediate horizontal wall's right face as a
+      // visible bump.  In that case we leave the end unshrunk so the two
+      // vertical wall segments remain flush and the outer face is continuous.
+      // The horizontal wall at the junction will also not extend at that corner
+      // (handled in the isHorizontal branch above), so there is no Z-fighting.
       const embed = DIMENSIONS.GEOMETRY.WALL_CORNER_EMBED;
-      const shrink = halfT - embed; // < halfT so end is inside H-wall, not flush
-      adjusted[0] = { ...adjusted[0], startPos: adjusted[0].startPos + shrink };
+      const shrink = halfT - embed; // < halfT so end face is inside the H-wall body
+      const targetX = wall.direction === 'left' ? room.x : room.x + room.width;
+
+      if (!hasContinuousWallAt(targetX, room.z, room, allRooms)) {
+        adjusted[0] = { ...adjusted[0], startPos: adjusted[0].startPos + shrink };
+      }
       const last = adjusted.length - 1;
-      adjusted[last] = { ...adjusted[last], endPos: adjusted[last].endPos - shrink };
+      if (!hasContinuousWallAt(targetX, room.z + room.height, room, allRooms)) {
+        adjusted[last] = { ...adjusted[last], endPos: adjusted[last].endPos - shrink };
+      }
 
       // Guard: don't produce negative-length segments for tiny rooms.
       for (let i = 0; i < adjusted.length; i++) {

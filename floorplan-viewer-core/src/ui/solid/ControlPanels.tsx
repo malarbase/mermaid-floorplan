@@ -303,6 +303,10 @@ export interface AnnotationControlsProps {
   showDimensions?: boolean;
   /** Show floor summary */
   showFloorSummary?: boolean;
+  /** Show stair info labels */
+  showStairInfo?: boolean;
+  /** Show stair dimension overlay */
+  showStairDimensions?: boolean;
   /** Area unit */
   areaUnit?: AreaUnit;
   /** Length unit */
@@ -315,6 +319,10 @@ export interface AnnotationControlsProps {
   onShowDimensionsChange?: (show: boolean) => void;
   /** Show floor summary change callback */
   onShowFloorSummaryChange?: (show: boolean) => void;
+  /** Show stair info change callback */
+  onShowStairInfoChange?: (show: boolean) => void;
+  /** Show stair dimensions change callback */
+  onShowStairDimensionsChange?: (show: boolean) => void;
   /** Area unit change callback */
   onAreaUnitChange?: (unit: AreaUnit) => void;
   /** Length unit change callback */
@@ -364,6 +372,20 @@ export function AnnotationControls(props: AnnotationControlsProps) {
         label="Show Floor Summary"
         checked={props.showFloorSummary ?? false}
         onChange={props.onShowFloorSummaryChange}
+      />
+
+      <Checkbox
+        id="show-stair-info"
+        label="Show Stair Info"
+        checked={props.showStairInfo ?? false}
+        onChange={props.onShowStairInfoChange}
+      />
+
+      <Checkbox
+        id="show-stair-dimensions"
+        label="Show Stair Dimensions"
+        checked={props.showStairDimensions ?? false}
+        onChange={props.onShowStairDimensionsChange}
       />
 
       <Select

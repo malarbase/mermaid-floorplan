@@ -84,13 +84,13 @@ export default function UserManagement() {
 
   const userProjects = useQuery(
     api.admin.listUserProjects,
-    () => ({ userId: projectsTarget()?.userId as string }),
+    () => ({ userId: projectsTarget()?.userId as Id<'users'> }),
     () => ({ enabled: !!projectsTarget() }),
   );
 
   const moderationHistory = useQuery(
     api.admin.getUserModerationHistory,
-    () => ({ userId: historyTarget()?.userId as string }),
+    () => ({ userId: historyTarget()?.userId as Id<'users'> }),
     () => ({ enabled: !!historyTarget() }),
   );
 
@@ -142,7 +142,7 @@ export default function UserManagement() {
     try {
       await unbanUser.mutate({
         userId: target.userId,
-        reason: unbanReason().trim() || undefined,
+        reason: unbanReason().trim() || '',
       });
       toast.success(`${target.username} has been unbanned`);
       setUnbanTarget(null);
@@ -310,7 +310,11 @@ export default function UserManagement() {
                       {/* Email (super admin only) */}
                       <Show when={isSuperAdmin()}>
                         <td class="text-base-content/70 text-sm">
-                          {user.email || <span class="text-base-content/30 italic">Hidden</span>}
+                          {user.email ? (
+                            <span>{String(user.email)}</span>
+                          ) : (
+                            <span class="text-base-content/30 italic">Hidden</span>
+                          )}
                         </td>
                       </Show>
 

@@ -2,7 +2,7 @@
  * Annotation Manager - Handles area labels, dimension labels, and floor summaries
  */
 
-import type { JsonConfig, JsonExport } from 'floorplan-3d-core';
+import type { JsonConfig, JsonExport, JsonStair } from 'floorplan-3d-core';
 import { DIMENSIONS, type LengthUnit, METERS_TO_UNIT } from 'floorplan-3d-core';
 import type * as THREE from 'three';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
@@ -16,8 +16,26 @@ export interface AnnotationState {
   showArea: boolean;
   showDimensions: boolean;
   showFloorSummary: boolean;
+  showStairInfo: boolean;
+  showStairDimensions: boolean;
   areaUnit: AreaUnit;
   lengthUnit: LengthUnit;
+}
+
+interface StairDimensions {
+  stepCount: number;
+  /** Actual riser height = rise / stepCount */
+  riser: number;
+  tread: number;
+  width: number;
+  /** Total horizontal travel along the climb axis (excluding landings) */
+  runLength: number;
+  /** Bounding-box dimension along x-axis (stair.x → stair.x + fpX) */
+  fpX: number;
+  /** Bounding-box dimension along z-axis (stair.z → stair.z + fpZ) */
+  fpZ: number;
+  /** false for spiral/curved/custom/double-L — skip dimension overlay */
+  hasFootprint: boolean;
 }
 
 export interface AnnotationCallbacks {
@@ -30,8 +48,9 @@ export interface AnnotationCallbacks {
 }
 
 export class AnnotationManager {
-  private roomNameLabels: CSS2DObject[] = [];
-  private areaLabels: CSS2DObject[] = [];
+  private roomLabels: CSS2DObject[] = [];
+  private stairLabels: CSS2DObject[] = [];
+  private stairDimensionLabels: CSS2DObject[] = [];
   private dimensionLabels: CSS2DObject[] = [];
   private floorSummaryPanel: HTMLElement | null = null;
   /** Whether the floor summary panel was dynamically created (vs. pre-existing in HTML) */
@@ -42,6 +61,8 @@ export class AnnotationManager {
     showArea: false,
     showDimensions: false,
     showFloorSummary: false,
+    showStairInfo: false,
+    showStairDimensions: false,
     areaUnit: 'sqft',
     lengthUnit: 'ft',
   };
@@ -57,7 +78,7 @@ export class AnnotationManager {
     const showAreaToggle = document.getElementById('show-area') as HTMLInputElement;
     showAreaToggle?.addEventListener('change', (e) => {
       this.state.showArea = (e.target as HTMLInputElement).checked;
-      this.updateAreaAnnotations();
+      this.updateRoomLabels();
     });
 
     const showDimensionsToggle = document.getElementById('show-dimensions') as HTMLInputElement;
@@ -74,11 +95,25 @@ export class AnnotationManager {
       this.updateFloorSummary();
     });
 
+    const showStairInfoToggle = document.getElementById('show-stair-info') as HTMLInputElement;
+    showStairInfoToggle?.addEventListener('change', (e) => {
+      this.state.showStairInfo = (e.target as HTMLInputElement).checked;
+      this.updateStairAnnotations();
+    });
+
+    const showStairDimensionsToggle = document.getElementById(
+      'show-stair-dimensions',
+    ) as HTMLInputElement;
+    showStairDimensionsToggle?.addEventListener('change', (e) => {
+      this.state.showStairDimensions = (e.target as HTMLInputElement).checked;
+      this.updateStairDimensionAnnotations();
+    });
+
     // Unit dropdowns
     const areaUnitSelect = document.getElementById('area-unit') as HTMLSelectElement;
     areaUnitSelect?.addEventListener('change', (e) => {
       this.state.areaUnit = (e.target as HTMLSelectElement).value as AreaUnit;
-      this.updateAreaAnnotations();
+      this.updateRoomLabels();
       this.updateFloorSummary();
     });
 
@@ -112,8 +147,9 @@ export class AnnotationManager {
    * Update all annotations
    */
   public updateAll(): void {
-    this.updateRoomNameAnnotations();
-    this.updateAreaAnnotations();
+    this.updateRoomLabels();
+    this.updateStairAnnotations();
+    this.updateStairDimensionAnnotations();
     this.updateDimensionAnnotations();
     this.updateFloorSummary();
   }
@@ -243,76 +279,278 @@ export class AnnotationManager {
   }
 
   /**
-   * Update room name annotations (labels showing room name/label above each room)
+   * Update room labels — a single merged CSS2DObject per room that can show
+   * the room name, area, or both as independently-styled child elements.
+   * Replaces the former separate updateRoomNameAnnotations / updateAreaAnnotations.
    */
-  public updateRoomNameAnnotations(): void {
+  public updateRoomLabels(): void {
     const floors = this.callbacks.getFloors();
     const floorplanData = this.callbacks.getFloorplanData();
 
-    this.roomNameLabels.forEach((label) => {
+    this.roomLabels.forEach((label) => {
       label.parent?.remove(label);
       label.element.remove();
     });
-    this.roomNameLabels = [];
+    this.roomLabels = [];
 
-    if (!this.state.showRoomName || !floorplanData) return;
+    if (!this.state.showRoomName && !this.state.showArea) return;
+    if (!floorplanData) return;
 
     floorplanData.floors.forEach((floor, floorIndex) => {
       floor.rooms.forEach((room) => {
-        const displayName = room.label ?? room.name;
+        const wrapper = document.createElement('div');
+        wrapper.className = 'room-label';
 
-        const labelDiv = document.createElement('div');
-        labelDiv.className = 'room-name-label';
-        labelDiv.textContent = displayName;
+        if (this.state.showRoomName) {
+          const nameEl = document.createElement('div');
+          nameEl.className = 'room-label__name';
+          nameEl.textContent = room.label ?? room.name;
+          wrapper.appendChild(nameEl);
+        }
 
-        const label = new CSS2DObject(labelDiv);
-        const centerX = room.x + room.width / 2;
-        const centerZ = room.z + room.height / 2;
-        // Slightly above area label (area is at +0.5) to avoid overlap when both are visible
-        const y = (room.elevation || 0) + 0.7;
+        if (this.state.showArea) {
+          const areaEl = document.createElement('div');
+          areaEl.className = 'room-label__area';
+          areaEl.textContent = this.formatArea(room.width * room.height);
+          wrapper.appendChild(areaEl);
+        }
 
-        label.position.set(centerX, y, centerZ);
+        const label = new CSS2DObject(wrapper);
+        label.position.set(
+          room.x + room.width / 2,
+          (room.elevation || 0) + 0.6,
+          room.z + room.height / 2,
+        );
         floors[floorIndex]?.add(label);
-        this.roomNameLabels.push(label);
+        this.roomLabels.push(label);
       });
     });
   }
 
   /**
-   * Update area annotations (labels showing room areas)
+   * Compute total step count for a stair from its JSON definition.
+   * For custom/segmented stairs sums steps across flight segments.
+   * For all other shapes uses: Math.round(rise / riser).
    */
-  public updateAreaAnnotations(): void {
+  private computeStepCount(stair: JsonStair): number {
+    if (stair.shape.segments) {
+      return stair.shape.segments
+        .filter((s) => s.type === 'flight')
+        .reduce((sum, s) => sum + (s.steps ?? 0), 0);
+    }
+    const riserHeight = stair.riser ?? 0.18;
+    return Math.round(stair.rise / riserHeight);
+  }
+
+  /**
+   * Compute geometric dimensions for a stair, accounting for shape type.
+   * fpX/fpZ are the bounding-box extents from (stair.x, stair.z) — the
+   * normalised min-corner used by the renderer.
+   */
+  private getStairDimensions(stair: JsonStair): StairDimensions {
+    const stepCount = this.computeStepCount(stair);
+    const tread = stair.tread ?? 0.28;
+    const width = stair.width ?? 1.0;
+    const riser = stepCount > 0 ? stair.rise / stepCount : (stair.riser ?? 0.18);
+    const shape = stair.shape;
+    const dir = shape.direction ?? 'top';
+
+    const straightFootprint = (runLen: number) => {
+      // top/bottom: stair runs along z, width along x
+      // left/right: stair runs along x, width along z
+      if (dir === 'top' || dir === 'bottom') {
+        return { fpX: width, fpZ: runLen };
+      }
+      return { fpX: runLen, fpZ: width };
+    };
+
+    switch (shape.type) {
+      case 'straight': {
+        const runLength = stepCount * tread;
+        return {
+          stepCount,
+          riser,
+          tread,
+          width,
+          runLength,
+          ...straightFootprint(runLength),
+          hasFootprint: true,
+        };
+      }
+
+      case 'winder': {
+        const winders = shape.winders ?? 0;
+        const straightSteps = stepCount - winders;
+        const runLength = straightSteps * tread;
+        return {
+          stepCount,
+          riser,
+          tread,
+          width,
+          runLength,
+          ...straightFootprint(runLength),
+          hasFootprint: true,
+        };
+      }
+
+      case 'L-shaped': {
+        const runs = shape.runs ?? [Math.ceil(stepCount / 2), Math.floor(stepCount / 2)];
+        const r1 = runs[0] ?? Math.ceil(stepCount / 2);
+        const r2 = runs[1] ?? Math.floor(stepCount / 2);
+        const landing = shape.landing ?? [width, width];
+        const runLength = (r1 + r2) * tread;
+        // First run along entry direction; second run perpendicular after the turn.
+        // Footprint: r1 * tread + landing depth along entry axis;
+        //            r2 * tread + landing width perpendicular.
+        const fpAlong = r1 * tread + landing[1];
+        const fpPerp = r2 * tread + landing[0];
+        const entryDir = shape.entry ?? dir;
+        const { fpX, fpZ } =
+          entryDir === 'top' || entryDir === 'bottom'
+            ? { fpX: fpPerp, fpZ: fpAlong }
+            : { fpX: fpAlong, fpZ: fpPerp };
+        return { stepCount, riser, tread, width, runLength, fpX, fpZ, hasFootprint: true };
+      }
+
+      case 'U-shaped': {
+        const runs = shape.runs ?? [Math.ceil(stepCount / 2), Math.floor(stepCount / 2)];
+        const r1 = runs[0] ?? Math.ceil(stepCount / 2);
+        const r2 = runs[1] ?? Math.floor(stepCount / 2);
+        const landing = shape.landing ?? [width, width];
+        const runLength = (r1 + r2) * tread;
+        // Two parallel runs (same direction) separated by a landing.
+        // Along run direction: max(r1,r2)*tread + landing depth.
+        // Perpendicular: 2*width + landing width.
+        const fpAlong = Math.max(r1, r2) * tread + landing[1];
+        const fpPerp = 2 * width + landing[0];
+        const entryDir = shape.entry ?? dir;
+        const { fpX, fpZ } =
+          entryDir === 'top' || entryDir === 'bottom'
+            ? { fpX: fpPerp, fpZ: fpAlong }
+            : { fpX: fpAlong, fpZ: fpPerp };
+        return { stepCount, riser, tread, width, runLength, fpX, fpZ, hasFootprint: true };
+      }
+
+      default:
+        // spiral, curved, custom, double-L: provide runLength only
+        return {
+          stepCount,
+          riser,
+          tread,
+          width,
+          runLength: stepCount * tread,
+          fpX: width,
+          fpZ: stepCount * tread,
+          hasFootprint: false,
+        };
+    }
+  }
+
+  /**
+   * Update stair info annotations — one label per stair with name, step count,
+   * rise, step geometry, run width, and optional nosing/headroom.
+   */
+  public updateStairAnnotations(): void {
     const floors = this.callbacks.getFloors();
     const floorplanData = this.callbacks.getFloorplanData();
 
-    // Remove existing labels
-    this.areaLabels.forEach((label) => {
+    this.stairLabels.forEach((label) => {
       label.parent?.remove(label);
       label.element.remove();
     });
-    this.areaLabels = [];
+    this.stairLabels = [];
 
-    if (!this.state.showArea || !floorplanData) return;
+    if (!this.state.showStairInfo || !floorplanData) return;
 
     floorplanData.floors.forEach((floor, floorIndex) => {
-      floor.rooms.forEach((room) => {
-        const area = room.width * room.height;
-        const areaText = this.formatArea(area);
+      (floor.stairs ?? []).forEach((stair) => {
+        const dims = this.getStairDimensions(stair);
+        const displayName = stair.label ?? stair.name;
 
-        // Create label element
         const labelDiv = document.createElement('div');
-        labelDiv.className = 'area-label';
-        labelDiv.textContent = areaText;
+        labelDiv.className = 'stair-info-label';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = 'stair-info-label__name';
+        nameEl.textContent = displayName;
+        labelDiv.appendChild(nameEl);
+
+        const stepsEl = document.createElement('div');
+        stepsEl.className = 'stair-info-label__detail';
+        stepsEl.textContent = `${dims.stepCount} steps · ${this.formatLength(stair.rise)} rise`;
+        labelDiv.appendChild(stepsEl);
+
+        const stepDimEl = document.createElement('div');
+        stepDimEl.className = 'stair-info-label__detail';
+        stepDimEl.textContent = `riser: ${this.formatLength(dims.riser)} · tread: ${this.formatLength(dims.tread)}`;
+        labelDiv.appendChild(stepDimEl);
+
+        const runEl = document.createElement('div');
+        runEl.className = 'stair-info-label__detail';
+        runEl.textContent = `${this.formatLength(dims.width)} wide · ${this.formatLength(dims.runLength)} run`;
+        labelDiv.appendChild(runEl);
+
+        if (stair.nosing != null || stair.headroom != null) {
+          const parts: string[] = [];
+          if (stair.nosing != null) parts.push(`nosing: ${this.formatLength(stair.nosing)}`);
+          if (stair.headroom != null) parts.push(`headroom: ${this.formatLength(stair.headroom)}`);
+          const extrasEl = document.createElement('div');
+          extrasEl.className = 'stair-info-label__detail stair-info-label__extras';
+          extrasEl.textContent = parts.join(' · ');
+          labelDiv.appendChild(extrasEl);
+        }
 
         const label = new CSS2DObject(labelDiv);
-        const centerX = room.x + room.width / 2;
-        const centerZ = room.z + room.height / 2;
-        // Use local coordinates (relative to floor group)
-        const y = (room.elevation || 0) + 0.5;
-
-        label.position.set(centerX, y, centerZ);
+        label.position.set(stair.x, 0.9, stair.z);
         floors[floorIndex]?.add(label);
-        this.areaLabels.push(label);
+        this.stairLabels.push(label);
+      });
+    });
+  }
+
+  /**
+   * Update stair dimension overlay — w: and d: labels along the footprint axes.
+   * Currently supports straight, winder, L-shaped, and U-shaped stairs.
+   * Spiral/curved/custom stairs are skipped (hasFootprint = false).
+   */
+  public updateStairDimensionAnnotations(): void {
+    const floors = this.callbacks.getFloors();
+    const floorplanData = this.callbacks.getFloorplanData();
+
+    this.stairDimensionLabels.forEach((label) => {
+      label.parent?.remove(label);
+      label.element.remove();
+    });
+    this.stairDimensionLabels = [];
+
+    if (!this.state.showStairDimensions || !floorplanData) return;
+
+    floorplanData.floors.forEach((floor, floorIndex) => {
+      (floor.stairs ?? []).forEach((stair) => {
+        const dims = this.getStairDimensions(stair);
+        if (!dims.hasFootprint) return;
+
+        const y = 0.3;
+        const { x, z } = stair;
+        const { fpX, fpZ } = dims;
+
+        // Width label: along x-axis, placed just north of the stair (-z edge)
+        const wDiv = document.createElement('div');
+        wDiv.className = 'dimension-label width-label';
+        wDiv.textContent = `w: ${this.formatLength(fpX)}`;
+        const wLabel = new CSS2DObject(wDiv);
+        wLabel.position.set(x + fpX / 2, y, z - 0.5);
+        floors[floorIndex]?.add(wLabel);
+        this.stairDimensionLabels.push(wLabel);
+
+        // Depth label: along z-axis, placed just west of the stair (-x edge)
+        const dDiv = document.createElement('div');
+        dDiv.className = 'dimension-label depth-label';
+        dDiv.textContent = `d: ${this.formatLength(fpZ)}`;
+        const dLabel = new CSS2DObject(dDiv);
+        dLabel.position.set(x - 0.5, y, z + fpZ / 2);
+        floors[floorIndex]?.add(dLabel);
+        this.stairDimensionLabels.push(dLabel);
       });
     });
   }
@@ -328,17 +566,23 @@ export class AnnotationManager {
     this.floorSummaryPanel = null;
 
     // Remove CSS2D labels from scene
-    for (const label of this.roomNameLabels) {
+    for (const label of this.roomLabels) {
       label.parent?.remove(label);
       label.element.remove();
     }
-    this.roomNameLabels = [];
+    this.roomLabels = [];
 
-    for (const label of this.areaLabels) {
+    for (const label of this.stairLabels) {
       label.parent?.remove(label);
       label.element.remove();
     }
-    this.areaLabels = [];
+    this.stairLabels = [];
+
+    for (const label of this.stairDimensionLabels) {
+      label.parent?.remove(label);
+      label.element.remove();
+    }
+    this.stairDimensionLabels = [];
 
     for (const label of this.dimensionLabels) {
       label.parent?.remove(label);

@@ -10,6 +10,12 @@ import type { JsonLift, JsonStair } from './types.js';
 // their CENTER, so tread tops sit half this height above their position.y.
 const TREAD_THICKNESS = 0.05;
 
+// Vertical thickness of the structural concrete slab below the sloped soffit.
+// Typical cast-in-place stair slabs are 150–200 mm. The bottom slope is
+// parallel to the stair slope and offset downward by this amount. The portion
+// below the floor level is naturally hidden by the floor slab.
+const SOFFIT_THICKNESS = 0.15;
+
 export class StairGenerator {
   private material: THREE.MeshStandardMaterial;
 
@@ -85,6 +91,72 @@ export class StairGenerator {
     // re-rotated by the group's rotation and end up in the wrong direction.
     group.position.x = -box.min.x;
     group.position.z = -box.min.z;
+  }
+
+  /**
+   * Build a single extruded sawtooth mesh representing an entire stair flight.
+   *
+   * The profile is drawn in the X-Y plane (shape x → depth axis, shape y →
+   * height axis), then rotated -90° around Y so the depth axis maps to world Z
+   * and the extrusion runs along world X. The width/2 translation centres the
+   * mesh on x = 0, matching the legacy per-step layout.
+   *
+   * Y0 = TREAD_THICKNESS / 2 is baked into every y-coordinate so the last
+   * tread top lands at N·R + TREAD_THICKNESS/2 in local space. Combined with
+   * generateStair's group.position.y = −TREAD_THICKNESS, the world tread top =
+   * rise − TREAD_THICKNESS/2 (25 mm below slab), identical to the legacy path.
+   *
+   * NOTE: open and glass stringers keep the legacy per-step path because the
+   * sawtooth is a solid filled profile — it cannot represent open gaps between
+   * treads or per-step glass material assignment.
+   */
+  private buildSawtoothFlight(
+    width: number,
+    treadDepth: number,
+    riserHeight: number,
+    stepCount: number,
+    material: THREE.Material,
+  ): THREE.Mesh {
+    const T = treadDepth;
+    const R = riserHeight;
+    const N = stepCount;
+
+    // Shift every y upward by TREAD_THICKNESS/2 so the sawtooth's world
+    // tread-top matches the legacy BoxGeometry tread-top (see note above).
+    const Y0 = TREAD_THICKNESS / 2;
+
+    const shape = new THREE.Shape();
+    shape.moveTo(N * T, Y0); // front-top corner (stair entry)
+    for (let i = 0; i < N; i++) {
+      const z = (N - i) * T;
+      shape.lineTo(z, Y0 + (i + 1) * R); // riser top
+      shape.lineTo(z - T, Y0 + (i + 1) * R); // tread back
+    }
+    // At (0, Y0 + N·R) — back-top corner. Drop straight down by SOFFIT_THICKNESS
+    // to form the back face, then draw the parallel bottom slope back to the
+    // front. closePath() closes the front face from the front-bottom up to the
+    // entry point. Result: a concrete-slab cross-section with sloped soffit.
+    shape.lineTo(0, Y0 + N * R - SOFFIT_THICKNESS); // back face (vertical)
+    shape.lineTo(N * T, Y0 - SOFFIT_THICKNESS); // bottom slope (parallel, offset down)
+    shape.closePath(); // front face back up to (N·T, Y0)
+
+    const geom = new THREE.ExtrudeGeometry(shape, {
+      depth: width,
+      bevelEnabled: false,
+      steps: 1,
+    });
+
+    // ExtrudeGeometry extrudes along +Z with the shape in the X-Y plane.
+    // Rotate -90° around Y: shape x-axis → world z-axis, extrusion → world -x-axis.
+    geom.rotateY(-Math.PI / 2);
+    // Re-centre the extruded mesh on x = 0 (matches per-step tread.position.x = 0).
+    geom.translate(width / 2, 0, 0);
+
+    const mesh = new THREE.Mesh(geom, material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.name = 'stair_flight';
+    return mesh;
   }
 
   public generateLift(lift: JsonLift, floorHeight: number): THREE.Group {
@@ -175,39 +247,63 @@ export class StairGenerator {
         break;
     }
 
-    // Create steps
-    for (let i = 0; i < stepCount; i++) {
-      const stepGroup = new THREE.Group();
+    // Emit step geometry — stringer-type determines the approach:
+    if (stair.stringers === 'open') {
+      // Open stringers: floating tread slabs, no risers. Individual boxes
+      // preserved because the sawtooth is a solid fill and cannot represent gaps.
+      for (let i = 0; i < stepCount; i++) {
+        const treadGeom = new THREE.BoxGeometry(width, TREAD_THICKNESS, treadDepth);
+        const tread = new THREE.Mesh(treadGeom, this.material);
+        tread.position.set(0, (i + 1) * actualRiser, -(i * treadDepth) - treadDepth / 2);
+        tread.castShadow = true;
+        tread.receiveShadow = true;
+        group.add(tread);
+      }
+    } else if (stair.stringers === 'glass') {
+      // Glass stringers: per-step tread + transparent riser. Individual meshes
+      // preserved so the glass material can be applied per-riser. See Phase B
+      // note in stair_sawtooth_extrusion plan for the reasoning.
+      for (let i = 0; i < stepCount; i++) {
+        const stepGroup = new THREE.Group();
 
-      // Tread
-      const treadGeom = new THREE.BoxGeometry(width, 0.05, treadDepth);
-      const tread = new THREE.Mesh(treadGeom, this.material);
-      tread.position.y = (i + 1) * actualRiser;
-      tread.castShadow = true;
-      tread.receiveShadow = true;
-      stepGroup.add(tread);
+        const treadGeom = new THREE.BoxGeometry(width, TREAD_THICKNESS, treadDepth);
+        const tread = new THREE.Mesh(treadGeom, this.material);
+        tread.position.y = (i + 1) * actualRiser;
+        tread.castShadow = true;
+        tread.receiveShadow = true;
+        stepGroup.add(tread);
 
-      // Riser (if closed or glass)
-      if (stair.stringers !== 'open') {
-        let riserMat = this.material;
-        if (stair.stringers === 'glass') {
-          riserMat = new THREE.MeshStandardMaterial({
-            color: 0x88ccff,
-            transparent: true,
-            opacity: 0.5,
-            roughness: 0.1,
-            metalness: 0.9,
-          });
-        }
+        const glassMat = new THREE.MeshStandardMaterial({
+          color: 0x88ccff,
+          transparent: true,
+          opacity: 0.5,
+          roughness: 0.1,
+          metalness: 0.9,
+        });
         const riserGeom = new THREE.BoxGeometry(width, actualRiser, 0.02);
-        const riser = new THREE.Mesh(riserGeom, riserMat);
+        const riser = new THREE.Mesh(riserGeom, glassMat);
         riser.position.y = (i + 0.5) * actualRiser;
         riser.position.z = treadDepth / 2;
         stepGroup.add(riser);
-      }
 
-      stepGroup.position.z = -(i * treadDepth) - treadDepth / 2;
-      group.add(stepGroup);
+        stepGroup.position.z = -(i * treadDepth) - treadDepth / 2;
+        group.add(stepGroup);
+      }
+    } else {
+      // Closed stringers (default): single sawtooth extrusion for the entire
+      // flight. Eliminates tread/riser inter-penetration and coplanar X-side
+      // seams that produce per-step shimmer on oblique camera views.
+      const flight = this.buildSawtoothFlight(
+        width,
+        treadDepth,
+        actualRiser,
+        stepCount,
+        this.material,
+      );
+      // Sawtooth local front is at z = stepCount * treadDepth; shift so the
+      // stair entry aligns to z = 0 in the group frame (matching legacy layout).
+      flight.position.z = -stepCount * treadDepth;
+      group.add(flight);
     }
 
     group.rotation.y = rotation;
@@ -249,10 +345,16 @@ export class StairGenerator {
 
     const actualRiser = stair.rise / (run1Steps + run2Steps);
 
-    // First run
-    for (let i = 0; i < run1Steps; i++) {
-      this.createStep(group, width, treadDepth, actualRiser, i, 0, 0, 0);
-    }
+    // First run — single sawtooth flight; entry at z=0, back at z=-run1Steps*T
+    const run1Flight = this.buildSawtoothFlight(
+      width,
+      treadDepth,
+      actualRiser,
+      run1Steps,
+      this.material,
+    );
+    run1Flight.position.z = -run1Steps * treadDepth;
+    group.add(run1Flight);
 
     // Landing
     const landingY = run1Steps * actualRiser;
@@ -282,18 +384,18 @@ export class StairGenerator {
     run2Group.position.copy(run2StartPos);
     run2Group.rotation.y = turnAngle;
 
-    for (let i = 0; i < run2Steps; i++) {
-      this.createStep(
-        run2Group,
-        width,
-        treadDepth,
-        actualRiser,
-        i,
-        0,
-        0,
-        -(landingDepth / 2 + treadDepth / 2),
-      );
-    }
+    // Second run — sawtooth; the legacy createStep used startZ = -(landingDepth/2 + treadDepth/2),
+    // so the front of step 0 was at that z value in run2Group space.
+    // Matching: front = flight.position.z + run2Steps*T = -(landingDepth/2 + treadDepth/2)
+    const run2Flight = this.buildSawtoothFlight(
+      width,
+      treadDepth,
+      actualRiser,
+      run2Steps,
+      this.material,
+    );
+    run2Flight.position.z = -run2Steps * treadDepth - (landingDepth / 2 + treadDepth / 2);
+    run2Group.add(run2Flight);
 
     group.add(run2Group);
 
@@ -328,10 +430,16 @@ export class StairGenerator {
     const width = stair.width ?? 1.0;
     const actualRiser = stair.rise / (run1Steps + run2Steps);
 
-    // Run 1: Up
-    for (let i = 0; i < run1Steps; i++) {
-      this.createStep(group, width, treadDepth, actualRiser, i, 0, 0, 0);
-    }
+    // Run 1: single sawtooth flight; entry at z=0, back at z=-run1Steps*T
+    const uRun1Flight = this.buildSawtoothFlight(
+      width,
+      treadDepth,
+      actualRiser,
+      run1Steps,
+      this.material,
+    );
+    uRun1Flight.position.z = -run1Steps * treadDepth;
+    group.add(uRun1Flight);
 
     const landingY = run1Steps * actualRiser;
     // Landing position logic
@@ -354,15 +462,21 @@ export class StairGenerator {
     landing.position.set(landingCenterX, landingY, landingCenterZ);
     group.add(landing);
 
-    // Run 2
+    // Run 2: single sawtooth; run2Group.rotation.y=PI already flips its direction,
+    // so the same position.z=-N*T formula as run 1 places the entry at z=0 in run2Group space.
     const run2Group = new THREE.Group();
-    // Start at edge of landing
     run2Group.position.set(offsetRun2, landingY, landingCenterZ - landingDepth / 2);
     run2Group.rotation.y = Math.PI;
 
-    for (let i = 0; i < run2Steps; i++) {
-      this.createStep(run2Group, width, treadDepth, actualRiser, i, 0, 0, 0);
-    }
+    const uRun2Flight = this.buildSawtoothFlight(
+      width,
+      treadDepth,
+      actualRiser,
+      run2Steps,
+      this.material,
+    );
+    uRun2Flight.position.z = -run2Steps * treadDepth;
+    run2Group.add(uRun2Flight);
     group.add(run2Group);
 
     // Entry Rotation
@@ -431,30 +545,31 @@ export class StairGenerator {
       if (segment.type === 'flight') {
         const steps = segment.steps ?? 10;
         const segWidth = segment.width ?? defaultWidth;
-        // Use standard riser height for now as custom stairs can be complex
         const actualRiser = riserHeight;
+        const flightLength = steps * treadDepth;
 
-        for (let i = 0; i < steps; i++) {
-          // Calculate absolute position for the step center
-          // Center is currentPos + forward * (i + 0.5) * depth
-          const stepDist = treadDepth * i + treadDepth / 2;
-          const stepPos = currentPos.clone().add(forward.clone().multiplyScalar(stepDist));
+        // Single sawtooth per flight. The front (local z = flightLength) must
+        // map to currentPos after rotation by currentRotation.
+        // Derivation: world_front = flight.position + R(α) * (0, Y0, flightLength)
+        //   x: px + sin(α)*flightLength = currentPos.x  → px = currentPos.x - sin(α)*L
+        //   z: pz + cos(α)*flightLength = currentPos.z  → pz = currentPos.z - cos(α)*L
+        const flight = this.buildSawtoothFlight(
+          segWidth,
+          treadDepth,
+          actualRiser,
+          steps,
+          this.material,
+        );
+        flight.rotation.y = currentRotation;
+        flight.position.set(
+          currentPos.x - Math.sin(currentRotation) * flightLength,
+          currentHeight,
+          currentPos.z - Math.cos(currentRotation) * flightLength,
+        );
+        group.add(flight);
 
-          const stepY = currentHeight + (i + 1) * actualRiser;
-
-          this.createStepAbsolute(
-            group,
-            segWidth,
-            treadDepth,
-            actualRiser,
-            stepPos,
-            currentRotation,
-            stepY,
-          );
-        }
-
-        // Advance currentPos to end of flight
-        currentPos.add(forward.clone().multiplyScalar(steps * treadDepth));
+        // Advance currentPos to exit of this flight (back of sawtooth)
+        currentPos.addScaledVector(forward, flightLength);
         currentHeight += steps * actualRiser;
       } else if (segment.type === 'turn') {
         const landingW = segment.landing ? segment.landing[0] : defaultWidth;
@@ -506,49 +621,6 @@ export class StairGenerator {
     }
   }
 
-  private createStepAbsolute(
-    group: THREE.Group,
-    width: number,
-    depth: number,
-    height: number,
-    position: THREE.Vector3,
-    rotation: number,
-    yPos: number,
-  ): void {
-    const stepGroup = new THREE.Group();
-    stepGroup.position.copy(position);
-    stepGroup.position.y = yPos;
-    stepGroup.rotation.y = rotation;
-
-    // Tread (centered at local 0,0,0, which is stepGroup position)
-    const treadGeom = new THREE.BoxGeometry(width, 0.05, depth);
-    const tread = new THREE.Mesh(treadGeom, this.material);
-    tread.position.y = 0;
-    tread.castShadow = true;
-    tread.receiveShadow = true;
-    stepGroup.add(tread);
-
-    // Riser
-    if (this.material) {
-      // TODO: Check stringer config properly if available
-      const riserGeom = new THREE.BoxGeometry(width, height, 0.02);
-      const riser = new THREE.Mesh(riserGeom, this.material);
-      // Riser goes down from tread.
-      // Center of riser is height/2 below tread.
-      // And aligned to front edge (local +Z if step grows -Z? No, tread is centered)
-      // Tread Z range: [-d/2, d/2].
-      // Riser should be at front edge?
-      // If we walk towards -Z (forward), front edge is +Z? No, back edge is +Z.
-      // We step UP onto the tread. Riser is at the "start" of the tread.
-      // If forward is -Z, start is +Z.
-      // So riser at Z = depth/2.
-      riser.position.set(0, -height / 2, depth / 2);
-      stepGroup.add(riser);
-    }
-
-    group.add(stepGroup);
-  }
-
   private createLandingAbsolute(
     group: THREE.Group,
     width: number,
@@ -592,30 +664,6 @@ export class StairGenerator {
 
       group.add(stepGroup);
     }
-  }
-
-  private createStep(
-    group: THREE.Group,
-    width: number,
-    depth: number,
-    height: number,
-    index: number,
-    xOffset: number,
-    zOffset: number,
-    startZ: number = 0,
-  ): void {
-    const treadGeom = new THREE.BoxGeometry(width, 0.05, depth);
-    const tread = new THREE.Mesh(treadGeom, this.material);
-    tread.position.set(xOffset, (index + 1) * height, startZ - index * depth - depth / 2 + zOffset);
-    tread.castShadow = true;
-    tread.receiveShadow = true;
-    group.add(tread);
-
-    // Riser
-    const riserGeom = new THREE.BoxGeometry(width, height, 0.02);
-    const riser = new THREE.Mesh(riserGeom, this.material);
-    riser.position.set(xOffset, (index + 0.5) * height, startZ - index * depth + depth / 2 - depth);
-    group.add(riser);
   }
 
   private createHandrail(

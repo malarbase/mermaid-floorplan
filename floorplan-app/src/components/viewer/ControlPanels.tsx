@@ -253,6 +253,14 @@ export default function ControlPanels(props: ControlPanelsProps) {
         viewer.annotationManager.updateAll();
         layoutManager.setFloorSummaryVisible(show);
       },
+      onShowStairInfoChange: (show) => {
+        viewer.annotationManager.state.showStairInfo = show;
+        viewer.annotationManager.updateAll();
+      },
+      onShowStairDimensionsChange: (show) => {
+        viewer.annotationManager.state.showStairDimensions = show;
+        viewer.annotationManager.updateStairDimensionAnnotations();
+      },
       onAreaUnitChange: (unit) => {
         viewer.annotationManager.state.areaUnit = unit;
         viewer.annotationManager.updateAll();

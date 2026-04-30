@@ -402,6 +402,55 @@ export function hasNeighborAtCorner(
 }
 
 /**
+ * Checks whether a room adjacent in Z (directly above or below) has a vertical
+ * wall (left or right edge) at exactly `targetX`, at the Z boundary `targetZ`.
+ *
+ * This identifies T-junctions where two rooms share the *same* outer wall
+ * boundary across a floor boundary — e.g. LiftCore and StairCore both having
+ * their right wall at the same X.  When true:
+ *
+ * - The vertical wall should NOT be shrunk at that end (the adjacent room's
+ *   wall provides continuity, so the outer face is unbroken).
+ * - The horizontal wall should NOT extend at that corner (the vertical wall
+ *   covers it, and extending would expose the horizontal wall's outer face
+ *   as a visible bump between the two vertical segments).
+ *
+ * @param targetX  The X position of the vertical wall boundary.
+ * @param targetZ  The Z position of the horizontal room edge being checked.
+ * @param room     The current room (excluded from candidate search).
+ * @param allRooms All rooms on the same floor.
+ * @param tolerance Floating-point tolerance (default 0.1).
+ */
+export function hasContinuousWallAt(
+  targetX: number,
+  targetZ: number,
+  room: JsonRoom,
+  allRooms: JsonRoom[],
+  tolerance = 0.1,
+): boolean {
+  for (const candidate of allRooms) {
+    if (candidate.name === room.name) continue;
+
+    // Candidate must be directly adjacent in Z at targetZ (touching from above or below).
+    if (
+      Math.abs(candidate.z - targetZ) > tolerance &&
+      Math.abs(candidate.z + candidate.height - targetZ) > tolerance
+    ) {
+      continue;
+    }
+
+    // Candidate must have a vertical wall (left or right edge) at exactly targetX.
+    if (
+      Math.abs(candidate.x - targetX) < tolerance ||
+      Math.abs(candidate.x + candidate.width - targetX) < tolerance
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Full wall ownership analysis - determines if wall should be rendered
  * and computes segments with materials
  */
