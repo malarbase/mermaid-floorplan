@@ -77,6 +77,12 @@ export interface JsonFloor {
   stairs?: JsonStair[];
   lifts?: JsonLift[];
   height?: number; // Floor-level default height
+  /**
+   * Per-floor view of connections that belong to this floor. Populated by
+   * the converter alongside the flat `JsonExport.connections`. Optional so
+   * legacy / externally-constructed exports remain valid without it.
+   */
+  connections?: JsonConnection[];
 }
 
 export type JsonStairShapeType =
@@ -233,6 +239,15 @@ export interface JsonConnection {
   height?: number;
   /** If true, the opening extends to the ceiling */
   fullHeight?: boolean;
+  /**
+   * Identifier of the floor this connection belongs to. Populated by the
+   * converter (`floorplan-language`). For exterior connections this is the
+   * floor of whichever endpoint is a real room. Optional in the 3D-core
+   * type because legacy fixtures and externally-constructed `JsonExport`s
+   * may omit it; the scene-builder gracefully falls back to the legacy
+   * room-name lookup when absent.
+   */
+  floorId?: string;
   /** Source location in DSL file (for editor sync) */
   _sourceRange?: JsonSourceRange;
 }

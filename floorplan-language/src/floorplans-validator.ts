@@ -52,6 +52,7 @@ export function registerValidationChecks(services: FloorplansServices) {
       validator.checkGrammarVersion,
       validator.checkConnectionOverlaps,
       validator.checkConnectionWallTypes,
+      validator.checkConnectionFloorConsistency,
       validator.checkStyleReferences,
       validator.checkDuplicateStyleNames,
       validator.checkSharedWallConflicts,
@@ -339,6 +340,78 @@ export class FloorplansValidator {
         );
       }
     }
+  }
+
+  /**
+   * Warn when a horizontal `connect` statement spans two different floors.
+   *
+   * The grammar accepts cross-floor connections today (room references are
+   * scoped globally), but the renderer can't route a horizontal connection
+   * across floors — each floor builds an independent wall network. As a
+   * result, such connections are silently dropped during scene-build. This
+   * check surfaces the issue at author time and points users at the
+   * `vertical X.A to Y.B` form, which is the supported way to bridge
+   * floors.
+   *
+   * Severity is `warning` (not `error`) because the data is grammatically
+   * valid and historically tolerated; raising the severity is reserved for
+   * Stage 2 once the grammar nests connections under floors.
+   */
+  checkConnectionFloorConsistency(floorplan: Floorplan, accept: ValidationAcceptor): void {
+    const roomToFloor = this.buildRoomToFloorMap(floorplan);
+
+    for (const connection of floorplan.connections) {
+      const fromRoom = connection.from?.room?.name;
+      const toRoom = connection.to?.room?.name;
+
+      // Skip incomplete connections — other validators surface the missing
+      // reference error.
+      if (!fromRoom || !toRoom) continue;
+
+      // Exterior connections anchor to a single floor by definition; not a
+      // cross-floor case.
+      if (fromRoom === 'outside' || toRoom === 'outside') continue;
+
+      const fromFloor = roomToFloor.get(fromRoom);
+      const toFloor = roomToFloor.get(toRoom);
+
+      // Skip when either side fails to resolve — undefined-reference errors
+      // are the responsibility of the linker / scope provider, and warning
+      // again here would just add noise on top of an already-broken document.
+      if (!fromFloor || !toFloor) continue;
+
+      if (fromFloor !== toFloor) {
+        accept(
+          'warning',
+          `Connection spans floors: '${fromRoom}' is on floor '${fromFloor}' but '${toRoom}' is on floor '${toFloor}'. ` +
+            `Horizontal 'connect' statements only render within a single floor — the renderer will silently drop this connection. ` +
+            `Use a 'vertical ${fromFloor}.<element> to ${toFloor}.<element>' statement to bridge floors.`,
+          { node: connection },
+        );
+      }
+    }
+  }
+
+  /**
+   * Build a `roomName -> floorId` index over every room (and recursively
+   * every `composed of` sub-room) in every floor of a `Floorplan`. Mirrors
+   * the helper in `json-converter`; kept private to the validator to avoid
+   * a cross-package import.
+   */
+  private buildRoomToFloorMap(floorplan: Floorplan): Map<string, string> {
+    const map = new Map<string, string>();
+    const visit = (rooms: Room[], floorId: string): void => {
+      for (const room of rooms) {
+        map.set(room.name, floorId);
+        if (room.subRooms.length > 0) {
+          visit(room.subRooms, floorId);
+        }
+      }
+    };
+    for (const floor of floorplan.floors) {
+      visit(floor.rooms, floor.id);
+    }
+    return map;
   }
 
   /**

@@ -790,6 +790,86 @@ describe('SceneBuildHooks', () => {
   });
 });
 
+describe('per-floor connection filtering', () => {
+  /**
+   * Two-floor fixture: each floor has two adjacent rooms with a `door`
+   * between them. The fixture exercises the new `floorId`-based filter in
+   * `pickFloorConnections` — both connections are emitted into the flat
+   * list with `floorId` set, and the per-floor `connections` view mirrors
+   * the converter's emitted shape.
+   */
+  function createTwoFloorWithConnections(): JsonExport {
+    const groundConn: JsonExport['connections'][number] = {
+      fromRoom: 'living',
+      fromWall: 'right',
+      toRoom: 'kitchen',
+      toWall: 'left',
+      doorType: 'door',
+      position: 50,
+      floorId: 'ground',
+    };
+    const firstConn: JsonExport['connections'][number] = {
+      fromRoom: 'bedroom',
+      fromWall: 'right',
+      toRoom: 'bath',
+      toWall: 'left',
+      doorType: 'door',
+      position: 50,
+      floorId: 'first',
+    };
+
+    const ground = createFloor('ground', 0, [
+      createRoom('living', 0, 0, 5, 5),
+      createRoom('kitchen', 5, 0, 5, 5),
+    ]);
+    ground.connections = [groundConn];
+
+    const first = createFloor('first', 1, [
+      createRoom('bedroom', 0, 0, 5, 5),
+      createRoom('bath', 5, 0, 5, 5),
+    ]);
+    first.connections = [firstConn];
+
+    return {
+      floors: [ground, first],
+      connections: [groundConn, firstConn],
+      config: { default_height: 3.0 },
+    };
+  }
+
+  test('emits a door mesh under each floor based on floorId attribution', () => {
+    const data = createTwoFloorWithConnections();
+    const result = buildFloorplanScene(data);
+
+    const groundDoor = result.floorGroups.get('ground')?.getObjectByName('door-living-kitchen');
+    const firstDoor = result.floorGroups.get('first')?.getObjectByName('door-bedroom-bath');
+
+    expect(groundDoor).toBeDefined();
+    expect(firstDoor).toBeDefined();
+
+    // And the door belonging to the OTHER floor must not leak across.
+    expect(result.floorGroups.get('ground')?.getObjectByName('door-bedroom-bath')).toBeUndefined();
+    expect(result.floorGroups.get('first')?.getObjectByName('door-living-kitchen')).toBeUndefined();
+  });
+
+  test('legacy fixtures without floorId still render via fromRoom-name fallback', () => {
+    // Drop `floorId` from both connections AND drop the per-floor view to
+    // simulate an externally-constructed `JsonExport` that pre-dates Stage 1.
+    const data = createTwoFloorWithConnections();
+    for (const floor of data.floors) delete floor.connections;
+    for (const conn of data.connections) delete conn.floorId;
+
+    const result = buildFloorplanScene(data);
+
+    // The by-name fallback partitions correctly because room names are
+    // unique within the fixture.
+    const groundDoor = result.floorGroups.get('ground')?.getObjectByName('door-living-kitchen');
+    const firstDoor = result.floorGroups.get('first')?.getObjectByName('door-bedroom-bath');
+    expect(groundDoor).toBeDefined();
+    expect(firstDoor).toBeDefined();
+  });
+});
+
 describe('unit normalization at the scene-build entry points', () => {
   /**
    * Build a fixture whose source unit is feet and whose dimensions, once

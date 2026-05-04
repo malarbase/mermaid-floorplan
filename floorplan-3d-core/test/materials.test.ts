@@ -260,4 +260,57 @@ describe('MaterialFactory', () => {
       });
     });
   });
+
+  describe('createPerEdgeWallMaterials', () => {
+    test('returns exactly 4 materials in [top, bottom, sideLeft, sideRight] order', () => {
+      const materials = MaterialFactory.createPerEdgeWallMaterials(undefined, undefined);
+
+      expect(materials).toHaveLength(4);
+      materials.forEach((mat) => {
+        expect(mat).toBeInstanceOf(THREE.MeshStandardMaterial);
+      });
+    });
+
+    test('two distinct styles produce two distinct lateral colours at indices 2 and 3', () => {
+      const styleLeft: MaterialStyle = { wall_color: '#11aa11' };
+      const styleRight: MaterialStyle = { wall_color: '#aa1111' };
+
+      const materials = MaterialFactory.createPerEdgeWallMaterials(styleLeft, styleRight);
+
+      expect(materials[2].color.getHex()).toBe(0x11aa11);
+      expect(materials[3].color.getHex()).toBe(0xaa1111);
+      expect(materials[2].color.getHex()).not.toBe(materials[3].color.getHex());
+    });
+
+    test('exterior edge (styleRight undefined) falls back to styleLeft for the right face', () => {
+      const styleLeft: MaterialStyle = { wall_color: '#336699' };
+
+      const materials = MaterialFactory.createPerEdgeWallMaterials(styleLeft, undefined);
+
+      expect(materials[2].color.getHex()).toBe(0x336699);
+      expect(materials[3].color.getHex()).toBe(0x336699);
+    });
+
+    test('cap faces (top/bottom) prefer the left style and fall back to the right when only right is defined', () => {
+      const styleRight: MaterialStyle = { wall_color: '#445566' };
+
+      const materials = MaterialFactory.createPerEdgeWallMaterials(undefined, styleRight);
+
+      // Caps fall back to whichever style is defined.
+      expect(materials[0].color.getHex()).toBe(0x445566);
+      expect(materials[1].color.getHex()).toBe(0x445566);
+      // sideLeft falls back to the cap (which itself fell back to right).
+      expect(materials[2].color.getHex()).toBe(0x445566);
+      expect(materials[3].color.getHex()).toBe(0x445566);
+    });
+
+    test('honours theme when both styles are undefined', () => {
+      const materials = MaterialFactory.createPerEdgeWallMaterials(undefined, undefined, 'dark');
+
+      // All four come from the dark theme wall colour.
+      materials.forEach((mat) => {
+        expect(mat.color.getHex()).toBe(COLORS_DARK.WALL);
+      });
+    });
+  });
 });

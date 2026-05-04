@@ -40,6 +40,7 @@ export function parseHexColor(hex: string): number {
   return parseInt(cleanHex, 16);
 }
 
+// biome-ignore lint/complexity/noStaticOnlyClass: used as a factory namespace; callers import MaterialFactory and call static methods
 export class MaterialFactory {
   /**
    * Create floor material with optional style and theme
@@ -197,5 +198,53 @@ export class MaterialFactory {
     }
 
     return materials;
+  }
+
+  /**
+   * Create a 4-material array for per-EDGE wall rendering used by the
+   * wall-network builder (one mesh per wall edge instead of per room).
+   *
+   * Layout (fixed order):
+   *   0: top         (the cap on the +Y face — invisible in normal viewing)
+   *   1: bottom      (the cap on the -Y face — buried in the slab below)
+   *   2: sideLeft    (interior face of the room on the LEFT of the canonical
+   *                   nodeA→nodeB direction; see `wall-network.ts` side
+   *                   convention block)
+   *   3: sideRight   (interior face of the room on the RIGHT — undefined
+   *                   `styleRight` indicates an exterior edge with no room on
+   *                   that side and falls back to `styleLeft` so both lateral
+   *                   faces still render with a sensible material)
+   *
+   * The cap faces are not visually distinguishable through the slab/ceiling
+   * stack at any normal viewing angle; we always paint them with the LEFT
+   * style for determinism. If only the right style is defined we paint with
+   * that instead (mirroring `createPerFaceWallMaterials`'s ownerStyle/
+   * adjacentStyle fallback). When both are undefined the cap inherits the
+   * default theme wall material via `createWallMaterial(undefined, theme)`.
+   *
+   * @param styleLeft  Style of the room on the LEFT side of the canonical
+   *                   edge direction (or undefined if exterior on left).
+   * @param styleRight Style of the room on the RIGHT side (undefined for
+   *                   exterior edges — typical for outer walls of the floor
+   *                   plate).
+   * @param theme      Optional viewer theme for default colours when both
+   *                   styles are undefined.
+   * @returns          A 4-material array `[top, bottom, sideLeft, sideRight]`.
+   */
+  static createPerEdgeWallMaterials(
+    styleLeft: MaterialStyle | undefined,
+    styleRight: MaterialStyle | undefined,
+    theme?: ViewerTheme,
+  ): THREE.MeshStandardMaterial[] {
+    const capStyle = styleLeft ?? styleRight;
+    const capMat = MaterialFactory.createWallMaterial(capStyle, theme);
+
+    const sideLeftMat = styleLeft ? MaterialFactory.createWallMaterial(styleLeft, theme) : capMat;
+
+    const sideRightMat = styleRight
+      ? MaterialFactory.createWallMaterial(styleRight, theme)
+      : sideLeftMat;
+
+    return [capMat, capMat, sideLeftMat, sideRightMat];
   }
 }

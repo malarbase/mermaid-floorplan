@@ -1056,7 +1056,7 @@ describe('Variables and Defaults Tests', () => {
 
     const model = document.parseResult.value;
     const resolution = resolveVariables(model);
-    const room = model.floors[0]?.rooms[0]!;
+    const room = model.floors[0]!.rooms[0]!;
 
     const size = getRoomSize(room, resolution.variables);
     expect(size).toEqual({ width: 6, height: 6 });
@@ -1886,10 +1886,12 @@ describe('Stair Parser Tests', () => {
 
     const model = document.parseResult.value;
     const stair = model.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe('L-shaped');
-    expect(stair?.shape?.entry).toBe('bottom');
-    expect(stair?.shape?.turn).toBe('left');
-    expect(stair?.shape?.runs).toEqual([6, 6]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const shape = stair?.shape as any;
+    expect(shape?.shapeType).toBe('L-shaped');
+    expect(shape?.entry).toBe('bottom');
+    expect(shape?.turn).toBe('left');
+    expect(shape?.runs).toEqual([6, 6]);
   });
 
   test('should parse U-shaped stair', async () => {
@@ -1904,9 +1906,11 @@ describe('Stair Parser Tests', () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe('U-shaped');
-    expect(stair?.shape?.entry).toBe('right');
-    expect(stair?.shape?.turn).toBe('right');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const shape = stair?.shape as any;
+    expect(shape?.shapeType).toBe('U-shaped');
+    expect(shape?.entry).toBe('right');
+    expect(shape?.turn).toBe('right');
   });
 
   test('should parse double-L stair (three flights)', async () => {
@@ -1921,8 +1925,10 @@ describe('Stair Parser Tests', () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe('double-L');
-    expect(stair?.shape?.runs).toEqual([5, 6, 5]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const shape = stair?.shape as any;
+    expect(shape?.shapeType).toBe('double-L');
+    expect(shape?.runs).toEqual([5, 6, 5]);
   });
 
   test('should parse spiral stair', async () => {
@@ -1937,9 +1943,11 @@ describe('Stair Parser Tests', () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe('spiral');
-    expect(stair?.shape?.rotation).toBe('clockwise');
-    expect(stair?.shape?.outerRadius?.value).toBe(4);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const shape = stair?.shape as any;
+    expect(shape?.shapeType).toBe('spiral');
+    expect(shape?.rotation).toBe('clockwise');
+    expect(shape?.outerRadius?.value).toBe(4);
   });
 
   test('should parse winder stair', async () => {
@@ -1954,9 +1962,11 @@ describe('Stair Parser Tests', () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe('winder');
-    expect(stair?.shape?.winders).toBe(3);
-    expect(stair?.shape?.runs).toEqual([4, 5]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const shape = stair?.shape as any;
+    expect(shape?.shapeType).toBe('winder');
+    expect(shape?.winders).toBe(3);
+    expect(shape?.runs).toEqual([4, 5]);
   });
 
   test('should parse custom segmented stair', async () => {
@@ -1977,8 +1987,10 @@ describe('Stair Parser Tests', () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    expect(stair?.shape?.shapeType).toBe('custom');
-    expect(stair?.shape?.segments).toHaveLength(5);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const shape = stair?.shape as any;
+    expect(shape?.shapeType).toBe('custom');
+    expect(shape?.segments).toHaveLength(5);
   });
 
   test('should parse stair with all optional properties', async () => {
@@ -2028,7 +2040,8 @@ describe('Stair Parser Tests', () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    const segments = stair?.shape?.segments ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const segments = (stair?.shape as any)?.segments ?? [];
     expect(segments[0]?.segmentType).toBe('flight');
     expect(segments[0]?.width?.value).toBe(6);
     expect(segments[2]?.width?.value).toBe(4);
@@ -2051,7 +2064,8 @@ describe('Stair Parser Tests', () => {
     expectNoErrors(document);
 
     const stair = document.parseResult.value.floors[0]?.stairs[0];
-    const flight = stair?.shape?.segments?.[0];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const flight = (stair?.shape as any)?.segments?.[0];
     expect(flight?.segmentType).toBe('flight');
     expect(flight?.wallRef?.room).toBe('StairWell');
     expect(flight?.wallRef?.wall).toBe('bottom');

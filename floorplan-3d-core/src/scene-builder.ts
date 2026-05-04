@@ -51,6 +51,18 @@ export interface SceneBuildOptions extends SceneBuildHooks {
   showStairs?: boolean;
   /** Show lifts (default: true) */
   showLifts?: boolean;
+  /**
+   * Wall rendering engine. 'network' (default) emits one mesh per shared
+   * wall edge via the wall-network builder, eliminating corner-overlap
+   * z-fighting by mitring at every node. 'legacy' emits per-room walls
+   * with adjacency-based ownership rules — kept as a fallback while the
+   * network path bakes in.
+   *
+   * Defaults to 'network' (flipped in Phase 7 soft-cutover after parity
+   * was pinned by `wall-network-parity.test.ts`). Set to 'legacy' if you
+   * see a regression and want the old behaviour back.
+   */
+  wallEngine?: 'legacy' | 'network';
 }
 
 /**
@@ -117,6 +129,7 @@ export function buildFloorplanSceneFromNormalized(
     showConnections = true,
     showStairs = true,
     showLifts = true,
+    wallEngine = 'network',
     onFloorGroup,
     onRoomMesh,
     onWallMesh,
@@ -161,6 +174,7 @@ export function buildFloorplanSceneFromNormalized(
   wallBuilder.setStyleResolver((room: JsonRoom) =>
     styleMap.get(room.style ?? config.default_style ?? ''),
   );
+  wallBuilder.setEngine(wallEngine);
 
   // Track vertical penetrations from previous floor (for cutting holes)
   let prevFloorPenetrations: THREE.Box3[] = [];
@@ -218,32 +232,58 @@ export function buildFloorplanSceneFromNormalized(
       connectionsGroup.name = `connections_${floor.id}`;
       connectionsGroup.userData.layer = 'connection';
 
-      for (const room of allRooms) {
-        const roomStyle = styleMap.get(room.style ?? config.default_style ?? '');
-        const materials = MaterialFactory.createMaterialSet(roomStyle, theme);
+      if (wallEngine === 'network') {
+        // Network engine emits all edges for the floor in one call. Per-room
+        // material sets and adjacency reasoning live inside `wall-network.ts`,
+        // so we skip the legacy per-room loop entirely. The onWallMesh hook
+        // is fired by `generateFloorWalls` per emitted edge using the
+        // canonical binding's (wall, room) — see `WallBuilder.generateFloorWalls`.
+        // Filter connections to those that belong to this floor so the
+        // network builder doesn't warn about cross-floor connections (which
+        // it can't route — each floor builds an independent network).
+        // Prefer the per-floor `floor.connections` view (populated by the
+        // converter / unit-normalizer); fall back to filtering the flat list
+        // by `floorId` for legacy `JsonExport`s where it's absent. As a last
+        // resort, fall back to the historical `fromRoom`-name lookup so
+        // externally-constructed exports without `floorId` still render.
+        const floorConnections = pickFloorConnections(normalizedData, floor, allRooms);
+        wallBuilder.generateFloorWalls(
+          { ...floor, rooms: allRooms },
+          floorConnections,
+          wallsGroup,
+          connectionsGroup,
+          config,
+          onWallMesh ? (mesh, wall, room, _f) => onWallMesh(mesh, wall, room, floor) : undefined,
+        );
+      } else {
+        // Legacy path — preserved verbatim from before Phase 4.
+        for (const room of allRooms) {
+          const roomStyle = styleMap.get(room.style ?? config.default_style ?? '');
+          const materials = MaterialFactory.createMaterialSet(roomStyle, theme);
 
-        for (const wall of room.walls) {
-          if (wall.type === 'open') continue;
+          for (const wall of room.walls) {
+            if (wall.type === 'open') continue;
 
-          // Snapshot wall-segment count before generating so onWallMesh fires
-          // only for wall meshes, not for connection geometry placed in the
-          // separate connectionsGroup.
-          const childCountBefore = onWallMesh ? wallsGroup.children.length : 0;
-          wallBuilder.generateWall(
-            wall,
-            room,
-            allRooms,
-            normalizedData.connections ?? [],
-            materials,
-            wallsGroup,
-            config,
-            connectionsGroup,
-          );
-          if (onWallMesh) {
-            for (let i = childCountBefore; i < wallsGroup.children.length; i++) {
-              const child = wallsGroup.children[i];
-              if (child instanceof THREE.Mesh) {
-                onWallMesh(child, wall, room, floor);
+            // Snapshot wall-segment count before generating so onWallMesh fires
+            // only for wall meshes, not for connection geometry placed in the
+            // separate connectionsGroup.
+            const childCountBefore = onWallMesh ? wallsGroup.children.length : 0;
+            wallBuilder.generateWall(
+              wall,
+              room,
+              allRooms,
+              normalizedData.connections ?? [],
+              materials,
+              wallsGroup,
+              config,
+              connectionsGroup,
+            );
+            if (onWallMesh) {
+              for (let i = childCountBefore; i < wallsGroup.children.length; i++) {
+                const child = wallsGroup.children[i];
+                if (child instanceof THREE.Mesh) {
+                  onWallMesh(child, wall, room, floor);
+                }
               }
             }
           }
@@ -306,6 +346,12 @@ export function buildFloorplanSceneFromNormalized(
 
   // Compute scene bounds
   const bounds = computeSceneBounds(scene);
+
+  // Defensive: drop the network cache so a re-used WallBuilder doesn't leak
+  // stale per-floor networks across rebuilds. Today `wallBuilder` is created
+  // locally per call so this is belt-and-braces, but the wall-network
+  // rebuild plan calls it out explicitly.
+  wallBuilder.resetNetworkCache();
 
   return {
     scene,
@@ -375,6 +421,50 @@ export function buildCompleteScene(
     floorsRendered,
     floorGroups,
   };
+}
+
+/**
+ * Pick the connections that belong to a given floor, with a graceful
+ * fallback chain for callers that don't populate `floorId`:
+ *
+ *  1. `floor.connections` (per-floor view emitted by the converter / unit
+ *     normalizer); preferred because it shares object identity with the
+ *     normalized flat list.
+ *  2. The flat `data.connections` filtered by `c.floorId === floor.id`.
+ *  3. The legacy `fromRoom`-name lookup (matches the pre-`floorId`
+ *     scene-builder behavior). Used only when neither (1) nor (2) yields
+ *     anything for a floor whose rooms reference connections.
+ *
+ * Cross-floor connections (where `floorId` disagrees with the floor of
+ * `fromRoom`) are dropped at every level — the network builder can't route
+ * across floors, and this is the same silent-drop behavior we've had since
+ * the network engine landed. Stage 1's validator surfaces the underlying
+ * source-level issue separately.
+ */
+function pickFloorConnections(
+  data: JsonExport,
+  floor: JsonFloor,
+  rooms: JsonRoom[],
+): JsonExport['connections'] {
+  if (floor.connections && floor.connections.length > 0) {
+    return floor.connections;
+  }
+
+  const flat = data.connections ?? [];
+  if (flat.length === 0) return [];
+
+  // Path (2): any connection in the flat list carries `floorId`. We only
+  // commit to this path when at least one connection has the field set,
+  // otherwise we'd silently return an empty list for legacy exports that
+  // genuinely contain connections.
+  const someAttributed = flat.some((c) => c.floorId !== undefined);
+  if (someAttributed) {
+    return flat.filter((c) => c.floorId === floor.id);
+  }
+
+  // Path (3): legacy by-name fallback.
+  const floorRoomNames = new Set(rooms.map((r) => r.name));
+  return flat.filter((c) => floorRoomNames.has(c.fromRoom));
 }
 
 /**

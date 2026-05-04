@@ -9,6 +9,7 @@ import type {
   AREA_UNIT,
   Floorplan,
   LENGTH_UNIT,
+  Room,
   StairSegment,
   StairShape,
   ValueWithUnit,
@@ -180,6 +181,13 @@ export interface JsonFloor {
   lifts: JsonLift[];
   index: number;
   height?: number;
+  /**
+   * Per-floor view of the connections that belong to this floor (mirrors
+   * `JsonExport.connections` filtered by `floorId === this.id`). Populated
+   * by the converter so per-floor consumers (e.g. the visibility tree)
+   * don't have to recompute the partition.
+   */
+  connections?: JsonConnection[];
   /** Computed metrics for this floor */
   metrics?: FloorMetrics;
   /** Source location in DSL file (for editor sync) */
@@ -310,6 +318,20 @@ export interface JsonConnection {
   height?: number;
   /** If true, the opening extends to the ceiling */
   fullHeight?: boolean;
+  /**
+   * Identifier of the floor this connection belongs to.
+   *
+   * For intra-floor connections this is the floor of the `fromRoom`. For
+   * exterior connections (where `fromRoom` or `toRoom` is `outside`), it is
+   * the floor of whichever endpoint is a real room. Cross-floor horizontal
+   * connections are silently dropped by the renderer today and surfaced as
+   * a validator warning; if both endpoints resolve to floors that disagree,
+   * the converter prefers the `fromRoom`'s floor.
+   *
+   * Optional in the exported type so legacy test fixtures and externally-constructed
+   * `JsonExport`s remain valid. The converter always populates it for real floorplans.
+   */
+  floorId?: string;
   /** Source location in DSL file (for editor sync) */
   _sourceRange?: JsonSourceRange;
 }
@@ -345,6 +367,56 @@ export interface ConversionResult {
 // ============================================================================
 
 /**
+ * Build a `roomName -> floorId` index over every room (and recursively every
+ * `composed of` sub-room) in every floor of a parsed `Floorplan`.
+ *
+ * Used by the connection conversion pass to attribute each `JsonConnection`
+ * to its host floor without re-walking the AST per connection. Room names
+ * are globally unique within a `.floorplan` document (Langium IDs share a
+ * single scope), so a flat map is unambiguous.
+ */
+function buildRoomToFloorMap(floorplan: Floorplan): Map<string, string> {
+  const map = new Map<string, string>();
+  const visit = (rooms: Array<Room>, floorId: string): void => {
+    for (const room of rooms) {
+      map.set(room.name, floorId);
+      if (room.subRooms.length > 0) {
+        visit(room.subRooms, floorId);
+      }
+    }
+  };
+  for (const floor of floorplan.floors) {
+    visit(floor.rooms, floor.id);
+  }
+  return map;
+}
+
+/**
+ * Resolve which floor a connection belongs to using a `roomName -> floorId`
+ * index. Returns `undefined` when neither endpoint maps to a known floor
+ * (e.g., both endpoints are `outside`, or a referenced room doesn't exist).
+ *
+ * For exterior connections we fall back to the non-`outside` endpoint. For
+ * cross-floor connections the `fromRoom`'s floor wins, mirroring the
+ * pre-existing scene-builder behavior that filtered by `fromRoom` only.
+ */
+function resolveConnectionFloorId(
+  fromRoom: string,
+  toRoom: string,
+  roomToFloor: Map<string, string>,
+): string | undefined {
+  if (fromRoom !== 'outside') {
+    const fromFloor = roomToFloor.get(fromRoom);
+    if (fromFloor !== undefined) return fromFloor;
+  }
+  if (toRoom !== 'outside') {
+    const toFloor = roomToFloor.get(toRoom);
+    if (toFloor !== undefined) return toFloor;
+  }
+  return undefined;
+}
+
+/**
  * Convert a parsed Floorplan AST to JSON export format.
  * This is the single source of truth for DSL → JSON conversion.
  */
@@ -352,6 +424,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
   const errors: ConversionError[] = [];
   const variableResolution = resolveVariables(floorplan);
   const variables = variableResolution.variables;
+  const roomToFloor = buildRoomToFloorMap(floorplan);
 
   // Extract grammar version from floorplan (or use current version as default)
   const grammarVersion = extractVersionFromAST(floorplan) || CURRENT_VERSION;
@@ -454,6 +527,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
       rooms: [],
       stairs: [],
       lifts: [],
+      connections: [],
       height: floor.height?.value,
       _sourceRange: extractSourceRange(floor.$cstNode),
     };
@@ -591,11 +665,36 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
     jsonExport.floors.push(jsonFloor);
   }
 
+  // Index floors by id for the per-floor `connections` view below.
+  const floorsById = new Map<string, JsonFloor>(jsonExport.floors.map((f) => [f.id, f]));
+
   // Process connections
   for (const conn of floorplan.connections) {
-    const fromRoomName = conn.from.room.name;
-    const toRoomName = conn.to.room.name;
+    // `outside` is a keyword literal in the grammar (not an ID assignment), so
+    // conn.from.room.name / conn.to.room.name is undefined for exterior connections.
+    // Fall back to the CST node text to recover the literal string 'outside',
+    // mirroring the pattern used in the critic's extractConnectionsFromAst.
+    const fromRoomName =
+      conn.from.room.name ?? (conn.from.room.$cstNode?.text === 'outside' ? 'outside' : undefined);
+    const toRoomName =
+      conn.to.room.name ?? (conn.to.room.$cstNode?.text === 'outside' ? 'outside' : undefined);
     if (!fromRoomName || !toRoomName) continue;
+
+    // Resolve the host floor. Cross-floor connections (different floors on
+    // either side) prefer `fromRoom`'s floor — same as the renderer's
+    // pre-existing network-engine filter. Drop with a `ConversionError`
+    // when neither endpoint resolves; this preserves the renderer's
+    // historical "silently dropped" behavior at the data layer while
+    // surfacing the source-level fix.
+    const floorId = resolveConnectionFloorId(fromRoomName, toRoomName, roomToFloor);
+    if (!floorId) {
+      errors.push({
+        message:
+          `Connection from '${fromRoomName}.${conn.from.wall ?? ''}' to '${toRoomName}.${conn.to.wall ?? ''}' ` +
+          `cannot be attributed to a floor — neither endpoint resolves to a known room.`,
+      });
+      continue;
+    }
 
     const jsonConn: JsonConnection = {
       fromRoom: fromRoomName,
@@ -606,6 +705,7 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
       position: conn.position,
       swing: conn.swing,
       opensInto: conn.opensInto?.name,
+      floorId,
       // Extract source range from AST for editor sync
       _sourceRange: extractSourceRange(conn.$cstNode),
     };
@@ -621,6 +721,9 @@ export function convertFloorplanToJson(floorplan: Floorplan): ConversionResult {
     }
 
     jsonExport.connections.push(jsonConn);
+    // Mirror into the per-floor view. The host floor is guaranteed to exist
+    // in `floorsById` because `floorId` was resolved against the same set.
+    floorsById.get(floorId)?.connections?.push(jsonConn);
   }
 
   // Process vertical connections

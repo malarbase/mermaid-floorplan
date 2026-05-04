@@ -25,7 +25,15 @@ import { DIMENSIONS, getThemeColors } from './constants.js';
 import { type CSGBrush, type CSGEvaluator, getCSG, isCsgAvailable } from './csg-manager.js';
 import { reassignMaterialsByNormal } from './csg-utils.js';
 import { MaterialFactory, type MaterialSet } from './materials.js';
-import type { JsonConfig, JsonConnection, JsonRoom, JsonWall } from './types.js';
+import type { JsonConfig, JsonConnection, JsonFloor, JsonRoom, JsonWall } from './types.js';
+import {
+  buildWallNetwork,
+  emitNetworkMeshes,
+  mitreNodes,
+  routeConnectionsToEdges,
+  splitTJunctionEdges,
+  type WallNetwork,
+} from './wall-network.js';
 import {
   analyzeWallOwnership,
   hasContinuousWallAt,
@@ -218,6 +226,14 @@ export class WallBuilder {
   private theme?: ViewerTheme;
   private themeColors: ThemeColors;
   private styleResolver: StyleResolver = () => undefined;
+  // Phase 4 (wall-network rebuild): opt-in engine flag. The default stays
+  // 'legacy' until Phase 7 flips it; this keeps Phase 4 purely additive.
+  private engine: 'legacy' | 'network' = 'legacy';
+  // Cache the constructed WallNetwork per floor so repeated calls into
+  // generateFloorWalls during a single scene build don't re-tessellate or
+  // double-emit. Keyed by JsonFloor reference (hence WeakMap) so the cache
+  // disappears as soon as the floor goes out of scope.
+  private networkCache = new WeakMap<JsonFloor, WallNetwork>();
 
   constructor() {
     // Use centralized CSG manager - CSG must be initialized via initCSG() before this
@@ -240,6 +256,109 @@ export class WallBuilder {
    */
   setStyleResolver(resolver: StyleResolver): void {
     this.styleResolver = resolver;
+  }
+
+  /**
+   * Select the wall rendering engine. 'legacy' (default) emits walls via the
+   * per-room `generateWall` path with adjacency-based ownership rules.
+   * 'network' routes emission through `wall-network.ts` so each shared wall
+   * becomes a single mesh — see `generateFloorWalls`.
+   */
+  setEngine(engine: 'legacy' | 'network'): void {
+    this.engine = engine;
+  }
+
+  /**
+   * Read back the current engine — exposed for tests and for the scene
+   * builder's branching logic.
+   */
+  getEngine(): 'legacy' | 'network' {
+    return this.engine;
+  }
+
+  /**
+   * Network-engine entry point. Builds (or reuses) the floor's WallNetwork and
+   * emits all edge meshes plus connection meshes in one pass.
+   *
+   * Returns the built network so the caller can introspect for parity tests.
+   * Subsequent calls for the same floor reuse the cached network and emit
+   * nothing (the network is already in `wallsGroup` from the first call).
+   *
+   * The `onWallMesh` adapter mirrors the legacy hook signature: per emitted
+   * mesh it fires with the canonical binding's `(wall, room)` so consumers
+   * (e.g. the viewer's MeshRegistry) can attribute the mesh consistently
+   * regardless of whether legacy or network emission produced it. The
+   * canonical binding is `edge.rooms[0]` — the first room to register a face
+   * on the edge during `buildWallNetwork`.
+   */
+  generateFloorWalls(
+    floor: JsonFloor,
+    connections: JsonConnection[],
+    wallsGroup: THREE.Group,
+    connectionsGroup: THREE.Group | undefined,
+    config: JsonConfig,
+    onWallMesh?: (mesh: THREE.Mesh, wall: JsonWall, room: JsonRoom, floor: JsonFloor) => void,
+  ): WallNetwork {
+    const cached = this.networkCache.get(floor);
+    if (cached) return cached;
+
+    const net = buildWallNetwork(floor, config, this.styleResolver);
+    routeConnectionsToEdges(net, connections);
+    splitTJunctionEdges(net);
+    mitreNodes(net);
+
+    // Floor elevation: the network is built in floor-local XZ. For
+    // single-elevation floors (the common case today) the first room's
+    // elevation is the floor's base elevation, matching the per-room legacy
+    // path. Multi-elevation floors are not supported by the network path
+    // yet — Phase 5 will surface that as a parity gap if it matters.
+    const elevation = floor.rooms[0]?.elevation ?? 0;
+
+    emitNetworkMeshes(net, {
+      config,
+      theme: this.theme,
+      group: wallsGroup,
+      connectionsGroup,
+      elevation,
+      onEdgeMesh: onWallMesh
+        ? (mesh, edge) => {
+            const canonical = edge.rooms[0];
+            if (!canonical) return;
+            // Reconstruct a JsonWall for the canonical binding so registries
+            // can attribute the mesh consistently with the legacy hook.
+            // Field precedence mirrors `wall-network.ts`'s explicitType
+            // capture: explicit door/window props win when present, otherwise
+            // we synthesise a plain solid wall.
+            const reconstructedWall: JsonWall = {
+              direction: canonical.direction,
+              type: edge.explicitType?.kind ?? 'solid',
+              ...(edge.explicitType?.position !== undefined && {
+                position: edge.explicitType.position,
+              }),
+              ...(edge.explicitType?.width !== undefined && { width: edge.explicitType.width }),
+              ...(edge.explicitType?.height !== undefined && { height: edge.explicitType.height }),
+              ...(edge.explicitType?.isPercentage !== undefined && {
+                isPercentage: edge.explicitType.isPercentage,
+              }),
+              ...(edge.height !== undefined && { wallHeight: edge.height }),
+            };
+            onWallMesh(mesh, reconstructedWall, canonical.room, floor);
+          }
+        : undefined,
+    });
+
+    this.networkCache.set(floor, net);
+    return net;
+  }
+
+  /**
+   * Clear the per-floor network cache. Defensive — callers that hand a fresh
+   * `WallBuilder` per scene build don't strictly need this, but it lets a
+   * single builder instance be reused across rebuilds without leaking stale
+   * `WallNetwork` references through the WeakMap.
+   */
+  resetNetworkCache(): void {
+    this.networkCache = new WeakMap();
   }
 
   /**

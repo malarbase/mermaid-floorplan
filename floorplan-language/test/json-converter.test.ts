@@ -413,6 +413,136 @@ describe('JSON Converter - Connections', () => {
   });
 });
 
+describe('JSON Converter - Connection Floor Attribution', () => {
+  it('should attribute intra-floor connections to the host floor', async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          room RoomA at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          room RoomB at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        connect RoomA.right to RoomB.left door at 50%
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+
+    expect(result.errors).toEqual([]);
+    expect(result.data!.connections).toHaveLength(1);
+    expect(result.data!.connections[0].floorId).toBe('f1');
+  });
+
+  it('should attribute exterior connections to the floor of the real-room endpoint', async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          room Patio at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        connect Patio.top to outside door at 50%
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+
+    expect(result.errors).toEqual([]);
+    expect(result.data!.connections).toHaveLength(1);
+    const conn = result.data!.connections[0];
+    expect(conn.fromRoom).toBe('Patio');
+    expect(conn.toRoom).toBe('outside');
+    expect(conn.floorId).toBe('f1');
+  });
+
+  it('should populate the per-floor connections view on JsonFloor', async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          room A1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          room A2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        floor f2 {
+          room B1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          room B2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        connect A1.right to A2.left door at 50%
+        connect B1.right to B2.left door at 50%
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+
+    expect(result.errors).toEqual([]);
+    expect(result.data!.connections).toHaveLength(2);
+
+    const f1 = result.data!.floors.find((f) => f.id === 'f1');
+    const f2 = result.data!.floors.find((f) => f.id === 'f2');
+
+    expect(f1?.connections).toHaveLength(1);
+    expect(f1?.connections?.[0].fromRoom).toBe('A1');
+    expect(f1?.connections?.[0].floorId).toBe('f1');
+
+    expect(f2?.connections).toHaveLength(1);
+    expect(f2?.connections?.[0].fromRoom).toBe('B1');
+    expect(f2?.connections?.[0].floorId).toBe('f2');
+  });
+
+  it('should share object identity between flat and per-floor views', async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          room A1 at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+          room A2 at (10,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        connect A1.right to A2.left door at 50%
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+
+    const flat = result.data!.connections[0];
+    const perFloor = result.data!.floors[0].connections?.[0];
+    expect(perFloor).toBe(flat);
+  });
+
+  it("should attribute cross-floor connections to fromRoom's floor (and rely on the validator to surface the issue)", async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          room Living at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        floor f2 {
+          room Bedroom at (0,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        connect Living.right to Bedroom.left door at 50%
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+
+    expect(result.data!.connections).toHaveLength(1);
+    expect(result.data!.connections[0].floorId).toBe('f1');
+
+    const f1 = result.data!.floors.find((f) => f.id === 'f1');
+    const f2 = result.data!.floors.find((f) => f.id === 'f2');
+    expect(f1?.connections).toHaveLength(1);
+    expect(f2?.connections).toHaveLength(0);
+  });
+
+  it('should attribute connections that reference sub-rooms', async () => {
+    const input = `
+      floorplan
+        floor f1 {
+          room Hall at (0,0) size (20 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+            composed of [
+              sub-room Nook at (0,0) size (5 x 5) walls [top: solid, right: solid, bottom: solid, left: solid]
+            ]
+          room Lounge at (20,0) size (10 x 10) walls [top: solid, right: solid, bottom: solid, left: solid]
+        }
+        connect Nook.right to Lounge.left door at 50%
+    `;
+    const document = await parse(input);
+    const result = convertFloorplanToJson(document.parseResult.value);
+
+    expect(result.errors).toEqual([]);
+    expect(result.data!.connections).toHaveLength(1);
+    expect(result.data!.connections[0].floorId).toBe('f1');
+  });
+});
+
 describe('JSON Converter - Room Metrics', () => {
   it('should compute room area', async () => {
     const input = `

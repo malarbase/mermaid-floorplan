@@ -785,6 +785,33 @@ In other words: the registry enforces, the builder discovers, and the evolver pl
 
 This should probably be split into several implementation plans rather than one large change.
 
+### Status & sequencing
+
+Single source of truth for which plans are real, which are hypothetical, and what currently covers each one. Update the row when a sub-plan is drafted, lands, or has its scope shifted by a sibling change. "Coverage" links should be `.cursor/plans/<name>_<id>.plan.md` for in-flight work, `.cursor/plans/<name>_<id>.plan.done.md` once landed, or an `openspec/changes/<name>/` directory when the work needs a spec delta.
+
+| Plan | Status | Coverage | Notes / next slice | Blocked by |
+| --- | --- | --- | --- | --- |
+| 1 — Primitive descriptor generator spike | not started | — | A small read-only experiment: walk the Langium AST and emit snapshot descriptors next to the hand-authored ones; diff in a test. No consumer migration. | none — could start anytime |
+| 2 — Authored overlay + merge contract | partial (interface only) | [`tree-visibility-toggle`](../../../.cursor/plans/tree-visibility-toggle_3dc8e3ab.plan.md) | Hand-authored `PrimitiveDescriptor`s land in `floorplan-viewer-core/src/primitives/`. The interface is the future codegen target. The merge half (overlay-wins-over-baseline) needs Plan 1 first. | Plan 1 for the merge half |
+| 3 — Descriptor-driven Add/Edit UI | not started | — | Generic form renderer for `FieldDescriptor`; migrate Add Room dialog and property panel; delegate `toDsl` emission to descriptors. Usable today on hand-authored descriptors; richer once Plan 2's overlay lands. | Plan 2 (overlay) for richer field metadata |
+| 4 — Entity bridge + contextual actions | partial (identity + `resolveTarget`) | [`tree-visibility-toggle`](../../../.cursor/plans/tree-visibility-toggle_3dc8e3ab.plan.md) | Descriptors already own `identity.getId/getDisplayName/getFloorId` and `visibility.resolveTarget`, reusing the existing `MeshRegistry`. Next slice: stable `EntityKey` across DSL/JSON/meshes/selection, contextual `EntityActionDescriptor`s (Add Floor, Duplicate Room, Change Wall Type, Edit Stair Fields), and an agent-context payload sourced from bridge entries. | none for next slice |
+| 5 — Descriptor-driven annotations | not started | — | Migrate room name, room area, dimensions, floor summary, and stair info to annotation descriptors with shared metadata formatters. Most natural after Plan 2 so annotations live in overlays, but can start standalone. | Plan 2 ideally |
+| 6 — Renderer hook registry + drift tests | partial (Layer / SelectableEntityType drift only) | [`tree-visibility-toggle`](../../../.cursor/plans/tree-visibility-toggle_3dc8e3ab.plan.md) | A CI test asserts every `Layer` and every `SelectableEntityType` has exactly one descriptor. Remaining: `render2d` / `render3d` / `bounds` / `anchors` strategy assertions, generated TODO stubs for new primitives, renderer-impacting field tagging. | none |
+| 7 — Builder/evolver capability feedback loop | not started | — | Rename the current `mermaid-floorplan` skill role as `floorplan-builder`; define the `FloorplanCapabilityGap` schema; add a durable backlog location; create the `floorplan-evolver` skill or section. Mostly skill + docs. | none — but should follow at least one real round-trip from a builder gap into a landed grammar change |
+
+Sequencing logic:
+
+- Plans 1, 4 (next slice), and 7 have no real prerequisites and can run in parallel.
+- Plan 2's interface is paid off by `tree-visibility-toggle`; the merge contract waits on Plan 1.
+- Plans 3 and 5 are best deferred until Plan 1 + Plan 2 are in place so they consume real overlays instead of hand-authored descriptors.
+- Plan 6 grows incrementally: each new descriptor or renderer hook adds one drift assertion. No big-bang plan needed.
+
+Drafting convention:
+
+- Promote a plan into `.cursor/plans/<name>_<id>.plan.md` only when it is the next thing being picked up, not all seven up front. The boundaries shift as siblings land (Plans 2/4/6 already shifted because of `tree-visibility-toggle`).
+- When a sub-plan needs a spec delta, promote it to an `openspec/changes/<name>/` directory instead of a `.cursor/plans/*.plan.md`.
+- Each new sub-plan should include a "Coverage of the registry codegen gap" section pointing back here, mirroring the pattern in `tree-visibility-toggle_3dc8e3ab.plan.md`.
+
 ### Plan 1: Primitive descriptor generator spike
 
 Goal: generate baseline descriptors from `floorplans.langium` without changing runtime behavior.

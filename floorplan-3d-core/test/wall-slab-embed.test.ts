@@ -11,13 +11,30 @@
  *                                          orbit angles, even at small EMBED.)
  */
 
-import * as THREE from 'three';
-import { describe, expect, test } from 'vitest';
+import { beforeAll, describe, expect, test } from 'vitest';
 import { DIMENSIONS } from '../src/constants';
+import { initCSG } from '../src/csg-manager';
 import { buildFloorplanScene } from '../src/scene-builder';
 import type { JsonExport, JsonFloor, JsonRoom } from '../src/types';
 import { createWallSegmentGeometry } from '../src/wall-builder';
 import type { WallSegment } from '../src/wall-ownership';
+
+// Both engines build with CSG when available — initialise here so the network
+// branch's CSG-dependent code path is exercised when the integration tests
+// below run under `wallEngine: 'network'`. The unit tests on
+// `createWallSegmentGeometry` don't depend on CSG, but the `beforeAll` cost
+// is negligible and keeps the file's setup uniform.
+beforeAll(async () => {
+  await initCSG();
+});
+
+// Engines exercised by the scene-builder integration tests below. Wrapping in
+// `describe.each` per Phase 5.3 of the wall-network rebuild plan
+// (`.cursor/plans/wall_network_rebuild_2e4b6f09.plan.md` §5.3): the embed
+// contract must hold under BOTH engines because both share the same
+// `WALL.EMBED` / `WALL.CEILING_GAP` constants and Y-span math.
+const ENGINES = ['legacy', 'network'] as const;
+type WallEngine = (typeof ENGINES)[number];
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -144,7 +161,9 @@ describe('createWallSegmentGeometry — asymmetric span (down-embed + ceiling-ga
 // Integration tests — scene builder wall mesh Y-extent
 // ---------------------------------------------------------------------------
 
-describe('scene builder — wall meshes embed into slabs', () => {
+describe.each(
+  ENGINES,
+)('scene builder — wall meshes embed into slabs (%s engine)', (engine: WallEngine) => {
   const E = DIMENSIONS.WALL.EMBED;
   const G = DIMENSIONS.WALL.CEILING_GAP;
 
@@ -152,6 +171,24 @@ describe('scene builder — wall meshes embed into slabs', () => {
    * Collect all wall meshes from a scene along with their floor group Y offsets,
    * then verify each mesh's bounding box spans [elevation - E, elevation + wallHeight + E]
    * in world space.
+   *
+   * Engine-agnostic Y math (Phase 5.3): the formula
+   *   worldY = yOffset + mesh.position.y + localBox.min/max.y
+   * holds for BOTH engines because:
+   *   - Legacy: mesh.geometry is local-space, centred at origin with
+   *     y-extent ±(wallHeight+E-G)/2; mesh.position.y carries the per-segment
+   *     vertical centre. Adding the floor-group `position.y` (yOffset) gives
+   *     world Y.
+   *   - Network CSG: after the CSG subtraction the mesh's matrix is identity
+   *     and mesh.geometry vertices are in floor-local world space. So
+   *     mesh.position.y is 0 and localBox.{min,max}.y already encode the
+   *     network's floor-local bottom/top. Adding yOffset still gives world Y.
+   *   - Network no-CSG: mesh keeps its local-space extrude geometry and is
+   *     placed via mesh.position.y = midY (same shape as legacy). Same math.
+   * `setFromObject` is NOT used here because `onWallMesh` fires BEFORE the
+   * walls group is attached to the floor group, so the mesh's parent chain
+   * doesn't yet include the `position.y = yOffset` floor group when the hook
+   * runs.
    */
   function collectWallWorldBounds(plan: JsonExport): Array<{
     worldMinY: number;
@@ -168,6 +205,7 @@ describe('scene builder — wall meshes embed into slabs', () => {
     }> = [];
 
     buildFloorplanScene(plan, {
+      wallEngine: engine,
       onFloorGroup(group, floor) {
         floorGroupY.set(floor.id, group.position.y);
       },
@@ -183,8 +221,6 @@ describe('scene builder — wall meshes embed into slabs', () => {
         mesh.geometry.computeBoundingBox();
         const localBox = mesh.geometry.boundingBox!;
 
-        // The mesh center in parent coords is elevation + wallHeight/2.
-        // World Y = yOffset + mesh.position.y + local offset.
         const meshParentY = mesh.position.y;
         const worldMinY = yOffset + meshParentY + localBox.min.y;
         const worldMaxY = yOffset + meshParentY + localBox.max.y;
