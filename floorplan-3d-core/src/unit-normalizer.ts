@@ -142,11 +142,17 @@ function normalizeLift(lift: JsonLift, unit: LengthUnit): JsonLift {
 }
 
 /**
- * Normalize a floor's dimensional values to meters
+ * Normalize a floor's dimensional values to meters.
+ *
+ * `connections` is intentionally NOT normalized here: the per-floor view is
+ * rebuilt in `normalizeToMeters` from the already-normalized flat list so
+ * both surfaces share object identity. Strip it here to avoid leaking the
+ * pre-normalization references through the spread.
  */
 function normalizeFloor(floor: JsonFloor, unit: LengthUnit): JsonFloor {
+  const { connections: _connections, ...rest } = floor;
   return {
-    ...floor,
+    ...rest,
     height: convertValue(floor.height, unit),
     rooms: floor.rooms.map((r) => normalizeRoom(r, unit)),
     stairs: floor.stairs?.map((s) => normalizeStair(s, unit)),
@@ -190,6 +196,10 @@ function normalizeConfig(config: JsonConfig, unit: LengthUnit): JsonConfig {
  * Note: Connection positions are ALWAYS percentages in the DSL (e.g., "at 50%"),
  * not length values, so we don't convert them.
  * But width/height are dimensional values that need conversion.
+ *
+ * The spread of `...conn` carries through identifying / non-dimensional
+ * fields like `floorId`, `swing`, `opensInto`, and `_sourceRange` so callers
+ * keep their per-floor attribution after normalization.
  */
 function normalizeConnection(conn: JsonConnection, unit: LengthUnit): JsonConnection {
   return {
@@ -223,11 +233,37 @@ export function normalizeToMeters(data: JsonExport): JsonExport {
     return data;
   }
 
+  const normalizedConnections = data.connections?.map((c) => normalizeConnection(c, sourceUnit));
+  const normalizedFloors = data.floors.map((f) => normalizeFloor(f, sourceUnit));
+
+  // Re-attach per-floor `connections` view from the normalized flat list so
+  // both surfaces share object identity. Falls back to the input floor's own
+  // `connections` array (already empty / undefined) when the host export
+  // doesn't carry the flat list (legacy callers).
+  if (normalizedConnections) {
+    const byFloor = new Map<string, JsonConnection[]>();
+    for (const conn of normalizedConnections) {
+      if (conn.floorId === undefined) continue;
+      let bucket = byFloor.get(conn.floorId);
+      if (!bucket) {
+        bucket = [];
+        byFloor.set(conn.floorId, bucket);
+      }
+      bucket.push(conn);
+    }
+    for (const floor of normalizedFloors) {
+      const bucket = byFloor.get(floor.id);
+      if (bucket !== undefined) {
+        floor.connections = bucket;
+      }
+    }
+  }
+
   return {
     ...data,
     config: data.config ? normalizeConfig(data.config, sourceUnit) : undefined,
-    floors: data.floors.map((f) => normalizeFloor(f, sourceUnit)),
-    connections: data.connections?.map((c) => normalizeConnection(c, sourceUnit)),
+    floors: normalizedFloors,
+    connections: normalizedConnections,
     // styles don't have dimensional values, pass through
     styles: data.styles,
     // vertical connections are just references, pass through

@@ -11,7 +11,7 @@
  * slices.
  */
 
-import { f, sharedEdge, rectsOverlap, HABITABLE_KINDS, convertLengthToUnit } from './geometry.mjs';
+import { f, sharedEdge, rectsOverlap, roomBounds, HABITABLE_KINDS, convertLengthToUnit } from './geometry.mjs';
 
 // Matches floor IDs that represent a roof layer (case-insensitive).
 // Covers: Roof, RoofDeck, RoofSlab, RoofGarden, etc.
@@ -189,6 +189,94 @@ export const structuralRules = {
               `reposition the door to between 10% and 90%`,
             ),
           );
+        }
+      }
+    }
+    return findings;
+  },
+
+  door_window_overlap(ctx) {
+    const findings = [];
+    const defaultUnit = ctx.config?.default_unit ?? 'ft';
+    const doorWidth = ctx.config?.door_size?.[0] ?? convertLengthToUnit(3, 'ft', defaultUnit);
+
+    for (const c of ctx.connections) {
+      // Only rigid door connections have a panel that can physically block a
+      // window opening. Archways (opening) have no door panel.
+      if (c.doorType !== 'door') continue;
+
+      // Check both sides of the connection for positioned window specs.
+      for (const [roomName, wallDir] of [
+        [c.fromRoom, c.fromWall],
+        [c.toRoom, c.toWall],
+      ]) {
+        if (roomName === 'outside') continue;
+        const room = ctx.roomsByName.get(roomName);
+        if (!room || !wallDir) continue;
+
+        // Positioned window specs only — whole-wall types have no geometry to collide with.
+        const windowSpecs = (room.walls ?? []).filter(
+          (w) => w.direction === wallDir && w.type === 'window' && w.position != null && w.width != null,
+        );
+        if (windowSpecs.length === 0) continue;
+
+        const rb = roomBounds(room);
+        const isHoriz = wallDir === 'top' || wallDir === 'bottom';
+        const wallLength = isHoriz ? room.width : room.height;
+        const wallStart = isHoriz ? rb.x1 : rb.y1;
+
+        // Compute the door's absolute centre on this room's wall. Connection
+        // positions are percentages of the shared-edge overlap (or the full
+        // wall for outside connections), mirroring stair_door_collision.
+        const otherRoomName = roomName === c.fromRoom ? c.toRoom : c.fromRoom;
+        const otherRoom =
+          otherRoomName === 'outside' ? null : ctx.roomsByName.get(otherRoomName);
+        let overlapStart, overlapEnd;
+        if (otherRoom) {
+          const ob = roomBounds(otherRoom);
+          overlapStart = isHoriz ? Math.max(rb.x1, ob.x1) : Math.max(rb.y1, ob.y1);
+          overlapEnd = isHoriz ? Math.min(rb.x2, ob.x2) : Math.min(rb.y2, ob.y2);
+          if (overlapEnd <= overlapStart) continue;
+        } else {
+          overlapStart = wallStart;
+          overlapEnd = wallStart + wallLength;
+        }
+        const overlapLen = overlapEnd - overlapStart;
+        const pos = c.position ?? 50;
+        const doorCenter = overlapStart + (overlapLen * pos) / 100;
+        const doorMin = doorCenter - doorWidth / 2;
+        const doorMax = doorCenter + doorWidth / 2;
+
+        for (const ws of windowSpecs) {
+          const defaultWindowWidth = ctx.config?.window_size?.[0] ?? convertLengthToUnit(4, 'ft', defaultUnit);
+          const winWidth = ws.width ?? defaultWindowWidth;
+          const winCenter =
+            ws.isPercentage !== false
+              ? wallStart + (ws.position / 100) * wallLength
+              : wallStart + ws.position;
+          const winMin = winCenter - winWidth / 2;
+          const winMax = winCenter + winWidth / 2;
+
+          const eps = 0.005;
+          if (doorMax > winMin + eps && winMax > doorMin + eps) {
+            findings.push(
+              f(
+                'door_window_overlap',
+                'error',
+                `Door "${c.fromRoom}.${c.fromWall} → ${c.toRoom}.${c.toWall}" at ${pos}% (abs [${doorMin.toFixed(1)}–${doorMax.toFixed(1)} ${defaultUnit}]) overlaps window spec on "${roomName}.${wallDir}" at ${ws.position}${ws.isPercentage !== false ? '%' : ` ${defaultUnit}`} (window [${winMin.toFixed(1)}–${winMax.toFixed(1)} ${defaultUnit}]).`,
+                [roomName],
+                {
+                  roomName,
+                  wallDir,
+                  doorPos: pos,
+                  doorSpan: [doorMin, doorMax],
+                  windowPos: ws.position,
+                  windowSpan: [winMin, winMax],
+                },
+                `move the door to avoid the window span, or reposition the window spec`,
+              ),
+            );
+          }
         }
       }
     }

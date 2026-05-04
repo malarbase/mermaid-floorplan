@@ -101,8 +101,8 @@ describe('unit-normalizer', () => {
         const result = normalizeToMeters(input);
 
         expect(result.config?.door_size).toBeDefined();
-        expect(result.config?.door_size![0]).toBeCloseTo(3 * FT_TO_M, 5); // ~0.91m
-        expect(result.config?.door_size![1]).toBeCloseTo(7 * FT_TO_M, 5); // ~2.13m
+        expect(result.config!.door_size![0]).toBeCloseTo(3 * FT_TO_M, 5); // ~0.91m
+        expect(result.config!.door_size![1]).toBeCloseTo(7 * FT_TO_M, 5); // ~2.13m
       });
 
       test('should handle undefined door_size', () => {
@@ -119,8 +119,8 @@ describe('unit-normalizer', () => {
         const result = normalizeToMeters(input);
 
         expect(result.config?.window_size).toBeDefined();
-        expect(result.config?.window_size![0]).toBeCloseTo(5 * FT_TO_M, 5); // ~1.52m
-        expect(result.config?.window_size![1]).toBeCloseTo(4 * FT_TO_M, 5); // ~1.22m
+        expect(result.config!.window_size![0]).toBeCloseTo(5 * FT_TO_M, 5); // ~1.52m
+        expect(result.config!.window_size![1]).toBeCloseTo(4 * FT_TO_M, 5); // ~1.22m
       });
     });
 
@@ -222,6 +222,65 @@ describe('unit-normalizer', () => {
       });
     });
 
+    describe('per-floor connections view (Stage 1)', () => {
+      test('rebuilds JsonFloor.connections from the normalized flat list, sharing identity', () => {
+        const conn = createConnection('LivingRoom', 'Kitchen', { width: 3 });
+        conn.floorId = 'ground';
+        const room = createRoom('LivingRoom', 0, 0, 10, 10);
+        const input: JsonExport = {
+          config: { default_unit: 'ft' },
+          floors: [
+            {
+              id: 'ground',
+              index: 0,
+              rooms: [room],
+              // Pre-normalization per-floor view points at the un-normalized
+              // connection. The normalizer must replace it with the
+              // normalized counterpart (same object identity as the flat
+              // entry) — otherwise consumers iterating per-floor would see
+              // pre-normalization width/height.
+              connections: [conn],
+            },
+          ],
+          connections: [conn],
+          styles: [],
+        };
+
+        const result = normalizeToMeters(input);
+
+        expect(result.connections).toHaveLength(1);
+        expect(result.floors[0].connections).toHaveLength(1);
+        expect(result.floors[0].connections?.[0]).toBe(result.connections[0]);
+        expect(result.floors[0].connections?.[0].width).toBeCloseTo(3 * FT_TO_M, 5);
+      });
+
+      test('omits per-floor view for floors with no connections attributed', () => {
+        const conn = createConnection('A', 'B');
+        conn.floorId = 'f1';
+        const input: JsonExport = {
+          config: { default_unit: 'ft' },
+          floors: [
+            {
+              id: 'f1',
+              index: 0,
+              rooms: [createRoom('A', 0, 0, 5, 5), createRoom('B', 5, 0, 5, 5)],
+            },
+            { id: 'f2', index: 1, rooms: [createRoom('C', 0, 0, 5, 5)] },
+          ],
+          connections: [conn],
+          styles: [],
+        };
+
+        const result = normalizeToMeters(input);
+
+        expect(result.floors[0].connections).toHaveLength(1);
+        expect(result.floors[0].connections?.[0].floorId).toBe('f1');
+        // f2 had no connections attributed; the rebuild must leave it
+        // untouched (undefined) rather than synthesizing an empty array.
+        expect(result.floors[1].connections).toBeUndefined();
+      });
+    });
+
     describe('integration: complete floorplan conversion', () => {
       test('should convert all dimensional fields in a complete floorplan', () => {
         const room = createRoom('LivingRoom', 0, 0, 20, 16);
@@ -244,10 +303,10 @@ describe('unit-normalizer', () => {
 
         // Config conversions
         expect(result.config?.wall_thickness).toBeCloseTo(FT_TO_M, 5);
-        expect(result.config?.door_size![0]).toBeCloseTo(3 * FT_TO_M, 5);
-        expect(result.config?.door_size![1]).toBeCloseTo(7 * FT_TO_M, 5);
-        expect(result.config?.window_size![0]).toBeCloseTo(5 * FT_TO_M, 5);
-        expect(result.config?.window_size![1]).toBeCloseTo(4 * FT_TO_M, 5);
+        expect(result.config!.door_size![0]).toBeCloseTo(3 * FT_TO_M, 5);
+        expect(result.config!.door_size![1]).toBeCloseTo(7 * FT_TO_M, 5);
+        expect(result.config!.window_size![0]).toBeCloseTo(5 * FT_TO_M, 5);
+        expect(result.config!.window_size![1]).toBeCloseTo(4 * FT_TO_M, 5);
         expect(result.config?.default_height).toBeCloseTo(10 * FT_TO_M, 5);
 
         // Connection conversions

@@ -94,16 +94,70 @@ function escape(s) {
   );
 }
 
-function wallType(room, direction) {
-  const w = (room.walls ?? []).find((x) => x.direction === direction);
-  return w?.type ?? 'solid';
+function wallSpec(room, direction) {
+  return (room.walls ?? []).find((x) => x.direction === direction) ?? null;
 }
 
-function wallFill(type, side) {
-  if (type === 'window') return COLORS.wallWindow;
-  if (type === 'open') return COLORS.wallOpen;
-  if (type === 'door') return side === 'front' ? COLORS.wallSolidFront : COLORS.wallSolidSide;
+function solidFill(side) {
   return side === 'front' ? COLORS.wallSolidFront : COLORS.wallSolidSide;
+}
+
+function lerp2d(p0, p1, t) {
+  return { sx: p0.sx + (p1.sx - p0.sx) * t, sy: p0.sy + (p1.sy - p0.sy) * t };
+}
+
+/**
+ * Render a wall face as one or three sub-polygons.
+ *
+ * p0..p3 are the four projected screen corners where the wall axis runs
+ * from t=0 (p0/p3 end) to t=1 (p1/p2 end):
+ *   bottom edge: p0 → p1
+ *   top edge:    p3 → p2
+ *
+ * When the spec has a positioned window (`position` + `width` both set),
+ * the face is split into up to three sub-rects: solid | window | solid.
+ * Otherwise the whole face uses the wall-type colour (existing behaviour).
+ *
+ * @param {object} p0 p1 p2 p3 - Projected screen points
+ * @param {object|null} spec   - JsonWall spec for this direction (may be null)
+ * @param {number} wallLength  - World-unit length of the wall along the axis
+ * @param {'front'|'side'} side
+ */
+function renderWallFace(p0, p1, p2, p3, spec, wallLength, side) {
+  const parts = [];
+
+  const hasPositionedWindow =
+    spec?.type === 'window' && spec.position != null && spec.width != null;
+
+  if (!hasPositionedWindow) {
+    // Whole-wall fill — existing behaviour.
+    let fill;
+    if (spec?.type === 'window') fill = COLORS.wallWindow;
+    else if (spec?.type === 'open') fill = COLORS.wallOpen;
+    else fill = solidFill(side);
+    parts.push(polygon([p0, p1, p2, p3], fill));
+    return parts.join('\n');
+  }
+
+  // Compute fractional range [tStart, tEnd] of the window along the wall axis.
+  const winCenter =
+    spec.isPercentage !== false ? spec.position / 100 : spec.position / wallLength;
+  const winHalf = spec.width / wallLength / 2;
+  const tStart = Math.max(0, winCenter - winHalf);
+  const tEnd = Math.min(1, winCenter + winHalf);
+
+  // Interpolate along bottom (p0→p1) and top (p3→p2) edges.
+  const lb = (t) => lerp2d(p0, p1, t);
+  const lt = (t) => lerp2d(p3, p2, t);
+
+  if (tStart > 0.001) {
+    parts.push(polygon([p0, lb(tStart), lt(tStart), p3], solidFill(side)));
+  }
+  parts.push(polygon([lb(tStart), lb(tEnd), lt(tEnd), lt(tStart)], COLORS.wallWindow));
+  if (tEnd < 0.999) {
+    parts.push(polygon([lb(tEnd), p1, p2, lt(tEnd)], solidFill(side)));
+  }
+  return parts.join('\n');
 }
 
 /**
@@ -134,14 +188,12 @@ function renderRoomBox({ room, elevation, height, angle }) {
   const btl = v(x0, y1, z0); // back-top-left
 
   const parts = [];
-  // Front wall (z = z1, facing camera)
-  parts.push(
-    polygon([fbl, fbr, ftr, ftl], wallFill(wallType(room, 'bottom'), 'front')),
-  );
-  // Right wall (x = x1, facing camera)
-  parts.push(
-    polygon([fbr, bbr, btr, ftr], wallFill(wallType(room, 'right'), 'side')),
-  );
+  // Front wall (z = z1, facing camera) — "bottom" in floorplan coords.
+  // Wall axis runs left→right (x0→x1), so t=0 is fbl/ftl, t=1 is fbr/ftr.
+  parts.push(renderWallFace(fbl, fbr, ftr, ftl, wallSpec(room, 'bottom'), room.width, 'front'));
+  // Right wall (x = x1, facing camera) — "right" in floorplan coords.
+  // Wall axis runs back→front (z0→z1), so t=0 is bbr/btr, t=1 is fbr/ftr.
+  parts.push(renderWallFace(bbr, fbr, ftr, btr, wallSpec(room, 'right'), room.height, 'side'));
   // Roof slab (y = y1, top)
   parts.push(polygon([ftl, ftr, btr, btl], COLORS.roof, COLORS.roofStroke, 0.4));
 

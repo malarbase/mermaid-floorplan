@@ -16,8 +16,8 @@ import type {
 } from '../src/diagrams/floorplans/json-converter.js';
 
 describe('DXF Exporter', () => {
-  // Sample room data
-  const sampleRoom: JsonRoom = {
+  // Sample room data (cast to bypass optional required fields not relevant to DXF tests)
+  const sampleRoom = {
     name: 'Living Room',
     label: 'Living Room',
     x: 0,
@@ -25,24 +25,27 @@ describe('DXF Exporter', () => {
     width: 20,
     height: 15,
     area: 300,
-  };
+    walls: [],
+  } as unknown as JsonRoom;
 
-  const sampleFloor: JsonFloor = {
+  const sampleFloor = {
     id: 'Ground Floor',
+    index: 0,
     rooms: [sampleRoom],
     stairs: [],
     lifts: [],
-  };
+  } as unknown as JsonFloor;
 
-  const sampleConnection: JsonConnection = {
+  const sampleConnection = {
     fromRoom: 'Living Room',
     toRoom: 'Kitchen',
     fromWall: 'right',
+    toWall: 'left',
     doorType: 'door',
     width: 3,
     position: 50,
     swing: 'left',
-  };
+  } as unknown as JsonConnection;
 
   describe('DXF_LAYERS', () => {
     it('should define all required layers', () => {
@@ -111,12 +114,13 @@ describe('DXF Exporter', () => {
     });
 
     it('should handle empty floor', () => {
-      const emptyFloor: JsonFloor = {
+      const emptyFloor = {
         id: 'Empty',
+        index: 0,
         rooms: [],
         stairs: [],
         lifts: [],
-      };
+      } as unknown as JsonFloor;
 
       const result = exportFloorToDxf(emptyFloor, []);
 
@@ -141,20 +145,24 @@ describe('DXF Exporter', () => {
   });
 
   describe('exportFloorplanToDxf (multi-floor)', () => {
-    const multiFloorData: JsonFloor[] = [
+    const multiFloorData = [
       {
         id: 'Ground Floor',
-        rooms: [{ name: 'Living', label: 'Living', x: 0, z: 0, width: 20, height: 15 }],
+        index: 0,
+        rooms: [{ name: 'Living', label: 'Living', x: 0, z: 0, width: 20, height: 15, walls: [] }],
         stairs: [],
         lifts: [],
       },
       {
         id: 'First Floor',
-        rooms: [{ name: 'Bedroom', label: 'Bedroom', x: 0, z: 0, width: 15, height: 12 }],
+        index: 1,
+        rooms: [
+          { name: 'Bedroom', label: 'Bedroom', x: 0, z: 0, width: 15, height: 12, walls: [] },
+        ],
         stairs: [],
         lifts: [],
       },
-    ];
+    ] as unknown as JsonFloor[];
 
     it('should export multiple floors', () => {
       const result = exportFloorplanToDxf(multiFloorData, []);
@@ -184,12 +192,13 @@ describe('DXF Exporter', () => {
 
   describe('Stairs and Lifts', () => {
     it('should export stairs', () => {
-      const floorWithStairs: JsonFloor = {
+      const floorWithStairs = {
         id: 'Ground',
+        index: 0,
         rooms: [],
         stairs: [{ name: 'Main Stairs', label: 'Main Stairs', x: 10, z: 5, width: 4 }],
         lifts: [],
-      };
+      } as unknown as JsonFloor;
 
       const result = exportFloorToDxf(floorWithStairs, []);
 
@@ -198,12 +207,13 @@ describe('DXF Exporter', () => {
     });
 
     it('should export lifts with X symbol', () => {
-      const floorWithLift: JsonFloor = {
+      const floorWithLift = {
         id: 'Ground',
+        index: 0,
         rooms: [],
         stairs: [],
         lifts: [{ name: 'Elevator 1', label: 'Elevator', x: 15, z: 10, width: 6, height: 6 }],
-      };
+      } as unknown as JsonFloor;
 
       const result = exportFloorToDxf(floorWithLift, []);
 
@@ -253,56 +263,60 @@ describe('DXF Exporter', () => {
 
   describe('Door and Window positions', () => {
     it('should position door on top wall', () => {
-      const conn: JsonConnection = {
+      const conn = {
         fromRoom: 'Living Room',
         toRoom: 'Hall',
         fromWall: 'top',
+        toWall: 'bottom',
         doorType: 'door',
         width: 3,
         position: 50,
-      };
+      } as unknown as JsonConnection;
 
       const result = exportFloorToDxf(sampleFloor, [conn]);
       expect(result.connectionCount).toBe(1);
     });
 
     it('should position door on bottom wall', () => {
-      const conn: JsonConnection = {
+      const conn = {
         fromRoom: 'Living Room',
         toRoom: 'Hall',
         fromWall: 'bottom',
+        toWall: 'top',
         doorType: 'door',
         width: 3,
         position: 50,
-      };
+      } as unknown as JsonConnection;
 
       const result = exportFloorToDxf(sampleFloor, [conn]);
       expect(result.connectionCount).toBe(1);
     });
 
     it('should position door on left wall', () => {
-      const conn: JsonConnection = {
+      const conn = {
         fromRoom: 'Living Room',
         toRoom: 'Hall',
         fromWall: 'left',
+        toWall: 'right',
         doorType: 'door',
         width: 3,
         position: 50,
-      };
+      } as unknown as JsonConnection;
 
       const result = exportFloorToDxf(sampleFloor, [conn]);
       expect(result.connectionCount).toBe(1);
     });
 
     it('should export window on WINDOWS layer', () => {
-      const conn: JsonConnection = {
+      const conn = {
         fromRoom: 'Living Room',
         toRoom: 'outside',
         fromWall: 'right',
+        toWall: 'left',
         doorType: 'window',
         width: 4,
         position: 50,
-      };
+      } as unknown as JsonConnection;
 
       const result = exportFloorToDxf(sampleFloor, [conn]);
       expect(result.connectionCount).toBe(1);

@@ -134,6 +134,109 @@ export function reassignMaterialsByNormal(
 }
 
 /**
+ * Material indices used by `reassignNormalsToEdgeMaterials` and
+ * `MaterialFactory.createPerEdgeWallMaterials` — see `materials.ts` for the
+ * canonical definition of the 4-slot layout.
+ */
+export const EDGE_MATERIAL_INDICES = {
+  TOP: 0,
+  BOTTOM: 1,
+  SIDE_LEFT: 2,
+  SIDE_RIGHT: 3,
+} as const;
+
+/**
+ * Per-edge wall normal classifier used by the wall-network mesh builder.
+ *
+ * Unlike `reassignMaterialsByNormal` (which assumes axis-aligned BoxGeometry
+ * faces), an edge mesh can be at any rotation around world Y because edges
+ * follow the canonical `nodeA → nodeB` direction in world XZ. The classifier
+ * maps each face normal `n` into one of four material slots:
+ *
+ *   - top    (0): `n.y > 0` and `|n.y|` is the dominant component
+ *   - bottom (1): `n.y < 0` and `|n.y|` is the dominant component
+ *   - left   (2): horizontal normal whose XZ component points to the LEFT of
+ *                 the canonical edge direction (positive dot with
+ *                 `perpEdge = (-edgeDirXZ.z, 0, edgeDirXZ.x)`)
+ *   - right  (3): horizontal normal pointing to the RIGHT (negative dot)
+ *
+ * The classifier consumes the geometry's normals AS-IS — it does not transform
+ * them. Caller responsibility:
+ *
+ *   - For a post-CSG geometry (whose vertices live in WORLD space because
+ *     `three-bvh-csg`'s `Evaluator.evaluate` returns world-space output), pass
+ *     `edgeDirXZ` as the world-space canonical edge direction.
+ *   - For a no-hole pass-through geometry (still in MESH-LOCAL space, with the
+ *     canonical edge along local +X by construction in `emitEdgeMesh`), pass
+ *     `edgeDirXZ = (1, 0, 0)`.
+ *
+ * Tie-breaking: the dead-zone where `n · perpEdge ≈ 0` (the tiny short faces
+ * at each mitred edge end) is assigned to `SIDE_LEFT` so the result is
+ * deterministic and so a single-style edge looks uniform.
+ *
+ * Mirrors the structure of `reassignMaterialsByNormal` (consecutive-face
+ * group merging) so the resulting `BufferGeometry.groups` array is minimal.
+ */
+export function reassignNormalsToEdgeMaterials(
+  geometry: THREE.BufferGeometry,
+  edgeDirXZ: THREE.Vector3,
+): void {
+  const normals = geometry.attributes.normal;
+  const index = geometry.index;
+  if (!normals) return;
+
+  // perpEdge = 90° CCW rotation of edgeDirXZ in the XZ plane (Y-up).
+  // Pre-normalize to avoid sensitivity to caller-supplied magnitudes.
+  const dx = edgeDirXZ.x;
+  const dz = edgeDirXZ.z;
+  const dlen = Math.hypot(dx, dz) || 1;
+  const ndx = dx / dlen;
+  const ndz = dz / dlen;
+  const perpX = -ndz;
+  const perpZ = ndx;
+
+  geometry.clearGroups();
+
+  const vertexCount = index ? index.count : normals.count;
+  const faceCount = Math.floor(vertexCount / 3);
+  if (faceCount === 0) return;
+
+  let currentGroupStart = 0;
+  let currentGroupMaterial = -1;
+
+  for (let face = 0; face < faceCount; face++) {
+    const vertexIndex = index ? index.getX(face * 3) : face * 3;
+    const nx = normals.getX(vertexIndex);
+    const ny = normals.getY(vertexIndex);
+    const nz = normals.getZ(vertexIndex);
+
+    let materialIndex: number;
+    if (Math.abs(ny) > 0.5) {
+      materialIndex = ny > 0 ? EDGE_MATERIAL_INDICES.TOP : EDGE_MATERIAL_INDICES.BOTTOM;
+    } else {
+      const perpDot = nx * perpX + nz * perpZ;
+      // Ties (perpDot === 0) deterministically resolve to SIDE_LEFT.
+      materialIndex =
+        perpDot >= 0 ? EDGE_MATERIAL_INDICES.SIDE_LEFT : EDGE_MATERIAL_INDICES.SIDE_RIGHT;
+    }
+
+    if (materialIndex !== currentGroupMaterial) {
+      if (currentGroupMaterial !== -1) {
+        const groupVertexCount = face * 3 - currentGroupStart;
+        geometry.addGroup(currentGroupStart, groupVertexCount, currentGroupMaterial);
+      }
+      currentGroupStart = face * 3;
+      currentGroupMaterial = materialIndex;
+    }
+  }
+
+  if (currentGroupMaterial !== -1) {
+    const groupVertexCount = faceCount * 3 - currentGroupStart;
+    geometry.addGroup(currentGroupStart, groupVertexCount, currentGroupMaterial);
+  }
+}
+
+/**
  * Get the expected material index for a wall face based on wall direction.
  *
  * @param wallDirection The direction of the wall ('top', 'bottom', 'left', 'right')
