@@ -55,7 +55,7 @@ The project SHALL provide a local TypeScript CLI for administrators to manage de
 - **WHEN** they run `npx tsx scripts/admin-cli.ts dns setup`
 - **THEN** interactive prompts guide them through provider selection and record creation
 
-## MODIFIED Requirements
+## ADDED Requirements
 
 ### Requirement: Auth Subsystem Debug Output
 The SolidStart app auth initialization and dev-login flows SHALL NOT emit verbose debug logs to the browser console.

@@ -37,3 +37,18 @@ The MCP server package SHALL expose a CLI binary named `floorplan-mcp` for users
 - **THEN** they SHALL be able to invoke it using `floorplan-mcp` command
 - **AND** the binary SHALL start the MCP server with stdio transport
 
+### Requirement: Auth Subsystem Debug Output
+The SolidStart app auth initialization and dev-login flows SHALL NOT emit verbose debug logs to the browser console.
+
+#### Scenario: ConvexProvider without debug noise
+- **GIVEN** the app initializes the Convex client in development mode
+- **WHEN** auth state changes or tokens are fetched
+- **THEN** no `[ConvexProvider]`, `[MOCK MODE]`, or `Connecting to Convex` logs appear
+- **AND** actual errors are still logged via `console.error`
+
+#### Scenario: Dev login without step logs
+- **GIVEN** a developer uses the multi-persona dev login page
+- **WHEN** they click a persona button
+- **THEN** no `[dev-login] Step N:` progress logs appear
+- **AND** login failures are still reported via `console.error`
+
