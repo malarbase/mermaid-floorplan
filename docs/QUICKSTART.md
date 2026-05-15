@@ -2,10 +2,17 @@
 
 No OAuth setup needed! The mock auth system is pre-configured.
 
+## Prerequisites
+
+Install mise (tool manager):
+```bash
+curl https://mise.run | sh
+```
+
 ## 1. Start Docker
 
 ```bash
-make docker-up
+mise run docker:up
 ```
 
 ## 2. Visit Dev Login
@@ -61,7 +68,7 @@ If you want to test with real Google OAuth:
 
 3. Restart Docker:
    ```bash
-   make docker-restart
+   mise run docker:restart
    ```
 
 ---

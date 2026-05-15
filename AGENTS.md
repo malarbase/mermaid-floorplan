@@ -59,7 +59,7 @@ For Mermaid alignment details, see:
 npm run langium:generate   # Regenerate parser (after grammar changes)
 npm run build              # Build all packages
 npm test                   # Run all tests
-make dev                   # Start default dev server
+mise run core:dev          # Start default dev server
 ```
 
 ## Context Index

@@ -128,7 +128,7 @@ cd floorplan-app
 npx convex login
 npx convex dev  # Generates CONVEX_URL
 # Copy URL to .env
-make docker-restart
+mise run docker:restart
 ```
 
 **Option B: Add Mock Mode** (quick testing):
@@ -226,18 +226,18 @@ RUN npm run build --workspace floorplan-viewer-core
 
 ```bash
 # Fix 1: Rebuild Docker with all dependencies
-make docker-clean
-make docker-build
-make docker-up
+mise run docker:clean
+mise run docker:build
+mise run docker:up
 
 # Fix 2: Build viewer-core inside running container
 docker compose exec app sh -c "npm run build --workspace floorplan-viewer-core"
 
 # Fix 3: Check logs for errors
-make docker-logs
+mise run docker:logs
 
 # Fix 4: Restart after changes
-make docker-restart
+mise run docker:restart
 ```
 
 ---

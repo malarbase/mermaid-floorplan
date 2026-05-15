@@ -97,7 +97,7 @@ export default function DevLogin() {
       try {
         await authClient.signUp.email({ name: persona.displayName, email, password });
       } catch {
-        // Already registered — expected on repeat logins
+        // Expected on repeat logins
       }
       await authClient.signIn.email({ email, password });
 
@@ -117,10 +117,12 @@ export default function DevLogin() {
       // 6. Navigate to returnUrl
       navigate(returnUrl());
     } catch (err) {
-      console.error('Dev login failed:', err);
+      console.error('[dev-login] Dev login failed:', err);
       const msg = String(err);
       if (msg.includes('Could not find public function')) {
         setLoginError('Convex backend not running. Start it with: npx convex dev');
+      } else if (msg.includes('fetch failed') || msg.includes('Failed to fetch')) {
+        setLoginError('Cannot connect to Convex at localhost:3210. Is `npx convex dev` running?');
       } else {
         setLoginError(msg.slice(0, 200));
       }

@@ -71,7 +71,7 @@ Did you forget to run `npx convex dev` or `npx convex deploy`?
 VITE_MOCK_MODE=true
 
 # Restart
-make docker-restart
+mise run docker:restart
 ```
 
 **Status:** Mock mode implementation created in `floorplan-app/src/lib/mock-convex.ts` with sample data. Environment variable needs to be exported for Docker Compose to pick it up.
@@ -95,7 +95,7 @@ npx convex dev
 VITE_CONVEX_URL=https://your-project.convex.cloud
 
 # Restart
-make docker-restart
+mise run docker:restart
 ```
 
 **Recommendation:** For quick local testing → Use Mock Mode.  
@@ -109,7 +109,7 @@ For production-like setup → Deploy to self-hosted (requires `npx convex dev`).
 **Solution:**
 ```bash
 docker compose exec app npm run build --workspace floorplan-viewer-core
-make docker-restart
+mise run docker:restart
 ```
 
 **Status:** Viewer loads successfully on `/viewer-test` page. SelectionManager logs show Three.js is working.
@@ -232,7 +232,7 @@ VITE_MOCK_MODE=false  # Set to "true" to use mock data
 echo "VITE_MOCK_MODE=true" > floorplan-app/.env
 
 # Restart
-make docker-restart
+mise run docker:restart
 
 # Test at http://localhost:3000
 ```
@@ -254,7 +254,7 @@ npx convex dev
 1. Use Cloud Convex (recommended) or deploy self-hosted to server
 2. Set proper `INSTANCE_SECRET` in docker-compose.yml
 3. Configure Better Auth OAuth (Google, GitHub, etc.)
-4. Build production Docker image: `make docker-build`
+4. Build production Docker image: `mise run docker:build`
 5. Deploy with persistent volumes
 
 ## 🎓 Lessons Learned
