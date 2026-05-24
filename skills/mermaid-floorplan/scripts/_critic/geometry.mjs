@@ -219,6 +219,133 @@ export function computeStairFootprint(stair, defaultUnit = 'ft') {
     width = radius * 2;
     height = radius * 2;
     approximate = true;
+  } else if (shapeType === 'custom' && Array.isArray(shape.segments)) {
+    // Tracing coordinate accumulation for custom segmented stairs
+    let currentX = x0;
+    let currentY = z0;
+    let currentDirection = shape.entry ?? 'top';
+
+    let minX = x0;
+    let maxX = x0;
+    let minY = z0;
+    let maxY = z0;
+
+    const updateBounds = (x1, y1, x2, y2) => {
+      minX = Math.min(minX, x1, x2);
+      maxX = Math.max(maxX, x1, x2);
+      minY = Math.min(minY, y1, y2);
+      maxY = Math.max(maxY, y1, y2);
+    };
+
+    const applyTurn = (dir, turn) => {
+      const dirs = ['top', 'right', 'bottom', 'left'];
+      const idx = dirs.indexOf(dir);
+      if (idx === -1) return dir;
+      if (turn === 'right') {
+        return dirs[(idx + 1) % 4];
+      } else {
+        return dirs[(idx + 3) % 4];
+      }
+    };
+
+    for (const segment of shape.segments) {
+      if (segment.type === 'flight') {
+        const steps = segment.steps ?? 10;
+        const flightWidth = segment.width ?? stairWidth;
+        const flightLength = steps * tread;
+
+        let fx1 = currentX;
+        let fy1 = currentY;
+        let fx2 = currentX;
+        let fy2 = currentY;
+
+        if (currentDirection === 'top') {
+          fx2 = currentX + flightWidth;
+          fy1 = currentY - flightLength;
+          currentY -= flightLength;
+        } else if (currentDirection === 'bottom') {
+          fx2 = currentX + flightWidth;
+          fy2 = currentY + flightLength;
+          currentY += flightLength;
+        } else if (currentDirection === 'left') {
+          fx1 = currentX - flightLength;
+          fy2 = currentY + flightWidth;
+          currentX -= flightLength;
+        } else if (currentDirection === 'right') {
+          fx2 = currentX + flightLength;
+          fy2 = currentY + flightWidth;
+          currentX += flightLength;
+        }
+
+        updateBounds(fx1, fy1, fx2, fy2);
+
+      } else if (segment.type === 'turn') {
+        const landingW = segment.landing ? segment.landing[0] : stairWidth;
+        const landingH = segment.landing ? segment.landing[1] : stairWidth;
+
+        let lx1 = currentX;
+        let ly1 = currentY;
+        let lx2 = currentX;
+        let ly2 = currentY;
+
+        if (currentDirection === 'top') {
+          lx2 = currentX + landingW;
+          ly1 = currentY - landingH;
+        } else if (currentDirection === 'bottom') {
+          lx2 = currentX + landingW;
+          ly2 = currentY + landingH;
+        } else if (currentDirection === 'left') {
+          lx1 = currentX - landingW;
+          ly2 = currentY + stairWidth;
+        } else if (currentDirection === 'right') {
+          lx2 = currentX + landingW;
+          ly2 = currentY + stairWidth;
+        }
+
+        updateBounds(lx1, ly1, lx2, ly2);
+
+        const nextDirection = applyTurn(currentDirection, segment.direction);
+
+        if (currentDirection === 'top') {
+          if (nextDirection === 'left') {
+            currentX = lx1;
+          } else if (nextDirection === 'right') {
+            currentX = lx2;
+          }
+          currentY = ly1;
+        } else if (currentDirection === 'bottom') {
+          if (nextDirection === 'left') {
+            currentX = lx1;
+          } else if (nextDirection === 'right') {
+            currentX = lx2;
+          }
+          currentY = ly2;
+        } else if (currentDirection === 'left') {
+          currentX = lx1;
+          if (nextDirection === 'top') {
+            currentY = ly1;
+          } else if (nextDirection === 'bottom') {
+            currentY = ly2;
+          }
+        } else if (currentDirection === 'right') {
+          currentX = lx2;
+          if (nextDirection === 'top') {
+            currentY = ly1;
+          } else if (nextDirection === 'bottom') {
+            currentY = ly2;
+          }
+        }
+        currentDirection = nextDirection;
+      }
+    }
+    minX = Math.round(minX * 10000) / 10000;
+    maxX = Math.round(maxX * 10000) / 10000;
+    minY = Math.round(minY * 10000) / 10000;
+    maxY = Math.round(maxY * 10000) / 10000;
+
+    width = maxX - minX;
+    height = maxY - minY;
+    approximate = false;
   } else {
     // 'custom' / segmented or unknown — conservative bbox.
     width = stairWidth;
@@ -226,7 +353,134 @@ export function computeStairFootprint(stair, defaultUnit = 'ft') {
     approximate = true;
   }
 
-  const bbox = { x1: x0, y1: z0, x2: x0 + width, y2: z0 + height };
+  let bbox = { x1: x0, y1: z0, x2: x0 + width, y2: z0 + height };
+  if (shapeType === 'custom' && Array.isArray(shape.segments)) {
+    // Re-adjust bbox to match exact traced boundaries
+    let minX = x0;
+    let maxX = x0;
+    let minY = z0;
+    let maxY = z0;
+
+    let currentX = x0;
+    let currentY = z0;
+    let currentDirection = shape.entry ?? 'top';
+
+    const updateBounds = (x1, y1, x2, y2) => {
+      minX = Math.min(minX, x1, x2);
+      maxX = Math.max(maxX, x1, x2);
+      minY = Math.min(minY, y1, y2);
+      maxY = Math.max(maxY, y1, y2);
+    };
+
+    const applyTurn = (dir, turn) => {
+      const dirs = ['top', 'right', 'bottom', 'left'];
+      const idx = dirs.indexOf(dir);
+      if (idx === -1) return dir;
+      if (turn === 'right') {
+        return dirs[(idx + 1) % 4];
+      } else {
+        return dirs[(idx + 3) % 4];
+      }
+    };
+
+    for (const segment of shape.segments) {
+      if (segment.type === 'flight') {
+        const steps = segment.steps ?? 10;
+        const flightWidth = segment.width ?? stairWidth;
+        const flightLength = steps * tread;
+
+        let fx1 = currentX;
+        let fy1 = currentY;
+        let fx2 = currentX;
+        let fy2 = currentY;
+
+        if (currentDirection === 'top') {
+          fx2 = currentX + flightWidth;
+          fy1 = currentY - flightLength;
+          currentY -= flightLength;
+        } else if (currentDirection === 'bottom') {
+          fx2 = currentX + flightWidth;
+          fy2 = currentY + flightLength;
+          currentY += flightLength;
+        } else if (currentDirection === 'left') {
+          fx1 = currentX - flightLength;
+          fy2 = currentY + flightWidth;
+          currentX -= flightLength;
+        } else if (currentDirection === 'right') {
+          fx2 = currentX + flightLength;
+          fy2 = currentY + flightWidth;
+          currentX += flightLength;
+        }
+
+        updateBounds(fx1, fy1, fx2, fy2);
+
+      } else if (segment.type === 'turn') {
+        const landingW = segment.landing ? segment.landing[0] : stairWidth;
+        const landingH = segment.landing ? segment.landing[1] : stairWidth;
+
+        let lx1 = currentX;
+        let ly1 = currentY;
+        let lx2 = currentX;
+        let ly2 = currentY;
+
+        if (currentDirection === 'top') {
+          lx2 = currentX + landingW;
+          ly1 = currentY - landingH;
+        } else if (currentDirection === 'bottom') {
+          lx2 = currentX + landingW;
+          ly2 = currentY + landingH;
+        } else if (currentDirection === 'left') {
+          lx1 = currentX - landingW;
+          ly2 = currentY + stairWidth;
+        } else if (currentDirection === 'right') {
+          lx2 = currentX + landingW;
+          ly2 = currentY + stairWidth;
+        }
+
+        updateBounds(lx1, ly1, lx2, ly2);
+
+        const nextDirection = applyTurn(currentDirection, segment.direction);
+
+        if (currentDirection === 'top') {
+          if (nextDirection === 'left') {
+            currentX = lx1;
+          } else if (nextDirection === 'right') {
+            currentX = lx2;
+          }
+          currentY = ly1;
+        } else if (currentDirection === 'bottom') {
+          if (nextDirection === 'left') {
+            currentX = lx1;
+          } else if (nextDirection === 'right') {
+            currentX = lx2;
+          }
+          currentY = ly2;
+        } else if (currentDirection === 'left') {
+          currentX = lx1;
+          if (nextDirection === 'top') {
+            currentY = ly1;
+          } else if (nextDirection === 'bottom') {
+            currentY = ly2;
+          }
+        } else if (currentDirection === 'right') {
+          currentX = lx2;
+          if (nextDirection === 'top') {
+            currentY = ly1;
+          } else if (nextDirection === 'bottom') {
+            currentY = ly2;
+          }
+        }
+        currentDirection = nextDirection;
+      }
+    }
+
+    minX = Math.round(minX * 10000) / 10000;
+    maxX = Math.round(maxX * 10000) / 10000;
+    minY = Math.round(minY * 10000) / 10000;
+    maxY = Math.round(maxY * 10000) / 10000;
+
+    bbox = { x1: minX, y1: minY, x2: maxX, y2: maxY };
+  }
 
   // Compute entry/exit edges. The "long axis" of the stair is determined
   // by `direction`. The entry edge is opposite the climb direction

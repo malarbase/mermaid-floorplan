@@ -9,10 +9,15 @@ This skill turns the agent into a competent assistant for the
 `mermaid-floorplan` DSL: creating, modifying, critiquing, and
 reverse-engineering 2D architectural floor plans that render to SVG/PNG.
 
-The skill is built around **bundled scripts** that wrap the public
+The skill is built around **bundled scripts** in
+`skills/mermaid-floorplan/scripts/` that wrap the public
 `floorplan-language` parser/renderer plus the MCP server's AST editor and
 spatial utilities. The scripts run standalone via `node` and `python3`; the
 skill does **not** require a running MCP server.
+
+> **Path reminder:** All script commands in this skill must be prefixed with
+> `skills/mermaid-floorplan/scripts/` (e.g.
+> `node skills/mermaid-floorplan/scripts/validate.mjs plan.floorplan`).
 
 ## When to use this skill
 
@@ -71,9 +76,13 @@ supports (DXF export is handled by the renderer, not by this skill).
    `modify.mjs` operation set (`add_room`, `remove_room`, `resize_room`,
    `move_room`, `rename_room`, `update_walls`, `add_label`,
    `convert_to_relative`).
-3. Apply: `node scripts/modify.mjs plan.floorplan --ops ops.json --out
+3. Apply: `node skills/mermaid-floorplan/scripts/modify.mjs plan.floorplan --ops ops.json --out
    plan.floorplan` (writes in place unless `--out` differs).
-4. Re-validate, re-render, re-critique.
+4. **Fallback:** If `modify.mjs` fails (e.g. missing MCP server build
+   artifacts), fall back to hand-editing the `.floorplan` file directly.
+   The DSL is human-readable; prefer surgical `apply_diff` edits over
+   full rewrites so the AST structure stays clean.
+5. Re-validate, re-render, re-critique.
 
 ### Workflow C — Reverse-engineer from an image or PDF
 
@@ -172,6 +181,17 @@ bedrooms 1 and 2"). Each turn:
 - **Stay within the DSL.** Door widths, materials, furniture, and
   dimensions below 0.1 units are out of scope. See
   [`references/dsl-grammar.md`](references/dsl-grammar.md) for limits.
+- **Wall types and adjacency.** The DSL supports `solid`, `open`, and
+  `window` wall types. Use `open` for passages, car-park boundaries, and
+  any wall that should not render as a physical barrier. Use `solid` for
+  structural walls. Use `window` for exterior glazing. When a room abuts
+  parking or an outdoor zone, mark the shared wall `open` on the room
+  side and `open` on the parking side so the renderer omits the divider.
+- **Interstitial spaces.** If a source image shows a corridor, lobby, or
+  open passage between two rooms (e.g. between a living room and a
+  parking area), model it as an explicit `room` with `open` walls rather
+  than leaving a gap. The DSL does not support negative space; every
+  reachable area must be a named room.
 
 ## Scripts (all in `scripts/`)
 

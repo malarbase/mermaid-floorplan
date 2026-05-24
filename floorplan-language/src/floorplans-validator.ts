@@ -657,26 +657,38 @@ export class FloorplansValidator {
     }
 
     // Calculate bounds for each room
-    for (const room of rooms) {
-      let x = 0,
-        z = 0;
+    const compute = (roomsList: Room[], parentX: number = 0, parentZ: number = 0) => {
+      for (const room of roomsList) {
+        let x = 0,
+          z = 0;
 
-      // Get resolved position if available, otherwise use absolute position or default to 0,0
-      const resolved = resolvedPositions.get(room.name);
-      if (resolved) {
-        x = resolved.x;
-        z = resolved.y;
-      } else if (room.position) {
-        x = room.position.x.value;
-        z = room.position.y.value;
+        // Get resolved position if available, otherwise use absolute position or default to 0,0
+        const resolved = resolvedPositions.get(room.name);
+        if (resolved) {
+          x = resolved.x;
+          z = resolved.y;
+        } else if (room.position) {
+          x = room.position.x.value + parentX;
+          z = room.position.y.value + parentZ;
+        }
+
+        // Get room size
+        const size = getRoomSize(room, variables);
+        const width = size.width;
+        const height = size.height;
+
+        bounds.set(room.name, { x, z, width, height });
+
+        if (room.subRooms && room.subRooms.length > 0) {
+          compute(room.subRooms, x, z);
+        }
       }
+    };
 
-      // Get room size
-      const size = getRoomSize(room, variables);
-      const width = size.width;
-      const height = size.height;
-
-      bounds.set(room.name, { x, z, width, height });
+    if (floor) {
+      compute(floor.rooms);
+    } else {
+      compute(rooms);
     }
 
     return bounds;
@@ -1099,6 +1111,16 @@ export class FloorplansValidator {
       const allRooms = this.collectAllRooms(floor);
       const bounds = this.computeRoomBounds(allRooms, floorplan, floor);
 
+      // Build parent-child relationships for sub-rooms
+      const parentMap = new Map<string, string>();
+      for (const room of allRooms) {
+        if (room.subRooms) {
+          for (const sub of room.subRooms) {
+            parentMap.set(sub.name, room.name);
+          }
+        }
+      }
+
       // Check each connection
       for (const conn of floorplan.connections) {
         const fromRoomName = conn.from.room?.name;
@@ -1120,7 +1142,11 @@ export class FloorplansValidator {
           toWall,
         );
 
-        if (!sharedSegment) {
+        const isParentChild =
+          parentMap.get(fromRoomName) === toRoomName ||
+          parentMap.get(toRoomName) === fromRoomName;
+
+        if (!sharedSegment && !isParentChild) {
           // Rooms don't share this wall boundary - this is a real problem
           accept(
             'warning',

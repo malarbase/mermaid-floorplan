@@ -54,14 +54,19 @@ export class StairGenerator {
         break;
     }
 
-    // Normalize geometry so the top-left corner (min x, min z) is at (0,0).
-    // This sets group.position to a compensating offset; we then add the
-    // requested stair.x / stair.z on top.
-    this.normalizeGeometryOrigin(group);
+    if (stair.shape.type === 'custom') {
+      group.position.x = stair.x;
+      group.position.z = stair.z;
+    } else {
+      // Normalize geometry so the top-left corner (min x, min z) is at (0,0).
+      // This sets group.position to a compensating offset; we then add the
+      // requested stair.x / stair.z on top.
+      this.normalizeGeometryOrigin(group);
 
-    // Place the group at the specified position (add to compensating offset)
-    group.position.x += stair.x;
-    group.position.z += stair.z;
+      // Place the group at the specified position (add to compensating offset)
+      group.position.x += stair.x;
+      group.position.z += stair.z;
+    }
 
     // Shift the entire stair down so the LAST tread's TOP sits ~25mm BELOW
     // the next floor's walking surface (= slab top). This achieves two things:
@@ -516,125 +521,160 @@ export class StairGenerator {
     const riserHeight =
       stair.rise && totalSteps > 0 ? stair.rise / totalSteps : (stair.riser ?? 0.18);
 
-    const currentPos = new THREE.Vector3(0, 0, 0);
-    let currentRotation = 0;
+    // Tracking position and direction exactly as in 2D SVG renderer
+    // Mapping: 2D X -> 3D X, 2D Y -> 3D Z
+    let currentX = 0;
+    let currentY = 0; // Will be mapped to 3D Z
+    let currentDirection: 'top' | 'bottom' | 'left' | 'right' = (shape.entry as any) ?? 'top';
     let currentHeight = 0;
-    const forward = new THREE.Vector3(0, 0, -1); // Initial forward direction (-Z)
 
-    // Entry rotation
-    const entry = shape.entry ?? 'top';
-    let entryRotation = 0;
-    switch (entry) {
-      case 'top':
-        entryRotation = Math.PI;
-        break;
-      case 'bottom':
-        entryRotation = 0;
-        break;
-      case 'right':
-        entryRotation = -Math.PI / 2;
-        break;
-      case 'left':
-        entryRotation = Math.PI / 2;
-        break;
-    }
-    group.rotation.y = entryRotation;
+    // Local helper to apply turns CW/CCW
+    const applyTurn = (dir: string, turn: 'left' | 'right'): 'top' | 'bottom' | 'left' | 'right' => {
+      const dirs = ['top', 'right', 'bottom', 'left'];
+      const idx = dirs.indexOf(dir);
+      if (turn === 'right') {
+        return dirs[(idx + 1) % 4] as any;
+      } else {
+        return dirs[(idx + 3) % 4] as any;
+      }
+    };
 
     for (let segIdx = 0; segIdx < shape.segments.length; segIdx++) {
       const segment = shape.segments[segIdx];
+
       if (segment.type === 'flight') {
         const steps = segment.steps ?? 10;
-        const segWidth = segment.width ?? defaultWidth;
-        const actualRiser = riserHeight;
+        const flightWidth = segment.width ?? defaultWidth;
         const flightLength = steps * treadDepth;
 
-        // Single sawtooth per flight. The front (local z = flightLength) must
-        // map to currentPos after rotation by currentRotation.
-        // Derivation: world_front = flight.position + R(α) * (0, Y0, flightLength)
-        //   x: px + sin(α)*flightLength = currentPos.x  → px = currentPos.x - sin(α)*L
-        //   z: pz + cos(α)*flightLength = currentPos.z  → pz = currentPos.z - cos(α)*L
+        let flightX = currentX;
+        let flightY = currentY;
+        let flightW = flightWidth;
+        let flightH = flightLength;
+
+        // Adjust dimensions based on direction
+        if (currentDirection === 'right' || currentDirection === 'left') {
+          flightW = flightLength;
+          flightH = flightWidth;
+        }
+
+        // Offset based on direction (flight extends in direction of travel)
+        if (currentDirection === 'top') {
+          flightY = currentY - flightLength;
+        } else if (currentDirection === 'left') {
+          flightX = currentX - flightLength;
+        }
+
+        // Now place the 3D flight mesh
         const flight = this.buildSawtoothFlight(
-          segWidth,
+          flightWidth,
           treadDepth,
-          actualRiser,
+          riserHeight,
           steps,
           this.material,
         );
-        flight.rotation.y = currentRotation;
-        flight.position.set(
-          currentPos.x - Math.sin(currentRotation) * flightLength,
-          currentHeight,
-          currentPos.z - Math.cos(currentRotation) * flightLength,
-        );
+
+        // Position & Rotate flight mesh based on direction
+        if (currentDirection === 'top') {
+          flight.position.set(
+            flightX + flightWidth / 2,
+            currentHeight,
+            currentY - flightLength,
+          );
+          flight.rotation.y = 0;
+        } else if (currentDirection === 'bottom') {
+          flight.position.set(
+            flightX + flightWidth / 2,
+            currentHeight,
+            currentY + flightLength,
+          );
+          flight.rotation.y = Math.PI;
+        } else if (currentDirection === 'left') {
+          flight.position.set(
+            currentX - flightLength,
+            currentHeight,
+            flightY + flightWidth / 2,
+          );
+          flight.rotation.y = Math.PI / 2;
+        } else if (currentDirection === 'right') {
+          flight.position.set(
+            currentX + flightLength,
+            currentHeight,
+            flightY + flightWidth / 2,
+          );
+          flight.rotation.y = -Math.PI / 2;
+        }
+
         group.add(flight);
 
-        // Advance currentPos to exit of this flight (back of sawtooth)
-        currentPos.addScaledVector(forward, flightLength);
-        currentHeight += steps * actualRiser;
+        // Update current position to end of flight
+        switch (currentDirection) {
+          case 'top':
+            currentY -= flightLength;
+            break;
+          case 'bottom':
+            currentY += flightLength;
+            break;
+          case 'right':
+            currentX += flightLength;
+            break;
+          case 'left':
+            currentX -= flightLength;
+            break;
+        }
+        currentHeight += steps * riserHeight;
+
       } else if (segment.type === 'turn') {
         const landingW = segment.landing ? segment.landing[0] : defaultWidth;
-        const landingD = segment.landing ? segment.landing[1] : defaultWidth;
+        const landingH = segment.landing ? segment.landing[1] : defaultWidth;
 
-        // Look ahead to get next flight width for alignment
-        const nextSegment = segIdx + 1 < shape.segments.length ? shape.segments[segIdx + 1] : null;
-        const nextFlightWidth =
-          nextSegment && nextSegment.type === 'flight' && nextSegment.width
-            ? nextSegment.width
-            : defaultWidth;
+        let landingX = currentX;
+        let landingY = currentY;
 
-        // Landing center: currentPos + forward * (landingD / 2)
-        const landingPos = currentPos.clone().add(forward.clone().multiplyScalar(landingD / 2));
+        // Position landing based on current direction
+        if (currentDirection === 'top') {
+          landingY = currentY - landingH;
+        } else if (currentDirection === 'left') {
+          landingX = currentX - landingW;
+        }
 
-        this.createLandingAbsolute(
-          group,
-          landingW,
-          landingD,
-          landingPos,
-          currentRotation,
+        // Create landing mesh
+        const landingGeom = new THREE.BoxGeometry(landingW, 0.05, landingH);
+        const landing = new THREE.Mesh(landingGeom, this.material);
+        landing.position.set(
+          landingX + landingW / 2,
           currentHeight,
+          landingY + landingH / 2,
         );
+        landing.castShadow = true;
+        landing.receiveShadow = true;
+        landing.name = 'stair_landing';
+        group.add(landing);
 
-        // Advance to center of landing
-        currentPos.add(forward.clone().multiplyScalar(landingD / 2));
+        // Update direction based on turn
+        currentDirection = applyTurn(currentDirection, segment.direction as 'left' | 'right');
 
-        // Turn
-        const turnAngle = segment.direction === 'left' ? Math.PI / 2 : -Math.PI / 2;
-        currentRotation += turnAngle;
-        forward.applyAxisAngle(new THREE.Vector3(0, 1, 0), turnAngle);
-
-        // After turning, shift position to the edge of the landing in the NEW direction
-        // The landing extends landingW/2 in the perpendicular direction (now forward)
-        currentPos.add(forward.clone().multiplyScalar(landingW / 2));
-
-        // Align next flight's outer edge with landing's outer edge
-        // For right turn: outer edge is on the right (positive perpendicular)
-        // For left turn: outer edge is on the left (negative perpendicular)
-        // Perpendicular to new forward: rotate forward 90°
-        const perpSign = segment.direction === 'right' ? 1 : -1;
-        const perpendicular = forward
-          .clone()
-          .applyAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI / 2);
-        const widthDiff = (landingW - nextFlightWidth) / 2;
-        // Shift perpendicular to align outer edges
-        currentPos.add(perpendicular.clone().multiplyScalar(widthDiff * perpSign));
+        // Update position to corner of landing based on new direction
+        switch (currentDirection) {
+          case 'top':
+            currentX = landingX;
+            currentY = landingY;
+            break;
+          case 'bottom':
+            currentX = landingX;
+            currentY = landingY + landingH;
+            break;
+          case 'right':
+            currentX = landingX + landingW;
+            currentY = landingY;
+            break;
+          case 'left':
+            currentX = landingX;
+            currentY = landingY;
+            break;
+        }
       }
     }
-  }
-
-  private createLandingAbsolute(
-    group: THREE.Group,
-    width: number,
-    depth: number,
-    position: THREE.Vector3,
-    rotation: number,
-    yPos: number,
-  ): void {
-    const landingGeom = new THREE.BoxGeometry(width, 0.05, depth);
-    const landing = new THREE.Mesh(landingGeom, this.material);
-    landing.position.copy(position);
-    landing.position.y = yPos;
-    landing.rotation.y = rotation;
-    group.add(landing);
   }
 
   private generateSpiralStair(group: THREE.Group, stair: JsonStair): void {
