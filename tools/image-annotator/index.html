@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Floorplan Scale Calibrator & Dimension Annotator</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Google Fonts Outfit -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Space+Mono&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+  <div class="app-container">
+    
+    <!-- Floating Header -->
+    <header class="app-header">
+      <div class="header-logo">
+        <div class="logo-icon">📐</div>
+        <div class="logo-text">
+          <h1>Floorplan Dimension Annotator</h1>
+          <span>Phase 1 Drafting Tool</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <label for="image-upload" class="btn btn-primary btn-upload">
+          <span class="icon">📁</span> Open Image
+        </label>
+        <input type="file" id="image-upload" accept="image/*" style="display: none;">
+        <button id="btn-export-img" class="btn btn-secondary" disabled>
+          <span class="icon">💾</span> Export Image
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="workspace-layout">
+      
+      <!-- Canvas Work Area -->
+      <section class="canvas-viewport" id="viewport-container">
+        
+        <!-- Drag and Drop Overlay -->
+        <div class="drag-overlay" id="drag-overlay">
+          <div class="drag-message">
+            <span class="drag-icon">📤</span>
+            <h3>Drag & Drop Floorplan Image Here</h3>
+            <p>Supports PNG, JPEG, SVG, and WebP formats</p>
+          </div>
+        </div>
+
+        <!-- Initial Placeholder Welcome State -->
+        <div class="welcome-screen" id="welcome-screen">
+          <div class="welcome-card">
+            <span class="welcome-icon">📐</span>
+            <h2>Dimension Annotator</h2>
+            <p>Upload a floorplan drawing or scanned sketch to calibrate its scale, draw dimension lines, and export the annotated drawing at full native resolution.</p>
+            <label for="welcome-upload" class="btn btn-primary btn-large">
+              Select Drawing Image
+            </label>
+            <input type="file" id="welcome-upload" accept="image/*" style="display: none;">
+            <p class="sample-note">Or drag & drop your floorplan image directly into this window.</p>
+          </div>
+        </div>
+
+        <!-- Interactive Drawing Canvas -->
+        <canvas id="annotator-canvas" style="display: none;"></canvas>
+
+        <!-- Canvas Controls (Floating) -->
+        <div class="canvas-hud" id="canvas-hud" style="display: none;">
+          <div class="hud-group">
+            <button id="btn-zoom-in" class="hud-btn" title="Zoom In">➕</button>
+            <button id="btn-zoom-out" class="hud-btn" title="Zoom Out">➖</button>
+            <button id="btn-zoom-fit" class="hud-btn" title="Fit to Viewport">🎯</button>
+          </div>
+          <div class="hud-divider"></div>
+          <div class="hud-coords" id="coords-display">x: 0, y: 0 px</div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="spinner-overlay" id="loading-spinner" style="display: none;">
+          <div class="spinner"></div>
+          <p>Processing image...</p>
+        </div>
+      </section>
+
+      <!-- Sidebar Controls -->
+      <aside class="sidebar-panel">
+        
+        <!-- Tool Selectors -->
+        <div class="sidebar-section">
+          <h3>Interactive Modes</h3>
+          <div class="tool-grid">
+            <button id="tool-calibrate" class="tool-btn" disabled>
+              <span class="tool-icon">📏</span>
+              <span class="tool-label">Calibrate Scale</span>
+            </button>
+            <button id="tool-annotate" class="tool-btn active" disabled>
+              <span class="tool-icon">✏️</span>
+              <span class="tool-label">Annotate Dim</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Drawing Constraints -->
+        <div class="sidebar-section">
+          <h3>Drawing Constraint</h3>
+          <div class="constraint-group">
+            <button id="constraint-horizontal" class="constraint-btn active">
+              <span class="label">Horizontal (H)</span>
+            </button>
+            <button id="constraint-vertical" class="constraint-btn">
+              <span class="label">Vertical (V)</span>
+            </button>
+            <button id="constraint-slanted" class="constraint-btn">
+              <span class="label">Slanted / Free (S)</span>
+            </button>
+          </div>
+          <p class="section-help">Constrains lines horizontally, vertically, or free-form. Press keys <strong>H</strong>, <strong>V</strong>, or <strong>S</strong> to switch instantly.</p>
+        </div>
+
+        <!-- Display Options -->
+        <div class="sidebar-section">
+          <h3>Display Options</h3>
+          <div class="option-group">
+            <label class="option-checkbox-label">
+              <input type="checkbox" id="round-values-checkbox">
+              <span>Round to nearest integer</span>
+            </label>
+            <div class="form-group" id="round-precision-group" style="display: none; margin-top: 8px;">
+              <label for="round-precision-select" style="font-size: 11px; margin-bottom: 4px;">Feet Rounding Grid</label>
+              <select id="round-precision-select" style="padding: 6px 10px; font-size: 12px; height: 32px; background-color: #0b0f19;">
+                <option value="1" selected>Nearest 1"</option>
+                <option value="3">Nearest 3"</option>
+                <option value="6">Nearest 6"</option>
+                <option value="12">Nearest Foot (12")</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Calibration Status -->
+        <div class="sidebar-section">
+          <h3>Scale Calibration</h3>
+          <div class="calibration-box" id="calibration-box">
+            <div class="calibration-status uncalibrated">
+              <span class="status-indicator">●</span> Uncalibrated
+            </div>
+            <p class="calibration-detail">Annotated measurements will show raw pixels. Click <strong>Calibrate Scale</strong> to calibrate.</p>
+          </div>
+        </div>
+
+        <!-- Annotations List -->
+        <div class="sidebar-section list-section">
+          <div class="section-header">
+            <h3>Active Annotations</h3>
+            <span class="badge" id="annotations-count">0</span>
+          </div>
+          <div class="annotations-list" id="annotations-list">
+            <div class="empty-list-message">No annotations added yet. Click & drag on the canvas to draw.</div>
+          </div>
+        </div>
+
+        <!-- Persistence Controls -->
+        <div class="sidebar-section action-section">
+          <div class="action-grid">
+            <button id="btn-save-json" class="btn btn-outline" disabled>
+              📥 Save JSON
+            </button>
+            <button id="btn-load-json" class="btn btn-outline" disabled>
+              📤 Load JSON
+            </button>
+          </div>
+          <button id="btn-clear-all" class="btn btn-danger" disabled>
+            🗑️ Clear All Workspace
+          </button>
+        </div>
+
+        <!-- Shortcuts Reference Cheat Sheet -->
+        <div class="sidebar-section shortcut-section">
+          <h3>Keyboard Shortcuts</h3>
+          <ul class="shortcuts-list">
+            <li><kbd>H</kbd> <span>Horizontal Constraint</span></li>
+            <li><kbd>V</kbd> <span>Vertical Constraint</span></li>
+            <li><kbd>S</kbd> <span>Slanted (Free) Constraint</span></li>
+            <li><kbd>Esc</kbd> <span>Cancel Current Draw</span></li>
+            <li><kbd>Space</kbd> + Drag <span>Pan Viewport</span></li>
+            <li><kbd>Scroll</kbd> <span>Zoom In / Out</span></li>
+          </ul>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Calibration Input Modal -->
+    <div class="modal-backdrop" id="calibration-modal" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Enter Reference Distance</h3>
+        </div>
+        <div class="modal-body">
+          <p>Input the real-world dimension represented by the selected line segment on the image.</p>
+          <div class="form-row">
+            <div class="form-group val-group">
+              <label for="cal-distance">Distance Value</label>
+              <input type="number" id="cal-distance" value="5.0" step="any" required>
+            </div>
+            <div class="form-group unit-group">
+              <label for="cal-unit">Unit</label>
+              <select id="cal-unit">
+                <option value="m" selected>m (meters)</option>
+                <option value="ft">ft (feet)</option>
+                <option value="in">in (inches)</option>
+                <option value="cm">cm (centimeters)</option>
+                <option value="mm">mm (millimeters)</option>
+              </select>
+            </div>
+          </div>
+          <div class="calibration-preview-box">
+            Measured: <span id="cal-measured-px">0</span> pixels
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-cal-cancel" class="btn btn-outline">Cancel</button>
+          <button id="btn-cal-submit" class="btn btn-primary">Apply Calibration</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
