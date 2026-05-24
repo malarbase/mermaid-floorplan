@@ -703,6 +703,10 @@ npm run dev
 description = "Set up mock authentication for development"
 run = "./scripts/setup-mock-auth.sh"
 
+[tasks."tool:annotate"]
+description = "Launch the floorplan scale calibrator & dimension annotator tool"
+run = "node tools/image-annotator/server.js"
+
 # ===============================
 # NEW: Consolidated Task Namespaces
 # ===============================
