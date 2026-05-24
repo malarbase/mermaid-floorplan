@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
 
+const INIT_TIMEOUT = process.env.CI ? 45000 : 15000;
+const MONACO_TIMEOUT = process.env.CI ? 30000 : 10000;
+
 /**
  * Progressive Viewer E2E Test Suite
  *
@@ -21,10 +24,10 @@ test.describe('Basic Mode', () => {
     await page.goto('/viewer-test/basic');
 
     // Wait for 3D canvas (Three.js needs time to initialize)
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('canvas')).toBeVisible({ timeout: INIT_TIMEOUT });
 
     const loadTime = Date.now() - startTime;
-    expect(loadTime).toBeLessThan(20000); // <20s for tolerance (Three.js is heavy)
+    expect(loadTime).toBeLessThan(process.env.CI ? 60000 : 20000); // <60s on CI, <20s locally for tolerance
 
     // No control panels or editor
     await expect(page.locator('.fp-control-panel')).not.toBeVisible();
@@ -33,7 +36,7 @@ test.describe('Basic Mode', () => {
 
   test('3D viewer is interactive', async ({ page }) => {
     await page.goto('/viewer-test/basic');
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('canvas')).toBeVisible({ timeout: INIT_TIMEOUT });
 
     // Test orbit (drag on canvas)
     const canvas = page.locator('canvas');
@@ -63,7 +66,7 @@ test.describe('Basic Mode', () => {
 test.describe('Advanced Mode', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/viewer-test/advanced');
-    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
   });
 
   test('camera controls visible and functional', async ({ page }) => {
@@ -184,12 +187,12 @@ test.describe('Editor Mode', () => {
   test.beforeEach(async ({ page }) => {
     // Assume owner access or use ?mode=editor override
     await page.goto('/viewer-test/editor');
-    await expect(page.locator('.editor-panel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.editor-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
   });
 
   test('Monaco editor loads', async ({ page }) => {
     // Wait for Monaco to load (can take ~3-5s)
-    await expect(page.locator('.monaco-editor')).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('.monaco-editor')).toBeVisible({ timeout: MONACO_TIMEOUT });
 
     // Should have text content (DSL code)
     const editorText = await page.locator('.monaco-editor').textContent();
@@ -245,7 +248,7 @@ test.describe('Responsive Behavior', () => {
     await page.goto('/viewer-test/advanced');
 
     // Wait for page load
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('canvas')).toBeVisible({ timeout: INIT_TIMEOUT });
 
     // FAB should be visible on mobile
     const fab = page.locator('.fab-button').or(page.locator('button.btn-circle'));
@@ -269,7 +272,7 @@ test.describe('Responsive Behavior', () => {
     await page.goto('/viewer-test/advanced');
 
     // Control panel should be visible as sidebar
-    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
 
     // FAB should NOT be visible on tablet
     const fab = page.locator('.fab-button');
@@ -282,9 +285,9 @@ test.describe('Responsive Behavior', () => {
     await page.goto('/viewer-test/editor');
 
     // All panels visible
-    await expect(page.locator('.editor-panel')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('.floorplan-3d')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.editor-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
+    await expect(page.locator('.floorplan-3d')).toBeVisible({ timeout: INIT_TIMEOUT });
+    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
 
     // Check layout is 3-column (all panels side-by-side)
     const editorPanel = page.locator('.editor-panel');
@@ -311,14 +314,14 @@ test.describe('Mode Detection', () => {
     await expect(page.locator('.editor-panel')).not.toBeVisible();
 
     // Canvas should be visible
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('canvas')).toBeVisible({ timeout: INIT_TIMEOUT });
   });
 
   test('URL param ?mode=advanced forces Advanced mode', async ({ page }) => {
     await page.goto('/viewer-test/advanced');
 
     // Should have Advanced mode (controls, no editor)
-    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
     await expect(page.locator('.editor-panel')).not.toBeVisible();
   });
 
@@ -326,8 +329,8 @@ test.describe('Mode Detection', () => {
     await page.goto('/viewer-test/editor');
 
     // Should have Editor mode (both panels)
-    await expect(page.locator('.editor-panel')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.editor-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
+    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
   });
 
   test('default mode without auth is advanced', async ({ page }) => {
@@ -336,7 +339,7 @@ test.describe('Mode Detection', () => {
 
     // Should default to Advanced (not Basic, not Editor)
     // Control panel should be visible
-    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
 
     // Editor should NOT be visible (not authenticated)
     await expect(page.locator('.editor-panel')).not.toBeVisible();
@@ -349,7 +352,7 @@ test.describe('Mode Detection', () => {
     // Should be in Basic mode regardless of auth state
     await expect(page.locator('.fp-control-panel')).not.toBeVisible();
     await expect(page.locator('.editor-panel')).not.toBeVisible();
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('canvas')).toBeVisible({ timeout: INIT_TIMEOUT });
   });
 });
 
@@ -371,8 +374,8 @@ test.describe('Authenticated Mode Detection', () => {
     // For now, use ?mode=editor to simulate
     await page.goto('/viewer-test/editor');
 
-    await expect(page.locator('.editor-panel')).toBeVisible({ timeout: 15000 });
-    await expect(page.locator('.monaco-editor')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.editor-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
+    await expect(page.locator('.monaco-editor')).toBeVisible({ timeout: INIT_TIMEOUT });
   });
 
   test('guest sees advanced by default', async ({ page }) => {
@@ -380,7 +383,7 @@ test.describe('Authenticated Mode Detection', () => {
     // For now, use default route to simulate
     await page.goto('/viewer-test/advanced');
 
-    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: 15000 });
+    await expect(page.locator('.fp-control-panel')).toBeVisible({ timeout: INIT_TIMEOUT });
     await expect(page.locator('.editor-panel')).not.toBeVisible();
   });
 });

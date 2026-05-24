@@ -20,15 +20,23 @@ export interface ConnectionPoint {
 /**
  * Find a room by name in the floor
  */
-function findRoom(floor: Floor, roomName: string): Room | undefined {
+interface RoomFindResult {
+  room: Room;
+  parent?: Room;
+}
+
+/**
+ * Find a room and its parent by name in the floor
+ */
+function findRoomAndParent(floor: Floor, roomName: string): RoomFindResult | undefined {
   for (const room of floor.rooms) {
     if (room.name === roomName) {
-      return room;
+      return { room };
     }
     // Check sub-rooms
     for (const subRoom of room.subRooms) {
       if (subRoom.name === roomName) {
-        return subRoom;
+        return { room: subRoom, parent: room };
       }
     }
   }
@@ -36,12 +44,21 @@ function findRoom(floor: Floor, roomName: string): Room | undefined {
 }
 
 /**
- * Get position for a room (resolved or explicit)
+ * Get absolute position for a room (handling nested sub-rooms recursively)
  */
-function getRoomPosition(
+function getAbsoluteRoomPosition(
   room: Room,
+  parent?: Room,
   resolvedPositions?: Map<string, ResolvedPosition>,
 ): { x: number; y: number } | null {
+  if (parent) {
+    const parentPos = getAbsoluteRoomPosition(parent, undefined, resolvedPositions);
+    if (!parentPos) return null;
+    const subX = room.position?.x.value ?? 0;
+    const subY = room.position?.y.value ?? 0;
+    return { x: parentPos.x + subX, y: parentPos.y + subY };
+  }
+
   // First try resolved positions map
   if (resolvedPositions) {
     const resolved = resolvedPositions.get(room.name);
@@ -62,17 +79,14 @@ function getRoomPosition(
 function getWallBounds(
   room: Room,
   direction: WallDirection,
-  parentOffsetX = 0,
-  parentOffsetY = 0,
-  resolvedPositions?: Map<string, ResolvedPosition>,
+  absolutePos: { x: number; y: number } | null,
   variables?: Map<string, { width: number; height: number }>,
 ): WallBounds | null {
-  const pos = getRoomPosition(room, resolvedPositions);
-  if (!pos) {
+  if (!absolutePos) {
     return null;
   }
-  const x = pos.x + parentOffsetX;
-  const y = pos.y + parentOffsetY;
+  const x = absolutePos.x;
+  const y = absolutePos.y;
   const size = getRoomSize(room, variables);
   const width = size.width;
   const height = size.height;
@@ -97,17 +111,18 @@ function getWallBounds(
 function calculateConnectionPoint(
   fromRoom: Room,
   fromWall: WallDirection,
+  fromAbsolutePos: { x: number; y: number } | null,
   toRoom: Room,
   toWall: WallDirection,
+  toAbsolutePos: { x: number; y: number } | null,
   position: number = 50, // percentage along the wall
-  resolvedPositions?: Map<string, ResolvedPosition>,
   variables?: Map<string, { width: number; height: number }>,
   doorWidth: number = 2, // Standard door width (approx 2-3 feet), can be overridden by connection size
 ): ConnectionPoint | null {
   const wallThickness = 0.2;
 
-  const fromBounds = getWallBounds(fromRoom, fromWall, 0, 0, resolvedPositions, variables);
-  const toBounds = getWallBounds(toRoom, toWall, 0, 0, resolvedPositions, variables);
+  const fromBounds = getWallBounds(fromRoom, fromWall, fromAbsolutePos, variables);
+  const toBounds = getWallBounds(toRoom, toWall, toAbsolutePos, variables);
 
   if (!fromBounds || !toBounds) {
     return null; // Positions not resolved
@@ -167,27 +182,25 @@ function calculateConnectionPoint(
  */
 function inferWallDirection(
   fromRoom: Room,
+  fromAbsolutePos: { x: number; y: number } | null,
   toRoom: Room,
-  resolvedPositions?: Map<string, ResolvedPosition>,
+  toAbsolutePos: { x: number; y: number } | null,
   variables?: Map<string, { width: number; height: number }>,
 ): { fromWall: WallDirection; toWall: WallDirection } | null {
-  const fromPos = getRoomPosition(fromRoom, resolvedPositions);
-  const toPos = getRoomPosition(toRoom, resolvedPositions);
-
-  if (!fromPos || !toPos) {
+  if (!fromAbsolutePos || !toAbsolutePos) {
     return null;
   }
 
   const fromSize = getRoomSize(fromRoom, variables);
   const toSize = getRoomSize(toRoom, variables);
 
-  const fromX = fromPos.x;
-  const fromY = fromPos.y;
+  const fromX = fromAbsolutePos.x;
+  const fromY = fromAbsolutePos.y;
   const fromWidth = fromSize.width;
   const fromHeight = fromSize.height;
 
-  const toX = toPos.x;
-  const toY = toPos.y;
+  const toX = toAbsolutePos.x;
+  const toY = toAbsolutePos.y;
   const toWidth = toSize.width;
   const toHeight = toSize.height;
 
@@ -228,19 +241,25 @@ export function generateConnection(
     return '';
   }
 
-  const fromRoom = findRoom(floor, fromRoomName);
-  const toRoom = findRoom(floor, toRoomName);
+  const fromResult = findRoomAndParent(floor, fromRoomName);
+  const toResult = findRoomAndParent(floor, toRoomName);
 
-  if (!fromRoom || !toRoom) {
+  if (!fromResult || !toResult) {
     return ''; // Rooms not found
   }
+
+  const fromRoom = fromResult.room;
+  const toRoom = toResult.room;
+
+  const fromAbsolutePos = getAbsoluteRoomPosition(fromRoom, fromResult.parent, resolvedPositions);
+  const toAbsolutePos = getAbsoluteRoomPosition(toRoom, toResult.parent, resolvedPositions);
 
   // Get wall directions (infer if not specified)
   let fromWall = connection.from.wall;
   let toWall = connection.to.wall;
 
   if (!fromWall || !toWall) {
-    const inferred = inferWallDirection(fromRoom, toRoom, resolvedPositions, variables);
+    const inferred = inferWallDirection(fromRoom, fromAbsolutePos, toRoom, toAbsolutePos, variables);
     if (!inferred) {
       return ''; // Cannot determine connection point
     }
@@ -256,10 +275,11 @@ export function generateConnection(
   const connectionPoint = calculateConnectionPoint(
     fromRoom,
     fromWall,
+    fromAbsolutePos,
     toRoom,
     toWall,
+    toAbsolutePos,
     position,
-    resolvedPositions,
     variables,
     doorWidth,
   );
