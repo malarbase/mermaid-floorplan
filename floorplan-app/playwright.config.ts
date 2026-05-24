@@ -58,9 +58,9 @@ export default defineConfig({
     timeout: 120 * 1000, // 2 minutes for server startup
   },
   /* Global timeout for each test */
-  timeout: 30 * 1000,
+  timeout: process.env.CI ? 60 * 1000 : 30 * 1000,
   /* Assertion timeout */
   expect: {
-    timeout: 10 * 1000,
+    timeout: process.env.CI ? 30 * 1000 : 10 * 1000,
   },
 });
