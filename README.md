@@ -346,7 +346,7 @@ The 2D renderer creates floor plan images from a bird's-eye view, ideal for arch
 **Export to PNG/SVG:**
 ```bash
 # Generate 2D images for all floors
-make export FILE=examples/StairsAndLifts.floorplan
+mise run export:images FLOORPLAN_FILE=examples/StairsAndLifts.floorplan
 
 # Output: StairsAndLifts-GroundFloor.png, StairsAndLifts-FirstFloor.png, etc.
 ```
@@ -368,10 +368,10 @@ The 3D renderer creates perspective views showing walls, floors, **doors**, **wi
 **Export to 3D PNG:**
 ```bash
 # Generate 3D isometric view
-make export-3d FILE=examples/StairsAndLifts.floorplan
+mise run 3d:export FLOORPLAN_FILE=examples/StairsAndLifts.floorplan
 
 # Generate 3D perspective view with custom camera
-make export-3d-perspective FILE=examples/StairsAndLifts.floorplan
+mise run 3d:perspective FLOORPLAN_FILE=examples/StairsAndLifts.floorplan
 ```
 
 **Via MCP Tool:**
@@ -413,16 +413,16 @@ npx tsx scripts/generate-3d-images.ts input.floorplan output/ \
   --height 1080            # Output height
 ```
 
-### Makefile Targets
+### mise Tasks
 
-| Target | Description |
-|--------|-------------|
-| `make export FILE=<path>` | Generate 2D PNG images for all floors |
-| `make export-svg FILE=<path>` | Generate 2D SVG vectors |
-| `make export-json FILE=<path>` | Export to JSON format |
-| `make export-3d FILE=<path>` | Generate 3D isometric view |
-| `make export-3d-perspective FILE=<path>` | Generate 3D perspective view |
-| `make viewer-dev` | Run the interactive 3D viewer |
+| Task | Description |
+|------|-------------|
+| `mise run export:images FLOORPLAN_FILE=<path>` | Generate 2D PNG images for all floors |
+| `mise run export:svg FLOORPLAN_FILE=<path>` | Generate 2D SVG vectors |
+| `mise run export:json FLOORPLAN_FILE=<path>` | Export to JSON format |
+| `mise run 3d:export FLOORPLAN_FILE=<path>` | Generate 3D isometric view |
+| `mise run 3d:perspective FLOORPLAN_FILE=<path>` | Generate 3D perspective view |
+| `mise run ws:viewer-dev` | Run the interactive 3D viewer |
 
 ## 3D Viewer (Interactive)
 
@@ -432,13 +432,13 @@ A standalone 3D viewer is available for interactive visualization.
 
 1. **Export to JSON**:
    ```bash
-   make export-json FILE=path/to/my.floorplan
+   mise run export:json FLOORPLAN_FILE=path/to/my.floorplan
    ```
    This generates `path/to/my.json`.
 
 2. **Run the Viewer**:
    ```bash
-   make viewer-dev
+   mise run ws:viewer-dev
    ```
    Open the displayed URL (usually `http://localhost:5173`) in your browser.
 
@@ -481,7 +481,7 @@ The web-based interactive editor combines a Monaco-based DSL editor with a synch
 
 ```bash
 # Development mode
-make viewer-dev
+mise run ws:viewer-dev
 
 # Or directly:
 npm run dev -w floorplan-viewer

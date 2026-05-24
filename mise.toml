@@ -1,0 +1,970 @@
+# mise configuration for Floorplan DSL Project
+# https://mise.jdx.dev
+#
+# Quick start:
+#   mise install          # Install tools (node, npm)
+#   mise run core:build   # Build all packages
+#   mise tasks            # List all available tasks
+
+[tools]
+node = "22.17.0"
+npm = "10.8.2"
+
+[env]
+FLOORPLAN_FILE = "trial/TriplexVilla.floorplan"
+OUTPUT_DIR = "trial"
+SCALE = "15"
+AREA_UNIT = "sqft"
+LENGTH_UNIT = "ft"
+PROJECTION = "isometric"
+WIDTH_3D = "1200"
+HEIGHT_3D = "900"
+FOV = "50"
+ADMIN_EMAIL = "admin@test.local"
+
+# ===============================
+# Core Development
+# ===============================
+
+[tasks."core:install"]
+description = "Install all dependencies"
+run = "npm install"
+
+[tasks."core:langium"]
+description = "Generate Langium grammar artifacts"
+run = "echo | npm run langium:generate"
+
+[tasks."core:langium-watch"]
+description = "Watch and regenerate Langium artifacts"
+run = "npm run langium:watch"
+
+[tasks."core:build"]
+description = "Build all packages (language + mcp-server + web app)"
+depends = ["core:langium"]
+run = "npm run build"
+
+[tasks."core:clean"]
+description = "Clean all build artifacts"
+run = """
+npm run clean
+rm -f trial/*.svg trial/*.png
+"""
+
+[tasks."core:dev"]
+description = "Start Vite development server"
+run = "npm run dev"
+
+[tasks."core:test"]
+description = "Run tests"
+run = "npm run test"
+
+# ===============================
+# Export & Rendering
+# ===============================
+
+[tasks."export:images"]
+description = "Generate SVG + PNG for all floors and 3D views"
+run = """
+OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$FLOORPLAN_FILE")}"
+
+ANNOTATION_FLAGS=""
+[ -n "$SHOW_AREA" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-area"
+[ -n "$SHOW_DIMS" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-dims"
+[ -n "$SHOW_SUMMARY" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-summary"
+[ "$AREA_UNIT" != "sqft" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --area-unit $AREA_UNIT"
+[ "$LENGTH_UNIT" != "ft" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --length-unit $LENGTH_UNIT"
+
+3D_FLAGS="--projection $PROJECTION --width $WIDTH_3D --height $HEIGHT_3D --fov $FOV"
+[ -n "$CAMERA_POS" ] && 3D_FLAGS="$3D_FLAGS --camera-pos $CAMERA_POS"
+[ -n "$CAMERA_TARGET" ] && 3D_FLAGS="$3D_FLAGS --camera-target $CAMERA_TARGET"
+
+npx tsx scripts/generate-images.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" --all --scale "$SCALE" $ANNOTATION_FLAGS
+npx tsx scripts/generate-3d-images.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" --all $3D_FLAGS
+npx tsx scripts/generate-3d-images.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" --all $3D_FLAGS --projection perspective
+"""
+
+[tasks."export:svg"]
+description = "Generate SVG only"
+run = """
+OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$FLOORPLAN_FILE")}"
+
+ANNOTATION_FLAGS=""
+[ -n "$SHOW_AREA" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-area"
+[ -n "$SHOW_DIMS" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-dims"
+[ -n "$SHOW_SUMMARY" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-summary"
+[ "$AREA_UNIT" != "sqft" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --area-unit $AREA_UNIT"
+[ "$LENGTH_UNIT" != "ft" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --length-unit $LENGTH_UNIT"
+
+npx tsx scripts/generate-images.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" --all --svg-only --scale "$SCALE" $ANNOTATION_FLAGS
+"""
+
+[tasks."export:png"]
+description = "Generate PNG only"
+run = """
+OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$FLOORPLAN_FILE")}"
+
+ANNOTATION_FLAGS=""
+[ -n "$SHOW_AREA" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-area"
+[ -n "$SHOW_DIMS" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-dims"
+[ -n "$SHOW_SUMMARY" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --show-summary"
+[ "$AREA_UNIT" != "sqft" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --area-unit $AREA_UNIT"
+[ "$LENGTH_UNIT" != "ft" ] && ANNOTATION_FLAGS="$ANNOTATION_FLAGS --length-unit $LENGTH_UNIT"
+
+npx tsx scripts/generate-images.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" --all --png-only --scale "$SCALE" $ANNOTATION_FLAGS
+"""
+
+[tasks."export:annotated"]
+description = "Generate images with all annotations (area, dims, summary)"
+run = """
+OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$FLOORPLAN_FILE")}"
+npx tsx scripts/generate-images.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" --all --scale "$SCALE" --show-area --show-dims --show-summary --area-unit "$AREA_UNIT" --length-unit "$LENGTH_UNIT"
+"""
+
+[tasks."export:json"]
+description = "Export floorplan to JSON (set FLOORPLAN_FILE and optionally OUTPUT_FILE)"
+run = "npx tsx scripts/export-json.ts \"$FLOORPLAN_FILE\" \"$OUTPUT_FILE\""
+
+[tasks."export:dxf"]
+description = "Export floorplan to DXF (AutoCAD format)"
+run = """
+OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$FLOORPLAN_FILE")}"
+npx tsx scripts/export-dxf.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" $DXF_FLAGS
+"""
+
+# ===============================
+# 3D Rendering
+# ===============================
+
+[tasks."3d:export"]
+description = "Generate 3D PNG (isometric view)"
+run = """
+OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$FLOORPLAN_FILE")}"
+
+3D_FLAGS="--projection $PROJECTION --width $WIDTH_3D --height $HEIGHT_3D --fov $FOV"
+[ -n "$CAMERA_POS" ] && 3D_FLAGS="$3D_FLAGS --camera-pos $CAMERA_POS"
+[ -n "$CAMERA_TARGET" ] && 3D_FLAGS="$3D_FLAGS --camera-target $CAMERA_TARGET"
+
+npx tsx scripts/generate-3d-images.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" --all $3D_FLAGS
+"""
+
+[tasks."3d:perspective"]
+description = "Generate 3D PNG (perspective view)"
+run = """
+OUTPUT_DIR="${OUTPUT_DIR:-$(dirname "$FLOORPLAN_FILE")}"
+
+3D_FLAGS="--projection $PROJECTION --width $WIDTH_3D --height $HEIGHT_3D --fov $FOV"
+[ -n "$CAMERA_POS" ] && 3D_FLAGS="$3D_FLAGS --camera-pos $CAMERA_POS"
+[ -n "$CAMERA_TARGET" ] && 3D_FLAGS="$3D_FLAGS --camera-target $CAMERA_TARGET"
+
+npx tsx scripts/generate-3d-images.ts "$FLOORPLAN_FILE" "$OUTPUT_DIR" --all $3D_FLAGS --projection perspective
+"""
+
+# ===============================
+# Workspace Tasks
+# ===============================
+
+[tasks."ws:viewer-dev"]
+description = "Start the 3D viewer dev server"
+run = "npm run --workspace floorplan-viewer dev"
+
+[tasks."ws:viewer-build"]
+description = "Build the 3D viewer"
+run = "npm run --workspace floorplan-viewer build"
+
+[tasks."ws:editor-dev"]
+description = "Start the interactive editor dev server"
+run = "npm run --workspace floorplan-editor dev"
+
+[tasks."ws:editor-build"]
+description = "Build the interactive editor"
+run = "npm run --workspace floorplan-editor build"
+
+[tasks."ws:app-dev"]
+description = "Start floorplan-app dev server (local)"
+run = "npm run --workspace floorplan-app dev"
+
+[tasks."ws:app-build"]
+description = "Build floorplan-app for production"
+run = "npm run --workspace floorplan-app build"
+
+[tasks."ws:app-start"]
+description = "Start floorplan-app production server"
+run = "npm run --workspace floorplan-app start"
+
+[tasks."ws:app-test"]
+description = "Run floorplan-app tests"
+run = "npm run --workspace floorplan-app test"
+
+[tasks."ws:mcp-build"]
+description = "Build the MCP server package"
+run = "npm run --workspace floorplan-mcp-server build"
+
+[tasks."ws:mcp-server"]
+description = "Start the MCP server"
+depends = ["ws:mcp-build"]
+run = "npm run --workspace floorplan-mcp-server start"
+
+# ===============================
+# Docker Development
+# ===============================
+
+[tasks."docker:build"]
+description = "Build Docker images"
+run = "docker compose build"
+
+[tasks."docker:up"]
+description = "Start all services in Docker"
+run = "docker compose up -d"
+
+[tasks."docker:down"]
+description = "Stop all Docker services"
+run = "docker compose down"
+
+[tasks."docker:logs"]
+description = "View Docker logs"
+run = "docker compose logs -f"
+
+[tasks."docker:shell"]
+description = "Open shell in app container"
+run = "docker compose exec app sh"
+
+[tasks."docker:clean"]
+description = "Remove Docker containers, volumes, and images"
+run = """
+docker compose down -v
+docker rmi mermaid-floorplan-app 2>/dev/null || true
+"""
+
+[tasks."docker:dev"]
+description = "Start development with Docker (interactive logs)"
+run = "docker compose up"
+
+[tasks."docker:restart"]
+description = "Restart Docker services"
+run = "docker compose restart"
+
+[tasks."docker:reset-deps"]
+description = "Reset Docker node_modules volumes (use when dependencies change)"
+run = """
+docker compose down
+docker volume rm mermaid-floorplan_app-node-modules mermaid-floorplan_app-floorplan-app-node-modules 2>/dev/null || true
+echo "Node_modules volumes removed. Run 'mise run docker:up' to reinstall."
+"""
+
+[tasks."docker:convex-deploy"]
+description = "Deploy Convex functions to self-hosted backend (Docker)"
+run = """
+echo "Generating admin key and deploying Convex functions..."
+ADMIN_KEY="$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\\r\\n')"
+if docker compose exec -T app sh -c "cd /app/floorplan-app && npx convex dev --once --url http://convex:3210 --admin-key '$ADMIN_KEY'"; then
+    echo "Convex functions deployed successfully"
+else
+    echo "Error: Make sure 'docker compose up -d convex app' is running"
+fi
+"""
+
+[tasks."docker:convex-backfill"]
+description = "Run Convex backfill mutations (after schema migration deploy)"
+run = """
+echo "Running backfill: projects:backfillSnapshotHashes..."
+ADMIN_KEY="$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\\r\\n')"
+if docker compose exec -T app sh -c "cd /app/floorplan-app && npx convex run projects:backfillSnapshotHashes --url http://convex:3210 --admin-key '$ADMIN_KEY'"; then
+    echo "Backfill complete"
+else
+    echo "Error: Make sure 'docker compose up -d convex app' is running"
+fi
+"""
+
+[tasks."docker:convex-admin-key"]
+description = "Print the Convex admin key (for local CLI use)"
+run = """
+docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\\r\\n' || echo "Error: Convex backend is not running. Run 'mise run docker:up' first."
+"""
+
+# ===============================
+# Admin Panel Testing
+# ===============================
+
+[tasks."admin:setup"]
+description = "Configure admin testing environment (set ADMIN_EMAIL)"
+dir = "floorplan-app"
+run = """
+echo "Setting up admin testing environment..."
+npx convex env set SUPER_ADMIN_EMAIL "$ADMIN_EMAIL" 2>/dev/null || echo "Note: Run 'npx convex dev' first if Convex is not running"
+
+echo ""
+echo "Creating .env.local with admin auth bypass..."
+cat > .env.local <<EOF
+# Admin Testing Configuration
+DEV_AUTH_BYPASS=true
+DEV_USER_EMAIL=$ADMIN_EMAIL
+DEV_USER_NAME=Test Admin
+DEV_USER_USERNAME=testadmin
+VITE_MOCK_MODE=false
+EOF
+
+echo ""
+echo "Admin setup complete!"
+echo "  Super admin email: $ADMIN_EMAIL"
+echo "  Configuration: floorplan-app/.env.local"
+echo ""
+echo "Next step: mise run admin:dev"
+"""
+
+[tasks."admin:dev"]
+description = "Start app with admin user pre-configured (frontend only — assumes Convex is already running)"
+dir = "floorplan-app"
+run = """
+if [ ! -f .env.local ]; then
+    echo "Error: .env.local not found. Run 'mise run admin:setup' first."
+    exit 1
+fi
+echo "Starting admin dev environment..."
+echo "Admin panel: http://localhost:3000/admin"
+echo "Note: This only starts the frontend. Make sure Convex is running (see: mise run admin:status)"
+npm run dev
+"""
+
+[tasks."admin:dev-all"]
+description = "Start app + Convex backend together (one-command dev environment)"
+dir = "floorplan-app"
+run = """
+if [ ! -f .env.local ]; then
+    echo "Error: .env.local not found. Run 'mise run admin:setup' first."
+    exit 1
+fi
+
+# ---------------------------------------------------------------------------
+# Detect configuration from env files
+# ---------------------------------------------------------------------------
+CONVEX_URL=""
+if [ -f .env.local ]; then
+    CONVEX_URL=$(grep '^VITE_CONVEX_URL=' .env.local | cut -d= -f2- | tr -d '"' || true)
+fi
+if [ -z "$CONVEX_URL" ] && [ -f .env.development ]; then
+    CONVEX_URL=$(grep '^VITE_CONVEX_URL=' .env.development | cut -d= -f2- | tr -d '"' || true)
+fi
+CONVEX_URL="${CONVEX_URL:-http://localhost:3210}"
+
+FRONTEND_URL="${SITE_URL:-http://localhost:3000}"
+if [ -f .env.local ]; then
+    FRONTEND_URL=$(grep '^SITE_URL=' .env.local | cut -d= -f2- | tr -d '"' || echo "$FRONTEND_URL")
+fi
+
+MOCK_MODE=""
+if [ -f .env.local ]; then
+    MOCK_MODE=$(grep '^VITE_MOCK_MODE=' .env.local | cut -d= -f2- | tr -d '"' || true)
+fi
+if [ -z "$MOCK_MODE" ] && [ -f .env.development ]; then
+    MOCK_MODE=$(grep '^VITE_MOCK_MODE=' .env.development | cut -d= -f2- | tr -d '"' || true)
+fi
+
+ADMIN_EMAIL=""
+if [ -f .env.local ]; then
+    ADMIN_EMAIL=$(grep '^DEV_USER_EMAIL=' .env.local | cut -d= -f2- | tr -d '"' || true)
+fi
+
+# Detect self-hosted vs cloud Convex
+IS_SELF_HOSTED="false"
+if echo "$CONVEX_URL" | grep -qE "localhost:3210|convex:3210|127\\.0\\.0\\.1"; then
+    IS_SELF_HOSTED="true"
+fi
+
+echo ""
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║  Floorplan App — One-Command Dev Environment                 ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo ""
+echo "  Frontend:     $FRONTEND_URL"
+echo "  Convex:       $CONVEX_URL"
+echo "  Deployment:   $(if [ "$IS_SELF_HOSTED" = "true" ]; then echo "Self-hosted (Docker)"; else echo "Convex Cloud"; fi)"
+echo "  Mock mode:    ${MOCK_MODE:-false}"
+echo "  Admin email:  ${ADMIN_EMAIL:-(not set)}"
+echo ""
+
+# ---------------------------------------------------------------------------
+# Check if Convex is already running
+# ---------------------------------------------------------------------------
+CONVEX_PID=""
+DOCKER_PID=""
+if curl -s --max-time 2 "$CONVEX_URL/version" > /dev/null 2>&1; then
+    echo "  ✓ Convex backend already running at $CONVEX_URL"
+else
+    if [ "$IS_SELF_HOSTED" = "true" ]; then
+        # Self-hosted: use Docker Compose
+        echo "  → Starting self-hosted Convex via Docker Compose..."
+        if ! command -v docker >/dev/null 2>&1; then
+            echo "  ✗ Docker is not installed. Install Docker or use Convex Cloud."
+            exit 1
+        fi
+        if ! docker compose ps convex 2>/dev/null | grep -q "convex"; then
+            docker compose up -d convex
+        fi
+
+        # Wait for Convex to be healthy (max 60s)
+        for i in $(seq 1 60); do
+            if curl -s --max-time 2 "$CONVEX_URL/version" > /dev/null 2>&1; then
+                echo "  ✓ Convex ready!"
+                break
+            fi
+            if [ $i -eq 60 ]; then
+                echo "  ✗ Convex failed to start within 60s."
+                echo "    Check Docker logs: docker compose logs convex"
+                exit 1
+            fi
+            sleep 1
+        done
+    else
+        # Cloud: use npx convex dev (requires interactive setup on first run)
+        if [ ! -d .convex ]; then
+            echo "  ⚠ No Convex deployment configured yet."
+            echo "    Run 'npx convex dev' interactively first to set up your project,"
+            echo "    or switch to self-hosted mode in .env.development:"
+            echo "      VITE_CONVEX_URL=http://localhost:3210"
+            echo ""
+            exit 1
+        fi
+        echo "  → Starting Convex cloud dev server..."
+        npx convex dev &
+        CONVEX_PID=$!
+
+        # Wait for Convex to be healthy (max 30s)
+        for i in $(seq 1 30); do
+            if curl -s --max-time 2 "$CONVEX_URL/version" > /dev/null 2>&1; then
+                echo "  ✓ Convex ready!"
+                break
+            fi
+            if [ $i -eq 30 ]; then
+                echo "  ✗ Convex failed to start within 30s. Check logs above."
+                kill $CONVEX_PID 2>/dev/null || true
+                exit 1
+            fi
+            sleep 1
+        done
+    fi
+fi
+
+echo ""
+echo "  → Starting frontend (vinxi dev)..."
+echo ""
+
+# ---------------------------------------------------------------------------
+# Start frontend (foreground). On exit, clean up if we started services.
+# ---------------------------------------------------------------------------
+cleanup() {
+    if [ -n "$CONVEX_PID" ]; then
+        echo ""
+        echo "  → Shutting down Convex cloud dev (PID $CONVEX_PID)..."
+        kill $CONVEX_PID 2>/dev/null || true
+        wait $CONVEX_PID 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT INT TERM
+
+npm run dev
+"""
+
+[tasks."admin:status"]
+description = "Show current app environment, backend health, and data persistence details"
+dir = "floorplan-app"
+run = """
+# ---------------------------------------------------------------------------
+# Read configuration from env files (priority: .env.local > .env.development)
+# ---------------------------------------------------------------------------
+get_env_var() {
+    local key="$1"
+    local val=""
+    if [ -f .env.local ]; then
+        val=$(grep "^${key}=" .env.local 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+    fi
+    if [ -z "$val" ] && [ -f .env.development ]; then
+        val=$(grep "^${key}=" .env.development 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+    fi
+    if [ -z "$val" ] && [ -f .env.production ]; then
+        val=$(grep "^${key}=" .env.production 2>/dev/null | cut -d= -f2- | tr -d '"' || true)
+    fi
+    echo "$val"
+}
+
+CONVEX_URL=$(get_env_var "VITE_CONVEX_URL")
+CONVEX_URL="${CONVEX_URL:-http://localhost:3210}"
+
+SITE_URL=$(get_env_var "SITE_URL")
+SITE_URL="${SITE_URL:-http://localhost:3000}"
+
+BETTER_AUTH_URL=$(get_env_var "BETTER_AUTH_URL")
+BETTER_AUTH_URL="${BETTER_AUTH_URL:-$SITE_URL}"
+
+MOCK_MODE=$(get_env_var "VITE_MOCK_MODE")
+MOCK_MODE="${MOCK_MODE:-false}"
+
+AUTH_BYPASS=$(get_env_var "DEV_AUTH_BYPASS")
+AUTH_BYPASS="${AUTH_BYPASS:-false}"
+
+ADMIN_EMAIL=$(get_env_var "DEV_USER_EMAIL")
+SUPER_ADMIN=$(get_env_var "SUPER_ADMIN_EMAIL")
+
+CONVEX_DEPLOYMENT=$(get_env_var "CONVEX_DEPLOYMENT")
+NODE_ENV=$(get_env_var "NODE_ENV")
+NODE_ENV="${NODE_ENV:-development}"
+
+# ---------------------------------------------------------------------------
+# Detect deployment type
+# ---------------------------------------------------------------------------
+if [ "$MOCK_MODE" = "true" ]; then
+    DEPLOYMENT_TYPE="Mock (no backend)"
+    PERSISTENCE="In-memory mock data"
+    PERSISTENCE_LOC="N/A"
+elif echo "$CONVEX_URL" | grep -qE "localhost:3210|convex:3210"; then
+    DEPLOYMENT_TYPE="Self-hosted (local Docker)"
+    PERSISTENCE="Docker volume: convex-data"
+    PERSISTENCE_LOC="/var/lib/docker/volumes/mermaid-floorplan_convex-data/_data"
+elif echo "$CONVEX_URL" | grep -q "convex.cloud"; then
+    if echo "$CONVEX_DEPLOYMENT" | grep -q "^dev:"; then
+        DEPLOYMENT_TYPE="Convex Cloud (dev)"
+    else
+        DEPLOYMENT_TYPE="Convex Cloud (production)"
+    fi
+    PERSISTENCE="Convex Cloud managed storage"
+    PERSISTENCE_LOC="$CONVEX_URL"
+else
+    DEPLOYMENT_TYPE="Unknown"
+    PERSISTENCE="Unknown"
+    PERSISTENCE_LOC="N/A"
+fi
+
+# ---------------------------------------------------------------------------
+# Probe health
+# ---------------------------------------------------------------------------
+FRONTEND_HEALTH="✗ Not reachable"
+if curl -s --max-time 2 "$SITE_URL" > /dev/null 2>&1; then
+    FRONTEND_HEALTH="✓ Running"
+fi
+
+CONVEX_HEALTH="✗ Not reachable"
+CONVEX_VERSION=""
+if curl -s --max-time 2 "$CONVEX_URL/version" > /dev/null 2>&1; then
+    CONVEX_HEALTH="✓ Running"
+    CONVEX_VERSION=$(curl -s --max-time 2 "$CONVEX_URL/version" 2>/dev/null | head -c 50 || true)
+fi
+
+# ---------------------------------------------------------------------------
+# Print report
+# ---------------------------------------------------------------------------
+echo ""
+echo "╔══════════════════════════════════════════════════════════════╗"
+echo "║  Floorplan App — Environment Status                          ║"
+echo "╚══════════════════════════════════════════════════════════════╝"
+echo ""
+echo "Configuration"
+echo "─────────────"
+printf "  %-20s %s\\n" "Frontend URL:" "$SITE_URL"
+printf "  %-20s %s\\n" "Convex URL:" "$CONVEX_URL"
+printf "  %-20s %s\\n" "Better Auth URL:" "$BETTER_AUTH_URL"
+printf "  %-20s %s\\n" "Node env:" "$NODE_ENV"
+printf "  %-20s %s\\n" "Mock mode:" "$MOCK_MODE"
+printf "  %-20s %s\\n" "Auth bypass:" "$AUTH_BYPASS"
+printf "  %-20s %s\\n" "Admin email:" "${ADMIN_EMAIL:-(not set)}"
+printf "  %-20s %s\\n" "Super admin:" "${SUPER_ADMIN:-(not set)}"
+echo ""
+echo "Deployment"
+echo "──────────"
+printf "  %-20s %s\\n" "Type:" "$DEPLOYMENT_TYPE"
+printf "  %-20s %s\\n" "Persistence:" "$PERSISTENCE"
+printf "  %-20s %s\\n" "Data location:" "$PERSISTENCE_LOC"
+echo ""
+echo "Health Checks"
+echo "─────────────"
+printf "  %-20s %s\\n" "Frontend ($SITE_URL):" "$FRONTEND_HEALTH"
+printf "  %-20s %s\\n" "Convex ($CONVEX_URL):" "$CONVEX_HEALTH"
+if [ -n "$CONVEX_VERSION" ]; then
+    printf "  %-20s %s\\n" "Convex version:" "$CONVEX_VERSION"
+fi
+echo ""
+
+# ---------------------------------------------------------------------------
+# Actionable hints
+# ---------------------------------------------------------------------------
+if [ "$CONVEX_HEALTH" = "✗ Not reachable" ] && [ "$MOCK_MODE" != "true" ]; then
+    echo "Hint: Convex is not running. Start it with one of:"
+    echo "  • mise run admin:dev-all   (starts everything)"
+    echo "  • mise run docker:up       (Docker Compose with Convex)"
+    echo "  • cd floorplan-app && npx convex dev"
+    echo ""
+fi
+
+if [ "$FRONTEND_HEALTH" = "✗ Not reachable" ]; then
+    echo "Hint: Frontend is not running. Start it with:"
+    echo "  • mise run admin:dev       (frontend only, assumes Convex running)"
+    echo "  • mise run admin:dev-all   (starts everything)"
+    echo ""
+fi
+"""
+
+[tasks."admin:test"]
+description = "Run Playwright E2E tests for admin panel"
+dir = "floorplan-app"
+run = """
+echo "Running admin panel tests..."
+npx playwright test --grep "@admin" || echo "Note: No @admin tagged tests found. Create tests in floorplan-app/tests/"
+"""
+
+[tasks."admin:reset"]
+description = "Reset admin state (demote all admins except super admin)"
+dir = "floorplan-app"
+run = """
+echo "Resetting admin state..."
+npx convex run admin:resetAdminState 2>/dev/null || echo "Note: admin:resetAdminState mutation not found. Manual reset required."
+echo "Admin state reset complete."
+"""
+
+[tasks."admin:cli"]
+description = "Run admin CLI (pass args via ADMIN_ARGS)"
+run = "npx tsx scripts/admin-cli.ts $ADMIN_ARGS"
+
+[tasks."admin:config"]
+description = "Show current configuration"
+run = "npx tsx scripts/admin-cli.ts config show"
+
+[tasks."admin:setup-domain"]
+description = "Interactive domain setup (DOMAIN=floorplan.example.com)"
+run = "npx tsx scripts/admin-cli.ts dns setup $DOMAIN"
+
+[tasks."admin:sync-env"]
+description = "Sync env vars to Convex"
+run = "npx tsx scripts/admin-cli.ts env sync-to-convex"
+
+[tasks."admin:deploy-check"]
+description = "Pre-deploy checklist"
+run = "npx tsx scripts/admin-cli.ts deploy check"
+
+
+[tasks."admin:help"]
+description = "Show admin testing help"
+run = """
+cat <<EOF
+Admin Panel Testing
+===================
+
+Quick Start (one command):
+  1. mise run admin:setup ADMIN_EMAIL=your@email.com
+  2. mise run admin:dev-all          # Starts frontend + Convex backend
+  3. Open http://localhost:3000/admin
+
+Alternative (manual / Docker):
+  cp floorplan-app/.env.local.admin-example floorplan-app/.env.local
+  # Edit .env.local with your admin email
+  mise run docker:up                  # Docker Compose (app + convex + dashboard)
+  # OR
+  mise run admin:dev                  # Frontend only (assumes Convex running)
+
+Available Tasks:
+  mise run admin:setup    — Configure .env.local and super admin
+  mise run admin:dev-all  — Start frontend + Convex backend together
+  mise run admin:dev      — Start frontend only (assumes Convex running)
+  mise run admin:status   — Show environment config, health, and persistence details
+  mise run admin:reset    — Reset admin state
+  mise run admin:test     — Run Playwright E2E tests
+
+Testing Routes:
+  /admin           - Dashboard with stats
+  /admin/featured  - Manage featured projects
+  /admin/users     - User management (super admin)
+  /admin/audit     - Audit log viewer
+
+Super Admin Capabilities:
+  - Promote/demote admins
+  - Delete any project
+  - Impersonate users
+
+Regular Admin Capabilities:
+  - Feature/unfeature projects
+  - View user list (read-only)
+EOF
+"""
+
+# ===============================
+# Utilities
+# ===============================
+
+[tasks."util:rebuild"]
+description = "Full rebuild and regenerate images"
+depends = ["core:clean", "core:build", "export:images"]
+
+[tasks."util:watch"]
+description = "Start langium watch + vite dev server"
+run = """
+echo "Starting langium watch in background..."
+npm run langium:watch &
+npm run dev
+"""
+
+[tasks."util:setup-mock-auth"]
+description = "Set up mock authentication for development"
+run = "./scripts/setup-mock-auth.sh"
+
+# ===============================
+# NEW: Consolidated Task Namespaces
+# ===============================
+# These tasks provide a cleaner hierarchy with env parity.
+# Old tasks above are kept for backward compatibility (2-week transition).
+
+# -------------------------------
+# dev:* — Development Workflow
+# -------------------------------
+
+[tasks."dev:start"]
+description = "Start app dev server (auto-detects and starts Convex if needed)"
+dir = "floorplan-app"
+depends = ["admin:dev-all"]
+run = "echo 'dev:start is ready'"
+
+[tasks."dev:viewer"]
+description = "Start 3D viewer dev server"
+run = "npm run --workspace floorplan-viewer dev"
+
+[tasks."dev:editor"]
+description = "Start interactive editor dev server"
+run = "npm run --workspace floorplan-editor dev"
+
+[tasks."dev:watch"]
+description = "Watch Langium grammar + start dev server"
+run = """
+echo "Starting langium watch in background..."
+npm run langium:watch &
+npm run dev
+"""
+
+[tasks."dev:status"]
+description = "Show local dev environment status and health"
+dir = "floorplan-app"
+run = """
+# Source .mise-env if present (use . for POSIX sh compatibility)
+if [ -f ../.mise-env ]; then . ../.mise-env; fi
+MISE_ENV="${MISE_ENV:-dev}"
+echo "Active environment: $MISE_ENV"
+mise run admin:status
+"""
+
+[tasks."dev:configure"]
+description = "Configure local development environment"
+dir = "floorplan-app"
+run = """
+if [ ! -f .env.local ]; then
+    echo "Creating .env.local from admin-example..."
+    cp .env.local.admin-example .env.local
+fi
+echo "Dev environment configured."
+echo "  Next: mise run dev:start"
+"""
+
+# -------------------------------
+# build:* — Build & Compilation
+# -------------------------------
+
+[tasks."build:install"]
+description = "Install all dependencies"
+run = "npm install"
+
+[tasks."build:langium"]
+description = "Generate Langium grammar artifacts"
+run = "echo | npm run langium:generate"
+
+[tasks."build:all"]
+description = "Build all packages"
+depends = ["build:langium"]
+run = "npm run build"
+
+[tasks."build:viewer"]
+description = "Build the 3D viewer"
+run = "npm run --workspace floorplan-viewer build"
+
+[tasks."build:editor"]
+description = "Build the interactive editor"
+run = "npm run --workspace floorplan-editor build"
+
+[tasks."build:app"]
+description = "Build floorplan-app for production"
+run = "npm run --workspace floorplan-app build"
+
+[tasks."build:mcp"]
+description = "Build the MCP server package"
+run = "npm run --workspace floorplan-mcp-server build"
+
+[tasks."build:clean"]
+description = "Clean all build artifacts"
+run = """
+npm run clean
+rm -f trial/*.svg trial/*.png
+"""
+
+[tasks."build:rebuild"]
+description = "Full rebuild: clean + build + generate images"
+depends = ["build:clean", "build:all", "export:all"]
+
+# -------------------------------
+# test:* — Testing
+# -------------------------------
+
+[tasks."test:unit"]
+description = "Run unit tests"
+run = "npm run test"
+
+[tasks."test:app"]
+description = "Run floorplan-app tests"
+run = "npm run --workspace floorplan-app test"
+
+[tasks."test:e2e"]
+description = "Run Playwright E2E tests"
+dir = "floorplan-app"
+run = "npx playwright test"
+
+# -------------------------------
+# ops:* — Operations (env-aware)
+# -------------------------------
+
+[tasks."ops:config-show"]
+description = "Show configuration for active environment (uses .mise-env)"
+run = """
+MISE_ENV_FILE="$(git rev-parse --show-toplevel 2>/dev/null)/.mise-env"
+if [ -f "$MISE_ENV_FILE" ]; then . "$MISE_ENV_FILE"; fi
+MISE_ENV="${MISE_ENV:-dev}"
+npx tsx scripts/admin-cli.ts config show --env="$MISE_ENV"
+"""
+
+[tasks."ops:config-validate"]
+description = "Validate configuration for active environment (uses .mise-env)"
+run = """
+MISE_ENV_FILE="$(git rev-parse --show-toplevel 2>/dev/null)/.mise-env"
+if [ -f "$MISE_ENV_FILE" ]; then . "$MISE_ENV_FILE"; fi
+MISE_ENV="${MISE_ENV:-dev}"
+npx tsx scripts/admin-cli.ts config validate --env="$MISE_ENV"
+"""
+
+[tasks."ops:config-inherit"]
+description = "Inherit missing values from prod to active env (uses .mise-env)"
+run = """
+MISE_ENV_FILE="$(git rev-parse --show-toplevel 2>/dev/null)/.mise-env"
+if [ -f "$MISE_ENV_FILE" ]; then . "$MISE_ENV_FILE"; fi
+MISE_ENV="${MISE_ENV:-dev}"
+npx tsx scripts/admin-cli.ts config inherit --from=prod --to="$MISE_ENV" --yes
+"""
+
+[tasks."ops:deploy-check"]
+description = "Pre-deploy checklist for active environment (uses .mise-env)"
+run = """
+MISE_ENV_FILE="$(git rev-parse --show-toplevel 2>/dev/null)/.mise-env"
+if [ -f "$MISE_ENV_FILE" ]; then . "$MISE_ENV_FILE"; fi
+MISE_ENV="${MISE_ENV:-dev}"
+echo "Running deploy check for environment: $MISE_ENV"
+npx tsx scripts/admin-cli.ts config validate --env="$MISE_ENV"
+"""
+
+[tasks."ops:reset"]
+description = "Reset admin state"
+dir = "floorplan-app"
+run = """
+echo "Resetting admin state..."
+npx convex run admin:resetAdminState 2>/dev/null || echo "Note: admin:resetAdminState mutation not found."
+"""
+
+[tasks."ops:cli"]
+description = "Run admin CLI (pass args via ADMIN_ARGS)"
+run = "npx tsx scripts/admin-cli.ts $ADMIN_ARGS"
+
+[tasks."ops:mock-auth"]
+description = "Set up mock authentication for development"
+run = "./scripts/setup-mock-auth.sh"
+
+[tasks."ops:help"]
+description = "Show consolidated ops help"
+run = """
+cat <<EOF
+Operations (ops:*)
+==================
+
+Environment Context:
+  Create a .mise-env file to set the active environment:
+    echo "MISE_ENV=dev" > .mise-env   # or prod
+
+  Tasks read this file automatically. All ops:* commands target
+  the environment specified in .mise-env.
+
+Config Management:
+  mise run ops:config-show         # Show config for active env
+  mise run ops:config-validate     # Validate active env config
+  mise run ops:config-inherit      # Inherit missing values from prod
+
+Deployment:
+  mise run ops:deploy-check        # Pre-deploy checklist for active env
+
+Admin:
+  mise run ops:reset               # Reset admin state
+  mise run ops:cli                 # Run admin CLI
+  mise run ops:mock-auth           # Setup mock auth
+
+Docker (separate namespace):
+  mise run docker:up               # Start Docker services
+  mise run docker:down             # Stop Docker services
+  mise run docker:logs             # View logs
+EOF
+"""
+
+# -------------------------------
+# .mise-env template
+# -------------------------------
+
+[tasks.mise-env-init]
+description = "Create .mise-env file for environment context"
+run = """
+if [ -f .mise-env ]; then
+    echo ".mise-env already exists:"
+    cat .mise-env
+    exit 0
+fi
+cat > .mise-env <<'EOF'
+# Mise Environment Context
+# Set the active environment for ops:* tasks
+# Valid values: dev, prod, shared
+MISE_ENV=dev
+EOF
+echo "Created .mise-env with MISE_ENV=dev"
+echo "Edit the file or run: echo 'MISE_ENV=prod' > .mise-env"
+"""
+
+[tasks.help]
+description = "Show available tasks and usage"
+run = """
+echo "Floorplan DSL - Available tasks:"
+echo ""
+mise tasks
+echo ""
+echo "Variables:"
+echo "  FLOORPLAN_FILE  Input file (default: trial/TriplexVilla.floorplan)"
+echo "  OUTPUT_DIR      Output directory for images (default: trial)"
+echo "  OUTPUT_FILE     Output file for JSON export (optional)"
+echo "  SCALE           Rendering scale (default: 15)"
+echo "  SHOW_AREA       Show room areas (default: unset)"
+echo "  SHOW_DIMS       Show dimension lines (default: unset)"
+echo "  SHOW_SUMMARY    Show floor summary panel (default: unset)"
+echo "  AREA_UNIT       Area unit: sqft or sqm (default: sqft)"
+echo "  LENGTH_UNIT     Length unit for dimensions: ft, m, etc. (default: ft)"
+echo ""
+echo "3D Rendering Variables:"
+echo "  PROJECTION      3D projection: isometric (default) or perspective"
+echo "  CAMERA_POS      Camera position for perspective: X,Y,Z (e.g., 50,30,50)"
+echo "  CAMERA_TARGET   Camera target for perspective: X,Y,Z (e.g., 0,0,0)"
+echo "  FOV             Field of view in degrees (default: 50)"
+echo "  WIDTH_3D        3D image width in pixels (default: 1200)"
+echo "  HEIGHT_3D       3D image height in pixels (default: 900)"
+echo ""
+echo "Examples:"
+echo "  mise run export:images                              # Generate all images"
+echo "  mise run export:images SCALE=20                     # Higher resolution"
+echo "  mise run export:annotated                           # With all annotations"
+echo "  mise run export:images SHOW_AREA=1 AREA_UNIT=sqm   # Show areas in sqm"
+echo "  mise run export:images SHOW_DIMS=1 LENGTH_UNIT=m   # Show dimensions in meters"
+echo "  mise run export:images FLOORPLAN_FILE=my.floorplan  # Render custom file"
+echo "  mise run 3d:export                                  # Generate 3D PNG (isometric)"
+echo "  mise run 3d:perspective CAMERA_POS=50,30,50        # 3D with custom camera"
+"""

@@ -10,10 +10,10 @@ cp floorplan-app/.env.example floorplan-app/.env
 # Edit floorplan-app/.env with your Convex URL and OAuth credentials
 
 # 2. Build and start services
-make docker-up
+mise run docker:up
 
 # 3. View logs
-make docker-logs
+mise run docker:logs
 
 # 4. Open the app
 open http://localhost:3000/viewer-test
@@ -23,14 +23,14 @@ open http://localhost:3000/viewer-test
 
 | Command | Description |
 |---------|-------------|
-| `make docker-build` | Build Docker images |
-| `make docker-up` | Start services in background |
-| `make docker-down` | Stop all services |
-| `make docker-logs` | View logs (follow mode) |
-| `make docker-dev` | Start with interactive logs |
-| `make docker-shell` | Open shell in app container |
-| `make docker-restart` | Restart services |
-| `make docker-clean` | Remove containers, volumes, images |
+| `mise run docker:build` | Build Docker images |
+| `mise run docker:up` | Start services in background |
+| `mise run docker:down` | Stop all services |
+| `mise run docker:logs` | View logs (follow mode) |
+| `mise run docker:dev` | Start with interactive logs |
+| `mise run docker:shell` | Open shell in app container |
+| `mise run docker:restart` | Restart services |
+| `mise run docker:clean` | Remove containers, volumes, images |
 
 ## Services
 
@@ -69,17 +69,17 @@ cp floorplan-app/.env.example floorplan-app/.env
 vim floorplan-app/.env
 
 # Build images
-make docker-build
+mise run docker:build
 ```
 
 ### 2. Start Development
 
 ```bash
 # Start in background
-make docker-up
+mise run docker:up
 
 # Or start with logs visible
-make docker-dev
+mise run docker:dev
 ```
 
 ### 3. Access the App
@@ -101,10 +101,10 @@ Changes to these files trigger automatic reload:
 
 ```bash
 # View logs
-make docker-logs
+mise run docker:logs
 
 # Open shell in container
-make docker-shell
+mise run docker:shell
 
 # Inside container:
 npm run build --workspace floorplan-viewer-core
@@ -115,10 +115,10 @@ npm run test --workspace floorplan-app
 
 ```bash
 # Stop (preserves data)
-make docker-down
+mise run docker:down
 
 # Stop and remove volumes
-make docker-clean
+mise run docker:clean
 ```
 
 ## Convex Setup
@@ -135,7 +135,7 @@ Convex is cloud-based and cannot be fully mocked locally. You need to:
 3. **Copy CONVEX_URL** to your `.env` file
 4. **Restart Docker**:
    ```bash
-   make docker-restart
+   mise run docker:restart
    ```
 
 ## Google OAuth Setup
@@ -149,7 +149,7 @@ For authentication testing:
    GOOGLE_CLIENT_ID=your-client-id.apps.googleusercontent.com
    GOOGLE_CLIENT_SECRET=GOCSPX-your-secret
    ```
-4. **Restart services**: `make docker-restart`
+4. **Restart services**: `mise run docker:restart`
 
 ## Troubleshooting
 
@@ -168,12 +168,12 @@ ports:
 
 ```bash
 # Restart services
-make docker-restart
+mise run docker:restart
 
 # Or rebuild from scratch
-make docker-clean
-make docker-build
-make docker-up
+mise run docker:clean
+mise run docker:build
+mise run docker:up
 ```
 
 ### Cannot connect to Convex
@@ -187,13 +187,13 @@ Check:
 
 ```bash
 # Rebuild viewer-core inside container
-make docker-shell
+mise run docker:shell
 npm run build --workspace floorplan-viewer-core
 exit
 
 # Or rebuild entire image
-make docker-clean
-make docker-build
+mise run docker:clean
+mise run docker:build
 ```
 
 ## Production Build
@@ -221,7 +221,7 @@ Docker Compose uses volumes for:
 
 To reset volumes:
 ```bash
-make docker-clean  # Removes all volumes
+mise run docker:clean  # Removes all volumes
 ```
 
 ## Architecture

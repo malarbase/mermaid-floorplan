@@ -41,8 +41,8 @@ The `.env.development` file contains all necessary defaults:
 
 ```bash
 # Option A: Using Makefile (recommended)
-make admin-setup ADMIN_EMAIL=admin@test.local
-make admin-dev
+mise run admin:setup ADMIN_EMAIL=admin@test.local
+mise run admin:dev
 
 # Option B: Manual setup
 cp .env.local.admin-example .env.local
@@ -221,5 +221,5 @@ No manual migration needed - the new structure is active!
 
 - For development questions: Check `floorplan-app/.env.development`
 - For all variables: Check `floorplan-app/.env.example`
-- For admin setup: Run `make admin-help`
+- For admin setup: Run `mise run admin:help`
 - For E2E testing: See [E2E-TESTING-PROMPT.md](./E2E-TESTING-PROMPT.md)

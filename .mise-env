@@ -1,0 +1,4 @@
+# Mise Environment Context
+# Set the active environment for ops:* tasks
+# Valid values: dev, prod, shared
+MISE_ENV=dev

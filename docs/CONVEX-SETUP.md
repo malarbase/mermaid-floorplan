@@ -149,10 +149,10 @@ docker compose up -d
 
 ```bash
 # Start all services
-make docker-up
+mise run docker:up
 
 # Stop all services
-make docker-down
+mise run docker:down
 
 # View Convex logs
 docker compose logs -f convex
@@ -161,13 +161,13 @@ docker compose logs -f convex
 docker compose restart convex
 
 # Clean everything (including data!)
-make docker-clean
+mise run docker:clean
 ```
 
 ## Next Steps
 
 1. ✅ Self-hosted Convex is running
-2. Start Docker: `make docker-up`
+2. Start Docker: `mise run docker:up`
 3. Visit app: http://localhost:3000
 4. Test dashboard: http://localhost:3210/admin
 5. No cloud setup needed!

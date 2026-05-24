@@ -31,14 +31,12 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
 
   onMount(() => {
     if (isMockMode()) {
-      console.log('[MOCK MODE] Using mock Convex client');
       setClient(createMockConvexClient());
       setIsReady(true);
       return;
     }
 
     if (convexUrl) {
-      console.log('Connecting to Convex at:', convexUrl);
       const convexClient = new ConvexClient(convexUrl);
 
       // In dev mode, wire up JWT-based auth before exposing the client.
@@ -62,16 +60,13 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
             }
           };
 
-          convexClient.setAuth(
-            getAuthToken,
-            (isAuthenticated) => {
-              if (!authSettled) {
-                authSettled = true;
-                setClient(convexClient);
-                setIsReady(true);
-              }
-            },
-          );
+          convexClient.setAuth(getAuthToken, (isAuthenticated) => {
+            if (!authSettled) {
+              authSettled = true;
+              setClient(convexClient);
+              setIsReady(true);
+            }
+          });
 
           // Safety timeout: if onChange never fires within 2s, render anyway
           setTimeout(() => {
@@ -85,10 +80,7 @@ export function ConvexClientProvider(props: ConvexClientProviderProps) {
           // Re-trigger auth when dev user switches (localStorage change)
           window.addEventListener('storage', (e) => {
             if (e.key === 'dev-auth-token') {
-              convexClient.setAuth(
-                getAuthToken,
-                () => { },
-              );
+              convexClient.setAuth(getAuthToken, () => {});
             }
           });
         });

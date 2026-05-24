@@ -1,132 +1,78 @@
-# Floorplan DSL Project Makefile
-# ===============================
-# Run `make` or `make help` to see available targets
+# Floorplan DSL Project — Makefile Compatibility Shim
+# ===================================================
+# DEPRECATED: This Makefile is a compatibility shim during the migration to mise.
+# Please use `mise run <task>` instead. Run `mise tasks` to see all available tasks.
+# ===================================================
+
+$(warning Makefile is deprecated. Use 'mise run <task>' instead. See 'mise tasks'.)
 
 .PHONY: all help install build clean dev test langium langium-watch \
         images images-svg images-png images-annotated render mcp-server mcp-build rebuild watch \
         viewer-dev viewer-build export-json export-images export-svg export-png export-annotated \
         export-3d export-3d-perspective export-dxf \
-        admin-setup admin-dev admin-test admin-reset admin-help
+        editor-dev editor-build \
+        app-dev app-build app-start app-test \
+        docker-build docker-up docker-down docker-logs docker-shell docker-clean docker-dev \
+        docker-restart docker-reset-deps docker-convex-deploy docker-convex-backfill \
+        docker-convex-admin-key \
+        admin-setup admin-dev admin-test admin-reset admin-help \
+        setup-mock-auth \
+        admin-cli admin-config admin-setup-domain admin-sync-env admin-deploy-check
 
 # Default target
 all: help
 
-# Auto-generate help from ## comments
 help: ## Show this help message
-	@echo "Floorplan DSL - Available targets:"
+	@echo "Floorplan DSL - Available targets (DEPRECATED: use 'mise tasks' instead):"
 	@echo ""
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | \
-		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2}'
-	@echo ""
-	@echo "Variables:"
-	@echo "  FLOORPLAN_FILE  Input file (default: trial/TriplexVilla.floorplan)"
-	@echo "  OUTPUT_DIR      Output directory for images (default: trial)"
-	@echo "  OUTPUT_FILE     Output file for JSON export (optional)"
-	@echo "  SCALE           Rendering scale (default: 15)"
-	@echo "  SHOW_AREA       Show room areas (default: false)"
-	@echo "  SHOW_DIMS       Show dimension lines (default: false)"
-	@echo "  SHOW_SUMMARY    Show floor summary panel (default: false)"
-	@echo "  AREA_UNIT       Area unit: sqft or sqm (default: sqft)"
-	@echo "  LENGTH_UNIT     Length unit for dimensions: ft, m, etc. (default: ft)"
-	@echo ""
-	@echo "3D Rendering Variables:"
-	@echo "  PROJECTION      3D projection: isometric (default) or perspective"
-	@echo "  CAMERA_POS      Camera position for perspective: X,Y,Z (e.g., 50,30,50)"
-	@echo "  CAMERA_TARGET   Camera target for perspective: X,Y,Z (e.g., 0,0,0)"
-	@echo "  FOV             Field of view in degrees (default: 50)"
-	@echo "  WIDTH_3D        3D image width in pixels (default: 1200)"
-	@echo "  HEIGHT_3D       3D image height in pixels (default: 900)"
-	@echo ""
-	@echo "Examples:"
-	@echo "  make images                              # Generate all images"
-	@echo "  make images SCALE=20                     # Higher resolution"
-	@echo "  make images-annotated                    # With all annotations"
-	@echo "  make images SHOW_AREA=1 AREA_UNIT=sqm   # Show areas in sqm"
-	@echo "  make images SHOW_DIMS=1 LENGTH_UNIT=m   # Show dimensions in meters"
-	@echo "  make render FLOORPLAN_FILE=my.floorplan  # Render custom file"
-	@echo "  make export-3d                           # Generate 3D PNG (isometric)"
-	@echo "  make export-3d-perspective CAMERA_POS=50,30,50  # 3D with custom camera"
+	@mise run help
 
 # ===============================
 # Core Targets
 # ===============================
 
 install: ## Install all dependencies
-	npm install
+	mise run core:install
 
-build: langium ## Build all packages (language + mcp-server + web app)
-	npm run build
+build: ## Build all packages
+	mise run core:build
 
 clean: ## Clean all build artifacts
-	npm run clean
-	rm -f trial/*.svg trial/*.png
+	mise run core:clean
 
 dev: ## Start Vite development server
-	npm run dev
+	mise run core:dev
 
 test: ## Run tests
-	npm run test
-
-# ===============================
-# Langium Grammar
-# ===============================
+	mise run core:test
 
 langium: ## Generate Langium grammar artifacts
-	echo | npm run langium:generate
+	mise run core:langium
 
 langium-watch: ## Watch and regenerate Langium artifacts
-	npm run langium:watch
+	mise run core:langium-watch
 
 # ===============================
 # Image & Data Export
 # ===============================
 
-FLOORPLAN_FILE ?= trial/TriplexVilla.floorplan
-OUTPUT_DIR ?= $(dir $(FLOORPLAN_FILE))
-SCALE ?= 15
-SHOW_AREA ?=
-SHOW_DIMS ?=
-SHOW_SUMMARY ?=
-AREA_UNIT ?= sqft
-LENGTH_UNIT ?= ft
-
-# Build annotation flags
-ANNOTATION_FLAGS := $(if $(SHOW_AREA),--show-area) $(if $(SHOW_DIMS),--show-dims) $(if $(SHOW_SUMMARY),--show-summary)
-ifneq ($(AREA_UNIT),sqft)
-ANNOTATION_FLAGS += --area-unit $(AREA_UNIT)
-endif
-ifneq ($(LENGTH_UNIT),ft)
-ANNOTATION_FLAGS += --length-unit $(LENGTH_UNIT)
-endif
-
 export-images: ## Generate SVG + PNG for all floors and 3D views
-	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE) $(ANNOTATION_FLAGS)
-	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS)
-	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS) --projection perspective
+	mise run export:images
 
 export-svg: ## Generate SVG only
-	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --svg-only --scale $(SCALE) $(ANNOTATION_FLAGS)
+	mise run export:svg
 
 export-png: ## Generate PNG only
-	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --png-only --scale $(SCALE) $(ANNOTATION_FLAGS)
+	mise run export:png
 
-export-annotated: ## Generate images with all annotations (area, dims, summary)
-	npx tsx scripts/generate-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all --scale $(SCALE) --show-area --show-dims --show-summary --area-unit $(AREA_UNIT) --length-unit $(LENGTH_UNIT)
+export-annotated: ## Generate images with all annotations
+	mise run export:annotated
 
-export-json: ## Export floorplan to JSON (FLOORPLAN_FILE=path OUTPUT_FILE=path)
-ifdef FLOORPLAN_FILE
-	npx tsx scripts/export-json.ts $(FLOORPLAN_FILE) $(OUTPUT_FILE)
-else
-	@echo "Usage: make export-json FLOORPLAN_FILE=path/to/file.floorplan [OUTPUT_FILE=output.json]"
-endif
+export-json: ## Export floorplan to JSON
+	mise run export:json
 
-export-dxf: ## Export floorplan to DXF (AutoCAD format)
-ifdef FLOORPLAN_FILE
-	npx tsx scripts/export-dxf.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) $(DXF_FLAGS)
-else
-	@echo "Usage: make export-dxf FLOORPLAN_FILE=path/to/file.floorplan [OUTPUT_DIR=dir]"
-	@echo "Options: DXF_FLAGS='--dimensions --no-labels --floor Name --all-in-one'"
-endif
+export-dxf: ## Export floorplan to DXF
+	mise run export:dxf
 
 # Aliases for backward compatibility
 images: export-images
@@ -138,214 +84,149 @@ images-annotated: export-annotated
 # 3D Rendering
 # ===============================
 
-PROJECTION ?= isometric
-CAMERA_POS ?=
-CAMERA_TARGET ?=
-FOV ?= 50
-WIDTH_3D ?= 1200
-HEIGHT_3D ?= 900
-
-# Build 3D camera flags
-3D_FLAGS := --projection $(PROJECTION) --width $(WIDTH_3D) --height $(HEIGHT_3D) --fov $(FOV)
-ifneq ($(CAMERA_POS),)
-3D_FLAGS += --camera-pos $(CAMERA_POS)
-endif
-ifneq ($(CAMERA_TARGET),)
-3D_FLAGS += --camera-target $(CAMERA_TARGET)
-endif
-
 export-3d: ## Generate 3D PNG (isometric view)
-	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS)
+	mise run 3d:export
 
 export-3d-perspective: ## Generate 3D PNG (perspective view)
-	npx tsx scripts/generate-3d-images.ts $(FLOORPLAN_FILE) $(OUTPUT_DIR) --all $(3D_FLAGS) --projection perspective
+	mise run 3d:perspective
 
 # ===============================
 # 3D Viewer
 # ===============================
 
 viewer-dev: ## Start the 3D viewer dev server
-	npm run --workspace floorplan-viewer dev
+	mise run ws:viewer-dev
 
 viewer-build: ## Build the 3D viewer
-	npm run --workspace floorplan-viewer build
+	mise run ws:viewer-build
 
 # ===============================
 # Interactive Editor
 # ===============================
 
 editor-dev: ## Start the interactive editor dev server
-	npm run --workspace floorplan-editor dev
+	mise run ws:editor-dev
 
 editor-build: ## Build the interactive editor
-	npm run --workspace floorplan-editor build
+	mise run ws:editor-build
 
 # ===============================
 # MCP Server
 # ===============================
 
 mcp-build: ## Build the MCP server package
-	npm run --workspace floorplan-mcp-server build
+	mise run ws:mcp-build
 
-mcp-server: mcp-build ## Start the MCP server
-	npm run --workspace floorplan-mcp-server start
+mcp-server: ## Start the MCP server
+	mise run ws:mcp-server
 
 # ===============================
 # Development Shortcuts
 # ===============================
 
-rebuild: clean build images ## Full rebuild and regenerate images
+rebuild: ## Full rebuild and regenerate images
+	mise run util:rebuild
 
 watch: ## Start langium watch + vite dev server
-	@echo "Starting langium watch in background..."
-	npm run langium:watch &
-	npm run dev
+	mise run util:watch
 
 # ===============================
 # Docker Development
 # ===============================
 
 docker-build: ## Build Docker images
-	docker compose build
+	mise run docker:build
 
 docker-up: ## Start all services in Docker
-	docker compose up -d
+	mise run docker:up
 
 docker-down: ## Stop all Docker services
-	docker compose down
+	mise run docker:down
 
 docker-logs: ## View Docker logs
-	docker compose logs -f
+	mise run docker:logs
 
 docker-shell: ## Open shell in app container
-	docker compose exec app sh
+	mise run docker:shell
 
 docker-clean: ## Remove Docker containers, volumes, and images
-	docker compose down -v
-	docker rmi mermaid-floorplan-app 2>/dev/null || true
+	mise run docker:clean
 
 docker-dev: ## Start development with Docker (interactive logs)
-	docker compose up
+	mise run docker:dev
 
 docker-restart: ## Restart Docker services
-	docker compose restart
+	mise run docker:restart
 
-docker-reset-deps: ## Reset Docker node_modules volumes (use when dependencies change)
-	docker compose down
-	docker volume rm mermaid-floorplan_app-node-modules mermaid-floorplan_app-floorplan-app-node-modules 2>/dev/null || true
-	@echo "Node_modules volumes removed. Run 'make docker-up' to reinstall."
+docker-reset-deps: ## Reset Docker node_modules volumes
+	mise run docker:reset-deps
 
-docker-convex-deploy: ## Deploy Convex functions to self-hosted backend (Docker)
-	@echo "Generating admin key and deploying Convex functions..."
-	@ADMIN_KEY="$$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n')" && \
-		docker compose exec -T app sh -c "cd /app/floorplan-app && npx convex dev --once --url http://convex:3210 --admin-key '$$ADMIN_KEY'" && \
-		echo "Convex functions deployed successfully" || \
-		echo "Error: Make sure 'docker compose up -d convex app' is running"
+docker-convex-deploy: ## Deploy Convex functions to self-hosted backend
+	mise run docker:convex-deploy
 
-docker-convex-backfill: ## Run Convex backfill mutations (after schema migration deploy)
-	@echo "Running backfill: projects:backfillSnapshotHashes..."
-	@ADMIN_KEY="$$(docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n')" && \
-		docker compose exec -T app sh -c "cd /app/floorplan-app && npx convex run projects:backfillSnapshotHashes --url http://convex:3210 --admin-key '$$ADMIN_KEY'" && \
-		echo "Backfill complete" || \
-		echo "Error: Make sure 'docker compose up -d convex app' is running"
+docker-convex-backfill: ## Run Convex backfill mutations
+	mise run docker:convex-backfill
 
-docker-convex-admin-key: ## Print the Convex admin key (for local CLI use)
-	@docker compose exec -T convex ./generate_admin_key.sh 2>/dev/null | tr -d '\r\n' || \
-		echo "Error: Convex backend is not running. Run 'make docker-up' first."
+docker-convex-admin-key: ## Print the Convex admin key
+	mise run docker:convex-admin-key
 
 # ===============================
 # SolidStart App
 # ===============================
 
 app-dev: ## Start floorplan-app dev server (local)
-	npm run --workspace floorplan-app dev
+	mise run ws:app-dev
 
 app-build: ## Build floorplan-app for production
-	npm run --workspace floorplan-app build
+	mise run ws:app-build
 
 app-start: ## Start floorplan-app production server
-	npm run --workspace floorplan-app start
+	mise run ws:app-start
 
 app-test: ## Run floorplan-app tests
-	npm run --workspace floorplan-app test
+	mise run ws:app-test
 
 # ===============================
 # Mock Auth Setup
 # ===============================
 
 setup-mock-auth: ## Set up mock authentication for development
-	@./scripts/setup-mock-auth.sh
+	mise run util:setup-mock-auth
 
 # ===============================
 # Admin Panel Testing
 # ===============================
 
-ADMIN_EMAIL ?= admin@test.local
-
-admin-setup: ## Configure admin testing environment (ADMIN_EMAIL=your@email.com)
-	@echo "Setting up admin testing environment..."
-	@cd floorplan-app && npx convex env set SUPER_ADMIN_EMAIL "$(ADMIN_EMAIL)" 2>/dev/null || \
-		echo "Note: Run 'npx convex dev' first if Convex is not running"
-	@echo ""
-	@echo "Creating .env.local with admin auth bypass..."
-	@echo "# Admin Testing Configuration" > floorplan-app/.env.local
-	@echo "DEV_AUTH_BYPASS=true" >> floorplan-app/.env.local
-	@echo "DEV_USER_EMAIL=$(ADMIN_EMAIL)" >> floorplan-app/.env.local
-	@echo "DEV_USER_NAME=Test Admin" >> floorplan-app/.env.local
-	@echo "DEV_USER_USERNAME=testadmin" >> floorplan-app/.env.local
-	@echo "VITE_MOCK_MODE=false" >> floorplan-app/.env.local
-	@echo ""
-	@echo "Admin setup complete!"
-	@echo "  Super admin email: $(ADMIN_EMAIL)"
-	@echo "  Configuration: floorplan-app/.env.local"
-	@echo ""
-	@echo "Next step: make admin-dev"
+admin-setup: ## Configure admin testing environment
+	mise run admin:setup
 
 admin-dev: ## Start app with admin user pre-configured
-	@if [ ! -f floorplan-app/.env.local ]; then \
-		echo "Error: .env.local not found. Run 'make admin-setup' first."; \
-		exit 1; \
-	fi
-	@echo "Starting admin dev environment..."
-	@echo "Admin panel: http://localhost:3000/admin"
-	@cd floorplan-app && npm run dev
+	mise run admin:dev
 
 admin-test: ## Run Playwright E2E tests for admin panel
-	@echo "Running admin panel tests..."
-	@cd floorplan-app && npx playwright test --grep "@admin" || \
-		echo "Note: No @admin tagged tests found. Create tests in floorplan-app/tests/"
+	mise run admin:test
 
-admin-reset: ## Reset admin state (demote all admins except super admin)
-	@echo "Resetting admin state..."
-	@cd floorplan-app && npx convex run admin:resetAdminState 2>/dev/null || \
-		echo "Note: admin:resetAdminState mutation not found. Manual reset required."
-	@echo "Admin state reset complete."
+admin-reset: ## Reset admin state
+	mise run admin:reset
 
 admin-help: ## Show admin testing help
-	@echo "Admin Panel Testing"
-	@echo "==================="
-	@echo ""
-	@echo "Quick Start:"
-	@echo "  1. make admin-setup ADMIN_EMAIL=your@email.com"
-	@echo "  2. make admin-dev"
-	@echo "  3. Open http://localhost:3000/admin"
-	@echo ""
-	@echo "Alternative: Manual Setup"
-	@echo "  cp floorplan-app/.env.local.admin-example floorplan-app/.env.local"
-	@echo "  # Edit .env.local with your admin email"
-	@echo "  make admin-dev"
-	@echo ""
-	@echo "Testing Routes:"
-	@echo "  /admin           - Dashboard with stats"
-	@echo "  /admin/featured  - Manage featured projects"
-	@echo "  /admin/users     - User management (super admin)"
-	@echo "  /admin/audit     - Audit log viewer"
-	@echo ""
-	@echo "Super Admin Capabilities:"
-	@echo "  - Promote/demote admins"
-	@echo "  - Delete any project"
-	@echo "  - Impersonate users"
-	@echo ""
-	@echo "Regular Admin Capabilities:"
-	@echo "  - Feature/unfeature projects"
-	@echo "  - View user list (read-only)"
+	mise run admin:help
+
+# ===============================
+# Admin CLI
+# ===============================
+
+admin-cli: ## Run admin CLI (pass args via ADMIN_ARGS)
+	mise run admin:cli
+
+admin-config: ## Show current configuration
+	mise run admin:config
+
+admin-setup-domain: ## Interactive domain setup
+	mise run admin:setup-domain
+
+admin-sync-env: ## Sync env vars to Convex
+	mise run admin:sync-env
+
+admin-deploy-check: ## Pre-deploy checklist
+	mise run admin:deploy-check

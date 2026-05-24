@@ -1,0 +1,1 @@
+/var/home/user/Work/mermaid-floorplan/openspec/commands/speclife/start.md
