@@ -601,6 +601,9 @@ const annotationControls = createAnnotationControlsUI({
     viewer.annotationManager.state.showStairDimensions = show;
     viewer.annotationManager.updateStairDimensionAnnotations();
   },
+  onOcclusionEnabledChange: (enabled) => {
+    viewer.annotationManager.state.occlusionEnabled = enabled;
+  },
   onAreaUnitChange: (unit) => {
     viewer.annotationManager.state.areaUnit = unit;
     viewer.annotationManager.updateAll();

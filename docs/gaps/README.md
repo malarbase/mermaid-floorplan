@@ -6,6 +6,8 @@ session can pick it up without re‑deriving the context.
 
 | File | Type | Area |
 |---|---|---|
+| [`3d-label-occlusion.md`](./3d-label-occlusion.md) | Feature / UX fix | `floorplan-viewer-core` — CSS2D labels float through walls because `CSS2DRenderer` lacks depth testing; proposes a per-frame raycast occlusion pass. |
+| [`webgl-text-troika-three-text.md`](./webgl-text-troika-three-text.md) | Architectural alternative | `floorplan-viewer-core` — long-term alternative to CSS2D labels using `troika-three-text` for native WebGL depth testing, shadows, and post-processing. |
 | [`language-primitive-registry-codegen.md`](./language-primitive-registry-codegen.md) | Architectural Gap | `floorplan-language` <-> editor UI <-> annotations <-> renderers <-> `skills/mermaid-floorplan` - grammar changes can drift from UI/forms/metadata/renderer hooks; propose generated primitive descriptors plus authored overlays and lifecycle checks. |
 | [`ui-selection-agent-context.md`](./ui-selection-agent-context.md) | Feature | `floorplan-app` ↔ `floorplan-viewer-core` — selection (rooms, walls, stairs, lifts, connections) isn't passed as structured context to the agent. |
 | [`ui-render-layer-toggles.md`](./ui-render-layer-toggles.md) | Feature | `floorplan-viewer-core` / `floorplan-viewer` / `floorplan-app` — scene builder already supports `showWalls` / `showFloors` / `showStairs` / `showLifts` / `showConnections`, but no UI exposes them; should slot into the View section alongside Theme & Exploded View. |
