@@ -195,6 +195,7 @@ export function buildFloorplanSceneFromNormalized(
         thickness: floorThickness,
         theme,
         styleMap,
+        defaultStyle: config.default_style,
         penetrations: prevFloorPenetrations,
       });
       slabs.userData.layer = 'floor';

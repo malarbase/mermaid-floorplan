@@ -58,7 +58,7 @@ supports (DXF export is handled by the renderer, not by this skill).
    `node scripts/render_3d.mjs plan.floorplan --out plan-3d.png` so the
    loop can self-check stacking, cantilevers, and stair runs.
 5. Run the design critic:
-   `node scripts/design_critic.mjs plan.floorplan`. If findings appear, feed
+   `node scripts/design_critic.mjs plan.floorplan`. Ensure room styles and themes are fully defined and applied to all rooms, stairs, and lifts to satisfy aesthetic design critic rules. If findings appear, feed
    them into `node scripts/suggest_improvements.mjs plan.floorplan
    --critique critique.json`, apply the suggested operations with
    `modify.mjs`, and re-render.
@@ -192,6 +192,7 @@ bedrooms 1 and 2"). Each turn:
   parking area), model it as an explicit `room` with `open` walls rather
   than leaving a gap. The DSL does not support negative space; every
   reachable area must be a named room.
+- **Room styling/themes are enabled by default.** To ensure first impressions wow users, every generated floor plan MUST define custom style blocks or use a global theme preset unless a plain black-and-white layout is explicitly requested. Define structured, harmonious room style blocks (such as circulation, living/habitable, wet zones, and outdoor zones) and associate rooms, stairs, and lifts with their corresponding styles using the `style <StyleName>` suffix. A global `default_style` in config can also be defined. Use elegant hex colors (e.g., `#E6F2FF` for living, `#FFF2E6` for bedrooms, `#E6FFE6` for outdoor, `#FFE6E6` for wet stacks, `#F2F2F2` for circulation). All rooms, stairs, and lifts must be styled consistently to avoid visually jarring plain/bare gaps.
 
 ## Scripts (all in `scripts/`)
 

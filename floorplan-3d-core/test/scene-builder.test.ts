@@ -424,6 +424,22 @@ describe('styled rooms', () => {
     expect(result.styleMap.get('tile')?.floor_color).toBe('#FFFFFF');
   });
 
+  test('should apply floor colors to floor slab meshes', () => {
+    const data = createStyledFloorplan();
+    const roomColors: Map<string, number> = new Map();
+
+    buildFloorplanScene(data, {
+      onRoomMesh: (mesh, room) => {
+        if (mesh.material instanceof THREE.MeshStandardMaterial) {
+          roomColors.set(room.name, mesh.material.color.getHex());
+        }
+      },
+    });
+
+    expect(roomColors.get('room1')).toBe(0x8b4513);
+    expect(roomColors.get('room2')).toBe(0xffffff);
+  });
+
   test('should apply wall colors from styles', () => {
     const data = createStyledFloorplan();
     const result = buildFloorplanScene(data);

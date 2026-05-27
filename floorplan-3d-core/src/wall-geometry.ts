@@ -17,8 +17,10 @@ export interface WallGeneratorOptions {
   defaultHeight?: number;
   /** Theme for default materials */
   theme?: ViewerTheme;
-  /** Style lookup map: room name -> MaterialStyle */
+  /** Style lookup map: style name -> MaterialStyle */
   styleMap?: Map<string, MaterialStyle>;
+  /** Default style name if room has no explicit style */
+  defaultStyle?: string;
 }
 
 /**
@@ -35,13 +37,14 @@ export function generateFloorWalls(
   const defaultHeight = options.defaultHeight ?? floor.height ?? DIMENSIONS.WALL.HEIGHT;
   const theme = options.theme;
   const styleMap = options.styleMap ?? new Map();
+  const defaultStyle = options.defaultStyle;
 
   for (const room of floor.rooms) {
     const roomWalls = generateRoomWalls(room, {
       wallThickness,
       defaultHeight,
       theme,
-      style: styleMap.get(room.name),
+      style: styleMap.get(room.style ?? defaultStyle ?? ''),
     });
     group.add(roomWalls);
   }

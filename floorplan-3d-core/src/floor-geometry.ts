@@ -14,8 +14,10 @@ export interface FloorSlabOptions {
   thickness?: number;
   /** Theme for default materials */
   theme?: ViewerTheme;
-  /** Style lookup map: room name -> MaterialStyle */
+  /** Style lookup map: style name -> MaterialStyle */
   styleMap?: Map<string, MaterialStyle>;
+  /** Default style name if room has no explicit style */
+  defaultStyle?: string;
   /** Vertical penetrations (stairs/lifts) to cut holes for */
   penetrations?: THREE.Box3[];
 }
@@ -30,6 +32,7 @@ export function generateFloorSlabs(floor: JsonFloor, options: FloorSlabOptions =
   const thickness = options.thickness ?? DIMENSIONS.FLOOR.THICKNESS;
   const theme = options.theme;
   const styleMap = options.styleMap ?? new Map();
+  const defaultStyle = options.defaultStyle;
   const penetrations = options.penetrations || [];
 
   // Use CSG if available and we have penetrations
@@ -44,6 +47,7 @@ export function generateFloorSlabs(floor: JsonFloor, options: FloorSlabOptions =
 
   for (const room of floor.rooms) {
     let slab: THREE.Mesh;
+    const roomStyle = styleMap.get(room.style ?? defaultStyle ?? '');
 
     // Check if any penetration intersects this room
     const roomBox = new THREE.Box3(
@@ -58,12 +62,12 @@ export function generateFloorSlabs(floor: JsonFloor, options: FloorSlabOptions =
         room,
         thickness,
         theme,
-        styleMap.get(room.name),
+        roomStyle,
         intersectingPenetrations,
         evaluator,
       );
     } else {
-      slab = generateRoomFloorSlab(room, thickness, theme, styleMap.get(room.name));
+      slab = generateRoomFloorSlab(room, thickness, theme, roomStyle);
     }
 
     group.add(slab);

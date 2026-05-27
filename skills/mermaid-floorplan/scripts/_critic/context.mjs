@@ -43,7 +43,7 @@ export function extractConnectionsFromAst(floorplan) {
 // Context builder
 // ---------------------------------------------------------------------------
 
-function buildSingleFloorContext(floor, allConnections, config = {}) {
+function buildSingleFloorContext(floor, allConnections, config = {}, styles = []) {
   const rooms = floor.rooms ?? [];
   const roomsByName = new Map(rooms.map((r) => [r.name, r]));
   const adjacency = [];
@@ -91,17 +91,19 @@ function buildSingleFloorContext(floor, allConnections, config = {}) {
     lifts: floor.lifts ?? [],
     bbox,
     config,
+    styles,
   };
 }
 
-export function buildCriticContext(floors, connections, verticalConnections = [], config = {}) {
+export function buildCriticContext(floors, connections, verticalConnections = [], config = {}, styles = []) {
   if (!floors || floors.length === 0) return null;
-  const perFloor = floors.map((f) => buildSingleFloorContext(f, connections, config));
+  const perFloor = floors.map((f) => buildSingleFloorContext(f, connections, config, styles));
   const primary = perFloor[0];
   return {
     ...primary,
     floors: perFloor,
     verticalConnections,
     config,
+    styles,
   };
 }

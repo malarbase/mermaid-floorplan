@@ -22,6 +22,7 @@ export * from './_critic/context.mjs';
 import { structuralRules } from './_critic/rules_structural.mjs';
 import { habitableRules } from './_critic/rules_habitable.mjs';
 import { stairRules } from './_critic/rules_stairs.mjs';
+import { aestheticRules } from './_critic/rules_aesthetics.mjs';
 
 import { extractConnectionsFromAst, buildCriticContext } from './_critic/context.mjs';
 import { f } from './_critic/geometry.mjs';
@@ -30,6 +31,7 @@ export const rules = {
   ...structuralRules,
   ...habitableRules,
   ...stairRules,
+  ...aestheticRules,
 };
 
 // ---------------------------------------------------------------------------
@@ -61,6 +63,7 @@ export async function runCriticOnDsl(dsl, { only = null, skip = null, strict = f
     astConnections,
     json.data.verticalConnections ?? [],
     json.data.config ?? {},
+    json.data.styles ?? [],
   );
   if (!ctx) {
     return { convertError: 'No floors in floorplan; nothing to critique.' };
