@@ -307,6 +307,8 @@ export interface AnnotationControlsProps {
   showStairInfo?: boolean;
   /** Show stair dimension overlay */
   showStairDimensions?: boolean;
+  /** Enable label occlusion via raycasting */
+  occlusionEnabled?: boolean;
   /** Area unit */
   areaUnit?: AreaUnit;
   /** Length unit */
@@ -323,6 +325,8 @@ export interface AnnotationControlsProps {
   onShowStairInfoChange?: (show: boolean) => void;
   /** Show stair dimensions change callback */
   onShowStairDimensionsChange?: (show: boolean) => void;
+  /** Occlusion enabled change callback */
+  onOcclusionEnabledChange?: (enabled: boolean) => void;
   /** Area unit change callback */
   onAreaUnitChange?: (unit: AreaUnit) => void;
   /** Length unit change callback */
@@ -386,6 +390,13 @@ export function AnnotationControls(props: AnnotationControlsProps) {
         label="Show Stair Dimensions"
         checked={props.showStairDimensions ?? false}
         onChange={props.onShowStairDimensionsChange}
+      />
+
+      <Checkbox
+        id="occlusion-enabled"
+        label="Occlude Labels"
+        checked={props.occlusionEnabled ?? true}
+        onChange={props.onOcclusionEnabledChange}
       />
 
       <Select

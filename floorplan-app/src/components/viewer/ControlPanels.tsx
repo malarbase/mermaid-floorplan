@@ -261,6 +261,9 @@ export default function ControlPanels(props: ControlPanelsProps) {
         viewer.annotationManager.state.showStairDimensions = show;
         viewer.annotationManager.updateStairDimensionAnnotations();
       },
+      onOcclusionEnabledChange: (enabled) => {
+        viewer.annotationManager.state.occlusionEnabled = enabled;
+      },
       onAreaUnitChange: (unit) => {
         viewer.annotationManager.state.areaUnit = unit;
         viewer.annotationManager.updateAll();

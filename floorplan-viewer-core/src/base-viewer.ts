@@ -729,6 +729,7 @@ export abstract class BaseViewer implements SceneContext {
 
     this._controls.update();
     this._renderer.render(this._scene, this._cameraManager.activeCamera);
+    this._annotationManager.updateOcclusion(this._cameraManager.activeCamera, this._scene);
     this.labelRenderer.render(this._scene, this._cameraManager.activeCamera);
   }
 

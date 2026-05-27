@@ -1055,6 +1055,7 @@ overlay2dClose?.addEventListener('click', () => {
 const showArea = document.getElementById('show-area') as HTMLInputElement;
 const showDimensions = document.getElementById('show-dimensions') as HTMLInputElement;
 const showFloorSummary = document.getElementById('show-floor-summary') as HTMLInputElement;
+const occlusionEnabled = document.getElementById('occlusion-enabled') as HTMLInputElement;
 const areaUnit = document.getElementById('area-unit') as HTMLSelectElement;
 const lengthUnit = document.getElementById('length-unit') as HTMLSelectElement;
 const floorSummary = document.getElementById('floor-summary');
@@ -1064,6 +1065,7 @@ function updateAnnotations() {
     editorCore.annotationManager.state.showArea = showArea?.checked || false;
     editorCore.annotationManager.state.showDimensions = showDimensions?.checked || false;
     editorCore.annotationManager.state.showFloorSummary = showFloorSummary?.checked || false;
+    editorCore.annotationManager.state.occlusionEnabled = occlusionEnabled?.checked ?? true;
     editorCore.annotationManager.state.areaUnit = (areaUnit?.value as 'sqft' | 'sqm') || 'sqft';
     editorCore.annotationManager.state.lengthUnit =
       (lengthUnit?.value as 'ft' | 'm' | 'cm' | 'in' | 'mm') || 'ft';
@@ -1080,6 +1082,7 @@ showFloorSummary?.addEventListener('change', () => {
   layoutManager.setFloorSummaryVisible(isVisible);
   updateAnnotations();
 });
+occlusionEnabled?.addEventListener('change', updateAnnotations);
 areaUnit?.addEventListener('change', updateAnnotations);
 lengthUnit?.addEventListener('change', updateAnnotations);
 

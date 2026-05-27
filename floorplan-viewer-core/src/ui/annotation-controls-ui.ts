@@ -18,6 +18,7 @@ export interface AnnotationControlsUIOptions {
   initialShowFloorSummary?: boolean;
   initialShowStairInfo?: boolean;
   initialShowStairDimensions?: boolean;
+  initialOcclusionEnabled?: boolean;
   initialAreaUnit?: AreaUnit;
   initialLengthUnit?: LengthUnit;
   onShowRoomNameChange?: (show: boolean) => void;
@@ -26,6 +27,7 @@ export interface AnnotationControlsUIOptions {
   onShowFloorSummaryChange?: (show: boolean) => void;
   onShowStairInfoChange?: (show: boolean) => void;
   onShowStairDimensionsChange?: (show: boolean) => void;
+  onOcclusionEnabledChange?: (enabled: boolean) => void;
   onAreaUnitChange?: (unit: AreaUnit) => void;
   onLengthUnitChange?: (unit: LengthUnit) => void;
 }
@@ -38,6 +40,7 @@ export interface AnnotationControlsUI {
   showFloorSummaryCheckbox: HTMLInputElement;
   showStairInfoCheckbox: HTMLInputElement;
   showStairDimensionsCheckbox: HTMLInputElement;
+  occlusionEnabledCheckbox: HTMLInputElement;
   areaUnitSelect: HTMLSelectElement;
   lengthUnitSelect: HTMLSelectElement;
 }
@@ -57,6 +60,7 @@ export function createAnnotationControlsUI(
     initialShowFloorSummary = false,
     initialShowStairInfo = false,
     initialShowStairDimensions = false,
+    initialOcclusionEnabled = true,
     initialAreaUnit = 'sqft',
     initialLengthUnit = 'ft',
     onShowRoomNameChange,
@@ -65,6 +69,7 @@ export function createAnnotationControlsUI(
     onShowFloorSummaryChange,
     onShowStairInfoChange,
     onShowStairDimensionsChange,
+    onOcclusionEnabledChange,
     onAreaUnitChange,
     onLengthUnitChange,
   } = options;
@@ -203,6 +208,27 @@ export function createAnnotationControlsUI(
   stairDimRow.appendChild(stairDimLabel);
   content.appendChild(stairDimRow);
 
+  // Occlusion enabled checkbox
+  const occlusionRow = document.createElement('label');
+  occlusionRow.className = cls.checkbox.wrapper;
+
+  const occlusionEnabledCheckbox = document.createElement('input');
+  occlusionEnabledCheckbox.type = 'checkbox';
+  occlusionEnabledCheckbox.className = cls.checkbox.input;
+  occlusionEnabledCheckbox.id = 'occlusion-enabled';
+  occlusionEnabledCheckbox.checked = initialOcclusionEnabled;
+  occlusionEnabledCheckbox.addEventListener('change', () => {
+    onOcclusionEnabledChange?.(occlusionEnabledCheckbox.checked);
+  });
+
+  const occlusionLabel = document.createElement('span');
+  occlusionLabel.className = cls.checkbox.label;
+  occlusionLabel.textContent = 'Occlude Labels';
+
+  occlusionRow.appendChild(occlusionEnabledCheckbox);
+  occlusionRow.appendChild(occlusionLabel);
+  content.appendChild(occlusionRow);
+
   // Area unit select
   const areaUnitRow = document.createElement('div');
   areaUnitRow.className = `${cls.layout.betweenCenter} mt-2`;
@@ -265,6 +291,7 @@ export function createAnnotationControlsUI(
     showFloorSummaryCheckbox,
     showStairInfoCheckbox,
     showStairDimensionsCheckbox,
+    occlusionEnabledCheckbox,
     areaUnitSelect,
     lengthUnitSelect,
   };

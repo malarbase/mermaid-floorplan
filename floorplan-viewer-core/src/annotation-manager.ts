@@ -4,7 +4,7 @@
 
 import type { JsonConfig, JsonExport, JsonStair } from 'floorplan-3d-core';
 import { DIMENSIONS, type LengthUnit, METERS_TO_UNIT } from 'floorplan-3d-core';
-import type * as THREE from 'three';
+import * as THREE from 'three';
 import { CSS2DObject } from 'three/examples/jsm/renderers/CSS2DRenderer.js';
 
 // Area unit type
@@ -20,6 +20,7 @@ export interface AnnotationState {
   showStairDimensions: boolean;
   areaUnit: AreaUnit;
   lengthUnit: LengthUnit;
+  occlusionEnabled: boolean;
 }
 
 interface StairDimensions {
@@ -56,6 +57,11 @@ export class AnnotationManager {
   /** Whether the floor summary panel was dynamically created (vs. pre-existing in HTML) */
   private dynamicallyCreated: boolean = false;
 
+  private raycaster = new THREE.Raycaster();
+  private _occlusionOrigin = new THREE.Vector3();
+  private _occlusionDir = new THREE.Vector3();
+  private _cameraPos = new THREE.Vector3();
+
   public state: AnnotationState = {
     showRoomName: true,
     showArea: false,
@@ -65,6 +71,7 @@ export class AnnotationManager {
     showStairDimensions: false,
     areaUnit: 'sqft',
     lengthUnit: 'ft',
+    occlusionEnabled: true,
   };
 
   constructor(private callbacks: AnnotationCallbacks) {
@@ -107,6 +114,12 @@ export class AnnotationManager {
     showStairDimensionsToggle?.addEventListener('change', (e) => {
       this.state.showStairDimensions = (e.target as HTMLInputElement).checked;
       this.updateStairDimensionAnnotations();
+    });
+
+    // Occlusion toggle
+    const occlusionToggle = document.getElementById('occlusion-enabled') as HTMLInputElement;
+    occlusionToggle?.addEventListener('change', (e) => {
+      this.state.occlusionEnabled = (e.target as HTMLInputElement).checked;
     });
 
     // Unit dropdowns
@@ -553,6 +566,57 @@ export class AnnotationManager {
         this.stairDimensionLabels.push(dLabel);
       });
     });
+  }
+
+  /**
+   * Per-frame raycast occlusion pass: hide labels that are behind opaque geometry.
+   */
+  public updateOcclusion(camera: THREE.Camera, scene: THREE.Scene): void {
+    const allLabels: CSS2DObject[] = [
+      ...this.roomLabels,
+      ...this.stairLabels,
+      ...this.stairDimensionLabels,
+      ...this.dimensionLabels,
+    ];
+
+    if (!this.state.occlusionEnabled) {
+      // Restore any labels that were previously hidden by occlusion
+      for (const label of allLabels) {
+        label.element.style.visibility = 'visible';
+      }
+      return;
+    }
+
+    this._cameraPos.setFromMatrixPosition(camera.matrixWorld);
+
+    for (const label of allLabels) {
+      label.getWorldPosition(this._occlusionOrigin);
+
+      const dist = this._cameraPos.distanceTo(this._occlusionOrigin);
+      this._occlusionDir.subVectors(this._occlusionOrigin, this._cameraPos).normalize();
+
+      this.raycaster.set(this._cameraPos, this._occlusionDir);
+      this.raycaster.near = 0.1;
+      this.raycaster.far = dist - 0.05;
+
+      const hits = this.raycaster.intersectObjects(scene.children, true);
+      // Only count hits from objects whose entire ancestor chain is visible
+      // (hidden floors still exist in the scene graph and would otherwise occlude)
+      const hasVisibleHit = hits.some((hit) => this.isObjectVisible(hit.object));
+      label.element.style.visibility = hasVisibleHit ? 'hidden' : 'visible';
+    }
+  }
+
+  /**
+   * Check whether an object and all of its ancestors are visible.
+   */
+  private isObjectVisible(object: THREE.Object3D): boolean {
+    let current: THREE.Object3D | null = object;
+    while (current !== null) {
+      if (!current.visible) return false;
+      current = current.parent;
+    }
+    return true;
   }
 
   /**
