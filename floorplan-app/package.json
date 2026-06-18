@@ -27,6 +27,7 @@
     "@solidjs/meta": "^0.29.4",
     "@solidjs/router": "^0.15.0",
     "@solidjs/start": "^1.1.0",
+    "@vercel/speed-insights": "^2.0.0",
     "better-auth": "1.4.9",
     "convex": "^1.31.7",
     "convex-better-auth-solid-start": "*",

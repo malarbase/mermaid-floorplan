@@ -1,7 +1,8 @@
 import { MetaProvider, Title } from '@solidjs/meta';
 import { Router } from '@solidjs/router';
 import { FileRoutes } from '@solidjs/start/router';
-import { Suspense } from 'solid-js';
+import { onMount, Suspense } from 'solid-js';
+import { injectSpeedInsights } from '@vercel/speed-insights';
 import { ConvexClientProvider } from '~/components/ConvexProvider';
 import SessionGuard from '~/components/SessionGuard';
 import { PageErrorBoundary } from '~/components/ui/ErrorBoundary';
@@ -20,8 +21,14 @@ import './app.css';
  * - PageErrorBoundary for catching unhandled errors
  * - ToastProvider for notifications
  * - Suspense for async component loading
+ * - Vercel Speed Insights for performance monitoring
  */
 export default function App() {
+  // Inject Vercel Speed Insights on client-side mount
+  onMount(() => {
+    injectSpeedInsights();
+  });
+
   return (
     <Router
       root={(props) => (
